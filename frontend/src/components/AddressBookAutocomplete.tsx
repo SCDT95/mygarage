@@ -7,9 +7,11 @@ interface AddressBookAutocompleteProps {
   onChange: (value: string) => void
   onSelectEntry?: (entry: AddressBookEntry | null) => void
   categoryFilter?: string
+  poiCategoryFilter?: string
   placeholder?: string
   className?: string
   id?: string
+  helperText?: string
 }
 
 export default function AddressBookAutocomplete({
@@ -17,9 +19,11 @@ export default function AddressBookAutocomplete({
   onChange,
   onSelectEntry,
   categoryFilter,
+  poiCategoryFilter,
   placeholder = 'Type to search...',
   className = '',
   id,
+  helperText,
 }: AddressBookAutocompleteProps) {
   const [entries, setEntries] = useState<AddressBookEntry[]>([])
   const [loading, setLoading] = useState(false)
@@ -41,6 +45,7 @@ export default function AddressBookAutocomplete({
         const params = new URLSearchParams()
         params.append('search', value)
         if (categoryFilter) params.append('category', categoryFilter)
+        if (poiCategoryFilter) params.append('poi_category', poiCategoryFilter)
 
         const response = await api.get(`/address-book?${params}`)
         setEntries(response.data.entries || [])
@@ -55,7 +60,7 @@ export default function AddressBookAutocomplete({
     // Debounce the search
     const timeoutId = setTimeout(searchEntries, 300)
     return () => clearTimeout(timeoutId)
-  }, [value, categoryFilter])
+  }, [value, categoryFilter, poiCategoryFilter])
 
   // Close dropdown when clicking outside
   useEffect(() => {
@@ -165,9 +170,13 @@ export default function AddressBookAutocomplete({
         </div>
       )}
 
-      <p className="text-xs text-garage-text-muted mt-1">
-        Type at least 2 characters to search address book
-      </p>
+      {helperText !== undefined ? (
+        <p className="text-xs text-garage-text-muted mt-1">{helperText}</p>
+      ) : (
+        <p className="text-xs text-garage-text-muted mt-1">
+          Type at least 2 characters to search address book
+        </p>
+      )}
     </div>
   )
 }

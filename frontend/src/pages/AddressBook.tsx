@@ -15,6 +15,7 @@ export default function AddressBook() {
   const [loading, setLoading] = useState(true)
   const [searchTerm, setSearchTerm] = useState('')
   const [categoryFilter, setCategoryFilter] = useState('')
+  const [poiCategoryFilter, setPoiCategoryFilter] = useState('')
   const [showForm, setShowForm] = useState(false)
   const [editingEntry, setEditingEntry] = useState<AddressBookEntry | null>(null)
 
@@ -23,6 +24,7 @@ export default function AddressBook() {
       const params = new URLSearchParams()
       if (searchTerm) params.append('search', searchTerm)
       if (categoryFilter) params.append('category', categoryFilter)
+      if (poiCategoryFilter) params.append('poi_category', poiCategoryFilter)
 
       const response = await api.get(`/address-book?${params}`)
       setEntries(response.data.entries || [])
@@ -31,7 +33,7 @@ export default function AddressBook() {
     } finally {
       setLoading(false)
     }
-  }, [searchTerm, categoryFilter])
+  }, [searchTerm, categoryFilter, poiCategoryFilter])
 
   useEffect(() => {
     loadEntries()
@@ -104,6 +106,24 @@ export default function AddressBook() {
             <option value="Insurance">{t('addressBook.categoryInsurance')}</option>
             <option value="Other">{t('addressBook.categoryOther')}</option>
           </select>
+
+          {/* Gas Stations filter (issue #69) */}
+          <button
+            type="button"
+            onClick={() =>
+              setPoiCategoryFilter((prev) => (prev === 'fuel_station' ? '' : 'fuel_station'))
+            }
+            className={`px-4 py-2 border rounded-lg transition-colors ${
+              poiCategoryFilter === 'fuel_station'
+                ? 'bg-primary text-white border-primary'
+                : 'bg-garage-surface text-garage-text border-garage-border hover:border-primary'
+            }`}
+            title={t('addressBook.gasStationsFilterHint', {
+              defaultValue: 'Show only gas stations created from fuel records',
+            })}
+          >
+            {t('addressBook.gasStations', { defaultValue: 'Gas Stations' })}
+          </button>
 
           <button
             onClick={handleAddClick}

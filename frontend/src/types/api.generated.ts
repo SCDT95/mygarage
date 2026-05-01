@@ -3472,6 +3472,30 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/vehicles/{vin}/fuel/obc-suggestion": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Obc Suggestion
+         * @description Return OBC values from the DriveSession that immediately preceded a fill-up.
+         *
+         *     Used by the fuel form's "Auto-fill from last drive" button. Always
+         *     returns 404 when there's no usable session — the frontend then hides
+         *     the button entirely.
+         */
+        get: operations["obc_suggestion_api_vehicles__vin__fuel_obc_suggestion_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/vehicles/{vin}/fuel/{record_id}": {
         parameters: {
             query?: never;
@@ -5475,6 +5499,10 @@ export interface components {
             notes?: string | null;
             /** Phone */
             phone?: string | null;
+            /** Poi Category */
+            poi_category?: string | null;
+            /** Poi Metadata */
+            poi_metadata?: string | null;
             /** Rating */
             rating?: number | string | null;
             /**
@@ -5525,6 +5553,10 @@ export interface components {
             notes?: string | null;
             /** Phone */
             phone?: string | null;
+            /** Poi Category */
+            poi_category?: string | null;
+            /** Poi Metadata */
+            poi_metadata?: string | null;
             /** Rating */
             rating?: string | null;
             /**
@@ -5573,6 +5605,10 @@ export interface components {
             notes?: string | null;
             /** Phone */
             phone?: string | null;
+            /** Poi Category */
+            poi_category?: string | null;
+            /** Poi Metadata */
+            poi_metadata?: string | null;
             /** Rating */
             rating?: number | string | null;
             /** Source */
@@ -6955,9 +6991,19 @@ export interface components {
             displacement_l?: string | null;
             /**
              * Fuel Type
-             * @description Primary fuel type
+             * @description Primary fuel type (raw NHTSA string)
              */
             fuel_type?: string | null;
+            /**
+             * Fuel Type Normalized
+             * @description Primary fuel type normalized to FuelTypeEnum vocabulary
+             */
+            fuel_type_normalized?: string | null;
+            /**
+             * Fuel Type Secondary
+             * @description Secondary fuel capability (PHEV / flex / dual-fuel), normalized to FuelTypeEnum vocabulary. Sourced from NHTSA FuelTypeSecondary, with fallback decoding of combined FuelTypePrimary strings.
+             */
+            fuel_type_secondary?: string | null;
             /**
              * Hp
              * @description Horsepower
@@ -7202,10 +7248,30 @@ export interface components {
              */
             def_fill_level?: number | string | null;
             /**
+             * Driver Name Freetext
+             * @description Freetext driver name (non-account household member)
+             */
+            driver_name_freetext?: string | null;
+            /**
+             * Driver User Id
+             * @description FK to users.id when driver is a known household user
+             */
+            driver_user_id?: number | null;
+            /**
+             * Filled At
+             * @description Optional fill-up timestamp (naive local). Required for OBC auto-suggest from a matching DriveSession.
+             */
+            filled_at?: string | null;
+            /**
              * Fuel Type
-             * @description Fuel type (Gasoline, Diesel, etc.)
+             * @description Legacy fuel type column. New clients should use fuel_type_used. Kept for one release as a compatibility alias.
              */
             fuel_type?: string | null;
+            /**
+             * Fuel Type Used
+             * @description Actual fuel dispensed for this fill-up (canonical enum). Only surfaced in UI when the vehicle has a secondary fuel capability.
+             */
+            fuel_type_used?: string | null;
             /**
              * Is Full Tank
              * @description Full tank fill-up
@@ -7240,10 +7306,41 @@ export interface components {
              */
             notes?: string | null;
             /**
+             * Obc Avg Speed Kmh
+             * @description OBC reported average speed (km/h)
+             */
+            obc_avg_speed_kmh?: number | string | null;
+            /**
+             * Obc L Per 100Km
+             * @description OBC reported fuel consumption (L/100 km)
+             */
+            obc_l_per_100km?: number | string | null;
+            /**
+             * Obc Trip Duration S
+             * @description OBC reported trip duration in seconds
+             */
+            obc_trip_duration_s?: number | null;
+            /**
              * Odometer Km
              * @description Odometer reading in kilometers
              */
             odometer_km?: number | string | null;
+            /**
+             * One Time Visit
+             * @description When True, station_name_freetext is stored as-is and no address_book entry is created. Ignored if station_address_book_id is set.
+             * @default false
+             */
+            one_time_visit: boolean;
+            /**
+             * Outside Temp C
+             * @description Outside temperature in Celsius (canonical)
+             */
+            outside_temp_c?: number | string | null;
+            /**
+             * Payment Method
+             * @description Payment method, one of ('cash', 'credit', 'debit', 'fleet_card', 'app', 'other')
+             */
+            payment_method?: string | null;
             /**
              * Price Basis
              * @description Price denominator: per_volume / per_weight / per_tank / per_kwh
@@ -7260,6 +7357,16 @@ export interface components {
              */
             propane_liters?: number | string | null;
             /**
+             * Station Address Book Id
+             * @description FK to address_book entry with poi_category='fuel_station'
+             */
+            station_address_book_id?: number | null;
+            /**
+             * Station Name Freetext
+             * @description Freetext station name (one-time visit, no address-book entry created)
+             */
+            station_name_freetext?: string | null;
+            /**
              * Tank Quantity
              * @description Number of propane tanks
              */
@@ -7269,6 +7376,11 @@ export interface components {
              * @description Propane tank size in kilograms
              */
             tank_size_kg?: number | string | null;
+            /**
+             * Trip Type
+             * @description Trip type for this fuel cycle, one of ('private', 'business', 'commute', 'other')
+             */
+            trip_type?: string | null;
             /**
              * Vin
              * @description Vehicle VIN
@@ -7344,10 +7456,30 @@ export interface components {
              */
             date: string;
             /**
+             * Driver Name Freetext
+             * @description Freetext driver name (non-account household member)
+             */
+            driver_name_freetext?: string | null;
+            /**
+             * Driver User Id
+             * @description FK to users.id when driver is a known household user
+             */
+            driver_user_id?: number | null;
+            /**
+             * Filled At
+             * @description Optional fill-up timestamp (naive local). Required for OBC auto-suggest from a matching DriveSession.
+             */
+            filled_at?: string | null;
+            /**
              * Fuel Type
-             * @description Fuel type (Gasoline, Diesel, etc.)
+             * @description Legacy fuel type column. New clients should use fuel_type_used. Kept for one release as a compatibility alias.
              */
             fuel_type?: string | null;
+            /**
+             * Fuel Type Used
+             * @description Actual fuel dispensed for this fill-up (canonical enum). Only surfaced in UI when the vehicle has a secondary fuel capability.
+             */
+            fuel_type_used?: string | null;
             /** Id */
             id: number;
             /**
@@ -7389,10 +7521,35 @@ export interface components {
              */
             notes?: string | null;
             /**
+             * Obc Avg Speed Kmh
+             * @description OBC reported average speed (km/h)
+             */
+            obc_avg_speed_kmh?: string | null;
+            /**
+             * Obc L Per 100Km
+             * @description OBC reported fuel consumption (L/100 km)
+             */
+            obc_l_per_100km?: string | null;
+            /**
+             * Obc Trip Duration S
+             * @description OBC reported trip duration in seconds
+             */
+            obc_trip_duration_s?: number | null;
+            /**
              * Odometer Km
              * @description Odometer reading in kilometers
              */
             odometer_km?: string | null;
+            /**
+             * Outside Temp C
+             * @description Outside temperature in Celsius (canonical)
+             */
+            outside_temp_c?: string | null;
+            /**
+             * Payment Method
+             * @description Payment method, one of ('cash', 'credit', 'debit', 'fleet_card', 'app', 'other')
+             */
+            payment_method?: string | null;
             /**
              * Price Basis
              * @description Price denominator: per_volume / per_weight / per_tank / per_kwh
@@ -7409,6 +7566,16 @@ export interface components {
              */
             propane_liters?: string | null;
             /**
+             * Station Address Book Id
+             * @description FK to address_book entry with poi_category='fuel_station'
+             */
+            station_address_book_id?: number | null;
+            /**
+             * Station Name Freetext
+             * @description Freetext station name (one-time visit, no address-book entry created)
+             */
+            station_name_freetext?: string | null;
+            /**
              * Tank Quantity
              * @description Number of propane tanks
              */
@@ -7418,6 +7585,11 @@ export interface components {
              * @description Propane tank size in kilograms
              */
             tank_size_kg?: string | null;
+            /**
+             * Trip Type
+             * @description Trip type for this fuel cycle, one of ('private', 'business', 'commute', 'other')
+             */
+            trip_type?: string | null;
             /** Vin */
             vin: string;
         };
@@ -7445,11 +7617,25 @@ export interface components {
              * @description DEF tank level (0.00=empty, 1.00=full) — auto-creates a DEF observation
              */
             def_fill_level?: number | string | null;
+            /** Driver Name Freetext */
+            driver_name_freetext?: string | null;
+            /** Driver User Id */
+            driver_user_id?: number | null;
+            /**
+             * Filled At
+             * @description Optional fill-up timestamp
+             */
+            filled_at?: string | null;
             /**
              * Fuel Type
-             * @description Fuel type (Gasoline, Diesel, etc.)
+             * @description Legacy fuel type (compatibility alias for fuel_type_used)
              */
             fuel_type?: string | null;
+            /**
+             * Fuel Type Used
+             * @description Actual fuel dispensed (canonical enum)
+             */
+            fuel_type_used?: string | null;
             /**
              * Is Full Tank
              * @description Full tank fill-up
@@ -7480,11 +7666,21 @@ export interface components {
              * @description Additional notes
              */
             notes?: string | null;
+            /** Obc Avg Speed Kmh */
+            obc_avg_speed_kmh?: number | string | null;
+            /** Obc L Per 100Km */
+            obc_l_per_100km?: number | string | null;
+            /** Obc Trip Duration S */
+            obc_trip_duration_s?: number | null;
             /**
              * Odometer Km
              * @description Odometer reading in kilometers
              */
             odometer_km?: number | string | null;
+            /** Outside Temp C */
+            outside_temp_c?: number | string | null;
+            /** Payment Method */
+            payment_method?: string | null;
             /** Price Basis */
             price_basis?: string | null;
             /**
@@ -7497,6 +7693,10 @@ export interface components {
              * @description Propane amount in liters
              */
             propane_liters?: number | string | null;
+            /** Station Address Book Id */
+            station_address_book_id?: number | null;
+            /** Station Name Freetext */
+            station_name_freetext?: string | null;
             /**
              * Tank Quantity
              * @description Number of propane tanks
@@ -7507,6 +7707,8 @@ export interface components {
              * @description Propane tank size in kilograms
              */
             tank_size_kg?: number | string | null;
+            /** Trip Type */
+            trip_type?: string | null;
         };
         /**
          * GarageAnalytics
@@ -8588,6 +8790,43 @@ export interface components {
             client_secret: string;
             /** Issuer Url */
             issuer_url: string;
+        };
+        /**
+         * ObcSuggestionResponse
+         * @description OBC auto-suggest payload — returned for `GET /api/vehicles/{vin}/fuel/obc-suggestion`.
+         */
+        ObcSuggestionResponse: {
+            /**
+             * Distance Km
+             * @description Distance covered during the session
+             */
+            distance_km?: string | null;
+            /**
+             * Ended At
+             * Format: date-time
+             * @description When the matched DriveSession ended
+             */
+            ended_at: string;
+            /**
+             * Obc Avg Speed Kmh
+             * @description Suggested average speed (km/h)
+             */
+            obc_avg_speed_kmh?: string | null;
+            /**
+             * Obc L Per 100Km
+             * @description Suggested consumption (L/100 km)
+             */
+            obc_l_per_100km?: string | null;
+            /**
+             * Obc Trip Duration S
+             * @description Suggested trip duration (seconds)
+             */
+            obc_trip_duration_s?: number | null;
+            /**
+             * Session Id
+             * @description DriveSession.id used for the suggestion
+             */
+            session_id: number;
         };
         /**
          * OdometerRecordCreate
@@ -11174,6 +11413,10 @@ export interface components {
              * @default USD
              */
             currency_code: string;
+            /** Default Payment Method */
+            default_payment_method?: string | null;
+            /** Default Trip Type */
+            default_trip_type?: string | null;
             /**
              * Email
              * Format: email
@@ -11238,6 +11481,10 @@ export interface components {
         UserSelfUpdate: {
             /** Currency Code */
             currency_code?: string | null;
+            /** Default Payment Method */
+            default_payment_method?: string | null;
+            /** Default Trip Type */
+            default_trip_type?: string | null;
             /** Email */
             email?: string | null;
             /** Full Name */
@@ -11540,9 +11787,14 @@ export interface components {
             drive_type?: string | null;
             /**
              * Fuel Type
-             * @description Fuel type
+             * @description Fuel type (primary capability)
              */
             fuel_type?: string | null;
+            /**
+             * Fuel Type Secondary
+             * @description Secondary fuel capability for PHEV / flex / dual-fuel vehicles. Stored as a FuelTypeEnum value.
+             */
+            fuel_type_secondary?: string | null;
             /**
              * Gvwr Class
              * @description GVWR class
@@ -11920,9 +12172,14 @@ export interface components {
             fuel_economy_highway_l_per_100km?: string | null;
             /**
              * Fuel Type
-             * @description Fuel type
+             * @description Fuel type (primary capability)
              */
             fuel_type?: string | null;
+            /**
+             * Fuel Type Secondary
+             * @description Secondary fuel capability for PHEV / flex / dual-fuel vehicles. Stored as a FuelTypeEnum value.
+             */
+            fuel_type_secondary?: string | null;
             /**
              * Gvwr Class
              * @description GVWR class
@@ -12264,9 +12521,14 @@ export interface components {
             drive_type?: string | null;
             /**
              * Fuel Type
-             * @description Fuel type
+             * @description Fuel type (primary capability)
              */
             fuel_type?: string | null;
+            /**
+             * Fuel Type Secondary
+             * @description Secondary fuel capability for PHEV / flex / dual-fuel vehicles. Stored as a FuelTypeEnum value.
+             */
+            fuel_type_secondary?: string | null;
             /**
              * Gvwr Class
              * @description GVWR class
@@ -13114,6 +13376,8 @@ export interface operations {
                 search?: string | null;
                 /** @description Filter by category */
                 category?: string | null;
+                /** @description Filter by POI category (e.g. 'fuel_station' for the Gas Stations filter view). Combine with `search` for autocomplete. */
+                poi_category?: string | null;
             };
             header?: never;
             path?: never;
@@ -17902,6 +18166,40 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["FuelRecordResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    obc_suggestion_api_vehicles__vin__fuel_obc_suggestion_get: {
+        parameters: {
+            query: {
+                /** @description Fill-up timestamp (naive local). Returns the most recent DriveSession that ended on or before this time within a 24-hour window. */
+                at: string;
+            };
+            header?: never;
+            path: {
+                vin: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ObcSuggestionResponse"];
                 };
             };
             /** @description Validation Error */

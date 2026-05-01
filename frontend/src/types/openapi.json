@@ -133,6 +133,29 @@
             ],
             "title": "Phone"
           },
+          "poi_category": {
+            "anyOf": [
+              {
+                "maxLength": 50,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Poi Category"
+          },
+          "poi_metadata": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Poi Metadata"
+          },
           "rating": {
             "anyOf": [
               {
@@ -349,6 +372,29 @@
               }
             ],
             "title": "Phone"
+          },
+          "poi_category": {
+            "anyOf": [
+              {
+                "maxLength": 50,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Poi Category"
+          },
+          "poi_metadata": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Poi Metadata"
           },
           "rating": {
             "anyOf": [
@@ -575,6 +621,29 @@
               }
             ],
             "title": "Phone"
+          },
+          "poi_category": {
+            "anyOf": [
+              {
+                "maxLength": 50,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Poi Category"
+          },
+          "poi_metadata": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Poi Metadata"
           },
           "rating": {
             "anyOf": [
@@ -3598,8 +3667,32 @@
                 "type": "null"
               }
             ],
-            "description": "Primary fuel type",
+            "description": "Primary fuel type (raw NHTSA string)",
             "title": "Fuel Type"
+          },
+          "fuel_type_normalized": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Primary fuel type normalized to FuelTypeEnum vocabulary",
+            "title": "Fuel Type Normalized"
+          },
+          "fuel_type_secondary": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Secondary fuel capability (PHEV / flex / dual-fuel), normalized to FuelTypeEnum vocabulary. Sourced from NHTSA FuelTypeSecondary, with fallback decoding of combined FuelTypePrimary strings.",
+            "title": "Fuel Type Secondary"
           },
           "hp": {
             "anyOf": [
@@ -4177,6 +4270,45 @@
             "description": "DEF tank level (0.00=empty, 1.00=full) \u2014 auto-creates a DEF observation",
             "title": "Def Fill Level"
           },
+          "driver_name_freetext": {
+            "anyOf": [
+              {
+                "maxLength": 100,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Freetext driver name (non-account household member)",
+            "title": "Driver Name Freetext"
+          },
+          "driver_user_id": {
+            "anyOf": [
+              {
+                "minimum": 1.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "FK to users.id when driver is a known household user",
+            "title": "Driver User Id"
+          },
+          "filled_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Optional fill-up timestamp (naive local). Required for OBC auto-suggest from a matching DriveSession.",
+            "title": "Filled At"
+          },
           "fuel_type": {
             "anyOf": [
               {
@@ -4187,8 +4319,21 @@
                 "type": "null"
               }
             ],
-            "description": "Fuel type (Gasoline, Diesel, etc.)",
+            "description": "Legacy fuel type column. New clients should use fuel_type_used. Kept for one release as a compatibility alias.",
             "title": "Fuel Type"
+          },
+          "fuel_type_used": {
+            "anyOf": [
+              {
+                "maxLength": 20,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Actual fuel dispensed for this fill-up (canonical enum). Only surfaced in UI when the vehicle has a secondary fuel capability.",
+            "title": "Fuel Type Used"
           },
           "is_full_tank": {
             "default": true,
@@ -4256,6 +4401,55 @@
             "description": "Additional notes",
             "title": "Notes"
           },
+          "obc_avg_speed_kmh": {
+            "anyOf": [
+              {
+                "maximum": 9999.9,
+                "minimum": 0.0,
+                "type": "number"
+              },
+              {
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "OBC reported average speed (km/h)",
+            "title": "Obc Avg Speed Kmh"
+          },
+          "obc_l_per_100km": {
+            "anyOf": [
+              {
+                "maximum": 999.99,
+                "minimum": 0.0,
+                "type": "number"
+              },
+              {
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "OBC reported fuel consumption (L/100 km)",
+            "title": "Obc L Per 100Km"
+          },
+          "obc_trip_duration_s": {
+            "anyOf": [
+              {
+                "minimum": 0.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "OBC reported trip duration in seconds",
+            "title": "Obc Trip Duration S"
+          },
           "odometer_km": {
             "anyOf": [
               {
@@ -4273,6 +4467,43 @@
             ],
             "description": "Odometer reading in kilometers",
             "title": "Odometer Km"
+          },
+          "one_time_visit": {
+            "default": false,
+            "description": "When True, station_name_freetext is stored as-is and no address_book entry is created. Ignored if station_address_book_id is set.",
+            "title": "One Time Visit",
+            "type": "boolean"
+          },
+          "outside_temp_c": {
+            "anyOf": [
+              {
+                "maximum": 70.0,
+                "minimum": -60.0,
+                "type": "number"
+              },
+              {
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Outside temperature in Celsius (canonical)",
+            "title": "Outside Temp C"
+          },
+          "payment_method": {
+            "anyOf": [
+              {
+                "maxLength": 20,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Payment method, one of ('cash', 'credit', 'debit', 'fleet_card', 'app', 'other')",
+            "title": "Payment Method"
           },
           "price_basis": {
             "anyOf": [
@@ -4323,6 +4554,32 @@
             "description": "Propane amount in liters",
             "title": "Propane Liters"
           },
+          "station_address_book_id": {
+            "anyOf": [
+              {
+                "minimum": 1.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "FK to address_book entry with poi_category='fuel_station'",
+            "title": "Station Address Book Id"
+          },
+          "station_name_freetext": {
+            "anyOf": [
+              {
+                "maxLength": 150,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Freetext station name (one-time visit, no address-book entry created)",
+            "title": "Station Name Freetext"
+          },
           "tank_quantity": {
             "anyOf": [
               {
@@ -4353,6 +4610,19 @@
             ],
             "description": "Propane tank size in kilograms",
             "title": "Tank Size Kg"
+          },
+          "trip_type": {
+            "anyOf": [
+              {
+                "maxLength": 20,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Trip type for this fuel cycle, one of ('private', 'business', 'commute', 'other')",
+            "title": "Trip Type"
           },
           "vin": {
             "description": "Vehicle VIN",
@@ -4467,6 +4737,45 @@
             "title": "Date",
             "type": "string"
           },
+          "driver_name_freetext": {
+            "anyOf": [
+              {
+                "maxLength": 100,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Freetext driver name (non-account household member)",
+            "title": "Driver Name Freetext"
+          },
+          "driver_user_id": {
+            "anyOf": [
+              {
+                "minimum": 1.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "FK to users.id when driver is a known household user",
+            "title": "Driver User Id"
+          },
+          "filled_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Optional fill-up timestamp (naive local). Required for OBC auto-suggest from a matching DriveSession.",
+            "title": "Filled At"
+          },
           "fuel_type": {
             "anyOf": [
               {
@@ -4477,8 +4786,21 @@
                 "type": "null"
               }
             ],
-            "description": "Fuel type (Gasoline, Diesel, etc.)",
+            "description": "Legacy fuel type column. New clients should use fuel_type_used. Kept for one release as a compatibility alias.",
             "title": "Fuel Type"
+          },
+          "fuel_type_used": {
+            "anyOf": [
+              {
+                "maxLength": 20,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Actual fuel dispensed for this fill-up (canonical enum). Only surfaced in UI when the vehicle has a secondary fuel capability.",
+            "title": "Fuel Type Used"
           },
           "id": {
             "title": "Id",
@@ -4553,6 +4875,45 @@
             "description": "Additional notes",
             "title": "Notes"
           },
+          "obc_avg_speed_kmh": {
+            "anyOf": [
+              {
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "OBC reported average speed (km/h)",
+            "title": "Obc Avg Speed Kmh"
+          },
+          "obc_l_per_100km": {
+            "anyOf": [
+              {
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "OBC reported fuel consumption (L/100 km)",
+            "title": "Obc L Per 100Km"
+          },
+          "obc_trip_duration_s": {
+            "anyOf": [
+              {
+                "minimum": 0.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "OBC reported trip duration in seconds",
+            "title": "Obc Trip Duration S"
+          },
           "odometer_km": {
             "anyOf": [
               {
@@ -4565,6 +4926,32 @@
             ],
             "description": "Odometer reading in kilometers",
             "title": "Odometer Km"
+          },
+          "outside_temp_c": {
+            "anyOf": [
+              {
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Outside temperature in Celsius (canonical)",
+            "title": "Outside Temp C"
+          },
+          "payment_method": {
+            "anyOf": [
+              {
+                "maxLength": 20,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Payment method, one of ('cash', 'credit', 'debit', 'fleet_card', 'app', 'other')",
+            "title": "Payment Method"
           },
           "price_basis": {
             "anyOf": [
@@ -4605,6 +4992,32 @@
             "description": "Propane amount in liters",
             "title": "Propane Liters"
           },
+          "station_address_book_id": {
+            "anyOf": [
+              {
+                "minimum": 1.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "FK to address_book entry with poi_category='fuel_station'",
+            "title": "Station Address Book Id"
+          },
+          "station_name_freetext": {
+            "anyOf": [
+              {
+                "maxLength": 150,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Freetext station name (one-time visit, no address-book entry created)",
+            "title": "Station Name Freetext"
+          },
           "tank_quantity": {
             "anyOf": [
               {
@@ -4630,6 +5043,19 @@
             ],
             "description": "Propane tank size in kilograms",
             "title": "Tank Size Kg"
+          },
+          "trip_type": {
+            "anyOf": [
+              {
+                "maxLength": 20,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Trip type for this fuel cycle, one of ('private', 'business', 'commute', 'other')",
+            "title": "Trip Type"
           },
           "vin": {
             "title": "Vin",
@@ -4703,6 +5129,43 @@
             "description": "DEF tank level (0.00=empty, 1.00=full) \u2014 auto-creates a DEF observation",
             "title": "Def Fill Level"
           },
+          "driver_name_freetext": {
+            "anyOf": [
+              {
+                "maxLength": 100,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Driver Name Freetext"
+          },
+          "driver_user_id": {
+            "anyOf": [
+              {
+                "minimum": 1.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Driver User Id"
+          },
+          "filled_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Optional fill-up timestamp",
+            "title": "Filled At"
+          },
           "fuel_type": {
             "anyOf": [
               {
@@ -4713,8 +5176,21 @@
                 "type": "null"
               }
             ],
-            "description": "Fuel type (Gasoline, Diesel, etc.)",
+            "description": "Legacy fuel type (compatibility alias for fuel_type_used)",
             "title": "Fuel Type"
+          },
+          "fuel_type_used": {
+            "anyOf": [
+              {
+                "maxLength": 20,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Actual fuel dispensed (canonical enum)",
+            "title": "Fuel Type Used"
           },
           "is_full_tank": {
             "anyOf": [
@@ -4800,6 +5276,52 @@
             "description": "Additional notes",
             "title": "Notes"
           },
+          "obc_avg_speed_kmh": {
+            "anyOf": [
+              {
+                "maximum": 9999.9,
+                "minimum": 0.0,
+                "type": "number"
+              },
+              {
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Obc Avg Speed Kmh"
+          },
+          "obc_l_per_100km": {
+            "anyOf": [
+              {
+                "maximum": 999.99,
+                "minimum": 0.0,
+                "type": "number"
+              },
+              {
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Obc L Per 100Km"
+          },
+          "obc_trip_duration_s": {
+            "anyOf": [
+              {
+                "minimum": 0.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Obc Trip Duration S"
+          },
           "odometer_km": {
             "anyOf": [
               {
@@ -4817,6 +5339,35 @@
             ],
             "description": "Odometer reading in kilometers",
             "title": "Odometer Km"
+          },
+          "outside_temp_c": {
+            "anyOf": [
+              {
+                "maximum": 70.0,
+                "minimum": -60.0,
+                "type": "number"
+              },
+              {
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Outside Temp C"
+          },
+          "payment_method": {
+            "anyOf": [
+              {
+                "maxLength": 20,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Payment Method"
           },
           "price_basis": {
             "anyOf": [
@@ -4866,6 +5417,30 @@
             "description": "Propane amount in liters",
             "title": "Propane Liters"
           },
+          "station_address_book_id": {
+            "anyOf": [
+              {
+                "minimum": 1.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Station Address Book Id"
+          },
+          "station_name_freetext": {
+            "anyOf": [
+              {
+                "maxLength": 150,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Station Name Freetext"
+          },
           "tank_quantity": {
             "anyOf": [
               {
@@ -4896,6 +5471,18 @@
             ],
             "description": "Propane tank size in kilograms",
             "title": "Tank Size Kg"
+          },
+          "trip_type": {
+            "anyOf": [
+              {
+                "maxLength": 20,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Trip Type"
           }
         },
         "title": "FuelRecordUpdate",
@@ -7091,6 +7678,79 @@
           "client_secret"
         ],
         "title": "OIDCTestRequest",
+        "type": "object"
+      },
+      "ObcSuggestionResponse": {
+        "description": "OBC auto-suggest payload \u2014 returned for `GET /api/vehicles/{vin}/fuel/obc-suggestion`.",
+        "properties": {
+          "distance_km": {
+            "anyOf": [
+              {
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Distance covered during the session",
+            "title": "Distance Km"
+          },
+          "ended_at": {
+            "description": "When the matched DriveSession ended",
+            "format": "date-time",
+            "title": "Ended At",
+            "type": "string"
+          },
+          "obc_avg_speed_kmh": {
+            "anyOf": [
+              {
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Suggested average speed (km/h)",
+            "title": "Obc Avg Speed Kmh"
+          },
+          "obc_l_per_100km": {
+            "anyOf": [
+              {
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Suggested consumption (L/100 km)",
+            "title": "Obc L Per 100Km"
+          },
+          "obc_trip_duration_s": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Suggested trip duration (seconds)",
+            "title": "Obc Trip Duration S"
+          },
+          "session_id": {
+            "description": "DriveSession.id used for the suggestion",
+            "title": "Session Id",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "session_id",
+          "ended_at"
+        ],
+        "title": "ObcSuggestionResponse",
         "type": "object"
       },
       "OdometerRecordCreate": {
@@ -13328,6 +13988,28 @@
             "title": "Currency Code",
             "type": "string"
           },
+          "default_payment_method": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Default Payment Method"
+          },
+          "default_trip_type": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Default Trip Type"
+          },
           "email": {
             "format": "email",
             "maxLength": 255,
@@ -13462,6 +14144,30 @@
               }
             ],
             "title": "Currency Code"
+          },
+          "default_payment_method": {
+            "anyOf": [
+              {
+                "maxLength": 20,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Default Payment Method"
+          },
+          "default_trip_type": {
+            "anyOf": [
+              {
+                "maxLength": 20,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Default Trip Type"
           },
           "email": {
             "anyOf": [
@@ -14189,8 +14895,21 @@
                 "type": "null"
               }
             ],
-            "description": "Fuel type",
+            "description": "Fuel type (primary capability)",
             "title": "Fuel Type"
+          },
+          "fuel_type_secondary": {
+            "anyOf": [
+              {
+                "maxLength": 20,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Secondary fuel capability for PHEV / flex / dual-fuel vehicles. Stored as a FuelTypeEnum value.",
+            "title": "Fuel Type Secondary"
           },
           "gvwr_class": {
             "anyOf": [
@@ -15055,8 +15774,21 @@
                 "type": "null"
               }
             ],
-            "description": "Fuel type",
+            "description": "Fuel type (primary capability)",
             "title": "Fuel Type"
+          },
+          "fuel_type_secondary": {
+            "anyOf": [
+              {
+                "maxLength": 20,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Secondary fuel capability for PHEV / flex / dual-fuel vehicles. Stored as a FuelTypeEnum value.",
+            "title": "Fuel Type Secondary"
           },
           "gvwr_class": {
             "anyOf": [
@@ -16041,8 +16773,21 @@
                 "type": "null"
               }
             ],
-            "description": "Fuel type",
+            "description": "Fuel type (primary capability)",
             "title": "Fuel Type"
+          },
+          "fuel_type_secondary": {
+            "anyOf": [
+              {
+                "maxLength": 20,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Secondary fuel capability for PHEV / flex / dual-fuel vehicles. Stored as a FuelTypeEnum value.",
+            "title": "Fuel Type Secondary"
           },
           "gvwr_class": {
             "anyOf": [
@@ -18360,6 +19105,24 @@
               ],
               "description": "Filter by category",
               "title": "Category"
+            }
+          },
+          {
+            "description": "Filter by POI category (e.g. 'fuel_station' for the Gas Stations filter view). Combine with `search` for autocomplete.",
+            "in": "query",
+            "name": "poi_category",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Filter by POI category (e.g. 'fuel_station' for the Gas Stations filter view). Combine with `search` for autocomplete.",
+              "title": "Poi Category"
             }
           }
         ],
@@ -25794,6 +26557,66 @@
           }
         ],
         "summary": "Create Fuel Record",
+        "tags": [
+          "Fuel Records"
+        ]
+      }
+    },
+    "/api/vehicles/{vin}/fuel/obc-suggestion": {
+      "get": {
+        "description": "Return OBC values from the DriveSession that immediately preceded a fill-up.\n\nUsed by the fuel form's \"Auto-fill from last drive\" button. Always\nreturns 404 when there's no usable session \u2014 the frontend then hides\nthe button entirely.",
+        "operationId": "obc_suggestion_api_vehicles__vin__fuel_obc_suggestion_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "vin",
+            "required": true,
+            "schema": {
+              "title": "Vin",
+              "type": "string"
+            }
+          },
+          {
+            "description": "Fill-up timestamp (naive local). Returns the most recent DriveSession that ended on or before this time within a 24-hour window.",
+            "in": "query",
+            "name": "at",
+            "required": true,
+            "schema": {
+              "description": "Fill-up timestamp (naive local). Returns the most recent DriveSession that ended on or before this time within a 24-hour window.",
+              "format": "date-time",
+              "title": "At",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ObcSuggestionResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Obc Suggestion",
         "tags": [
           "Fuel Records"
         ]

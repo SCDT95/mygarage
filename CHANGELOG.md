@@ -22,7 +22,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Notes
 
-- Frontend UI for the new fields is not yet shipped — this commit lands the backend contract only. CSV import/export columns are unchanged this release.
+- CSV import/export columns are unchanged this release. Round-trip support for the new fields is targeted for a follow-up release.
+
+### Added (frontend)
+
+- Fuel record form gets a "More details" panel (sticky-expanded per user) with: optional fill-up timestamp, station autocomplete (poi_category=fuel_station, ranked by usage), one-time-visit toggle, driver freetext, payment method dropdown (defaulted from user preferences), trip type dropdown (defaulted from user preferences), outside temperature input, and a Trip Computer (OBC) sub-section with a one-click "Auto-fill from last drive" button that calls the new OBC-suggestion endpoint when a fill-up time is set. A `fuel_type_used` dropdown appears above the form for vehicles with `fuel_type_secondary` set.
+- Settings → System gains a "Fuel Tracking Defaults" card for picking default payment method and default trip type. Save is auto-on-change via `PUT /api/auth/me`; clearing back to "—" is supported.
+- Address Book page gets a "Gas Stations" toggle filter that lists `poi_category='fuel_station'` entries — typically created automatically by the fuel form when a new station is typed without checking one-time visit.
+- Fuel form, settings card, and address-book filter ship with translations for all four supported locales (en/pl/uk/ru).
 
 ## [2.26.4] - 2026-04-25
 

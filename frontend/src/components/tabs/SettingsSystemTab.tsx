@@ -60,6 +60,11 @@ export default function SettingsSystemTab() {
   const [mobileQuickEntry, setMobileQuickEntry] = useState(true)
   const [mobileQuickEntrySaving, setMobileQuickEntrySaving] = useState(false)
 
+  // Fuel-tracking form defaults (issue #69)
+  const [defaultPaymentMethod, setDefaultPaymentMethod] = useState<string>('')
+  const [defaultTripType, setDefaultTripType] = useState<string>('')
+  const [fuelDefaultsSaving, setFuelDefaultsSaving] = useState(false)
+
   // Language & currency state
   const [selectedLanguage, setSelectedLanguage] = useState('en')
   const [languageSaving, setLanguageSaving] = useState(false)
@@ -148,6 +153,8 @@ export default function SettingsSystemTab() {
       setMobileQuickEntry(currentUser.mobile_quick_entry_enabled ?? true)
       setSelectedLanguage(currentUser.language || 'en')
       setSelectedCurrency(currentUser.currency_code || 'USD')
+      setDefaultPaymentMethod(currentUser.default_payment_method ?? '')
+      setDefaultTripType(currentUser.default_trip_type ?? '')
     } else {
       const storedSystem = localStorage.getItem('unit_preference') as 'imperial' | 'metric' | null
       const storedShowBoth = localStorage.getItem('show_both_units') === 'true'
@@ -702,6 +709,100 @@ export default function SettingsSystemTab() {
               </p>
             </div>
           </label>
+        </div>
+      )}
+
+      {/* Fuel Tracking Defaults Card (issue #69) */}
+      {isAuthenticated && (
+        <div className="bg-garage-surface rounded-lg border border-garage-border p-6 space-y-4">
+          <div className="flex items-start gap-3">
+            <Fuel className="w-6 h-6 text-primary mt-1" />
+            <div className="flex-1">
+              <h2 className="text-xl font-semibold text-garage-text mb-1">
+                {t('fuel.title', { defaultValue: 'Fuel Tracking Defaults' })}
+              </h2>
+              <p className="text-sm text-garage-text-muted">
+                {t('fuel.description', {
+                  defaultValue:
+                    'Pre-fill these fields when adding a new fuel record. Leave blank to start every entry empty.',
+                })}
+              </p>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label htmlFor="default_payment_method" className="block text-sm font-medium text-garage-text mb-1">
+                {t('fuel.defaultPaymentMethod', { defaultValue: 'Default payment method' })}
+              </label>
+              <select
+                id="default_payment_method"
+                value={defaultPaymentMethod}
+                onChange={async (e) => {
+                  const value = e.target.value
+                  setDefaultPaymentMethod(value)
+                  setFuelDefaultsSaving(true)
+                  try {
+                    await api.put('/auth/me', {
+                      default_payment_method: value === '' ? null : value,
+                    })
+                    await refreshUser()
+                    toast.success(t('preferences.unitSaved', { defaultValue: 'Saved' }))
+                  } catch {
+                    toast.error(t('preferences.unitError', { defaultValue: 'Save failed' }))
+                    setDefaultPaymentMethod(currentUser?.default_payment_method ?? '')
+                  } finally {
+                    setFuelDefaultsSaving(false)
+                  }
+                }}
+                disabled={fuelDefaultsSaving}
+                className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-primary bg-garage-bg text-garage-text border-garage-border"
+              >
+                <option value="">—</option>
+                <option value="cash">{t('fuel.paymentMethods.cash', { defaultValue: 'Cash', ns: 'forms' })}</option>
+                <option value="credit">{t('fuel.paymentMethods.credit', { defaultValue: 'Credit card', ns: 'forms' })}</option>
+                <option value="debit">{t('fuel.paymentMethods.debit', { defaultValue: 'Debit card', ns: 'forms' })}</option>
+                <option value="fleet_card">{t('fuel.paymentMethods.fleet_card', { defaultValue: 'Fleet card', ns: 'forms' })}</option>
+                <option value="app">{t('fuel.paymentMethods.app', { defaultValue: 'Mobile pay / app', ns: 'forms' })}</option>
+                <option value="other">{t('fuel.paymentMethods.other', { defaultValue: 'Other', ns: 'forms' })}</option>
+              </select>
+            </div>
+
+            <div>
+              <label htmlFor="default_trip_type" className="block text-sm font-medium text-garage-text mb-1">
+                {t('fuel.defaultTripType', { defaultValue: 'Default trip type' })}
+              </label>
+              <select
+                id="default_trip_type"
+                value={defaultTripType}
+                onChange={async (e) => {
+                  const value = e.target.value
+                  setDefaultTripType(value)
+                  setFuelDefaultsSaving(true)
+                  try {
+                    await api.put('/auth/me', {
+                      default_trip_type: value === '' ? null : value,
+                    })
+                    await refreshUser()
+                    toast.success(t('preferences.unitSaved', { defaultValue: 'Saved' }))
+                  } catch {
+                    toast.error(t('preferences.unitError', { defaultValue: 'Save failed' }))
+                    setDefaultTripType(currentUser?.default_trip_type ?? '')
+                  } finally {
+                    setFuelDefaultsSaving(false)
+                  }
+                }}
+                disabled={fuelDefaultsSaving}
+                className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-primary bg-garage-bg text-garage-text border-garage-border"
+              >
+                <option value="">—</option>
+                <option value="private">{t('fuel.tripTypes.private', { defaultValue: 'Private', ns: 'forms' })}</option>
+                <option value="business">{t('fuel.tripTypes.business', { defaultValue: 'Business', ns: 'forms' })}</option>
+                <option value="commute">{t('fuel.tripTypes.commute', { defaultValue: 'Commute', ns: 'forms' })}</option>
+                <option value="other">{t('fuel.tripTypes.other', { defaultValue: 'Other', ns: 'forms' })}</option>
+              </select>
+            </div>
+          </div>
         </div>
       )}
 
