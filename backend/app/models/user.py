@@ -55,6 +55,11 @@ class User(Base):
     # Mobile experience
     mobile_quick_entry_enabled: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
 
+    # Fuel-tracking form defaults (issue #69 — extended fuel tracking).
+    # Validated against PaymentMethod / TripType enums at the schema layer.
+    default_payment_method: Mapped[str | None] = mapped_column(String(20), nullable=True)
+    default_trip_type: Mapped[str | None] = mapped_column(String(20), nullable=True)
+
     # Family/relationship fields
     relationship: Mapped[str | None] = mapped_column(
         String(50), nullable=True

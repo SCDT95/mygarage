@@ -49,7 +49,15 @@ class VehicleBase(BaseModel):
         None, description="Engine displacement in liters", max_length=20
     )
     cylinders: int | None = Field(None, description="Number of cylinders")
-    fuel_type: str | None = Field(None, description="Fuel type", max_length=50)
+    fuel_type: str | None = Field(None, description="Fuel type (primary capability)", max_length=50)
+    fuel_type_secondary: str | None = Field(
+        None,
+        description=(
+            "Secondary fuel capability for PHEV / flex / dual-fuel vehicles. "
+            "Stored as a FuelTypeEnum value."
+        ),
+        max_length=20,
+    )
     transmission_type: str | None = Field(None, description="Transmission type", max_length=50)
     transmission_speeds: str | None = Field(None, description="Transmission speeds", max_length=20)
     # DEF tracking

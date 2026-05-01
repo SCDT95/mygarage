@@ -34,10 +34,18 @@ async def _sync_to_vendor(
     Updates to existing vendor fields are intentionally not performed here —
     a vendor may already be linked to service visits.
 
+    Skipped for `poi_category='fuel_station'` entries — gas stations are not
+    vendors in MyGarage's domain model and would pollute the vendors table.
+    The fuel-record save path is the primary creator of these entries.
+
     Known limitation: concurrent creates with only case/whitespace differences
     could produce duplicate vendors. Acceptable for single-user homelab use.
     """
     if not business_name or not business_name.strip():
+        return
+    # Defense-in-depth guard: gas stations never sync to vendors, regardless
+    # of how the entry was created.
+    if getattr(entry, "poi_category", None) == "fuel_station":
         return
     name = business_name.strip()[:100]  # Enforce vendors.name VARCHAR(100) limit
     try:
@@ -68,6 +76,13 @@ async def list_entries(
     db: Annotated[AsyncSession, Depends(get_db)],
     search: str | None = Query(None, description="Search by name, business name, or city"),
     category: str | None = Query(None, description="Filter by category"),
+    poi_category: str | None = Query(
+        None,
+        description=(
+            "Filter by POI category (e.g. 'fuel_station' for the Gas Stations "
+            "filter view). Combine with `search` for autocomplete."
+        ),
+    ),
     current_user: User | None = Depends(require_auth),
 ) -> AddressBookListResponse:
     """List all address book entries with optional search and filtering."""
@@ -87,9 +102,19 @@ async def list_entries(
     # Apply category filter
     if category:
         query = query.where(AddressBookEntry.category == category)
+    if poi_category:
+        query = query.where(AddressBookEntry.poi_category == poi_category)
 
-    # Order by business_name, then name (handles NULL names)
-    query = query.order_by(AddressBookEntry.business_name, AddressBookEntry.name)
+    # When filtering to fuel stations, rank by usage so frequently-visited
+    # stations float to the top of autocomplete suggestions.
+    if poi_category == "fuel_station":
+        query = query.order_by(
+            AddressBookEntry.usage_count.desc(),
+            AddressBookEntry.last_used.desc().nullslast(),
+            AddressBookEntry.business_name,
+        )
+    else:
+        query = query.order_by(AddressBookEntry.business_name, AddressBookEntry.name)
 
     result = await db.execute(query)
     entries = result.scalars().all()
@@ -107,6 +132,8 @@ async def list_entries(
         )
     if category:
         count_query = count_query.where(AddressBookEntry.category == category)
+    if poi_category:
+        count_query = count_query.where(AddressBookEntry.poi_category == poi_category)
 
     count_result = await db.execute(count_query)
     total = count_result.scalar_one()
@@ -136,6 +163,14 @@ async def create_entry(
         website=entry_data.website,
         category=entry_data.category,
         notes=entry_data.notes,
+        poi_category=entry_data.poi_category,
+        poi_metadata=entry_data.poi_metadata,
+        latitude=entry_data.latitude,
+        longitude=entry_data.longitude,
+        source=entry_data.source or "manual",
+        external_id=entry_data.external_id,
+        rating=entry_data.rating,
+        user_rating=entry_data.user_rating,
     )
 
     db.add(entry)
@@ -201,6 +236,22 @@ async def update_entry(
         entry.category = update_data.category
     if update_data.notes is not None:
         entry.notes = update_data.notes
+    if update_data.poi_category is not None:
+        entry.poi_category = update_data.poi_category
+    if update_data.poi_metadata is not None:
+        entry.poi_metadata = update_data.poi_metadata
+    if update_data.latitude is not None:
+        entry.latitude = update_data.latitude
+    if update_data.longitude is not None:
+        entry.longitude = update_data.longitude
+    if update_data.source is not None:
+        entry.source = update_data.source
+    if update_data.external_id is not None:
+        entry.external_id = update_data.external_id
+    if update_data.rating is not None:
+        entry.rating = update_data.rating
+    if update_data.user_rating is not None:
+        entry.user_rating = update_data.user_rating
 
     try:
         await _sync_to_vendor(db, entry.business_name, entry)

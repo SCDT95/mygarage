@@ -69,6 +69,7 @@ class Vehicle(Base):
     displacement_l: Mapped[str | None] = mapped_column(String(20))
     cylinders: Mapped[int | None] = mapped_column(Integer)
     fuel_type: Mapped[str | None] = mapped_column(String(50))
+    fuel_type_secondary: Mapped[str | None] = mapped_column(String(20))
     transmission_type: Mapped[str | None] = mapped_column(String(50))
     transmission_speeds: Mapped[str | None] = mapped_column(String(20))
     # Window sticker fields

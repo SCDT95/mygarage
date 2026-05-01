@@ -36,7 +36,19 @@ class EngineInfo(BaseModel):
     cylinders: int | None = Field(None, description="Number of cylinders")
     hp: int | None = Field(None, description="Horsepower")
     kw: int | None = Field(None, description="Kilowatts")
-    fuel_type: str | None = Field(None, description="Primary fuel type")
+    fuel_type: str | None = Field(None, description="Primary fuel type (raw NHTSA string)")
+    fuel_type_normalized: str | None = Field(
+        None,
+        description="Primary fuel type normalized to FuelTypeEnum vocabulary",
+    )
+    fuel_type_secondary: str | None = Field(
+        None,
+        description=(
+            "Secondary fuel capability (PHEV / flex / dual-fuel), normalized to "
+            "FuelTypeEnum vocabulary. Sourced from NHTSA FuelTypeSecondary, with "
+            "fallback decoding of combined FuelTypePrimary strings."
+        ),
+    )
 
 
 class TransmissionInfo(BaseModel):

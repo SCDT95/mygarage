@@ -1,6 +1,10 @@
 """Utility for auto-syncing odometer records from service and fuel records.
 
 Metric-canonical since v2.26.2: `odometer_km` (Decimal kilometers).
+
+Since v2.27.0 the helper supports a `commit` flag so callers (e.g. the
+extended fuel-tracking flow) can compose this into a single outer
+transaction with other side effects.
 """
 
 from datetime import date as date_type
@@ -19,6 +23,8 @@ async def sync_odometer_from_record(
     odometer_km: Decimal | None,
     source_type: str,
     source_id: int,
+    *,
+    commit: bool = True,
 ) -> OdometerRecord | None:
     """Create or update an odometer record from a service/fuel record.
 
@@ -29,6 +35,13 @@ async def sync_odometer_from_record(
           (user-entered fuel/service data is more authoritative than LiveLink)
         - If exists and was manual: does not overwrite
         - If not exists: creates new odometer record with source marker
+
+    Args:
+        commit: When True (default) the helper commits and refreshes within
+            its own unit of work. When False the caller is responsible for
+            committing — the helper still flushes so the row gets an id and
+            any FK side effects are visible to subsequent queries inside the
+            same transaction.
     """
     if odometer_km is None:
         return None
@@ -48,20 +61,25 @@ async def sync_odometer_from_record(
             existing.odometer_km = odometer_km
             existing.notes = auto_sync_marker
             existing.source = source_type
-            await db.commit()
-            await db.refresh(existing)
+            if commit:
+                await db.commit()
+                await db.refresh(existing)
+            else:
+                await db.flush()
             return existing
-        else:
-            return None
-    else:
-        odometer_record = OdometerRecord(
-            vin=vin,
-            date=date,
-            odometer_km=odometer_km,
-            notes=auto_sync_marker,
-            source=source_type,
-        )
-        db.add(odometer_record)
+        return None
+
+    odometer_record = OdometerRecord(
+        vin=vin,
+        date=date,
+        odometer_km=odometer_km,
+        notes=auto_sync_marker,
+        source=source_type,
+    )
+    db.add(odometer_record)
+    if commit:
         await db.commit()
         await db.refresh(odometer_record)
-        return odometer_record
+    else:
+        await db.flush()
+    return odometer_record

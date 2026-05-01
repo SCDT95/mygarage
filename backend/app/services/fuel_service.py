@@ -21,6 +21,7 @@ from app.models.user import User
 from app.schemas.fuel import FuelRecordCreate, FuelRecordResponse, FuelRecordUpdate
 from app.utils.cache import cached, invalidate_cache_for_vehicle
 from app.utils.def_sync import sync_def_from_fuel_record
+from app.utils.fuel_station_sync import resolve_fuel_station
 from app.utils.logging_utils import sanitize_for_log
 from app.utils.odometer_sync import sync_odometer_from_record
 
@@ -243,7 +244,12 @@ class FuelRecordService:
     async def create_fuel_record(
         self, vin: str, record_data: FuelRecordCreate, current_user: User
     ) -> tuple[FuelRecord, Decimal | None]:
-        """Create a new fuel record with L/100km calc."""
+        """Create a new fuel record with L/100km calc.
+
+        Uses a single outer transaction (since v2.27.0) so station create,
+        usage_count bump, fuel-record insert, odometer sync, and DEF sync
+        either all succeed or all roll back together.
+        """
         from app.services.auth import get_vehicle_or_403
 
         vin = vin.upper().strip()
@@ -256,6 +262,23 @@ class FuelRecordService:
 
             # Pop DEF fill level before creating FuelRecord (not a fuel table column)
             def_fill_level = record_dict.pop("def_fill_level", None)
+            # Pop the one_time_visit form-only flag — not a column on fuel_records
+            one_time_visit = bool(record_dict.pop("one_time_visit", False))
+            station_id_in = record_dict.pop("station_address_book_id", None)
+            station_name_in = record_dict.pop("station_name_freetext", None)
+
+            # Mirror filled_at into date when only filled_at was provided.
+            if record_dict.get("filled_at") is not None and record_dict.get("date") is None:
+                record_dict["date"] = record_dict["filled_at"].date()
+
+            # Compatibility: keep legacy fuel_type populated when a client
+            # sends only fuel_type_used (and vice versa) for one release.
+            ft_legacy = record_dict.get("fuel_type")
+            ft_used = record_dict.get("fuel_type_used")
+            if ft_used and not ft_legacy:
+                record_dict["fuel_type"] = ft_used
+            elif ft_legacy and not ft_used:
+                record_dict["fuel_type_used"] = ft_legacy
 
             # Auto-calculate propane_liters if tank-by-weight data provided
             if (
@@ -268,9 +291,64 @@ class FuelRecordService:
                 calculated = tank_kg * PROPANE_LITERS_PER_KG * qty
                 record_dict["propane_liters"] = calculated.quantize(Decimal("0.001"))
 
-            record = FuelRecord(**record_dict)
+            # ---- Single outer transaction begins ----
+            # 1. Resolve station inputs (may create an address_book row).
+            station_id, station_freetext = await resolve_fuel_station(
+                self.db,
+                station_address_book_id=station_id_in,
+                station_name_freetext=station_name_in,
+                one_time_visit=one_time_visit,
+            )
+            record_dict["station_address_book_id"] = station_id
+            record_dict["station_name_freetext"] = station_freetext
 
+            # 2. Insert fuel record.
+            record = FuelRecord(**record_dict)
             self.db.add(record)
+            await self.db.flush()  # populate record.id without committing
+
+            # 3. Odometer sync (no internal commit).
+            if record.date and record.odometer_km:
+                try:
+                    await sync_odometer_from_record(
+                        db=self.db,
+                        vin=vin,
+                        date=record.date,
+                        odometer_km=record.odometer_km,
+                        source_type="fuel",
+                        source_id=record.id,
+                        commit=False,
+                    )
+                except Exception as e:
+                    # Log but do NOT swallow — let the outer transaction roll
+                    # back so we don't end up with a stranded fuel record
+                    # that's missing its odometer entry.
+                    logger.warning(
+                        "Failed to auto-sync odometer for fuel record (rolling back): %s",
+                        sanitize_for_log(e),
+                    )
+                    raise
+
+            # 4. DEF sync (no internal commit).
+            if def_fill_level is not None:
+                try:
+                    await sync_def_from_fuel_record(
+                        db=self.db,
+                        vin=vin,
+                        date=record.date,
+                        odometer_km=record.odometer_km,
+                        fill_level=def_fill_level,
+                        fuel_record_id=record.id,
+                        commit=False,
+                    )
+                except Exception as e:
+                    logger.warning(
+                        "Failed to auto-sync DEF for fuel record (rolling back): %s",
+                        sanitize_for_log(e),
+                    )
+                    raise
+
+            # 5. Single commit closes the outer transaction.
             await self.db.commit()
             await self.db.refresh(record)
 
@@ -287,40 +365,6 @@ class FuelRecordService:
                 sanitize_for_log(vin),
                 value,
             )
-
-            if record.date and record.odometer_km:
-                try:
-                    await sync_odometer_from_record(
-                        db=self.db,
-                        vin=vin,
-                        date=record.date,
-                        odometer_km=record.odometer_km,
-                        source_type="fuel",
-                        source_id=record.id,
-                    )
-                except Exception as e:
-                    logger.warning(
-                        "Failed to auto-sync odometer for fuel record %s: %s",
-                        record.id,
-                        sanitize_for_log(e),
-                    )
-
-            if def_fill_level is not None:
-                try:
-                    await sync_def_from_fuel_record(
-                        db=self.db,
-                        vin=vin,
-                        date=record.date,
-                        odometer_km=record.odometer_km,
-                        fill_level=def_fill_level,
-                        fuel_record_id=record.id,
-                    )
-                except Exception as e:
-                    logger.warning(
-                        "Failed to auto-sync DEF for fuel record %s: %s",
-                        record.id,
-                        sanitize_for_log(e),
-                    )
 
             await invalidate_cache_for_vehicle(vin)
 
@@ -372,6 +416,22 @@ class FuelRecordService:
             def_fill_level = update_data.pop("def_fill_level", None)
             def_fill_level_was_sent = "def_fill_level" in record_data.model_fields_set
 
+            # Mirror filled_at into date when only filled_at was sent.
+            if (
+                "filled_at" in record_data.model_fields_set
+                and update_data.get("filled_at") is not None
+                and "date" not in record_data.model_fields_set
+            ):
+                update_data["date"] = update_data["filled_at"].date()
+
+            # Compatibility mirroring between legacy fuel_type and fuel_type_used.
+            ft_legacy_sent = "fuel_type" in record_data.model_fields_set
+            ft_used_sent = "fuel_type_used" in record_data.model_fields_set
+            if ft_used_sent and not ft_legacy_sent:
+                update_data["fuel_type"] = update_data.get("fuel_type_used")
+            elif ft_legacy_sent and not ft_used_sent:
+                update_data["fuel_type_used"] = update_data.get("fuel_type")
+
             # Auto-calculate propane_liters if tank-by-weight data provided/updated
             if (
                 update_data.get("tank_size_kg") is not None
@@ -389,17 +449,8 @@ class FuelRecordService:
             for field, value in update_data.items():
                 setattr(record, field, value)
 
-            await self.db.commit()
-            await self.db.refresh(record)
-
-            value = None
-            if record.is_full_tank:
-                prev_record = await get_previous_full_tank(
-                    self.db, vin, record.date, record.odometer_km
-                )
-                value = calculate_l_per_100km(record, prev_record)
-
-            logger.info("Updated fuel record %s for %s", record_id, sanitize_for_log(vin))
+            # ---- Single outer transaction begins ----
+            await self.db.flush()  # apply field changes inside the same tx
 
             if record.date and record.odometer_km:
                 try:
@@ -410,13 +461,15 @@ class FuelRecordService:
                         odometer_km=record.odometer_km,
                         source_type="fuel",
                         source_id=record.id,
+                        commit=False,
                     )
                 except Exception as e:
                     logger.warning(
-                        "Failed to auto-sync odometer for fuel record %s: %s",
+                        "Failed to auto-sync odometer for fuel record %s (rolling back): %s",
                         record_id,
                         sanitize_for_log(e),
                     )
+                    raise
 
             if def_fill_level_was_sent:
                 try:
@@ -428,6 +481,7 @@ class FuelRecordService:
                             odometer_km=record.odometer_km,
                             fill_level=def_fill_level,
                             fuel_record_id=record.id,
+                            commit=False,
                         )
                     else:
                         from app.models.def_record import DEFRecord
@@ -435,13 +489,25 @@ class FuelRecordService:
                         await self.db.execute(
                             delete(DEFRecord).where(DEFRecord.origin_fuel_record_id == record_id)
                         )
-                        await self.db.commit()
                 except Exception as e:
                     logger.warning(
-                        "Failed to auto-sync DEF for fuel record %s: %s",
+                        "Failed to auto-sync DEF for fuel record %s (rolling back): %s",
                         record_id,
                         sanitize_for_log(e),
                     )
+                    raise
+
+            await self.db.commit()
+            await self.db.refresh(record)
+
+            value = None
+            if record.is_full_tank:
+                prev_record = await get_previous_full_tank(
+                    self.db, vin, record.date, record.odometer_km
+                )
+                value = calculate_l_per_100km(record, prev_record)
+
+            logger.info("Updated fuel record %s for %s", record_id, sanitize_for_log(vin))
 
             await invalidate_cache_for_vehicle(vin)
 

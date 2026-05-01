@@ -7,6 +7,7 @@ import httpx
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import settings
+from app.constants.fuel import FuelTypeEnum, normalize_fuel_type, split_combined_fuel_type
 from app.exceptions import SSRFProtectionError
 from app.utils.logging_utils import sanitize_for_log
 from app.utils.url_validation import validate_nhtsa_url
@@ -144,6 +145,23 @@ class NHTSAService:
         """
         # Map NHTSA fields to our application fields
         # NHTSA returns many fields, we extract the most useful ones
+        # Normalize NHTSA fuel-type strings to the canonical enum vocabulary.
+        # NHTSA returns combined values ("Gasoline, Hybrid Electric") in the
+        # primary slot for some PHEVs/flex vehicles even when secondary is set;
+        # `split_combined_fuel_type` decodes those into (primary, secondary).
+        raw_primary = result.get("FuelTypePrimary")
+        raw_secondary = result.get("FuelTypeSecondary")
+
+        primary_split, secondary_from_split = split_combined_fuel_type(raw_primary)
+        if primary_split is not None:
+            fuel_type_primary: FuelTypeEnum | None = primary_split
+            fuel_type_secondary: FuelTypeEnum | None = (
+                normalize_fuel_type(raw_secondary) or secondary_from_split
+            )
+        else:
+            fuel_type_primary = normalize_fuel_type(raw_primary)
+            fuel_type_secondary = normalize_fuel_type(raw_secondary)
+
         info = {
             "vin": result.get("VIN"),
             "year": self._parse_int(result.get("ModelYear")),
@@ -157,7 +175,12 @@ class NHTSAService:
                 "cylinders": self._parse_int(result.get("EngineCylinders")),
                 "hp": self._parse_int(result.get("EngineHP")),
                 "kw": self._parse_int(result.get("EngineKW")),
-                "fuel_type": result.get("FuelTypePrimary"),
+                # `fuel_type` keeps the raw NHTSA string for legacy callers;
+                # normalized values surface via `fuel_type_normalized` and
+                # `fuel_type_secondary` below.
+                "fuel_type": raw_primary,
+                "fuel_type_normalized": (fuel_type_primary.value if fuel_type_primary else None),
+                "fuel_type_secondary": (fuel_type_secondary.value if fuel_type_secondary else None),
             },
             "transmission": {
                 "type": result.get("TransmissionStyle"),

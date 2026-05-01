@@ -8,6 +8,7 @@ from typing import Any, Literal
 
 from pydantic import BaseModel, ConfigDict, EmailStr, Field, field_validator, model_validator
 
+from app.constants.fuel import PAYMENT_METHOD_VALUES, TRIP_TYPE_VALUES
 from app.constants.i18n import SUPPORTED_CURRENCIES, SUPPORTED_LANGUAGES
 
 # Relationship type presets for family system
@@ -91,6 +92,9 @@ class UserSelfUpdate(BaseModel):
     # i18n preferences
     language: str | None = Field(None, max_length=10)
     currency_code: str | None = Field(None, max_length=3)
+    # Fuel-tracking form defaults (issue #69)
+    default_payment_method: str | None = Field(None, max_length=20)
+    default_trip_type: str | None = Field(None, max_length=20)
 
     @field_validator("language")
     @classmethod
@@ -108,6 +112,24 @@ class UserSelfUpdate(BaseModel):
             raise ValueError(
                 f"Unsupported currency: {v}. Supported: {sorted(SUPPORTED_CURRENCIES)}"
             )
+        return v
+
+    @field_validator("default_payment_method")
+    @classmethod
+    def validate_default_payment_method(cls, v: Any) -> Any:
+        """Validate against the canonical PaymentMethod enum."""
+        if v is not None and v not in PAYMENT_METHOD_VALUES:
+            raise ValueError(
+                f"default_payment_method must be one of {PAYMENT_METHOD_VALUES}, got {v!r}"
+            )
+        return v
+
+    @field_validator("default_trip_type")
+    @classmethod
+    def validate_default_trip_type(cls, v: Any) -> Any:
+        """Validate against the canonical TripType enum."""
+        if v is not None and v not in TRIP_TYPE_VALUES:
+            raise ValueError(f"default_trip_type must be one of {TRIP_TYPE_VALUES}, got {v!r}")
         return v
 
 
@@ -228,6 +250,9 @@ class UserResponse(UserBase):
     # i18n preferences
     language: str = "en"
     currency_code: str = "USD"
+    # Fuel-tracking form defaults (issue #69)
+    default_payment_method: str | None = None
+    default_trip_type: str | None = None
     # Family/relationship fields
     relationship: str | None = None
     relationship_custom: str | None = None

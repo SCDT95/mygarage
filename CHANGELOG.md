@@ -7,6 +7,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **Extended fuel tracking (issue #69, backend foundation)**: fuel records now accept rich metadata — fueling station (with autocomplete + one-time-visit toggle), driver (user FK or freetext), payment method, trip type, outside temperature, and on-board-computer (OBC) values for consumption / average speed / trip duration. Per-user defaults for payment method and trip type are managed via `PUT /api/auth/me`. Vehicles gain `fuel_type_secondary` for PHEV / flex / dual-fuel capabilities (auto-populated from NHTSA `FuelTypeSecondary` and combined-string decoding). Fuel records gain a per-fillup `fuel_type_used` surfaced only when the vehicle is multi-fuel.
+- New `GET /api/vehicles/{vin}/fuel/obc-suggestion?at=<iso>` endpoint returns the most recent matching DriveSession (≤ 24 h before the fill-up) for "auto-fill from last drive" UX.
+- Address-book API now supports a `poi_category` query filter, enabling a "Gas Stations" filter view that ranks entries by `usage_count` / `last_used`.
+- Migration 054 normalizes existing free-text `vehicles.fuel_type` and `fuel_records.fuel_type` values to the canonical enum vocabulary (idempotent; unrecognized values logged for ops review and mapped to `other`).
+
+### Changed
+
+- `FuelRecordService.create_fuel_record` and `update_fuel_record` now run as a single outer transaction. Station resolution, fuel-record insert, odometer sync, and DEF sync either all succeed or all roll back — no more partial-write states. `sync_odometer_from_record` and `sync_def_from_fuel_record` accept `commit=False` for callers that compose them.
+- Address-book `_sync_to_vendor` now skips entries with `poi_category='fuel_station'` so gas stations created from the fuel form don't pollute the vendor table.
+- Legacy `fuel_records.fuel_type` is preserved for one release as a compatibility alias for the new `fuel_type_used` column. The service layer mirrors writes between them; consumers will be migrated to read `fuel_type_used` (with `fuel_type` fallback) one at a time, with the legacy column targeted for removal in a future release.
+
+### Notes
+
+- Frontend UI for the new fields is not yet shipped — this commit lands the backend contract only. CSV import/export columns are unchanged this release.
+
 ## [2.26.4] - 2026-04-25
 
 ### Fixed

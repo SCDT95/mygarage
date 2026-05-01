@@ -1,4 +1,9 @@
-"""Utility for auto-syncing DEF observation records from fuel records."""
+"""Utility for auto-syncing DEF observation records from fuel records.
+
+Since v2.27.0 the helper supports a `commit` flag so callers (e.g. the
+extended fuel-tracking flow) can compose this into a single outer
+transaction with other side effects.
+"""
 
 import logging
 from datetime import date as date_type
@@ -19,10 +24,17 @@ async def sync_def_from_fuel_record(
     odometer_km: Decimal | None,
     fill_level: Decimal,
     fuel_record_id: int,
+    *,
+    commit: bool = True,
 ) -> DEFRecord | None:
     """Create or update a DEF observation record linked to a fuel record.
 
     Metric-canonical since v2.26.2: odometer_km (Decimal km).
+
+    Args:
+        commit: When True (default) commits the change. When False the
+            caller is responsible for committing; the helper still flushes
+            so the row id is available within the same transaction.
     """
     result = await db.execute(
         select(DEFRecord).where(DEFRecord.origin_fuel_record_id == fuel_record_id)
@@ -33,8 +45,11 @@ async def sync_def_from_fuel_record(
         existing.fill_level = fill_level
         existing.date = date
         existing.odometer_km = odometer_km
-        await db.commit()
-        await db.refresh(existing)
+        if commit:
+            await db.commit()
+            await db.refresh(existing)
+        else:
+            await db.flush()
         logger.info(
             "Updated auto-synced DEF record %d for fuel record %d", existing.id, fuel_record_id
         )
@@ -49,8 +64,11 @@ async def sync_def_from_fuel_record(
         origin_fuel_record_id=fuel_record_id,
     )
     db.add(def_record)
-    await db.commit()
-    await db.refresh(def_record)
+    if commit:
+        await db.commit()
+        await db.refresh(def_record)
+    else:
+        await db.flush()
     logger.info(
         "Created auto-synced DEF record %d for fuel record %d", def_record.id, fuel_record_id
     )

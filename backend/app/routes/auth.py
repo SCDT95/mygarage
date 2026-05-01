@@ -322,6 +322,15 @@ async def update_current_user(
     if user_update.currency_code is not None:
         current_user.currency_code = user_update.currency_code
 
+    # Fuel-tracking form defaults (issue #69). These two fields are explicitly
+    # nullable — users need to be able to clear a previously-set default — so
+    # we honor explicit `null` payloads via model_fields_set rather than the
+    # is-not-None pattern used for the other preferences.
+    if "default_payment_method" in user_update.model_fields_set:
+        current_user.default_payment_method = user_update.default_payment_method
+    if "default_trip_type" in user_update.model_fields_set:
+        current_user.default_trip_type = user_update.default_trip_type
+
     # Users cannot change their own is_active or is_admin status
     current_user.updated_at = utc_now()
 
