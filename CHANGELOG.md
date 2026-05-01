@@ -9,27 +9,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- **Extended fuel tracking (issue #69, backend foundation)**: fuel records now accept rich metadata — fueling station (with autocomplete + one-time-visit toggle), driver (user FK or freetext), payment method, trip type, outside temperature, and on-board-computer (OBC) values for consumption / average speed / trip duration. Per-user defaults for payment method and trip type are managed via `PUT /api/auth/me`. Vehicles gain `fuel_type_secondary` for PHEV / flex / dual-fuel capabilities (auto-populated from NHTSA `FuelTypeSecondary` and combined-string decoding). Fuel records gain a per-fillup `fuel_type_used` surfaced only when the vehicle is multi-fuel.
-- New `GET /api/vehicles/{vin}/fuel/obc-suggestion?at=<iso>` endpoint returns the most recent matching DriveSession (≤ 24 h before the fill-up) for "auto-fill from last drive" UX.
-- Address-book API now supports a `poi_category` query filter, enabling a "Gas Stations" filter view that ranks entries by `usage_count` / `last_used`.
-- Migration 054 normalizes existing free-text `vehicles.fuel_type` and `fuel_records.fuel_type` values to the canonical enum vocabulary (idempotent; unrecognized values logged for ops review and mapped to `other`).
+- Extended fuel tracking (#69): optional fuel-up time, fueling station with autocomplete and one-time-visit toggle, driver, payment method, trip type, outside temperature, and trip-computer (OBC) values on every fill-up.
+- "Auto-fill from last drive" button on the fuel form pulls OBC values from the most recent matching LiveLink drive session.
+- Per-user default payment method and trip type under Settings → System.
+- "Gas Stations" filter on the Address Book page.
+- Vehicles now track a secondary fuel type (PHEV / flex / dual-fuel), populated from NHTSA. Multi-fuel vehicles get a per-fillup fuel-type dropdown.
 
 ### Changed
 
-- `FuelRecordService.create_fuel_record` and `update_fuel_record` now run as a single outer transaction. Station resolution, fuel-record insert, odometer sync, and DEF sync either all succeed or all roll back — no more partial-write states. `sync_odometer_from_record` and `sync_def_from_fuel_record` accept `commit=False` for callers that compose them.
-- Address-book `_sync_to_vendor` now skips entries with `poi_category='fuel_station'` so gas stations created from the fuel form don't pollute the vendor table.
-- Legacy `fuel_records.fuel_type` is preserved for one release as a compatibility alias for the new `fuel_type_used` column. The service layer mirrors writes between them; consumers will be migrated to read `fuel_type_used` (with `fuel_type` fallback) one at a time, with the legacy column targeted for removal in a future release.
+- Fuel record save now runs as a single transaction across station resolution, odometer sync, and DEF sync — no more partial writes on failure.
+- Gas-station address-book entries no longer create vendor records.
 
 ### Notes
 
-- CSV import/export columns are unchanged this release. Round-trip support for the new fields is targeted for a follow-up release.
-
-### Added (frontend)
-
-- Fuel record form gets a "More details" panel (sticky-expanded per user) with: optional fill-up timestamp, station autocomplete (poi_category=fuel_station, ranked by usage), one-time-visit toggle, driver freetext, payment method dropdown (defaulted from user preferences), trip type dropdown (defaulted from user preferences), outside temperature input, and a Trip Computer (OBC) sub-section with a one-click "Auto-fill from last drive" button that calls the new OBC-suggestion endpoint when a fill-up time is set. A `fuel_type_used` dropdown appears above the form for vehicles with `fuel_type_secondary` set.
-- Settings → System gains a "Fuel Tracking Defaults" card for picking default payment method and default trip type. Save is auto-on-change via `PUT /api/auth/me`; clearing back to "—" is supported.
-- Address Book page gets a "Gas Stations" toggle filter that lists `poi_category='fuel_station'` entries — typically created automatically by the fuel form when a new station is typed without checking one-time visit.
-- Fuel form, settings card, and address-book filter ship with translations for all four supported locales (en/pl/uk/ru).
+- CSV import/export columns are unchanged this release.
 
 ## [2.26.4] - 2026-04-25
 
