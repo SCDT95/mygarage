@@ -35,7 +35,18 @@ from dataclasses import dataclass
 import pytest
 from pydantic import BaseModel
 
+from app.schemas.address_book import AddressBookEntryCreate
+from app.schemas.def_record import DEFRecordCreate
 from app.schemas.fuel import FuelRecordCreate, FuelRecordUpdate
+from app.schemas.insurance import InsurancePolicyCreate
+from app.schemas.note import NoteCreate
+from app.schemas.odometer import OdometerRecordCreate
+from app.schemas.service_visit import (
+    ReminderCreate,
+    ServiceLineItemCreate,
+    ServiceVisitCreate,
+)
+from app.schemas.warranty import WarrantyRecordCreate
 
 
 @dataclass
@@ -44,10 +55,13 @@ class RequiredFieldsCase:
     expected_required: set[str]
 
 
+# Truth table — the required-field set for each input schema.
+# Phase 4.4 backfills the broader matrix beyond just FuelRecordCreate.
 REQUIRED_FIELD_CASES: list[RequiredFieldsCase] = [
-    # FuelRecordCreate currently requires only vin + date. Phase 2.1 may
-    # tighten this with a model_validator (cross-field), but field-level
-    # required-ness is unlikely to change.
+    # FuelRecordCreate requires only vin + date at the FIELD level. The
+    # cross-field rule (need odometer + at least one fuel-amount unless
+    # missed_fillup) lives in a model_validator and is exercised in
+    # tests/unit/schemas/test_fuel_schema.py.
     RequiredFieldsCase(
         schema=FuelRecordCreate,
         expected_required={"vin", "date"},
@@ -56,6 +70,48 @@ REQUIRED_FIELD_CASES: list[RequiredFieldsCase] = [
     RequiredFieldsCase(
         schema=FuelRecordUpdate,
         expected_required=set(),
+    ),
+    RequiredFieldsCase(
+        schema=ServiceVisitCreate,
+        expected_required={"date", "line_items"},
+    ),
+    RequiredFieldsCase(
+        schema=ServiceLineItemCreate,
+        expected_required={"description"},
+    ),
+    RequiredFieldsCase(
+        schema=ReminderCreate,
+        expected_required={"reminder_type", "title"},
+    ),
+    RequiredFieldsCase(
+        schema=InsurancePolicyCreate,
+        expected_required={
+            "end_date",
+            "policy_number",
+            "policy_type",
+            "provider",
+            "start_date",
+        },
+    ),
+    RequiredFieldsCase(
+        schema=WarrantyRecordCreate,
+        expected_required={"start_date", "warranty_type"},
+    ),
+    RequiredFieldsCase(
+        schema=AddressBookEntryCreate,
+        expected_required={"business_name"},
+    ),
+    RequiredFieldsCase(
+        schema=OdometerRecordCreate,
+        expected_required={"date", "odometer_km", "vin"},
+    ),
+    RequiredFieldsCase(
+        schema=NoteCreate,
+        expected_required={"content", "date", "vin"},
+    ),
+    RequiredFieldsCase(
+        schema=DEFRecordCreate,
+        expected_required={"date", "vin"},
     ),
 ]
 
