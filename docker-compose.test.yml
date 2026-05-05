@@ -1,3 +1,18 @@
+# MyGarage backend test stack with a PostgreSQL sidecar.
+#
+# Scope: migration tests (sync engine, asyncpg-free) — the path that
+# would have caught migration 054's PG bugs. Run with:
+#
+#   MYGARAGE_TEST_UID=$(id -u) MYGARAGE_TEST_GID=$(id -g) \
+#     docker compose -f docker-compose.test.yml -p mygarage-test \
+#       run --rm mygarage-test pytest tests/migrations/ -v
+#
+# NOT scoped to integration tests (`tests/integration/`) — the async
+# session fixture in backend/tests/conftest.py has an asyncpg loop
+# binding issue under pytest-asyncio's per-test loop scope. Tracked at:
+#   https://github.com/homelabforge/mygarage/issues/77
+# Until #77 lands, integration tests still run on SQLite via bin/ci-check.
+
 services:
   postgres-test:
     image: postgres:16-alpine
