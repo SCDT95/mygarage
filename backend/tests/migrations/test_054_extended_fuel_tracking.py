@@ -269,7 +269,6 @@ def test_054_already_normalized_values_skipped(migration_db, tmp_path, monkeypat
 # cases listed below go green.
 
 
-
 @pytest.mark.migrations
 @pytest.mark.parametrize(
     "locale,free_text,expected",
