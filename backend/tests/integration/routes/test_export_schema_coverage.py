@@ -69,6 +69,7 @@ EXPORT_COVERAGE_SPECS: list[ExportCoverageSpec] = [
         url_pattern="/api/export/vehicles/{vin}/fuel/csv",
         header_to_attr={
             "Date": "date",
+            "Filled At": "filled_at",
             "Odometer (km)": "odometer_km",
             "Liters": "liters",
             "Price Per Liter": "price_per_unit",
@@ -77,20 +78,18 @@ EXPORT_COVERAGE_SPECS: list[ExportCoverageSpec] = [
             "Missed Fill-up": "missed_fillup",
             "Is Hauling": "is_hauling",
             "Fuel Type": "fuel_type",
+            "Fuel Type Used": "fuel_type_used",
+            "Station ID": "station_address_book_id",
+            "Station": "station_name_freetext",
+            "Driver ID": "driver_user_id",
+            "Driver": "driver_name_freetext",
+            "Payment Method": "payment_method",
+            "Trip Type": "trip_type",
+            "Outside Temp (C)": "outside_temp_c",
+            "OBC L/100km": "obc_l_per_100km",
+            "OBC Avg Speed (km/h)": "obc_avg_speed_kmh",
+            "OBC Trip Duration (s)": "obc_trip_duration_s",
             "Notes": "notes",
-            # Phase 2.3 will add entries below as the exporter is expanded:
-            # "Filled At": "filled_at",
-            # "Station": "station_name_freetext",
-            # "Station ID": "station_address_book_id",
-            # "Driver": "driver_name_freetext",
-            # "Driver ID": "driver_user_id",
-            # "Payment Method": "payment_method",
-            # "Trip Type": "trip_type",
-            # "Outside Temp (°C)": "outside_temp_c",
-            # "OBC L/100km": "obc_l_per_100km",
-            # "OBC Avg Speed (km/h)": "obc_avg_speed_kmh",
-            # "OBC Trip Duration (s)": "obc_trip_duration_s",
-            # "Fuel Type Used": "fuel_type_used",
         },
         exclude={
             # Surrogate keys + foreign keys implied by the export URL/scope:
@@ -104,8 +103,6 @@ EXPORT_COVERAGE_SPECS: list[ExportCoverageSpec] = [
             "tank_quantity",
             "kwh",
             "price_basis",
-            # SQLAlchemy relationship attribute (not a column):
-            "vehicle",
         },
     ),
 ]
