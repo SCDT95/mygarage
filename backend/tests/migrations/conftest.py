@@ -53,9 +53,7 @@ def _reset_pg_schema(engine: Engine) -> None:
 
 
 @pytest.fixture(params=["sqlite", "pg"])
-def engine_for_migration(
-    request, tmp_path, monkeypatch
-) -> Generator[tuple[str, Engine, str]]:
+def engine_for_migration(request, tmp_path, monkeypatch) -> Generator[tuple[str, Engine, str]]:
     """Engine fixture parameterized over SQLite and PostgreSQL.
 
     Yields ``(dialect, engine, url)`` where ``dialect`` is ``"sqlite"`` or
@@ -89,6 +87,33 @@ def engine_for_migration(
     _reset_pg_schema(engine)
     try:
         yield "pg", engine, pg_url
+    finally:
+        engine.dispose()
+
+
+@pytest.fixture
+def pg_engine() -> Generator[Engine]:
+    """PG-only engine fixture for tests that load a baseline dump.
+
+    Skipped (not failed) when ``TEST_DATABASE_URL`` is unset. The
+    ``public`` schema is reset to empty before yield, so the test can
+    immediately call ``load_baseline`` (or run ``create_all``) without
+    worrying about leftover state from prior tests.
+
+    Use this fixture when the test is inherently PG-only — for example,
+    pre-migration baseline tests that load a ``pg_dump`` containing
+    PostgreSQL-specific syntax (``SERIAL``, sequence DDL, etc.). For
+    cross-engine tests, prefer ``engine_for_migration``.
+    """
+    pg_url = _pg_sync_url()
+    if pg_url is None:
+        pytest.skip(
+            "TEST_DATABASE_URL not set — PG-only tests require the docker-compose.test.yml stack"
+        )
+    engine = create_engine(pg_url)
+    _reset_pg_schema(engine)
+    try:
+        yield engine
     finally:
         engine.dispose()
 
