@@ -200,6 +200,19 @@ export default function FuelRecordForm({ vin, record, onClose, onSuccess }: Fuel
   // footer when the user types a station name not in the address book.
   const [quickAddOpen, setQuickAddOpen] = useState(false)
   const [quickAddName, setQuickAddName] = useState('')
+
+  // Phase 3.6 follow-up — outside temperature display state. Backend
+  // stores canonical Celsius (`outside_temp_c`); imperial users see and
+  // type Fahrenheit. The form's actual ``outside_temp_c`` field receives
+  // the converted canonical value via setValue. Initialized from the
+  // record's stored Celsius (converted to °F when imperial).
+  const [outsideTempDisplay, setOutsideTempDisplay] = useState<string>(() => {
+    if (record?.outside_temp_c == null) return ''
+    const c = Number(record.outside_temp_c)
+    if (Number.isNaN(c)) return ''
+    const display = system === 'imperial' ? (c * 9) / 5 + 32 : c
+    return String(Math.round(display * 10) / 10)
+  })
   const filledAt = watch('filled_at')
   const isMultiFuel = !!vehicleFuelTypeSecondary
   const obcAvailable = !!filledAt && filledAt.length > 0
@@ -864,14 +877,27 @@ export default function FuelRecordForm({ vin, record, onClose, onSuccess }: Fuel
                 </div>
 
                 <div>
-                  <label htmlFor="outside_temp_c" className="block text-sm font-medium text-garage-text mb-1">
-                    {t('fuel.outsideTemp')} (°C)
+                  <label htmlFor="outside_temp_display" className="block text-sm font-medium text-garage-text mb-1">
+                    {t('fuel.outsideTemp')} ({system === 'imperial' ? '°F' : '°C'})
                   </label>
                   <input
                     type="number"
-                    id="outside_temp_c"
+                    id="outside_temp_display"
                     step="0.1"
-                    {...register('outside_temp_c', { valueAsNumber: true })}
+                    value={outsideTempDisplay}
+                    onChange={(e) => {
+                      const raw = e.target.value
+                      setOutsideTempDisplay(raw)
+                      if (raw === '') {
+                        setValue('outside_temp_c', undefined as unknown as number)
+                        return
+                      }
+                      const num = parseFloat(raw)
+                      if (Number.isNaN(num)) return
+                      // Backend stores canonical Celsius; convert F → C on imperial.
+                      const canonical = system === 'imperial' ? ((num - 32) * 5) / 9 : num
+                      setValue('outside_temp_c', canonical, { shouldValidate: true })
+                    }}
                     className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-primary bg-garage-bg text-garage-text border-garage-border"
                     disabled={isSubmitting}
                   />

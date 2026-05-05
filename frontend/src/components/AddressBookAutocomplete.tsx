@@ -65,8 +65,13 @@ export default function AddressBookAutocomplete({
         if (poiCategoryFilter) params.append('poi_category', poiCategoryFilter)
 
         const response = await api.get(`/address-book?${params}`)
-        setEntries(response.data.entries || [])
-        setShowDropdown((response.data.entries || []).length > 0)
+        const fetched = response.data.entries || []
+        setEntries(fetched)
+        // Show the dropdown when there are results OR when the empty-state
+        // has actionable affordances (the "+ Add to address book" footer
+        // shipped in v2.27.0-rc2). Without this, an empty result hides the
+        // entire dropdown and the user has no way to reach the modal.
+        setShowDropdown(fetched.length > 0 || !!onAddNew)
       } catch {
         setEntries([])
       } finally {
@@ -77,7 +82,11 @@ export default function AddressBookAutocomplete({
     // Debounce the search
     const timeoutId = setTimeout(searchEntries, 300)
     return () => clearTimeout(timeoutId)
-  }, [value, categoryFilter, poiCategoryFilter])
+  // ``onAddNew`` is in the deps because the empty-state showDropdown
+  // path depends on whether it's provided. Most callers pass a stable
+  // function; if a caller inlines a new function each render the search
+  // re-fires, which is harmless (debounced + idempotent).
+  }, [value, categoryFilter, poiCategoryFilter, onAddNew])
 
   // Close dropdown when clicking outside
   useEffect(() => {
