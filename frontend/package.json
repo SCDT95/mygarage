@@ -54,13 +54,6 @@
     "temporal-polyfill": "^0.3.2",
     "zod": "^4.3.6"
   },
-  "overrides": {
-    "rollup": ">=4.59.0",
-    "undici": ">=7.24.0",
-    "flatted": ">=3.4.2",
-    "picomatch": ">=4.0.4",
-    "brace-expansion": ">=5.0.5"
-  },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
     "@playwright/test": "^1.59.1",
