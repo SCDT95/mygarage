@@ -119,16 +119,36 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // API requests - network first, cache fallback
+  // API requests - network first, cache fallback.
+  //
+  // We deliberately do NOT cache:
+  //   - Photos/attachments/documents/backup downloads: large binary bodies.
+  //     `response.clone()` tees the underlying stream, so the response to
+  //     the browser cannot drain faster than the slowest reader — once we
+  //     dispatch a cache.put() of a multi-MB blob, the user's image fetch
+  //     stalls behind the CacheStorage write. Browser caches these fine
+  //     on its own.
+  //   - Realtime polling endpoints (livelink/mqtt status): each response is
+  //     stale within seconds, so caching just thrashes IndexedDB.
   if (url.pathname.startsWith('/api/')) {
+    const shouldCache = !(
+      url.pathname.includes('/photos/') ||
+      url.pathname.includes('/attachments/') ||
+      url.pathname.includes('/documents/') ||
+      url.pathname.startsWith('/api/backup/download/') ||
+      url.pathname.endsWith('/livelink/status') ||
+      url.pathname.endsWith('/mqtt/status')
+    );
+
     event.respondWith(
       fetch(request)
         .then((response) => {
-          // Clone response to cache it
-          const responseClone = response.clone();
-          caches.open(RUNTIME_CACHE).then((cache) => {
-            cache.put(request, responseClone);
-          });
+          if (shouldCache && response.ok) {
+            const responseClone = response.clone();
+            caches.open(RUNTIME_CACHE).then((cache) => {
+              cache.put(request, responseClone);
+            });
+          }
           return response;
         })
         .catch(() => {

@@ -12,11 +12,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Service worker no longer pins itself to a hardcoded cache name. Each release now namespaces its caches by `APP_VERSION`, so stale shells from previous deploys are evicted on activate instead of producing a white screen on restart.
 - Asset fetch handler retries on network failure (3 attempts, exponential backoff) instead of silently returning a fake 503. This survives the backend's cold-start window after `docker compose up`.
 - `/index.html` and `/` are no longer precached on service worker install — the navigation handler is already network-first, so precaching them kept stale references to old chunk hashes.
+- Vehicle photos no longer take minutes to load. The service worker was caching every API response — including multi-MB photos — and `response.clone()` tied the cache write to the original response stream, stalling the user's image fetch behind a CacheStorage put.
 
 ### Changed
 
 - `/assets/*` static files now ship with `Cache-Control: public, max-age=31536000, immutable`. Vite emits content-hashed filenames, so this is safe and stops browsers and Cloudflare from revalidating on every navigation.
+- Photo and thumbnail endpoints ship `Cache-Control: private, max-age=31536000, immutable` so the browser caches them natively — service worker caching is no longer needed for these.
+- Service worker skips caching for photos, attachments, documents, backup downloads, and realtime polling endpoints (livelink/mqtt status). These either don't benefit from caching or thrash it.
 - `AuthContext` dispatches `/settings/public` and `/auth/me` in parallel on mount instead of sequentially, cutting bootstrap latency for authenticated users roughly in half.
+- LiveLink status polling (5s detail view, 30s dashboard widget) pauses while the tab is hidden. Backgrounded polling was competing with foreground requests through the service worker.
 
 ## [2.27.0-rc2] - 2026-05-05
 
