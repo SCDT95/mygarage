@@ -27,7 +27,7 @@ from app.models.audit_log import AuditLog
 from app.models.csrf_token import CSRFToken
 from app.models.user import User
 from app.services import oidc as oidc_service
-from app.services.auth import create_access_token, get_current_user
+from app.services.auth import create_access_token, get_current_admin_user, get_current_user
 from app.utils.datetime_utils import utc_now
 from app.utils.logging_utils import sanitize_for_log
 from app.utils.request_scheme import get_cookie_secure, get_request_scheme
@@ -50,12 +50,43 @@ class OIDCConfigResponse(BaseModel):
     scopes: str
 
 
+class OIDCAdminConfig(BaseModel):
+    """Full admin OIDC configuration (canonical homelab OIDC settings contract).
+
+    `client_secret` follows the §5.4(3) wire convention:
+      - GET returns the literal "********" placeholder when stored, "" otherwise.
+      - PUT with empty string OR the placeholder preserves the stored value.
+    """
+
+    enabled: bool = False
+    provider_name: str = ""
+    issuer_url: str = ""
+    client_id: str = ""
+    client_secret: str = ""
+    scopes: str = "openid profile email"
+    auto_create_users: bool = True
+    admin_group: str = ""
+    username_claim: str = "preferred_username"
+    email_claim: str = "email"
+    full_name_claim: str = "name"
+
+
 class OIDCTestRequest(BaseModel):
     """OIDC connection test request."""
 
     issuer_url: str
     client_id: str
     client_secret: str
+
+
+class OIDCTestResult(BaseModel):
+    """Canonical OIDC test result per plan §5.4(4)."""
+
+    ok: bool
+    error: str | None = None
+    detail: str | None = None
+    issuer: str | None = None
+    algorithms_supported: list[str] | None = None
 
 
 class LinkOIDCAccountRequest(BaseModel):
@@ -81,6 +112,89 @@ async def get_oidc_config(db: AsyncSession = Depends(get_db)):
         client_id=config.get("client_id", ""),
         scopes=config.get("scopes", "openid profile email"),
     )
+
+
+@router.get("/config/admin", response_model=OIDCAdminConfig)
+async def get_oidc_admin_config(
+    db: AsyncSession = Depends(get_db),
+    current_user: User | None = Depends(get_current_admin_user),
+):
+    """Get the full admin OIDC configuration (admin-only).
+
+    Returns the canonical shape per plan §5.4; client_secret is masked with the
+    literal "********" placeholder when stored.
+    """
+    if current_user is None:
+        # auth_mode == "none"; treat as unauthorized for admin-only surface.
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Authentication required",
+        )
+
+    config = await oidc_service.get_oidc_config(db)
+    return OIDCAdminConfig(
+        enabled=config.get("enabled", "false").lower() == "true",
+        provider_name=config.get("provider_name", ""),
+        issuer_url=config.get("issuer_url", ""),
+        client_id=config.get("client_id", ""),
+        client_secret=oidc_service.display_mask_secret(config.get("client_secret", "")),
+        scopes=config.get("scopes") or "openid profile email",
+        auto_create_users=(config.get("auto_create_users", "true").lower() == "true"),
+        admin_group=config.get("admin_group", ""),
+        username_claim=config.get("username_claim") or "preferred_username",
+        email_claim=config.get("email_claim") or "email",
+        full_name_claim=config.get("full_name_claim") or "name",
+    )
+
+
+@router.put("/config/admin")
+async def put_oidc_admin_config(
+    payload: OIDCAdminConfig,
+    db: AsyncSession = Depends(get_db),
+    current_user: User | None = Depends(get_current_admin_user),
+):
+    """Update the admin OIDC configuration (admin-only).
+
+    Enforces the §5.4 wire contract:
+      - empty `client_secret` (or the masked placeholder) preserves the stored value
+      - issuer_url has trailing slash + whitespace stripped before persisting
+    """
+    if current_user is None:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Authentication required",
+        )
+
+    # §5.4(2): preserve stored secret when caller sends empty/placeholder.
+    client_secret = payload.client_secret
+    if not client_secret or oidc_service.is_masked_secret(client_secret):
+        config = await oidc_service.get_oidc_config(db)
+        client_secret = config.get("client_secret", "")
+
+    # §5.4(1): normalize issuer URL.
+    issuer_url = payload.issuer_url.strip().rstrip("/")
+
+    await oidc_service.write_oidc_config(
+        db,
+        {
+            "enabled": "true" if payload.enabled else "false",
+            "provider_name": payload.provider_name,
+            "issuer_url": issuer_url,
+            "client_id": payload.client_id,
+            "client_secret": client_secret,
+            "scopes": payload.scopes,
+            "auto_create_users": "true" if payload.auto_create_users else "false",
+            "admin_group": payload.admin_group,
+            "username_claim": payload.username_claim,
+            "email_claim": payload.email_claim,
+            "full_name_claim": payload.full_name_claim,
+        },
+    )
+
+    logger.info(
+        "OIDC admin configuration updated by user %s", sanitize_for_log(current_user.username)
+    )
+    return {"message": "OIDC configuration updated successfully"}
 
 
 @router.get("/login")
@@ -320,7 +434,7 @@ async def oidc_callback(
     return redirect_response
 
 
-@router.post("/test")
+@router.post("/test", response_model=OIDCTestResult)
 async def test_oidc_connection(
     test_request: OIDCTestRequest,
     current_user: User = Depends(get_current_user),
@@ -328,30 +442,54 @@ async def test_oidc_connection(
 ):
     """Test OIDC provider connection (admin only).
 
-    Args:
-        test_request: OIDC configuration to test
-
-    Returns:
-        Test results
+    Returns the canonical `{ok, error, detail, issuer, algorithms_supported}` envelope
+    per plan §5.4(4).
     """
-    # Only admins can test OIDC connection
     if not current_user or not current_user.is_admin:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Admin privileges required",
         )
 
-    # Convert test request to config dict
+    # §5.4(2): empty/placeholder secret falls back to the stored value so admins can test before saving.
+    client_secret = test_request.client_secret
+    if not client_secret or oidc_service.is_masked_secret(client_secret):
+        stored = await oidc_service.get_oidc_config(db)
+        client_secret = stored.get("client_secret", "")
+
+    issuer_url = test_request.issuer_url.strip().rstrip("/")
+
     config = {
-        "issuer_url": test_request.issuer_url,
+        "issuer_url": issuer_url,
         "client_id": test_request.client_id,
-        "client_secret": test_request.client_secret,
+        "client_secret": client_secret,
     }
 
-    # Test connection
-    result = await oidc_service.test_oidc_connection(config)
+    raw = await oidc_service.test_oidc_connection(config)
 
-    return result
+    if raw.get("success"):
+        metadata = raw.get("metadata") or {}
+        return OIDCTestResult(
+            ok=True,
+            issuer=metadata.get("issuer") or issuer_url,
+            algorithms_supported=metadata.get("id_token_signing_alg_values_supported") or [],
+        )
+
+    if not raw.get("provider_reachable"):
+        error_code = "unreachable"
+    elif not raw.get("metadata_valid"):
+        error_code = "invalid_metadata"
+    elif not raw.get("endpoints_found"):
+        error_code = "missing_endpoints"
+    else:
+        error_code = "discovery_failed"
+
+    errors = raw.get("errors") or []
+    return OIDCTestResult(
+        ok=False,
+        error=error_code,
+        detail="; ".join(errors) if errors else None,
+    )
 
 
 @router.post("/link-account")

@@ -108,22 +108,47 @@ export default function SettingsSystemTab() {
         settingsMap[s.key] = s.value || ''
       })
 
+      // OIDC settings come from the dedicated admin endpoint so client_secret is
+      // returned as the canonical "********" placeholder per plan §5.4(3).
+      let oidcAdmin: {
+        enabled: boolean
+        provider_name: string
+        issuer_url: string
+        client_id: string
+        client_secret: string
+        scopes: string
+        auto_create_users: boolean
+        admin_group: string
+        username_claim: string
+        email_claim: string
+        full_name_claim: string
+      } | null = null
+      try {
+        const oidcResponse = await api.get('/auth/oidc/config/admin')
+        oidcAdmin = oidcResponse.data
+      } catch {
+        // Non-admin users (or auth disabled) can't read admin OIDC config; fall back to public minimal config.
+        oidcAdmin = null
+      }
+
       const newFormData = {
         timezone: settingsMap.timezone || 'UTC',
         debug: settingsMap.debug || 'false',
         auth_mode: settingsMap.auth_mode || 'none',
-        oidc_enabled: settingsMap.oidc_enabled || 'false',
-        oidc_provider_name: settingsMap.oidc_provider_name || '',
-        oidc_issuer_url: settingsMap.oidc_issuer_url || '',
-        oidc_client_id: settingsMap.oidc_client_id || '',
-        oidc_client_secret: settingsMap.oidc_client_secret || '',
+        oidc_enabled: oidcAdmin ? (oidcAdmin.enabled ? 'true' : 'false') : settingsMap.oidc_enabled || 'false',
+        oidc_provider_name: oidcAdmin?.provider_name ?? (settingsMap.oidc_provider_name || ''),
+        oidc_issuer_url: oidcAdmin?.issuer_url ?? (settingsMap.oidc_issuer_url || ''),
+        oidc_client_id: oidcAdmin?.client_id ?? (settingsMap.oidc_client_id || ''),
+        oidc_client_secret: oidcAdmin?.client_secret ?? '',
         oidc_redirect_uri: settingsMap.oidc_redirect_uri || '',
-        oidc_scopes: settingsMap.oidc_scopes || 'openid profile email',
-        oidc_auto_create_users: settingsMap.oidc_auto_create_users || 'true',
-        oidc_admin_group: settingsMap.oidc_admin_group || '',
-        oidc_username_claim: settingsMap.oidc_username_claim || 'preferred_username',
-        oidc_email_claim: settingsMap.oidc_email_claim || 'email',
-        oidc_full_name_claim: settingsMap.oidc_full_name_claim || 'name',
+        oidc_scopes: oidcAdmin?.scopes ?? (settingsMap.oidc_scopes || 'openid profile email'),
+        oidc_auto_create_users: oidcAdmin
+          ? (oidcAdmin.auto_create_users ? 'true' : 'false')
+          : settingsMap.oidc_auto_create_users || 'true',
+        oidc_admin_group: oidcAdmin?.admin_group ?? (settingsMap.oidc_admin_group || ''),
+        oidc_username_claim: oidcAdmin?.username_claim ?? (settingsMap.oidc_username_claim || 'preferred_username'),
+        oidc_email_claim: oidcAdmin?.email_claim ?? (settingsMap.oidc_email_claim || 'email'),
+        oidc_full_name_claim: oidcAdmin?.full_name_claim ?? (settingsMap.oidc_full_name_claim || 'name'),
       }
       setFormData(newFormData)
       setLoadedFormData(newFormData)
@@ -192,9 +217,33 @@ export default function SettingsSystemTab() {
     detectAuthenticator()
   }, [])
 
-  // Save settings
+  // Save settings.
+  // OIDC settings go to the dedicated admin endpoint (enforces §5.4 contract:
+  // empty secret = preserve, issuer rstrip); everything else goes to /settings/batch.
   const handleSave = useCallback(async () => {
-    await api.post('/settings/batch', { settings: formData })
+    const oidcKeyPrefixes = ['oidc_']
+    const nonOidcSettings: Record<string, string> = {}
+    for (const [key, value] of Object.entries(formData)) {
+      if (!oidcKeyPrefixes.some((p) => key.startsWith(p))) {
+        nonOidcSettings[key] = value
+      }
+    }
+
+    await api.put('/auth/oidc/config/admin', {
+      enabled: formData.oidc_enabled === 'true',
+      provider_name: formData.oidc_provider_name,
+      issuer_url: formData.oidc_issuer_url,
+      client_id: formData.oidc_client_id,
+      client_secret: formData.oidc_client_secret,
+      scopes: formData.oidc_scopes,
+      auto_create_users: formData.oidc_auto_create_users === 'true',
+      admin_group: formData.oidc_admin_group,
+      username_claim: formData.oidc_username_claim,
+      email_claim: formData.oidc_email_claim,
+      full_name_claim: formData.oidc_full_name_claim,
+    })
+
+    await api.post('/settings/batch', { settings: nonOidcSettings })
 
     const restartRequired = formData.debug !== 'false'
     if (restartRequired) {

@@ -4,6 +4,7 @@ Functions for loading OIDC settings from the database and fetching
 provider metadata via the standard OpenID Connect discovery endpoint.
 """
 
+import datetime as dt
 import logging
 from typing import Any
 
@@ -34,6 +35,26 @@ async def get_oidc_config(db: AsyncSession) -> dict[str, str]:
         config[key] = setting.value or ""
 
     return config
+
+
+async def write_oidc_config(db: AsyncSession, payload: dict[str, str]) -> None:
+    """Atomically persist OIDC settings.
+
+    Keys are stored with the `oidc_` prefix in the generic settings table.
+    Caller is responsible for enforcing the §5.4 contract (mask handling,
+    issuer rstrip, etc.) — this is the raw KV writer.
+    """
+    now = dt.datetime.now()
+    for clean_key, value in payload.items():
+        full_key = f"oidc_{clean_key}"
+        result = await db.execute(select(Setting).where(Setting.key == full_key))
+        setting = result.scalar_one_or_none()
+        if setting is not None:
+            setting.value = value
+            setting.updated_at = now
+        else:
+            db.add(Setting(key=full_key, value=value, updated_at=now))
+    await db.commit()
 
 
 async def get_provider_metadata(issuer_url: str) -> dict[str, Any] | None:

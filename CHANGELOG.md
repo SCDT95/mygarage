@@ -7,6 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.27.1] - 2026-05-25
+
+### Added
+- `GET /api/auth/oidc/config/admin` returns the canonical admin OIDC config; `client_secret` is masked with the literal `"********"` placeholder when stored
+- `PUT /api/auth/oidc/config/admin` writes the OIDC config atomically; empty `client_secret` preserves the stored value, trailing slashes on `issuer_url` are stripped
+- `MYGARAGE_LOG_PRETTY=true` switches container logs to the Rich-formatted compact `[HH:MM:SS] LEVEL  message` layout used by TideWatch and VulnForge
+
+### Changed
+- `POST /api/auth/oidc/test` now returns the canonical `{ok, error, detail, issuer, algorithms_supported}` envelope per the homelab OIDC settings contract
+- OIDC settings modal: Issuer URL helper text corrected (the app appends `/.well-known/openid-configuration` itself), Callback URL display has a copy button, test result renders the canonical envelope
+- Settings save now sends OIDC fields to the dedicated admin endpoint so the `client_secret` cannot be inadvertently cleared via the bulk `/settings/batch` upsert
+- Granian access-log healthcheck filter now matches on the exact request path and lets failures (HTTP >= 400) through, replacing the loose substring check that previously also swallowed `/health-status` and similar
+
 ### Security
 - OIDC login flow now uses PKCE S256 (RFC 7636); `code_verifier` persisted on `oidc_states` and sent in the token exchange.
 - ID token verifier explicitly allowlists `EdDSA` and `RS256` algorithms.

@@ -64,6 +64,9 @@ async def test_oidc_connection(config: dict[str, str]) -> dict[str, Any]:
             "token_endpoint": metadata.get("token_endpoint"),
             "userinfo_endpoint": metadata.get("userinfo_endpoint"),
             "supported_scopes": metadata.get("scopes_supported", []),
+            "id_token_signing_alg_values_supported": metadata.get(
+                "id_token_signing_alg_values_supported", []
+            ),
         }
 
     except httpx.TimeoutException:

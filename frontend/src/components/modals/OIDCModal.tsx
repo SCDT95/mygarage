@@ -33,14 +33,18 @@ export default function OIDCModal({
   const { t } = useTranslation('forms')
   const [oidcTestLoading, setOidcTestLoading] = useState(false)
   const [oidcTestResult, setOidcTestResult] = useState<{
-    success: boolean
-    message?: string
-    metadata?: object
-    errors?: string[]
+    ok: boolean
+    issuer?: string
+    algorithms_supported?: string[]
+    error?: string
+    detail?: string
   } | null>(null)
   const [showClientSecret, setShowClientSecret] = useState(false)
+  const [copiedCallback, setCopiedCallback] = useState(false)
 
-  // Handle OIDC test connection
+  const callbackUrl = `${window.location.origin}/api/auth/oidc/callback`
+
+  // Handle OIDC test connection. Returns canonical {ok, error, detail, issuer, algorithms_supported}.
   const handleOIDCTest = async () => {
     setOidcTestLoading(true)
     setOidcTestResult(null)
@@ -51,20 +55,33 @@ export default function OIDCModal({
         client_id: formData.oidc_client_id,
         client_secret: formData.oidc_client_secret,
       })
-
-      setOidcTestResult({
-        success: true,
-        message: 'Connection successful! Provider metadata retrieved.',
-        metadata: response.data.metadata || {},
-      })
+      const data = response.data as {
+        ok: boolean
+        issuer?: string
+        algorithms_supported?: string[]
+        error?: string
+        detail?: string
+      }
+      setOidcTestResult(data)
     } catch (error) {
-      const apiError = error as { response?: { data?: { errors?: string[], detail?: string } } }
+      const apiError = error as { response?: { data?: { detail?: string } } }
       setOidcTestResult({
-        success: false,
-        errors: apiError.response?.data?.errors || [apiError.response?.data?.detail || 'Failed to connect to OIDC provider'],
+        ok: false,
+        error: 'request_failed',
+        detail: apiError.response?.data?.detail || 'Failed to call OIDC test endpoint',
       })
     } finally {
       setOidcTestLoading(false)
+    }
+  }
+
+  const handleCopyCallback = async () => {
+    try {
+      await navigator.clipboard.writeText(callbackUrl)
+      setCopiedCallback(true)
+      setTimeout(() => setCopiedCallback(false), 1500)
+    } catch {
+      // Clipboard unavailable — user can still copy manually.
     }
   }
 
@@ -146,10 +163,10 @@ export default function OIDCModal({
                   value={formData.oidc_issuer_url}
                   onChange={(e) => onFormDataChange({ oidc_issuer_url: e.target.value })}
                   className="w-full px-3 py-2 bg-garage-surface border border-garage-border rounded-lg text-sm text-garage-text placeholder-garage-text-muted focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
-                  placeholder="https://auth.example.com/application/o/mygarage/"
+                  placeholder="https://rauthy.example.com/auth/v1"
                 />
                 <p className="text-xs text-garage-text-muted mt-1">
-                  OIDC provider's issuer URL (must end with /.well-known/openid-configuration)
+                  Base issuer URL — e.g. <code>https://rauthy.example.com/auth/v1</code>. The app appends <code>/.well-known/openid-configuration</code> itself; do not include it.
                 </p>
               </div>
 
@@ -191,26 +208,39 @@ export default function OIDCModal({
                     {showClientSecret ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                   </button>
                 </div>
-                <p className="text-xs text-garage-text-muted mt-1">{t('modal.encryptedHint')}</p>
+                <p className="text-xs text-garage-text-muted mt-1">Leave blank to keep existing.</p>
               </div>
 
-              {/* Redirect URI (Read-only) */}
+              {/* Callback URL (Read-only, computed from window.location) */}
               <div>
                 <label htmlFor="oidc-redirect-uri" className="block text-xs font-medium text-garage-text mb-1.5">
-                  Redirect URI (Configure in provider)
+                  Callback URL
                 </label>
-                <div className="relative">
+                <div className="flex gap-2">
                   <input
                     id="oidc-redirect-uri"
                     type="text"
-                    value={`${window.location.origin}/api/auth/oidc/callback`}
+                    value={callbackUrl}
                     readOnly
-                    className="w-full px-3 py-2 bg-garage-surface/50 border border-garage-border rounded-lg text-sm text-garage-text-muted font-mono cursor-default"
+                    className="flex-1 px-3 py-2 bg-garage-surface/50 border border-garage-border rounded-lg text-sm text-garage-text-muted font-mono cursor-default"
                   />
+                  <button
+                    type="button"
+                    onClick={handleCopyCallback}
+                    className="px-3 py-2 bg-garage-surface border border-garage-border text-garage-text text-xs rounded-lg hover:bg-garage-bg transition-colors"
+                  >
+                    {copiedCallback ? 'Copied' : 'Copy'}
+                  </button>
                 </div>
                 <p className="text-xs text-garage-text-muted mt-1">
-                  Copy this URL to your OIDC provider's redirect URI configuration
+                  Copy this into your IdP&apos;s redirect URI list.
                 </p>
+              </div>
+
+              {/* OIDC protocol constants */}
+              <div className="grid grid-cols-2 gap-3 text-xs text-garage-text-muted bg-garage-surface/40 border border-garage-border rounded-lg p-3">
+                <div><span className="font-medium text-garage-text">Token algorithms:</span> EdDSA preferred; RS256 accepted.</div>
+                <div><span className="font-medium text-garage-text">PKCE:</span> Always enabled (S256).</div>
               </div>
 
               {/* Scopes */}
@@ -320,37 +350,37 @@ export default function OIDCModal({
                 </div>
               </div>
 
-              {/* Test Connection Result */}
+              {/* Test Connection Result (canonical {ok, error, detail, issuer, algorithms_supported}) */}
               {oidcTestResult && (
                 <div className={`p-3 rounded-lg border text-sm ${
-                  oidcTestResult.success
+                  oidcTestResult.ok
                     ? 'bg-success-500/10 border-success-500'
                     : 'bg-danger-500/10 border-danger-500'
                 }`}>
                   <div className="flex items-start gap-2">
-                    {oidcTestResult.success ? (
+                    {oidcTestResult.ok ? (
                       <CheckCircle className="w-4 h-4 text-success-500 flex-shrink-0 mt-0.5" />
                     ) : (
                       <AlertCircle className="w-4 h-4 text-danger-500 flex-shrink-0 mt-0.5" />
                     )}
                     <div className="flex-1">
-                      {oidcTestResult.success ? (
+                      {oidcTestResult.ok ? (
                         <>
-                          <div className="font-medium text-success-500">{oidcTestResult.message}</div>
-                          {oidcTestResult.metadata && (
-                            <pre className="mt-2 text-xs bg-garage-bg p-2 rounded overflow-x-auto text-garage-text">
-                              {JSON.stringify(oidcTestResult.metadata, null, 2)}
-                            </pre>
-                          )}
+                          <div className="font-medium text-success-500">Connection successful</div>
+                          <div className="mt-1 text-xs text-garage-text-muted">
+                            <div>Issuer: <span className="font-mono">{oidcTestResult.issuer}</span></div>
+                            {oidcTestResult.algorithms_supported && oidcTestResult.algorithms_supported.length > 0 && (
+                              <div>Algorithms: <span className="font-mono">{oidcTestResult.algorithms_supported.join(', ')}</span></div>
+                            )}
+                          </div>
                         </>
                       ) : (
                         <>
                           <div className="font-medium text-danger-500 mb-1">{t('modal.connectionFailed')}</div>
-                          <ul className="text-xs text-danger-500 space-y-1">
-                            {oidcTestResult.errors?.map((err, idx) => (
-                              <li key={idx}>• {err}</li>
-                            ))}
-                          </ul>
+                          <div className="text-xs text-danger-500">
+                            <div>Code: <span className="font-mono">{oidcTestResult.error}</span></div>
+                            {oidcTestResult.detail && <div className="mt-0.5">{oidcTestResult.detail}</div>}
+                          </div>
                         </>
                       )}
                     </div>

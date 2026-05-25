@@ -18,6 +18,11 @@ from app.utils.url_validation import validate_oidc_url
 logger = logging.getLogger(__name__)
 
 
+# Canonical placeholder returned by admin GET endpoints when a client_secret is
+# stored. See plan §5.4(3).
+MASKED_SECRET_PLACEHOLDER = "********"
+
+
 def mask_secret(secret: str, show_chars: int = 4) -> str:
     """Mask a secret value for safe logging.
 
@@ -41,6 +46,20 @@ def mask_secret(secret: str, show_chars: int = 4) -> str:
     if not secret or len(secret) <= show_chars * 2:
         return "****"
     return f"{secret[:show_chars]}****...****{secret[-show_chars:]}"
+
+
+def display_mask_secret(secret: str) -> str:
+    """Canonical mask for admin GET responses: '********' if set, '' otherwise."""
+    return MASKED_SECRET_PLACEHOLDER if secret else ""
+
+
+def is_masked_secret(secret: str) -> bool:
+    """Detect if a secret value is a known mask placeholder."""
+    if not secret:
+        return False
+    if secret == MASKED_SECRET_PLACEHOLDER:
+        return True
+    return secret.startswith("***") or "****...****" in secret
 
 
 async def exchange_code_for_tokens(

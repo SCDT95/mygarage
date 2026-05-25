@@ -257,12 +257,18 @@ class TestOIDCRoutes:
         assert response.status_code == 403
 
     async def test_test_connection_success(self, client: AsyncClient, auth_headers):
-        """Test OIDC connection test with valid config."""
+        """Test OIDC connection test returns canonical {ok, issuer, algorithms_supported}."""
         with patch("app.services.oidc.test_oidc_connection", new_callable=AsyncMock) as mock_test:
             mock_test.return_value = {
                 "success": True,
-                "message": "Connection successful",
-                "issuer": "https://auth.example.com/",
+                "provider_reachable": True,
+                "metadata_valid": True,
+                "endpoints_found": True,
+                "errors": [],
+                "metadata": {
+                    "issuer": "https://auth.example.com",
+                    "id_token_signing_alg_values_supported": ["EdDSA", "RS256"],
+                },
             }
 
             response = await client.post(
@@ -277,14 +283,19 @@ class TestOIDCRoutes:
 
         assert response.status_code == 200
         data = response.json()
-        assert data["success"] is True
+        assert data["ok"] is True
+        assert data["issuer"] == "https://auth.example.com"
+        assert data["algorithms_supported"] == ["EdDSA", "RS256"]
 
     async def test_test_connection_failure(self, client: AsyncClient, auth_headers):
-        """Test OIDC connection test with invalid config."""
+        """Test OIDC connection test failure returns canonical {ok: false, error, detail}."""
         with patch("app.services.oidc.test_oidc_connection", new_callable=AsyncMock) as mock_test:
             mock_test.return_value = {
                 "success": False,
-                "message": "Failed to fetch provider metadata",
+                "provider_reachable": False,
+                "metadata_valid": False,
+                "endpoints_found": False,
+                "errors": ["Failed to fetch provider metadata"],
             }
 
             response = await client.post(
@@ -299,8 +310,125 @@ class TestOIDCRoutes:
 
         assert response.status_code == 200
         data = response.json()
-        assert data["success"] is False
-        assert "failed" in data["message"].lower()
+        assert data["ok"] is False
+        assert data["error"] == "unreachable"
+        assert "fetch provider metadata" in (data.get("detail") or "")
+
+    # -------------------------------------------------------------------------
+    # /config/admin endpoint tests (dedicated admin OIDC config — plan §5.4)
+    # -------------------------------------------------------------------------
+
+    async def test_admin_get_config_masks_secret(
+        self, client: AsyncClient, auth_headers, db_session
+    ):
+        """Admin GET returns canonical '********' when a client_secret is stored."""
+        await set_settings(
+            db_session,
+            {
+                "oidc_enabled": "true",
+                "oidc_provider_name": "Authentik",
+                "oidc_issuer_url": "https://auth.example.com",
+                "oidc_client_id": "test-client-id",
+                "oidc_client_secret": "real-stored-secret",
+            },
+        )
+
+        response = await client.get("/api/auth/oidc/config/admin", headers=auth_headers)
+        assert response.status_code == 200
+        data = response.json()
+        assert data["enabled"] is True
+        assert data["client_id"] == "test-client-id"
+        assert data["client_secret"] == "********"
+
+    async def test_admin_get_config_empty_secret_returns_empty_string(
+        self, client: AsyncClient, auth_headers, db_session
+    ):
+        """No stored secret → admin GET returns empty string, not placeholder."""
+        await set_settings(db_session, {"oidc_client_secret": ""})
+        response = await client.get("/api/auth/oidc/config/admin", headers=auth_headers)
+        assert response.status_code == 200
+        assert response.json()["client_secret"] == ""
+
+    async def test_admin_put_preserves_secret_on_empty(
+        self, client: AsyncClient, auth_headers, db_session
+    ):
+        """Admin PUT with empty client_secret preserves the stored secret (§5.4(2))."""
+        await set_settings(db_session, {"oidc_client_secret": "preserved-secret"})
+
+        payload = {
+            "enabled": True,
+            "provider_name": "Authentik",
+            "issuer_url": "https://auth.example.com",
+            "client_id": "test-id",
+            "client_secret": "",
+            "scopes": "openid profile email",
+            "auto_create_users": True,
+            "admin_group": "",
+            "username_claim": "preferred_username",
+            "email_claim": "email",
+            "full_name_claim": "name",
+        }
+        response = await client.put(
+            "/api/auth/oidc/config/admin", headers=auth_headers, json=payload
+        )
+        assert response.status_code == 200
+
+        result = await db_session.execute(
+            select(Setting).where(Setting.key == "oidc_client_secret")
+        )
+        stored = result.scalar_one().value
+        assert stored == "preserved-secret"
+
+    async def test_admin_put_strips_issuer_trailing_slash(
+        self, client: AsyncClient, auth_headers, db_session
+    ):
+        """Admin PUT rstrips trailing slash on issuer_url (§5.4(1))."""
+        payload = {
+            "enabled": True,
+            "provider_name": "Authentik",
+            "issuer_url": "https://auth.example.com/auth/v1/",
+            "client_id": "test-id",
+            "client_secret": "secret",
+            "scopes": "openid",
+            "auto_create_users": True,
+            "admin_group": "",
+            "username_claim": "preferred_username",
+            "email_claim": "email",
+            "full_name_claim": "name",
+        }
+        response = await client.put(
+            "/api/auth/oidc/config/admin", headers=auth_headers, json=payload
+        )
+        assert response.status_code == 200
+
+        result = await db_session.execute(select(Setting).where(Setting.key == "oidc_issuer_url"))
+        stored = result.scalar_one().value
+        assert stored == "https://auth.example.com/auth/v1"
+
+    async def test_admin_put_writes_new_secret(self, client: AsyncClient, auth_headers, db_session):
+        """Admin PUT with a real client_secret writes it through."""
+        payload = {
+            "enabled": True,
+            "provider_name": "Authentik",
+            "issuer_url": "https://auth.example.com",
+            "client_id": "test-id",
+            "client_secret": "brand-new-secret",
+            "scopes": "openid",
+            "auto_create_users": False,
+            "admin_group": "admins",
+            "username_claim": "preferred_username",
+            "email_claim": "email",
+            "full_name_claim": "name",
+        }
+        response = await client.put(
+            "/api/auth/oidc/config/admin", headers=auth_headers, json=payload
+        )
+        assert response.status_code == 200
+
+        result = await db_session.execute(
+            select(Setting).where(Setting.key == "oidc_client_secret")
+        )
+        assert result.scalar_one().value == "brand-new-secret"
 
     # -------------------------------------------------------------------------
     # /link-account endpoint tests
