@@ -5,6 +5,12 @@ All notable changes to MyGarage will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Security
+- OIDC login flow now uses PKCE S256 (RFC 7636); `code_verifier` persisted on `oidc_states` and sent in the token exchange.
+- ID token verifier explicitly allowlists `EdDSA` and `RS256` algorithms.
+
 ## [2.27.0] - 2026-05-24
 
 ### Added

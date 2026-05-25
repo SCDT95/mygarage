@@ -27,7 +27,13 @@ async def _cleanup_expired_states(db: AsyncSession) -> None:
     await db.commit()
 
 
-async def store_oidc_state(db: AsyncSession, state: str, redirect_uri: str, nonce: str) -> None:
+async def store_oidc_state(
+    db: AsyncSession,
+    state: str,
+    redirect_uri: str,
+    nonce: str,
+    code_verifier: str | None = None,
+) -> None:
     """Store OIDC state in database for validation after callback.
 
     Replaces in-memory storage for multi-worker reliability and persistence
@@ -38,12 +44,14 @@ async def store_oidc_state(db: AsyncSession, state: str, redirect_uri: str, nonc
         state: State parameter
         redirect_uri: Redirect URI used in auth request
         nonce: Nonce value for ID token validation
+        code_verifier: PKCE code_verifier to be sent in token exchange
     """
     await _cleanup_expired_states(db)
 
     oidc_state = OIDCState(
         state=state,
         nonce=nonce,
+        code_verifier=code_verifier,
         redirect_uri=redirect_uri,
         created_at=utc_now(),
         expires_at=OIDCState.get_expiry_time(minutes=10),
@@ -83,6 +91,7 @@ async def validate_and_consume_state(db: AsyncSession, state: str) -> dict[str, 
     state_data = {
         "redirect_uri": oidc_state.redirect_uri,
         "nonce": oidc_state.nonce,
+        "code_verifier": oidc_state.code_verifier,
         "created_at": oidc_state.created_at,
     }
 

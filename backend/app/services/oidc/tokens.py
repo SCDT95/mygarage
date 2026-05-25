@@ -48,6 +48,7 @@ async def exchange_code_for_tokens(
     config: dict[str, str],
     metadata: dict[str, Any],
     redirect_uri: str,
+    code_verifier: str | None = None,
 ) -> dict[str, Any] | None:
     """Exchange authorization code for tokens.
 
@@ -56,6 +57,8 @@ async def exchange_code_for_tokens(
         config: OIDC configuration
         metadata: Provider metadata
         redirect_uri: Redirect URI used in auth request (must match)
+        code_verifier: PKCE code_verifier matching the code_challenge sent
+            in the authorization request
 
     Returns:
         Token response dictionary or None if exchange fails
@@ -81,6 +84,8 @@ async def exchange_code_for_tokens(
         "client_id": config.get("client_id", ""),
         "client_secret": client_secret,
     }
+    if code_verifier:
+        data["code_verifier"] = code_verifier
 
     try:
         async with httpx.AsyncClient() as client:
@@ -161,8 +166,10 @@ async def verify_id_token(
         # Create key set
         key_set = KeySet.import_key_set(jwks)
 
-        # Decode and verify signature (joserfc auto-selects key by kid from header)
-        token_obj = jwt.decode(id_token, key_set)
+        # Decode and verify signature with an explicit algorithm allowlist.
+        # Rauthy issues EdDSA by default; we also accept RS256 for providers
+        # that haven't switched (Authentik, Keycloak default, etc.).
+        token_obj = jwt.decode(id_token, key_set, algorithms=["EdDSA", "RS256"])
         claims = token_obj.claims
 
         # Validate standard + provider-specific claims (iss/aud/nonce) and

@@ -5,6 +5,8 @@ account linking and group-based admin role mapping, as well as constructing
 the OIDC authorization URL for initiating the login flow.
 """
 
+import base64
+import hashlib
 import logging
 import secrets
 from typing import Any
@@ -31,6 +33,19 @@ def generate_state() -> str:
     return secrets.token_urlsafe(32)
 
 
+def generate_pkce_pair() -> tuple[str, str]:
+    """Generate a PKCE code_verifier and its S256 code_challenge (RFC 7636).
+
+    Returns:
+        Tuple of (code_verifier, code_challenge) where the challenge is the
+        base64url(SHA-256(verifier)) with padding stripped.
+    """
+    verifier = secrets.token_urlsafe(64)
+    digest = hashlib.sha256(verifier.encode("ascii")).digest()
+    challenge = base64.urlsafe_b64encode(digest).rstrip(b"=").decode("ascii")
+    return verifier, challenge
+
+
 async def create_authorization_url(
     db: AsyncSession,
     config: dict[str, str],
@@ -48,9 +63,10 @@ async def create_authorization_url(
     Returns:
         Tuple of (authorization_url, state)
     """
-    # Generate state and nonce
+    # Generate state, nonce, and PKCE verifier/challenge (RFC 7636 S256)
     state = generate_state()
     nonce = secrets.token_urlsafe(32)
+    code_verifier, code_challenge = generate_pkce_pair()
 
     # Determine redirect URI
     redirect_uri = config.get("redirect_uri", "").strip()
@@ -59,7 +75,7 @@ async def create_authorization_url(
         redirect_uri = f"{base_url.rstrip('/')}/api/auth/oidc/callback"
 
     # Store state for validation in database
-    await store_oidc_state(db, state, redirect_uri, nonce)
+    await store_oidc_state(db, state, redirect_uri, nonce, code_verifier=code_verifier)
 
     # Build authorization URL
     auth_endpoint = metadata.get("authorization_endpoint")
@@ -76,6 +92,8 @@ async def create_authorization_url(
         "redirect_uri": redirect_uri,
         "state": state,
         "nonce": nonce,
+        "code_challenge": code_challenge,
+        "code_challenge_method": "S256",
     }
 
     # Construct URL

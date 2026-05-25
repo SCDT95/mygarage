@@ -24,6 +24,7 @@ class OIDCState(Base):
 
     state: Mapped[str] = mapped_column(String(128), primary_key=True, index=True, nullable=False)
     nonce: Mapped[str] = mapped_column(String(128), nullable=False)
+    code_verifier: Mapped[str | None] = mapped_column(String(128), nullable=True)
     redirect_uri: Mapped[str] = mapped_column(String(512), nullable=False)
     created_at: Mapped[datetime] = mapped_column(
         DateTime, server_default=func.now(), nullable=False
