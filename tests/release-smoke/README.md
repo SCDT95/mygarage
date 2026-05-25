@@ -32,6 +32,10 @@ Takes ~90 seconds on a warm Docker cache. Always tears down on exit.
   Run `bash tests/release-smoke/teardown.sh` when done.
 - `E2E_NO_BUILD=1` — reuse the existing `mygarage:release-smoke` image instead of
   rebuilding. Useful when iterating on smoke.py.
+- `MYGARAGE_E2E_IMAGE=<tag>` — override which image `compose.yml` runs. Default
+  is `mygarage:release-smoke` (what `run.sh` builds). Useful to point the
+  smoke test at a GHCR-pulled image, e.g.
+  `E2E_NO_BUILD=1 MYGARAGE_E2E_IMAGE=ghcr.io/homelabforge/mygarage:2.27.1 bash run.sh`.
 
 ## Where it runs
 
