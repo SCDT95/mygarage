@@ -153,3 +153,4 @@ frontend/package-lock.json
 
 # Agent instruction files (local-only, not for the public repo)
 CLAUDE.md
+.claude/
