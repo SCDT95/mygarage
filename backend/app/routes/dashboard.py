@@ -19,7 +19,7 @@ from app.models import (
 from app.models.user import User
 from app.models.vehicle_share import VehicleShare
 from app.schemas.dashboard import DashboardResponse, VehicleStatistics
-from app.services.auth import optional_auth
+from app.services.auth import require_auth
 from app.services.fuel_service import calculate_l_per_100km
 
 router = APIRouter(prefix="/api/dashboard", tags=["dashboard"])
@@ -192,13 +192,15 @@ async def calculate_vehicle_stats(
 @router.get("", response_model=DashboardResponse)
 async def get_dashboard(
     db: AsyncSession = Depends(get_db),
-    current_user: User | None = Depends(optional_auth),
+    current_user: User | None = Depends(require_auth),
 ):
     """
     Get complete dashboard with statistics for all vehicles.
 
     For authenticated users: Shows owned vehicles + shared vehicles.
-    For unauthenticated: Shows all active vehicles (legacy behavior).
+    For none-mode (auth disabled): Shows all active vehicles (legacy behavior).
+    A no-token request in local/oidc now 401s at the dependency rather than
+    falling through to the all-vehicles branch (fail-open closed, R1-H1 class).
     Shows active vehicles + archived vehicles where archived_visible=True.
     """
     vehicle_stats = []

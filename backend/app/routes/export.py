@@ -26,6 +26,7 @@ from app.models import (
 )
 from app.models.user import User
 from app.services.auth import get_vehicle_or_403, require_auth
+from app.utils.csv_safe import sanitize_csv_row
 
 router = APIRouter(prefix="/api/export", tags=["export"])
 
@@ -57,7 +58,8 @@ def generate_csv_stream(headers: list[str], rows: list[list[Any]]) -> io.StringI
     output = io.StringIO()
     writer = csv.writer(output)
     writer.writerow(["units_version", *headers])
-    writer.writerows([[EXPORT_SCHEMA_VERSION, *row] for row in rows])
+    # Neutralise CSV formula-injection in every data cell (header is static).
+    writer.writerows([sanitize_csv_row([EXPORT_SCHEMA_VERSION, *row]) for row in rows])
     output.seek(0)
     return output
 

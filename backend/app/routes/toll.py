@@ -25,6 +25,7 @@ from app.schemas.toll import (
 )
 from app.services.auth import get_vehicle_or_403, require_auth
 from app.services.toll_service import TollService
+from app.utils.csv_safe import sanitize_csv_row
 
 logger = logging.getLogger(__name__)
 
@@ -223,17 +224,19 @@ async def export_toll_transactions_csv(
     # Data rows
     for transaction, toll_tag in rows:
         writer.writerow(
-            [
-                transaction.date.isoformat(),
-                f"${float(transaction.amount):.2f}",
-                transaction.location,
-                toll_tag.toll_system if toll_tag else "",
-                toll_tag.tag_number if toll_tag else "",
-                transaction.notes or "",
-                f"{vehicle.year or ''} {vehicle.make or ''} {vehicle.model or ''}".strip()
-                or vehicle.nickname,
-                vehicle.vin,
-            ]
+            sanitize_csv_row(
+                [
+                    transaction.date.isoformat(),
+                    f"${float(transaction.amount):.2f}",
+                    transaction.location,
+                    toll_tag.toll_system if toll_tag else "",
+                    toll_tag.tag_number if toll_tag else "",
+                    transaction.notes or "",
+                    f"{vehicle.year or ''} {vehicle.make or ''} {vehicle.model or ''}".strip()
+                    or vehicle.nickname,
+                    vehicle.vin,
+                ]
+            )
         )
 
     # Return CSV response

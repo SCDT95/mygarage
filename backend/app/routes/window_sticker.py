@@ -119,8 +119,11 @@ class OCRStatusResponse(BaseModel):
     paddleocr_available: bool
 
 
+ALLOWED_STICKER_MIMES = {"application/pdf", "image/jpeg", "image/png"}
+
+
 def validate_sticker_file(file: UploadFile) -> None:
-    """Validate uploaded window sticker file."""
+    """Validate uploaded window sticker file (extension, MIME, and magic bytes)."""
     if not file.filename:
         raise HTTPException(status_code=400, detail="No file selected")
 
@@ -132,6 +135,23 @@ def validate_sticker_file(file: UploadFile) -> None:
             status_code=400,
             detail=f"Invalid file type. Allowed types: {allowed}",
         )
+
+    # Check declared MIME type
+    if file.content_type not in ALLOWED_STICKER_MIMES:
+        allowed = ", ".join(sorted(ALLOWED_STICKER_MIMES))
+        raise HTTPException(
+            status_code=400,
+            detail=f"Invalid content type. Allowed: {allowed}",
+        )
+
+    # Magic-byte check: reject a file whose bytes don't match its declared type
+    # (e.g. an executable renamed to .pdf). Read the header and rewind.
+    from app.utils.file_validation import verify_file_content_type
+
+    header = file.file.read(16)
+    file.file.seek(0)
+    if not verify_file_content_type(header, file.content_type):
+        raise HTTPException(status_code=400, detail="File content does not match its declared type")
 
 
 @router.get("/{vin}/window-sticker", response_model=WindowStickerResponse)

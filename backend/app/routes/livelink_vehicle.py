@@ -37,6 +37,7 @@ from app.services.dtc_service import DTCService
 from app.services.livelink_service import LiveLinkService
 from app.services.session_service import SessionService
 from app.services.telemetry_service import TelemetryService
+from app.utils.csv_safe import sanitize_csv_row
 from app.utils.datetime_utils import utc_now
 
 logger = logging.getLogger(__name__)
@@ -616,7 +617,8 @@ async def export_telemetry(
     writer.writerow(["timestamp", "param_key", "value"])
 
     for t in telemetry_data:
-        writer.writerow([t.timestamp.isoformat(), t.param_key, t.value])
+        # param_key is device-supplied -> sanitize against CSV formula injection.
+        writer.writerow(sanitize_csv_row([t.timestamp.isoformat(), t.param_key, t.value]))
 
     output.seek(0)
     return StreamingResponse(
@@ -701,17 +703,19 @@ async def export_sessions(
 
     for s in sessions:
         writer.writerow(
-            [
-                s.id,
-                s.started_at.isoformat() if s.started_at else "",
-                s.ended_at.isoformat() if s.ended_at else "",
-                s.duration_seconds or "",
-                s.distance_km or "",
-                s.avg_speed or "",
-                s.max_speed or "",
-                s.avg_rpm or "",
-                s.max_rpm or "",
-            ]
+            sanitize_csv_row(
+                [
+                    s.id,
+                    s.started_at.isoformat() if s.started_at else "",
+                    s.ended_at.isoformat() if s.ended_at else "",
+                    s.duration_seconds or "",
+                    s.distance_km or "",
+                    s.avg_speed or "",
+                    s.max_speed or "",
+                    s.avg_rpm or "",
+                    s.max_rpm or "",
+                ]
+            )
         )
 
     output.seek(0)

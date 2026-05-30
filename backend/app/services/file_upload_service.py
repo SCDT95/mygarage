@@ -140,7 +140,9 @@ class FileUploadService:
         if not contents:
             raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="File is empty")
 
-        # Verify magic bytes if configured
+        # Verify magic bytes if configured. A confirmed content/declared-type
+        # mismatch is now REJECTED (was: logged and allowed) so a file disguised
+        # with an allowed extension+MIME but mismatched content can't be stored.
         if config.verify_magic_bytes:
             is_valid, error_msg = validate_file_magic_bytes(
                 contents,
@@ -149,7 +151,10 @@ class FileUploadService:
                 strict=config.strict_magic_bytes,
             )
             if not is_valid:
-                logger.warning("Magic byte validation warning: %s", error_msg)
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail=error_msg or "File content does not match its declared type",
+                )
 
         return contents
 
@@ -158,6 +163,28 @@ class FileUploadService:
         """Write file contents to disk (sync helper for thread pool)."""
         with open(path, "wb") as f:
             f.write(contents)
+
+    @staticmethod
+    def _verify_image_decodable(contents: bytes) -> None:
+        """Fully decode an image to confirm it is a real, parseable image.
+
+        Run BEFORE the disk write (G-4) so a corrupt or disguised image is
+        rejected with a 400 and nothing is persisted. HEIC is skipped because
+        Pillow cannot decode it without the optional pillow-heif plugin.
+
+        Uses ``load()`` (full pixel decode), not ``verify()``: it rejects
+        disguised/undecodable files while accepting whatever the downstream
+        thumbnailer can actually open (``verify()`` also trips on CRC nits that
+        ``load()`` and the thumbnailer tolerate).
+        """
+        try:
+            with Image.open(BytesIO(contents)) as img:
+                img.load()
+        except (UnidentifiedImageError, OSError, ValueError) as e:
+            logger.warning("Rejected undecodable image upload: %s", e)
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid image file"
+            )
 
     @staticmethod
     def create_thumbnail(
@@ -215,6 +242,17 @@ class FileUploadService:
         try:
             # Validate the upload
             contents = await FileUploadService.validate_upload(file, config)
+
+            # For photo uploads (which get thumbnailed via Pillow), decode the
+            # image BEFORE writing so a disguised/corrupt image is rejected with
+            # nothing persisted (G-4). HEIC is skipped (Pillow needs pillow-heif).
+            if (
+                config.create_thumbnail
+                and file.content_type
+                and file.content_type.startswith("image/")
+                and file.content_type != "image/heic"
+            ):
+                FileUploadService._verify_image_decodable(contents)
 
             # Determine destination directory
             destination_dir = config.base_dir
@@ -298,6 +336,7 @@ ATTACHMENT_UPLOAD_CONFIG = FileUploadConfig(
     max_size_bytes=settings.max_upload_size_bytes,
     generate_unique_name=True,
     verify_magic_bytes=True,
+    strict_magic_bytes=True,
     create_thumbnail=False,
 )
 
@@ -318,5 +357,6 @@ DOCUMENT_UPLOAD_CONFIG = FileUploadConfig(
     max_size_bytes=settings.max_document_size_bytes,
     generate_unique_name=True,
     verify_magic_bytes=True,
+    strict_magic_bytes=True,
     create_thumbnail=False,
 )

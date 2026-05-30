@@ -182,16 +182,21 @@ class TestFileMagicBytesValidation:
         assert "does not match declared type" in error
 
     def test_validate_invalid_non_strict_mode(self):
-        """Test that invalid files are allowed with warning in non-strict mode."""
+        """Non-strict now returns the real result too (v2.28.0, G-2).
+
+        Previously a confirmed mismatch returned (True, None) in non-strict mode,
+        silently allowing a disguised file. It now returns (False, msg) and the
+        caller decides; ``strict`` only changes log severity.
+        """
         # PDF bytes with JPEG MIME type
         pdf_bytes = b"%PDF-1.4\n"
         is_valid, error = validate_file_magic_bytes(
             pdf_bytes, "fake.jpg", "image/jpeg", strict=False
         )
 
-        # In non-strict mode, should allow but log warning
-        assert is_valid is True
-        assert error is None
+        assert is_valid is False
+        assert error is not None
+        assert "does not match declared type" in error
 
     def test_validate_empty_file(self):
         """Test validation of empty file."""
@@ -204,15 +209,22 @@ class TestFileMagicBytesValidation:
         assert error is not None
 
     def test_validate_unknown_mime_type(self):
-        """Test validation of unknown MIME type."""
+        """Validation of an unknown declared MIME type.
+
+        With libmagic available the content is detected (text/plain) and does
+        not match the bogus declared type, so v2.28.0 rejects it (G-2). Without
+        libmagic the function falls back to allowing it. Either way such MIME
+        types are not in any upload config's allowlist, so real uploads are
+        unaffected.
+        """
+        from app.utils.file_validation import MAGIC_AVAILABLE
+
         content = b"Some content"
         is_valid, error = validate_file_magic_bytes(
             content, "file.xyz", "application/x-unknown", strict=False
         )
 
-        # Unknown types should be allowed
-        assert is_valid is True
-        assert error is None
+        assert is_valid is (not MAGIC_AVAILABLE)
 
 
 @pytest.mark.unit

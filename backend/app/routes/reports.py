@@ -17,6 +17,7 @@ from app.models import (
 from app.models.service_visit import ServiceVisit
 from app.models.user import User
 from app.services.auth import get_vehicle_or_403, require_auth
+from app.utils.csv_safe import sanitize_csv_row
 from app.utils.pdf_generator import PDFReportGenerator
 
 router = APIRouter(prefix="/api/vehicles", tags=["Reports"])
@@ -321,15 +322,17 @@ async def download_service_history_csv(
         vendor_name = visit.vendor.name if visit.vendor else ""
         for item in visit.line_items:
             writer.writerow(
-                [
-                    visit.date.strftime("%Y-%m-%d") if visit.date else "",
-                    visit.odometer_km or "",
-                    visit.service_category or "",
-                    item.description or "",
-                    f"{float(item.cost):.2f}" if item.cost else "",
-                    vendor_name,
-                    visit.notes or "",
-                ]
+                sanitize_csv_row(
+                    [
+                        visit.date.strftime("%Y-%m-%d") if visit.date else "",
+                        visit.odometer_km or "",
+                        visit.service_category or "",
+                        item.description or "",
+                        f"{float(item.cost):.2f}" if item.cost else "",
+                        vendor_name,
+                        visit.notes or "",
+                    ]
+                )
             )
 
     # Return as downloadable file
@@ -377,15 +380,17 @@ async def download_all_records_csv(
 
         for item in visit.line_items:
             writer.writerow(
-                [
-                    visit.date.strftime("%Y-%m-%d") if visit.date else "",
-                    type_label,
-                    category,
-                    item.description or "",
-                    f"{float(item.cost):.2f}" if item.cost else "",
-                    visit.odometer_km or "",
-                    vendor_name,
-                ]
+                sanitize_csv_row(
+                    [
+                        visit.date.strftime("%Y-%m-%d") if visit.date else "",
+                        type_label,
+                        category,
+                        item.description or "",
+                        f"{float(item.cost):.2f}" if item.cost else "",
+                        visit.odometer_km or "",
+                        vendor_name,
+                    ]
+                )
             )
 
     # Query and write fuel records
@@ -395,15 +400,17 @@ async def download_all_records_csv(
     fuel_result = await db.execute(fuel_query.order_by(FuelRecordModel.date))
     for record in fuel_result.scalars():
         writer.writerow(
-            [
-                record.date.strftime("%Y-%m-%d") if record.date else "",
-                "Fuel",
-                "Fuel",
-                f"{record.liters}L" if record.liters else "",
-                f"{float(record.cost):.2f}" if record.cost else "",
-                record.odometer_km or "",
-                "",  # No station field in FuelRecord model
-            ]
+            sanitize_csv_row(
+                [
+                    record.date.strftime("%Y-%m-%d") if record.date else "",
+                    "Fuel",
+                    "Fuel",
+                    f"{record.liters}L" if record.liters else "",
+                    f"{float(record.cost):.2f}" if record.cost else "",
+                    record.odometer_km or "",
+                    "",  # No station field in FuelRecord model
+                ]
+            )
         )
 
     # Return as downloadable file

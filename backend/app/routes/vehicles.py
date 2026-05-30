@@ -20,7 +20,7 @@ from app.schemas.vehicle import (
     VehicleResponse,
     VehicleUpdate,
 )
-from app.services.auth import get_vehicle_for_owner_or_403, optional_auth, require_auth
+from app.services.auth import get_vehicle_for_owner_or_403, require_auth
 from app.services.vehicle_service import VehicleService
 from app.utils.datetime_utils import utc_now
 from app.utils.logging_utils import sanitize_for_log
@@ -429,7 +429,7 @@ async def list_archived_vehicles(
     skip: int = Query(0, ge=0),
     limit: int = Query(100, ge=1, le=500),
     db: AsyncSession = Depends(get_db),
-    current_user: User | None = Depends(optional_auth),
+    current_user: User | None = Depends(require_auth),
 ):
     """
     Get list of archived vehicles (user's own only in auth mode, all in none mode).

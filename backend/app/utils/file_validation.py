@@ -114,11 +114,12 @@ def validate_file_magic_bytes(
         error_msg = f"File content does not match declared type {declared_mime}"
         if strict:
             logger.error("Magic byte validation failed for %s: %s", filename, error_msg)
-            return False, error_msg
         else:
             logger.warning("Magic byte validation warning for %s: %s", filename, error_msg)
-            # In non-strict mode, just warn but allow
-            return True, None
+        # Return the real result either way and let the caller decide (the
+        # ``strict`` flag now only controls log severity). Previously non-strict
+        # returned (True, None) on a confirmed mismatch, silently allowing it.
+        return False, error_msg
 
     return True, None
 
