@@ -29,7 +29,7 @@ from app.schemas.livelink import (
     TokenGenerateResponse,
     TokenInfoResponse,
 )
-from app.services.auth import require_auth
+from app.services.auth import get_current_admin_user, require_auth
 from app.services.dtc_service import DTCService
 from app.services.firmware_service import FirmwareService
 from app.services.livelink_service import LiveLinkService
@@ -49,7 +49,7 @@ router = APIRouter(prefix="/api/livelink", tags=["LiveLink Admin"])
 @router.get("/settings", response_model=LiveLinkSettingsResponse)
 async def get_livelink_settings(
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(require_auth),
+    current_user: User | None = Depends(get_current_admin_user),
 ):
     """
     Get LiveLink settings.
@@ -93,7 +93,7 @@ async def get_livelink_settings(
 async def update_livelink_settings(
     updates: LiveLinkSettingsUpdate,
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(require_auth),
+    current_user: User | None = Depends(get_current_admin_user),
 ):
     """
     Update LiveLink settings.
@@ -162,7 +162,7 @@ async def update_livelink_settings(
 @router.post("/token", response_model=TokenGenerateResponse)
 async def regenerate_global_token(
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(require_auth),
+    current_user: User | None = Depends(get_current_admin_user),
 ):
     """
     Generate a new global API token.
@@ -189,7 +189,7 @@ async def regenerate_global_token(
 @router.get("/devices", response_model=LiveLinkDeviceListResponse)
 async def list_devices(
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(require_auth),
+    current_user: User | None = Depends(get_current_admin_user),
 ):
     """
     List all discovered LiveLink devices.
@@ -394,7 +394,7 @@ async def send_device_command(
 @router.get("/parameters", response_model=LiveLinkParameterListResponse)
 async def list_parameters(
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(require_auth),
+    current_user: User | None = Depends(get_current_admin_user),
 ):
     """
     List all registered parameters.
@@ -415,7 +415,7 @@ async def list_parameters(
 async def get_parameter(
     param_key: str,
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(require_auth),
+    current_user: User | None = Depends(get_current_admin_user),
 ):
     """
     Get a specific parameter.
@@ -437,7 +437,7 @@ async def update_parameter(
     param_key: str,
     updates: LiveLinkParameterUpdate,
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(require_auth),
+    current_user: User | None = Depends(get_current_admin_user),
 ):
     """
     Update parameter settings (thresholds, display options).
@@ -485,7 +485,7 @@ async def update_parameter(
 @router.get("/firmware/latest", response_model=FirmwareInfoResponse)
 async def get_latest_firmware(
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(require_auth),
+    current_user: User | None = Depends(get_current_admin_user),
 ):
     """
     Get the latest WiCAN firmware version (from cache).
@@ -508,7 +508,7 @@ async def get_latest_firmware(
 @router.post("/firmware/check", response_model=FirmwareInfoResponse)
 async def trigger_firmware_check(
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(require_auth),
+    current_user: User | None = Depends(get_current_admin_user),
 ):
     """
     Check for new WiCAN firmware (fetches from GitHub).
@@ -531,7 +531,7 @@ async def trigger_firmware_check(
 @router.get("/firmware/devices", response_model=list[DeviceFirmwareStatus])
 async def get_device_firmware_status(
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(require_auth),
+    current_user: User | None = Depends(get_current_admin_user),
 ):
     """
     Get firmware status for all devices (current vs latest).
@@ -631,7 +631,7 @@ async def search_dtc_definitions(
 @router.get("/mqtt/settings", response_model=MQTTSettingsResponse)
 async def get_mqtt_settings(
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(require_auth),
+    current_user: User | None = Depends(get_current_admin_user),
 ):
     """
     Get MQTT subscriber settings.
@@ -662,7 +662,7 @@ async def get_mqtt_settings(
 async def update_mqtt_settings(
     updates: MQTTSettingsUpdate,
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(require_auth),
+    current_user: User | None = Depends(get_current_admin_user),
 ):
     """
     Update MQTT subscriber settings.
@@ -700,7 +700,7 @@ async def update_mqtt_settings(
 
 @router.get("/mqtt/status", response_model=MQTTStatusResponse)
 async def get_mqtt_status(
-    current_user: User = Depends(require_auth),
+    current_user: User | None = Depends(get_current_admin_user),
 ):
     """
     Get MQTT subscriber status.
@@ -716,7 +716,7 @@ async def get_mqtt_status(
 
 @router.post("/mqtt/restart", response_model=MQTTStatusResponse)
 async def restart_mqtt_subscriber(
-    current_user: User = Depends(require_auth),
+    current_user: User | None = Depends(get_current_admin_user),
 ):
     """
     Restart the MQTT subscriber.
@@ -738,7 +738,7 @@ async def restart_mqtt_subscriber(
 @router.post("/mqtt/test", response_model=MQTTTestResult)
 async def test_mqtt_connection(
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(require_auth),
+    current_user: User | None = Depends(get_current_admin_user),
 ):
     """
     Test MQTT broker connection.

@@ -348,8 +348,8 @@ class TestTransferHistory:
             current_user=admin_user,
         )
 
-        # Get history
-        transfers, total = await service.get_transfer_history(transfer_vehicle.vin)
+        # Get history (now access-gated: pass the admin user)
+        transfers, total = await service.get_transfer_history(transfer_vehicle.vin, admin_user)
 
         assert total >= 1
         assert len(transfers) >= 1

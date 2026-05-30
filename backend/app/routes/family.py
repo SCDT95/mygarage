@@ -89,10 +89,10 @@ async def get_transfer_history(
     - Requires authentication
     - Users can only see history for vehicles they own or have access to
     """
-    # Note: The access check is done via require_auth + vehicle ownership
-    # In Phase 4, this will be enhanced to check sharing permissions
+    # Access is gated inside the service via get_vehicle_or_403 (read-level):
+    # only owner/admin/shared users can view a vehicle's transfer history.
     service = TransferService(db)
-    transfers, total = await service.get_transfer_history(vin)
+    transfers, total = await service.get_transfer_history(vin, current_user)
 
     return TransferHistoryResponse(transfers=transfers, total=total)
 

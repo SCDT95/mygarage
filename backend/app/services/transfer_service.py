@@ -167,16 +167,27 @@ class TransferService:
     async def get_transfer_history(
         self,
         vin: str,
+        current_user: User | None,
     ) -> tuple[list[VehicleTransferResponse], int]:
         """
         Get transfer history for a vehicle.
 
         Args:
             vin: Vehicle VIN
+            current_user: Current authenticated user (None if auth_mode='none')
 
         Returns:
             Tuple of (transfers list, total count)
+
+        Raises:
+            HTTPException 403/404: User does not have access to this vehicle
         """
+        from app.services.auth import get_vehicle_or_403
+
+        # Read access is sufficient: history exposes prior owners' user objects.
+        # Gate before querying so an unrelated user cannot enumerate transfers.
+        await get_vehicle_or_403(vin, current_user, self.db)
+
         try:
             # Get transfers ordered by date descending
             result = await self.db.execute(

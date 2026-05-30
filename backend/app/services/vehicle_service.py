@@ -230,13 +230,14 @@ class VehicleService:
         Raises:
             HTTPException: 404 if not found, 403 if not authorized
         """
-        from app.services.auth import get_vehicle_or_403
+        from app.services.auth import get_vehicle_for_owner_or_403
 
         vin = vin.upper().strip()
 
         try:
-            # Get vehicle with ownership check
-            _ = await get_vehicle_or_403(vin, current_user, self.db)
+            # Vehicle delete is OWNER-only (D-3): even a write-share must not be
+            # able to delete the vehicle and cascade its records.
+            _ = await get_vehicle_for_owner_or_403(vin, current_user, self.db)
 
             # Delete vehicle (cascade will handle related records)
             await self.db.execute(delete(Vehicle).where(Vehicle.vin == vin))

@@ -15,7 +15,7 @@ from app.schemas.spot_rental_billing import (
     SpotRentalBillingResponse,
     SpotRentalBillingUpdate,
 )
-from app.services.auth import require_auth
+from app.services.auth import get_vehicle_or_403, require_auth
 
 router = APIRouter(prefix="/api/vehicles", tags=["spot-rental-billings"])
 
@@ -31,6 +31,9 @@ async def list_billings(
     current_user: User | None = Depends(require_auth),
 ) -> SpotRentalBillingListResponse:
     """List all billing entries for a spot rental."""
+    # Gate vehicle access first (read is sufficient for listing).
+    await get_vehicle_or_403(vin, current_user, db)
+
     # Verify spot rental exists and belongs to this vehicle
     result = await db.execute(
         select(SpotRental).where(SpotRental.id == rental_id, SpotRental.vin == vin)
@@ -67,6 +70,9 @@ async def create_billing(
     current_user: User | None = Depends(require_auth),
 ) -> SpotRentalBillingResponse:
     """Create a new billing entry for a spot rental."""
+    # Creating a billing entry is a child-record write -> write-share required.
+    await get_vehicle_or_403(vin, current_user, db, require_write=True)
+
     # Verify spot rental exists and belongs to this vehicle
     result = await db.execute(
         select(SpotRental).where(SpotRental.id == rental_id, SpotRental.vin == vin)
@@ -114,6 +120,9 @@ async def update_billing(
     current_user: User | None = Depends(require_auth),
 ) -> SpotRentalBillingResponse:
     """Update a billing entry."""
+    # Updating a billing entry is a child-record write -> write-share required.
+    await get_vehicle_or_403(vin, current_user, db, require_write=True)
+
     # Verify billing exists and belongs to the right rental
     result = await db.execute(
         select(SpotRentalBilling)
@@ -151,6 +160,9 @@ async def delete_billing(
     current_user: User | None = Depends(require_auth),
 ) -> None:
     """Delete a billing entry."""
+    # Deleting a billing entry is a child-record write -> write-share required.
+    await get_vehicle_or_403(vin, current_user, db, require_write=True)
+
     # Verify billing exists and belongs to the right rental
     result = await db.execute(
         select(SpotRentalBilling)

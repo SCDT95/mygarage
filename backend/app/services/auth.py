@@ -426,6 +426,40 @@ async def get_vehicle_or_403(
     raise HTTPException(status_code=403, detail="Not authorized to access this vehicle")
 
 
+async def get_vehicle_for_owner_or_403(
+    vin: str,
+    current_user: User | None,
+    db: AsyncSession,
+) -> Vehicle:
+    """Fetch a vehicle and require OWNER access (owner or admin), ignoring shares.
+
+    This is the OWNER-level counterpart to :func:`get_vehicle_or_403`. Use it for
+    vehicle core operations (identity metadata, archive/unarchive/visibility,
+    delete, transfer) where even a write-share must NOT pass -- see the
+    authorization rubric in the v2.28.0 hardening plan (D-2, D-3, D-8).
+
+    Args:
+        vin: Vehicle VIN
+        current_user: Current authenticated user (None if auth_mode='none')
+        db: Database session
+
+    Returns:
+        Vehicle object if the user owns it (or is admin, or auth is disabled)
+
+    Raises:
+        HTTPException 404: Vehicle not found
+        HTTPException 403: User is not the owner
+    """
+    result = await db.execute(select(Vehicle).where(Vehicle.vin == vin))
+    vehicle = result.scalar_one_or_none()
+
+    if not vehicle:
+        raise HTTPException(status_code=404, detail="Vehicle not found")
+
+    check_vehicle_ownership(vehicle, current_user)
+    return vehicle
+
+
 def check_vehicle_ownership(vehicle: Vehicle, current_user: User | None) -> None:
     """Check if user owns vehicle or is admin, else raise 403.
 
