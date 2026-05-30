@@ -78,8 +78,15 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // Navigation requests - network with 5s timeout, then offline fallback
-  if (request.mode === 'navigate') {
+  // Navigation requests - network with 5s timeout, then offline fallback.
+  //
+  // We also catch non-navigate *document* requests here (request.destination
+  // === 'document'): browser link-prefetch and Cloudflare Speculative Loading
+  // fetch SPA routes like /vehicles/{vin} with mode !== 'navigate'. Without this
+  // they fell through to the static-asset branch below, whose deliberate
+  // `throw lastError` surfaced as an "Uncaught (in promise) Failed to fetch"
+  // whenever the speculative fetch was cancelled or hit a transient edge error.
+  if (request.mode === 'navigate' || request.destination === 'document') {
     event.respondWith(
       Promise.race([
         fetch(request),

@@ -25,6 +25,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Security tripwire rewritten from greps to a stdlib-`ast` checker (`backend/tools/authz_tripwire.py`) inspecting call args, decorators, the service layer, and a one-level call graph
 - Settings → Integrations: the LiveLink panel is shown only to admins (matches the admin-only infra endpoints)
 
+### Fixed
+- Service worker: route document-destination requests (browser/Cloudflare speculative prefetch of SPA routes like `/vehicles/{vin}`) through the navigation fallback, so a cancelled/transient prefetch no longer surfaces as an "Uncaught (in promise) Failed to fetch"
+
 ## [2.27.2] - 2026-05-27
 
 ### Security
