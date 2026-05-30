@@ -7,6 +7,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.28.0] - 2026-05-30
+
+### Security
+- Vehicle delete/transfer, identity-metadata edits, archive/unarchive/visibility, and window-sticker upload/edit/delete are now OWNER-only — a write-share can no longer perform them (D-2/D-3/D-8)
+- Child-record writes (trailer, photos, maintenance-template apply/delete, DTC annotate/clear, spot-rental billing) now require a write-share, not just any share (D-4)
+- Closed IDORs: transfer-history and spot-rental-billing gate vehicle access before querying
+- LiveLink global infra (settings, ingestion token, MQTT, parameter defs, firmware, global device list) is admin-only; per-device ops require ownership of the device's linked vehicle, and relink checks both the current and target VIN (D-5)
+- `GET /api/dashboard` and `GET /api/vehicles/archived/list` (plus archive/unarchive/visibility) switch `optional_auth` → `require_auth`, closing the local/oidc no-token fail-open
+- CSV export fields are sanitized against spreadsheet formula injection (string-only; numeric cells preserved)
+- File uploads reject content/declared-type magic-byte mismatches (400) instead of logging and storing; photos are decoded before the disk write; attachment/document configs are strict; window-sticker uploads gain MIME + magic-byte checks
+- LiveLink ingest endpoint gains an in-app body-size cap (413) via pure-ASGI middleware
+- POI TomTom API key sent as a request header (not a query param) so it can't leak via error-path logs
+- MQTT subscriber sanitizes the decoded broker payload before debug logging
+
+### Changed
+- Security tripwire rewritten from greps to a stdlib-`ast` checker (`backend/tools/authz_tripwire.py`) inspecting call args, decorators, the service layer, and a one-level call graph
+- Settings → Integrations: the LiveLink panel is shown only to admins (matches the admin-only infra endpoints)
+
 ## [2.27.2] - 2026-05-27
 
 ### Security
