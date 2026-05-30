@@ -1,17 +1,26 @@
 #!/usr/bin/env bash
-# Security tripwire: catches common auth bypass patterns.
-# Primary regression protection is the non-owner 403 integration tests.
+# Security tripwire: catches vehicle-authorization bypass patterns.
+#
+# As of v2.28.0 this delegates to an AST checker (tools/authz_tripwire.py,
+# stdlib-only, py3.11+) that inspects call arguments, decorators, the service
+# layer, and a one-level call graph -- things the previous two greps could not
+# see, which is why the v2.27.2 authorization cluster shipped undetected.
+#
+# Rollout: landed in --mode warn (surfaces the full finding set without gating)
+# while Groups A-E are fixed, then flipped to --mode fail for enforcement. The
+# CI gate name is unchanged so shared-workflows keeps invoking this script.
+#
+# Primary regression protection remains the non-owner 403 integration tests; the
+# tripwire is the structural backstop.
 set -euo pipefail
 
-FOUND=0
-if grep -rPn 'select\(Vehicle\)\.where\(Vehicle\.vin' backend/app/routes/ | grep -v 'analytics.py' | grep -v 'vehicles.py' | grep -v 'dashboard.py' | grep -v 'quick_entry.py' | grep -v 'calendar.py'; then
-  echo "ERROR: Found raw Vehicle existence checks in route files."
-  echo "Use get_vehicle_or_403() instead. See: backend/app/services/auth.py"
-  FOUND=1
-fi
-if grep -rPn 'def verify_vehicle_exists' backend/app/routes/; then
-  echo "ERROR: Found verify_vehicle_exists helper in route files."
-  echo "Use get_vehicle_or_403() instead."
-  FOUND=1
-fi
-exit $FOUND
+# Resolve the repo root from this script's location so it works regardless of
+# the caller's CWD (CI invokes it from the repo root; bin/ci-check too).
+REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
+cd "$REPO_ROOT"
+
+# Rollout switch: "warn" prints findings but exits 0; "fail" gates CI.
+# Flipped to "fail" in Phase 4 once Groups A-E are fixed.
+MODE="warn"
+
+python3 backend/tools/authz_tripwire.py --mode "$MODE"
