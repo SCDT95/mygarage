@@ -95,6 +95,55 @@ def test_059_idempotent(engine_for_migration):
     assert n_fueltype == 1
 
 
+def _make_telemetry_multi_variant(engine):
+    """Two DISTINCT non-canonical casings of one PID at the same slot, NO canonical.
+
+    This is the bug case the window-collapse fixes: the old per-table DELETE only
+    dropped a mixed row when its EXACT canonical twin pre-existed, so neither of
+    these would be dropped and the blanket rekey would push BOTH to 51-FUELTYPE →
+    UNIQUE violation on (device_id, timestamp, param_key).
+    """
+    is_pg = engine.dialect.name == "postgresql"
+    pk = "SERIAL PRIMARY KEY" if is_pg else "INTEGER PRIMARY KEY"
+    with engine.begin() as conn:
+        conn.execute(
+            text(
+                f"CREATE TABLE vehicle_telemetry (id {pk}, vin VARCHAR, "
+                "device_id VARCHAR, param_key VARCHAR, value REAL, "
+                "timestamp TIMESTAMP, received_at TIMESTAMP, "
+                "UNIQUE (device_id, param_key, timestamp))"
+            )
+        )
+        rows = [
+            ("v", "d", "51-FuelType", 1.0, "2026-01-01 00:00:00"),
+            ("v", "d", "51-fueltype", 2.0, "2026-01-01 00:00:00"),
+        ]
+        for vin, dev, k, val, ts in rows:
+            conn.execute(
+                text(
+                    "INSERT INTO vehicle_telemetry (vin, device_id, param_key, value, timestamp, received_at) "
+                    "VALUES (:v,:d,:k,:val,:ts,:ts)"
+                ),
+                {"v": vin, "d": dev, "k": k, "val": val, "ts": ts},
+            )
+
+
+def test_059_telemetry_multi_variant_no_canonical(engine_for_migration):
+    """Regression: two non-canonical casings, no canonical → collapse to one, no IntegrityError."""
+    _dialect, engine, _url = engine_for_migration
+    _make_telemetry_multi_variant(engine)
+    # Must COMPLETE — the old code raised an IntegrityError here.
+    _load("059_param_key_casing_merge").upgrade(engine)
+    with engine.begin() as conn:
+        rows = conn.execute(
+            text(
+                "SELECT param_key FROM vehicle_telemetry "
+                "WHERE device_id='d' AND timestamp='2026-01-01 00:00:00'"
+            )
+        ).fetchall()
+    assert [r[0] for r in rows] == ["51-FUELTYPE"]
+
+
 # --- telemetry_daily_summary (re-aggregation merge) -------------------------
 
 
@@ -209,6 +258,100 @@ def test_059_livelink_parameters_no_slot_branch(engine_for_migration):
         keys = sorted(r[0] for r in conn.execute(text("SELECT param_key FROM livelink_parameters")))
     # casing twin collapsed to one canonical row; mixed-only rekeyed; canonical kept
     assert keys == ["0C-ENGINERPM", "51-FUELTYPE", "ODOMETER"]
+
+
+def _make_livelink_parameters_unique(engine, keys):
+    """livelink_parameters with a UNIQUE(param_key) constraint and the given keys."""
+    is_pg = engine.dialect.name == "postgresql"
+    pk = "SERIAL PRIMARY KEY" if is_pg else "INTEGER PRIMARY KEY"
+    with engine.begin() as conn:
+        conn.execute(text(f"CREATE TABLE livelink_parameters (id {pk}, param_key VARCHAR UNIQUE)"))
+        for k in keys:
+            conn.execute(
+                text("INSERT INTO livelink_parameters (param_key) VALUES (:k)"),
+                {"k": k},
+            )
+
+
+def test_059_livelink_multi_variant_no_canonical(engine_for_migration):
+    """Regression: two non-canonical casings (no canonical) on the globally-unique key."""
+    _dialect, engine, _url = engine_for_migration
+    _make_livelink_parameters_unique(engine, ("51-FuelType", "51-fueltype"))
+    # Old no-slot DELETE dropped neither (no canonical present) → rekey collided.
+    _load("059_param_key_casing_merge").upgrade(engine)
+    with engine.begin() as conn:
+        keys = [r[0] for r in conn.execute(text("SELECT param_key FROM livelink_parameters"))]
+    assert keys == ["51-FUELTYPE"]
+
+
+def test_059_livelink_three_way_canonical_survives(engine_for_migration):
+    """3-way: two non-canonical + the canonical itself → collapse to one, canonical survives.
+
+    livelink_parameters has no distinguishable non-key column, so we assert the
+    canonical row is the survivor by id: insert the canonical FIRST (lowest id),
+    then confirm exactly that id remains. The CASE-ranked ORDER BY would keep the
+    canonical even if it were inserted last, but seeding it first lets us pin the
+    survivor identity precisely, and a second run proves idempotency.
+    """
+    _dialect, engine, _url = engine_for_migration
+    # Canonical first → lowest id; if collapse honored "canonical wins" this id stays.
+    _make_livelink_parameters_unique(engine, ("51-FUELTYPE", "51-FuelType", "51-fueltype"))
+    with engine.begin() as conn:
+        canon_id = conn.execute(
+            text("SELECT id FROM livelink_parameters WHERE param_key='51-FUELTYPE'")
+        ).scalar()
+
+    mod = _load("059_param_key_casing_merge")
+    mod.upgrade(engine)
+    with engine.begin() as conn:
+        rows = conn.execute(text("SELECT id, param_key FROM livelink_parameters")).fetchall()
+    assert len(rows) == 1
+    assert rows[0][1] == "51-FUELTYPE"
+    # The already-canonical row (inserted first, lowest id) is the survivor.
+    assert rows[0][0] == canon_id
+
+    # Idempotent: second run is a no-op (still one canonical row, same id).
+    mod.upgrade(engine)
+    with engine.begin() as conn:
+        rows2 = conn.execute(text("SELECT id, param_key FROM livelink_parameters")).fetchall()
+    assert rows2 == rows
+
+
+# --- vehicle_telemetry_latest (slot = vin only) -----------------------------
+
+
+def _make_latest_multi_variant(engine):
+    """Two non-canonical casings of one PID at the same vin slot, NO canonical."""
+    is_pg = engine.dialect.name == "postgresql"
+    pk = "SERIAL PRIMARY KEY" if is_pg else "INTEGER PRIMARY KEY"
+    with engine.begin() as conn:
+        conn.execute(
+            text(
+                f"CREATE TABLE vehicle_telemetry_latest (id {pk}, vin VARCHAR, "
+                "param_key VARCHAR, value REAL, updated_at TIMESTAMP, "
+                "UNIQUE (vin, param_key))"
+            )
+        )
+        for k in ("51-FuelType", "51-fueltype"):
+            conn.execute(
+                text(
+                    "INSERT INTO vehicle_telemetry_latest (vin, param_key, value, updated_at) "
+                    "VALUES (:v,:k,1.0,'2026-01-01 00:00:00')"
+                ),
+                {"v": "v", "k": k},
+            )
+
+
+def test_059_latest_multi_variant_no_canonical(engine_for_migration):
+    """Regression: vin-slotted table, two non-canonical casings, no canonical → one survivor."""
+    _dialect, engine, _url = engine_for_migration
+    _make_latest_multi_variant(engine)
+    _load("059_param_key_casing_merge").upgrade(engine)
+    with engine.begin() as conn:
+        rows = conn.execute(
+            text("SELECT param_key FROM vehicle_telemetry_latest WHERE vin='v'")
+        ).fetchall()
+    assert [r[0] for r in rows] == ["51-FUELTYPE"]
 
 
 def test_059_canon_matches_live_normalizer():

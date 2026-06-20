@@ -7,10 +7,16 @@ exactly: ``key.upper().replace(" ", "_")`` == SQL ``REPLACE(UPPER(key), ' ', '_'
 
 Three tables (``vehicle_telemetry``, ``vehicle_telemetry_latest``,
 ``livelink_parameters``) use a DROP+REKEY strategy: at each table's unique
-"slot", a mixed-case row whose canonical twin already exists is DROPPED
-(uppercase wins), then survivors are re-keyed up. Dropping is acceptable
-there because those rows are reproducible (raw/latest telemetry, re-discovered
-parameter rows).
+"slot", every casing variant of a PID is collapsed to ONE survivor via a
+window-function group-collapse keyed on ``(slot…, canonical_key)`` (an
+already-canonical/uppercase row wins the survivor slot; ties fall back to the
+lowest id), then survivors are re-keyed up. Collapsing ALL-but-one per group —
+not just a mixed row that happens to have an exact canonical twin — is what
+makes the subsequent blanket rekey collision-free: two *distinct* non-canonical
+casings of the same PID at one slot (e.g. ``51-FuelType`` + ``51-fueltype``,
+neither equal to ``51-FUELTYPE``) would otherwise both rekey up and violate the
+UNIQUE slot. Dropping is acceptable here because those rows are reproducible
+(raw/latest telemetry, re-discovered parameter rows).
 
 ``telemetry_daily_summary`` is handled SEPARATELY with a RE-AGGREGATION merge
 (NOT drop): it is the durable long-term analytics record that survives raw
@@ -167,34 +173,35 @@ def upgrade(engine=None) -> None:
             print(f"  → {table} absent, skipping")
             continue
         canon = _canon_sql(col)
+        # Partition = the table's slot columns followed by the CANONICAL key, so
+        # every casing variant of a PID at a given slot lands in one partition.
+        # No-slot table (livelink_parameters) partitions on the canon alone.
+        partition_cols = ", ".join([*slot, canon])
         with engine.begin() as conn:
-            # 1. Delete rows that would collide with an existing canonical row
-            #    (canonical/uppercase wins). Only relevant when a slot is defined.
-            if slot:
-                slot_match = " AND ".join(f"t.{c} = o.{c}" for c in slot)
-                t_canon = _canon_sql(f"t.{col}")
-                # Self-join subquery selects the mixed-case rows whose canonical
-                # twin already exists at the same slot. The subquery is standalone
-                # (no correlation to the outer DELETE target), so it is valid on
-                # both SQLite and PostgreSQL.
-                conn.execute(
-                    text(
-                        f"DELETE FROM {table} WHERE id IN ("
-                        f"  SELECT t.id FROM {table} t JOIN {table} o "
-                        f"  ON {slot_match} AND o.{col} = {t_canon} "
-                        f"  WHERE t.{col} <> {t_canon})"
-                    )
+            # 1. Collapse each (slot…, canonical) group to ONE survivor, BEFORE
+            #    rekeying. Without this, two *distinct* non-canonical casings of
+            #    the same PID at the same slot (e.g. 51-FuelType + 51-fueltype,
+            #    neither == 51-FUELTYPE) would both be rekeyed up in step 2 and
+            #    collide on the UNIQUE slot → IntegrityError → blocked startup.
+            #    ROW_NUMBER ranks an already-canonical row first (CASE → 0), so
+            #    "uppercase wins"; ties (no canonical present) fall to lowest id.
+            #    The ranking subquery is uncorrelated, so this is valid on both
+            #    SQLite (≥3.25) and PostgreSQL.
+            conn.execute(
+                text(
+                    f"DELETE FROM {table} WHERE id IN ("
+                    f"  SELECT id FROM ("
+                    f"    SELECT id, ROW_NUMBER() OVER ("
+                    f"      PARTITION BY {partition_cols} "
+                    f"      ORDER BY CASE WHEN {col} = {canon} THEN 0 ELSE 1 END, id"
+                    f"    ) AS rn"
+                    f"    FROM {table}"
+                    f"  ) ranked"
+                    f"  WHERE rn > 1)"
                 )
-            else:
-                # No slot: a plain unique key column (livelink_parameters).
-                # Delete a mixed-case row if its canonical already exists.
-                conn.execute(
-                    text(
-                        f"DELETE FROM {table} WHERE {col} <> {canon} "
-                        f"AND {canon} IN (SELECT {col} FROM {table})"
-                    )
-                )
+            )
             # 2. Re-key the survivors up to canonical (no-op for already-uppercase).
+            #    Safe now: each (slot, canon) group has exactly one survivor.
             conn.execute(text(f"UPDATE {table} SET {col} = {canon} WHERE {col} <> {canon}"))
         print(f"  ✓ Canonicalized {table}.{col}")
 
