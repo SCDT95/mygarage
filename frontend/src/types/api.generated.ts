@@ -8250,6 +8250,11 @@ export interface components {
              */
             created_at: string;
             /**
+             * Device Address
+             * @description Admin-set IP/host for SD-card log pulls
+             */
+            device_address?: string | null;
+            /**
              * Device Id
              * @description WiCAN device ID (12-char hex)
              */
@@ -8296,6 +8301,12 @@ export interface components {
              * @description WiFi signal strength (dBm)
              */
             rssi?: number | null;
+            /**
+             * Sd Backfill Enabled
+             * @description Whether SD-card backfill is enabled
+             * @default false
+             */
+            sd_backfill_enabled: boolean;
             /**
              * Sta Ip
              * @description Device IP on local network

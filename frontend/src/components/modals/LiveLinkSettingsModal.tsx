@@ -999,8 +999,8 @@ function DeviceRow({
   const [editing, setEditing] = useState(false)
   const [label, setLabel] = useState(device.label ?? '')
   const [showSdConfig, setShowSdConfig] = useState(false)
-  const [sdAddress, setSdAddress] = useState('')
-  const [sdEnabled, setSdEnabled] = useState(false)
+  const [sdAddress, setSdAddress] = useState(device.device_address ?? '')
+  const [sdEnabled, setSdEnabled] = useState(device.sd_backfill_enabled ?? false)
   const [savingSd, setSavingSd] = useState(false)
   const [backfilling, setBackfilling] = useState(false)
 

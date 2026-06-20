@@ -53,6 +53,8 @@ class LiveLinkDeviceResponse(LiveLinkDeviceBase):
         "unknown", description="Device status: online/offline/unknown"
     )
     has_device_token: bool = Field(False, description="Whether device has per-device token")
+    device_address: str | None = Field(None, description="Admin-set IP/host for SD-card log pulls")
+    sd_backfill_enabled: bool = Field(False, description="Whether SD-card backfill is enabled")
     enabled: bool
     last_seen: datetime | None
     created_at: datetime

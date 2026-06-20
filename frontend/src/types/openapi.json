@@ -6291,6 +6291,18 @@
             "title": "Created At",
             "type": "string"
           },
+          "device_address": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Admin-set IP/host for SD-card log pulls",
+            "title": "Device Address"
+          },
           "device_id": {
             "description": "WiCAN device ID (12-char hex)",
             "title": "Device Id",
@@ -6400,6 +6412,12 @@
             ],
             "description": "WiFi signal strength (dBm)",
             "title": "Rssi"
+          },
+          "sd_backfill_enabled": {
+            "default": false,
+            "description": "Whether SD-card backfill is enabled",
+            "title": "Sd Backfill Enabled",
+            "type": "boolean"
           },
           "sta_ip": {
             "anyOf": [
