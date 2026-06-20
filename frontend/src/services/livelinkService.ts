@@ -33,6 +33,8 @@ import type {
   MQTTStatus,
   MQTTTestResult,
   DeviceCommandResponse,
+  SdConfigUpdate,
+  BackfillResultResponse,
 } from '../types/livelink'
 
 export const livelinkService = {
@@ -414,6 +416,25 @@ export const livelinkService = {
       `/livelink/devices/${deviceId}/command`,
       { command }
     )
+    return response.data
+  },
+
+  // ===========================================================================
+  // SD-Card Backfill
+  // ===========================================================================
+
+  /**
+   * Update SD-card pull config for a device (admin only)
+   */
+  async setSdConfig(deviceId: string, config: SdConfigUpdate): Promise<void> {
+    await api.put(`/livelink/devices/${deviceId}/sd-config`, config)
+  },
+
+  /**
+   * Trigger a manual SD-card backfill for a device (admin only)
+   */
+  async triggerSdBackfill(deviceId: string): Promise<BackfillResultResponse> {
+    const response = await api.post<BackfillResultResponse>(`/livelink/devices/${deviceId}/backfill`)
     return response.data
   },
 }

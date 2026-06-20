@@ -1804,6 +1804,29 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/livelink/devices/{device_id}/backfill": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Trigger Backfill
+         * @description Pull and backfill the device's SD logs immediately.
+         *
+         *     **Security:**
+         *     - Requires admin authentication
+         */
+        post: operations["trigger_backfill_api_livelink_devices__device_id__backfill_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/livelink/devices/{device_id}/command": {
         parameters: {
             query?: never;
@@ -1830,6 +1853,30 @@ export interface paths {
          *     - MQTT subscriber must be connected
          */
         post: operations["send_device_command_api_livelink_devices__device_id__command_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/livelink/devices/{device_id}/sd-config": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * Set Sd Config
+         * @description Configure the SD-pull address and enable flag for a device.
+         *
+         *     **Security:**
+         *     - Requires admin authentication
+         *     - device_address must be a private/LAN address (SSRF guard)
+         */
+        put: operations["set_sd_config_api_livelink_devices__device_id__sd_config_put"];
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -5859,6 +5906,32 @@ export interface components {
              */
             view_url: string;
         };
+        /**
+         * BackfillResultResponse
+         * @description Schema for SD-card backfill trigger response.
+         */
+        BackfillResultResponse: {
+            /**
+             * Errors
+             * @description Per-file error messages
+             */
+            errors?: string[];
+            /**
+             * Files Seen
+             * @description Number of SD log files found
+             */
+            files_seen: number;
+            /**
+             * Rows Ingested
+             * @description Telemetry rows inserted
+             */
+            rows_ingested: number;
+            /**
+             * Rows Skipped
+             * @description Rows skipped (already present)
+             */
+            rows_skipped: number;
+        };
         /** Body_import_def_csv_api_import_vehicles__vin__def_csv_post */
         Body_import_def_csv_api_import_vehicles__vin__def_csv_post: {
             /** File */
@@ -9665,6 +9738,34 @@ export interface components {
             reminder_type?: ("date" | "mileage" | "both" | "smart") | null;
             /** Title */
             title?: string | null;
+        };
+        /**
+         * SdConfigResponse
+         * @description Schema for SD-card config update response.
+         */
+        SdConfigResponse: {
+            /**
+             * Status
+             * @default ok
+             */
+            status: string;
+        };
+        /**
+         * SdConfigUpdate
+         * @description Schema for updating SD-card pull config on a device.
+         */
+        SdConfigUpdate: {
+            /**
+             * Device Address
+             * @description Private/LAN IP or hostname for SD log pulls
+             */
+            device_address?: string | null;
+            /**
+             * Sd Backfill Enabled
+             * @description Enable automatic SD-card backfill
+             * @default false
+             */
+            sd_backfill_enabled: boolean;
         };
         /**
          * SeasonalAnalysis
@@ -16113,6 +16214,37 @@ export interface operations {
             };
         };
     };
+    trigger_backfill_api_livelink_devices__device_id__backfill_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                device_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BackfillResultResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     send_device_command_api_livelink_devices__device_id__command_post: {
         parameters: {
             query?: never;
@@ -16135,6 +16267,41 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["DeviceCommandResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    set_sd_config_api_livelink_devices__device_id__sd_config_put: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                device_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SdConfigUpdate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SdConfigResponse"];
                 };
             };
             /** @description Validation Error */

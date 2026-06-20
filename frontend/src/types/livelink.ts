@@ -71,6 +71,11 @@ export type MQTTTestResult = components['schemas']['MQTTTestResult']
 export type DeviceCommandRequest = components['schemas']['DeviceCommandRequest']
 export type DeviceCommandResponse = components['schemas']['DeviceCommandResponse']
 
+// -- SD-card Backfill Types --
+export type SdConfigUpdate = components['schemas']['SdConfigUpdate']
+export type SdConfigResponse = components['schemas']['SdConfigResponse']
+export type BackfillResultResponse = components['schemas']['BackfillResultResponse']
+
 // =============================================================================
 // Section B — Manual types (backend uses str, frontend-only, or no generated schema)
 // =============================================================================

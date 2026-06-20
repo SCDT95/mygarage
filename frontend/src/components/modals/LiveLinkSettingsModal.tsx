@@ -24,6 +24,7 @@ import {
   Play,
   Square,
   Battery,
+  Download,
 } from 'lucide-react'
 import { livelinkService } from '@/services/livelinkService'
 import { vehicleService } from '@/services/vehicleService'
@@ -36,6 +37,7 @@ import type {
   DeviceFirmwareStatus,
   MQTTSettings,
   MQTTStatus,
+  BackfillResultResponse,
 } from '@/types/livelink'
 import type { Vehicle } from '@/types/vehicle'
 
@@ -333,6 +335,36 @@ export default function LiveLinkSettingsModal({ isOpen, onClose }: LiveLinkSetti
     } catch (error) {
       console.error('Failed to send command:', error)
       toast.error(t('modal.failedToSendCommand'))
+    }
+  }
+
+  const handleSetSdConfig = async (
+    deviceId: string,
+    config: { device_address: string | null; sd_backfill_enabled: boolean }
+  ): Promise<void> => {
+    try {
+      await livelinkService.setSdConfig(deviceId, config)
+      toast.success('SD config saved')
+    } catch (error) {
+      console.error('Failed to save SD config:', error)
+      toast.error('Failed to save SD config')
+    }
+  }
+
+  const handleSdBackfill = async (deviceId: string): Promise<BackfillResultResponse | null> => {
+    try {
+      const result = await livelinkService.triggerSdBackfill(deviceId)
+      const summary = `Ingested ${result.rows_ingested}, skipped ${result.rows_skipped}`
+      if (result.errors && result.errors.length > 0) {
+        toast.warning(`${summary} — ${result.errors[0]}`)
+      } else {
+        toast.success(summary)
+      }
+      return result
+    } catch (error) {
+      console.error('Failed to trigger SD backfill:', error)
+      toast.error('SD backfill failed')
+      return null
     }
   }
 
@@ -665,6 +697,8 @@ export default function LiveLinkSettingsModal({ isOpen, onClose }: LiveLinkSetti
                             onGenerateToken={handleGenerateDeviceToken}
                             onRevokeToken={handleRevokeDeviceToken}
                             onSendCommand={handleSendCommand}
+                            onSetSdConfig={handleSetSdConfig}
+                            onSdBackfill={handleSdBackfill}
                           />
                         ))}
                       </tbody>
@@ -944,6 +978,8 @@ function DeviceRow({
   onGenerateToken,
   onRevokeToken,
   onSendCommand,
+  onSetSdConfig,
+  onSdBackfill,
 }: {
   device: LiveLinkDevice
   vehicles: Vehicle[]
@@ -954,13 +990,38 @@ function DeviceRow({
   onGenerateToken: (deviceId: string) => void
   onRevokeToken: (deviceId: string) => void
   onSendCommand: (deviceId: string, command: string) => void
+  onSetSdConfig: (
+    deviceId: string,
+    config: { device_address: string | null; sd_backfill_enabled: boolean }
+  ) => Promise<void>
+  onSdBackfill: (deviceId: string) => Promise<BackfillResultResponse | null>
 }) {
   const [editing, setEditing] = useState(false)
   const [label, setLabel] = useState(device.label ?? '')
+  const [showSdConfig, setShowSdConfig] = useState(false)
+  const [sdAddress, setSdAddress] = useState('')
+  const [sdEnabled, setSdEnabled] = useState(false)
+  const [savingSd, setSavingSd] = useState(false)
+  const [backfilling, setBackfilling] = useState(false)
 
   const handleSaveLabel = () => {
     onUpdate(device.device_id, { label: label || undefined })
     setEditing(false)
+  }
+
+  const handleSaveSdConfig = async (): Promise<void> => {
+    setSavingSd(true)
+    await onSetSdConfig(device.device_id, {
+      device_address: sdAddress.trim() || null,
+      sd_backfill_enabled: sdEnabled,
+    })
+    setSavingSd(false)
+  }
+
+  const handleBackfill = async (): Promise<void> => {
+    setBackfilling(true)
+    await onSdBackfill(device.device_id)
+    setBackfilling(false)
   }
 
   const getStatusColor = (status: string) => {
@@ -975,6 +1036,7 @@ function DeviceRow({
   }
 
   return (
+    <>
     <tr className="border-b border-garage-border hover:bg-garage-surface/50">
       <td className="py-2 px-3">
         <div>
@@ -1071,6 +1133,13 @@ function DeviceRow({
             </button>
           )}
           <button
+            onClick={() => setShowSdConfig(!showSdConfig)}
+            className={`p-1 ${showSdConfig ? 'text-primary' : 'text-garage-text-muted hover:text-primary'}`}
+            title="SD-card backfill config"
+          >
+            <Download className="w-4 h-4" />
+          </button>
+          <button
             onClick={() => onDelete(device.device_id)}
             className="p-1 text-garage-text-muted hover:text-red-500"
             title="Delete device"
@@ -1080,5 +1149,49 @@ function DeviceRow({
         </div>
       </td>
     </tr>
+    {showSdConfig && (
+      <tr className="bg-garage-surface/30 border-b border-garage-border">
+        <td colSpan={5} className="px-4 py-3">
+          <div className="flex flex-wrap items-end gap-4">
+            <div>
+              <label className="block text-xs font-medium text-garage-text mb-1">Device address (IP or hostname)</label>
+              <input
+                type="text"
+                value={sdAddress}
+                onChange={(e) => setSdAddress(e.target.value)}
+                placeholder="192.168.1.x"
+                className="px-2 py-1 bg-garage-bg border border-garage-border rounded text-xs text-garage-text w-40 focus:ring-1 focus:ring-primary"
+              />
+            </div>
+            <label className="flex items-center gap-2 mb-1">
+              <input
+                type="checkbox"
+                checked={sdEnabled}
+                onChange={(e) => setSdEnabled(e.target.checked)}
+                className="w-4 h-4 text-primary bg-garage-bg border-garage-border rounded focus:ring-primary focus:ring-2"
+              />
+              <span className="text-xs text-garage-text">Auto SD backfill</span>
+            </label>
+            <button
+              onClick={handleSaveSdConfig}
+              disabled={savingSd}
+              className="flex items-center gap-1 px-3 py-1 bg-garage-surface border border-garage-border rounded text-xs text-garage-text hover:bg-garage-bg disabled:opacity-50"
+            >
+              {savingSd ? <RefreshCw className="w-3 h-3 animate-spin" /> : <CheckCircle className="w-3 h-3" />}
+              Save
+            </button>
+            <button
+              onClick={handleBackfill}
+              disabled={backfilling}
+              className="flex items-center gap-1 px-3 py-1 btn btn-primary rounded text-xs disabled:opacity-50"
+            >
+              {backfilling ? <RefreshCw className="w-3 h-3 animate-spin" /> : <Download className="w-3 h-3" />}
+              Pull SD logs now
+            </button>
+          </div>
+        </td>
+      </tr>
+    )}
+    </>
   )
 }
