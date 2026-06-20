@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.30.0] - 2026-06-20
+
+### Added
+- LiveLink: pull WiCAN SD-card telemetry into MyGarage to backfill offline gaps (auto on device reconnect + manual admin trigger).
+
+### Fixed
+- LiveLink: unify telemetry param_key casing across MQTT/HTTPS ingest (uppercase canonical), ending duplicate per-PID streams; migration merges existing rows.
+
 ### Security
 - Bump `pydantic-settings` 2.14.1 → 2.14.2 (GHSA symlink-traversal in `NestedSecretsSettingsSource`; unused here, alert cleanup).
 
