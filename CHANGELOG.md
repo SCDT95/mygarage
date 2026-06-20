@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Security
+- Bump `pydantic-settings` 2.14.1 → 2.14.2 (GHSA symlink-traversal in `NestedSecretsSettingsSource`; unused here, alert cleanup).
+
 ## [2.29.0] - 2026-06-20
 
 ### Fixed
