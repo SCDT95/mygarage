@@ -450,12 +450,9 @@ class MQTTSubscriber:
             ecu_status="online",
         )
 
-        # Normalize parameter keys and filter values via normalizer
-        normalized = normalize_autopid_data(data)
-        # Uppercase keys with spaces replaced by underscores (MQTT convention)
-        autopid_data: dict[str, float | int | str | None] = {
-            k.upper().replace(" ", "_"): v for k, v in normalized.items()
-        }
+        # Normalize parameter keys and filter values via normalizer.
+        # Canonicalization (uppercase, spaces→underscores) happens in store_telemetry.
+        autopid_data: dict[str, float | int | str | None] = normalize_autopid_data(data)
 
         if not autopid_data:
             return

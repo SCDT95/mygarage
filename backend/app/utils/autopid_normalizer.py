@@ -11,6 +11,18 @@ from typing import Any
 
 logger = logging.getLogger(__name__)
 
+
+def canonical_param_key(key: str) -> str:
+    """Canonical storage form for a telemetry param key.
+
+    UPPERCASE with spaces as underscores. This is the single canonical form
+    used by all ingest paths (MQTT, HTTPS, SD backfill) and the casing-merge
+    migration. Uppercase is chosen because it is reachable losslessly from any
+    casing, so dedup/merge across paths is total.
+    """
+    return key.upper().replace(" ", "_")
+
+
 # Keys whose string values should be preserved (not dropped as non-numeric)
 STRING_VALUE_KEYS = frozenset({"DIAGNOSTIC_TROUBLE_CODES"})
 
