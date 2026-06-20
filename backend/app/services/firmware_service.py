@@ -40,7 +40,7 @@ class FirmwareService:
 
         latest: dict[str, dict] = {}
         for rel in releases:
-            if rel.get("prerelease") or rel.get("draft"):
+            if self._is_prerelease(rel):
                 continue
             tag = rel.get("tag_name", "")
             version = self._extract_version(tag)
@@ -91,7 +91,7 @@ class FirmwareService:
                     stable_tracks = {
                         self.classify_release_track(r.get("tag_name", ""), r.get("name", ""))
                         for r in all_releases
-                        if not r.get("prerelease") and not r.get("draft")
+                        if not self._is_prerelease(r)
                     }
                     if {"obd", "pro"}.issubset(stable_tracks):
                         break
@@ -240,15 +240,31 @@ class FirmwareService:
         """Classify a GitHub release as the 'obd' or 'pro' firmware track.
 
         PRO releases carry a ``p`` immediately after the numeric version
-        (e.g. ``v4.50p``, ``v4.49p_beta-06``); OBD/USB releases are bare
-        (``v4.21``, ``v4.20_beta-01``). Falls back to the release title.
+        (e.g. ``v4.50p``, ``v4.49p_beta-06``, ``v4.22p-beta``); OBD/USB
+        releases are bare (``v4.21``, ``v4.20_beta-01``). The ``p`` is
+        matched directly after the ``MAJOR.MINOR`` core, so any beta
+        separator (``_`` or ``-``) that follows is irrelevant. Falls back to
+        the release title when the tag has no numeric core.
         """
-        base = tag.strip().lstrip("v").split("_")[0]  # "4.50p" | "4.21" | "4.20"
-        if base.endswith("p"):
-            return "pro"
-        if base[:1].isdigit():
-            return "obd"
+        core = tag.strip().lstrip("v")  # "4.22p-beta" | "4.50p" | "4.21"
+        match = re.match(r"\d+\.\d+(p)?", core)
+        if match:
+            return "pro" if match.group(1) else "obd"
         return "pro" if "pro" in title.lower() else "obd"
+
+    _PRERELEASE_TAG_RE = re.compile(r"beta|alpha|rc\d|dev|nightly|preview", re.IGNORECASE)
+
+    @staticmethod
+    def _is_prerelease(release: dict) -> bool:
+        """True if a release is a pre-release/draft.
+
+        Trusts GitHub's ``prerelease``/``draft`` flags first, but also treats
+        a tag whose text says beta/alpha/rc/etc. as a pre-release — meatpi has
+        shipped beta tags (e.g. ``v4.22p-beta``) without setting the flag.
+        """
+        if release.get("prerelease") or release.get("draft"):
+            return True
+        return bool(FirmwareService._PRERELEASE_TAG_RE.search(release.get("tag_name", "")))
 
     @staticmethod
     def device_firmware_track(hw_version: str | None) -> str | None:

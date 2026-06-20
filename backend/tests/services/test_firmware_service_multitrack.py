@@ -82,6 +82,37 @@ async def test_check_refreshes_both_tracks(db_session, monkeypatch):
 
     assert result["tracks"]["obd"]["latest_version"] == "4.21"
     assert result["tracks"]["pro"]["latest_version"] == "4.50"  # beta excluded
+
+
+@pytest.mark.asyncio
+async def test_unflagged_pro_beta_does_not_pollute_obd_track(db_session, monkeypatch):
+    # Regression (caught in prod): meatpi shipped v4.22p-beta — a PRO beta —
+    # WITHOUT the prerelease flag and with a hyphen separator. It must NOT
+    # land on the OBD track (which would offer OBD devices PRO firmware).
+    # OBD must resolve to the real stable v4.21; PRO stays v4.50.
+    releases = RELEASES + [
+        {
+            "tag_name": "v4.22p-beta",
+            "name": "WiCAN-PRO v4.22 Beta",
+            "prerelease": False,  # meatpi did NOT flag it
+            "draft": False,
+            "html_url": "u/4.22pbeta",
+            "body": "pro beta, unflagged",
+        },
+    ]
+
+    async def fake_get(self, url, **kwargs):
+        return _FakeResp(releases)
+
+    monkeypatch.setattr("httpx.AsyncClient.get", fake_get)
+    svc = FirmwareService(db_session)
+
+    await svc.check_firmware_updates()
+
+    obd = await svc.get_cached_firmware_info("obd")
+    pro = await svc.get_cached_firmware_info("pro")
+    assert obd["latest_version"] == "4.21"  # NOT 4.22
+    assert pro["latest_version"] == "4.50"
     pro = await svc.get_cached_firmware_info("pro")
     obd = await svc.get_cached_firmware_info("obd")
     assert pro["latest_version"] == "4.50"
