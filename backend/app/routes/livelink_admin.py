@@ -10,6 +10,7 @@ from app.database import get_db
 from app.models.user import User
 from app.schemas.dtc import DTCDefinitionResponse, DTCSearchResponse
 from app.schemas.livelink import (
+    BackfillResultResponse,
     DeviceCommandRequest,
     DeviceCommandResponse,
     DeviceFirmwareStatus,
@@ -26,6 +27,7 @@ from app.schemas.livelink import (
     MQTTSettingsUpdate,
     MQTTStatusResponse,
     MQTTTestResult,
+    SdConfigUpdate,
     TokenGenerateResponse,
     TokenInfoResponse,
 )
@@ -37,6 +39,7 @@ from app.services.auth import (
 from app.services.dtc_service import DTCService
 from app.services.firmware_service import FirmwareService
 from app.services.livelink_service import LiveLinkService
+from app.services.sd_backfill_service import SdBackfillService
 from app.services.settings_service import SettingsService
 from app.services.telemetry_service import TelemetryService
 
@@ -826,6 +829,54 @@ async def test_mqtt_connection(
             message=f"Connection failed: {e!s}",
             broker=broker,
         )
+
+
+# =============================================================================
+# SD-Card Backfill Endpoints (admin-only)
+# =============================================================================
+
+
+@router.put("/devices/{device_id}/sd-config", response_model=dict)
+async def set_sd_config(
+    device_id: str,
+    body: SdConfigUpdate,
+    db: AsyncSession = Depends(get_db),
+    current_user: User | None = Depends(get_current_admin_user),
+):
+    """Configure the SD-pull address and enable flag for a device.
+
+    **Security:**
+    - Requires admin authentication
+    - device_address must be a private/LAN address (SSRF guard)
+    """
+    svc = LiveLinkService(db)
+    if body.device_address and not svc.is_private_address(body.device_address):
+        raise HTTPException(
+            status_code=422,
+            detail="device_address must be a private/LAN address (public IPs are rejected)",
+        )
+    await svc.update_device_address(device_id, body.device_address, body.sd_backfill_enabled)
+    return {"status": "ok"}
+
+
+@router.post("/devices/{device_id}/backfill", response_model=BackfillResultResponse)
+async def trigger_backfill(
+    device_id: str,
+    db: AsyncSession = Depends(get_db),
+    current_user: User | None = Depends(get_current_admin_user),
+):
+    """Pull and backfill the device's SD logs immediately.
+
+    **Security:**
+    - Requires admin authentication
+    """
+    result = await SdBackfillService(db).backfill_device(device_id)
+    return BackfillResultResponse(
+        files_seen=result.files_seen,
+        rows_ingested=result.rows_ingested,
+        rows_skipped=result.rows_skipped,
+        errors=result.errors,
+    )
 
 
 # =============================================================================

@@ -295,3 +295,26 @@ class DeviceCommandResponse(BaseModel):
 
     status: str = Field(..., description="Command status (sent, error)")
     message: str = Field(..., description="Result message")
+
+
+# =============================================================================
+# SD-Card Backfill Schemas
+# =============================================================================
+
+
+class SdConfigUpdate(BaseModel):
+    """Schema for updating SD-card pull config on a device."""
+
+    device_address: str | None = Field(
+        None, description="Private/LAN IP or hostname for SD log pulls"
+    )
+    sd_backfill_enabled: bool = Field(False, description="Enable automatic SD-card backfill")
+
+
+class BackfillResultResponse(BaseModel):
+    """Schema for SD-card backfill trigger response."""
+
+    files_seen: int = Field(..., description="Number of SD log files found")
+    rows_ingested: int = Field(..., description="Telemetry rows inserted")
+    rows_skipped: int = Field(..., description="Rows skipped (already present)")
+    errors: list[str] = Field(default_factory=list, description="Per-file error messages")

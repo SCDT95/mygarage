@@ -1,6 +1,7 @@
 """LiveLink service for token generation and device management."""
 
 import hashlib
+import ipaddress
 import logging
 import secrets
 
@@ -173,6 +174,43 @@ class LiveLinkService:
             select(LiveLinkDevice).order_by(LiveLinkDevice.created_at.desc())
         )
         return list(result.scalars().all())
+
+    # =========================================================================
+    # SD-Card Backfill Helpers
+    # =========================================================================
+
+    @staticmethod
+    def is_private_address(address: str) -> bool:
+        """Return True if address is a private/LAN IP or an acceptable hostname.
+
+        Rejects: public IPs, loopback (127.x / ::1), link-local (169.254.x / fe80::),
+        empty string, and "localhost".
+        Accepts: RFC-1918 private IPs and any other non-loopback hostname
+        (DHCP-reserved LAN names assumed safe).
+
+        For URLs of the form scheme://host:port/path, only the host part is checked.
+        """
+        # Strip optional scheme and path, leaving host[:port]
+        host = address.split("://")[-1].split("/")[0].split(":")[0]
+        if not host or host.lower() == "localhost":
+            return False
+        try:
+            ip = ipaddress.ip_address(host)
+        except ValueError:
+            # Not an IP — treat as a LAN hostname (e.g. wican-abc123.local)
+            return True
+        return ip.is_private and not ip.is_loopback and not ip.is_link_local
+
+    async def update_device_address(
+        self, device_id: str, address: str | None, enabled: bool
+    ) -> None:
+        """Set device_address and sd_backfill_enabled on a LiveLinkDevice."""
+        await self.db.execute(
+            update(LiveLinkDevice)
+            .where(LiveLinkDevice.device_id == device_id)
+            .values(device_address=address, sd_backfill_enabled=enabled)
+        )
+        await self.db.commit()
 
     async def get_device_id_by_token(self, authorization: str | None) -> str | None:
         """Resolve device ID from a telemetry-only payload (no status.device_id).
