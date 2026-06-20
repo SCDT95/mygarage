@@ -4,6 +4,8 @@ import hashlib
 import ipaddress
 import logging
 import secrets
+import socket
+from urllib.parse import urlsplit
 
 from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -181,25 +183,41 @@ class LiveLinkService:
 
     @staticmethod
     def is_private_address(address: str) -> bool:
-        """Return True if address is a private/LAN IP or an acceptable hostname.
+        """True only if `address` points exclusively to a private/LAN host.
 
-        Rejects: public IPs, loopback (127.x / ::1), link-local (169.254.x / fe80::),
-        empty string, and "localhost".
-        Accepts: RFC-1918 private IPs and any other non-loopback hostname
-        (DHCP-reserved LAN names assumed safe).
-
-        For URLs of the form scheme://host:port/path, only the host part is checked.
+        Parses the host with urlsplit (same URL semantics the HTTP client uses;
+        handles IPv6 brackets, userinfo, ports), rejects loopback/link-local/
+        reserved/unspecified, and for non-IP hostnames resolves EVERY address
+        and requires them all to be private — closing the over-broad-hostname
+        SSRF class. Admin-only setter; defence in depth.
         """
-        # Strip optional scheme and path, leaving host[:port]
-        host = address.split("://")[-1].split("/")[0].split(":")[0]
-        if not host or host.lower() == "localhost":
+        if not address:
             return False
+        raw = address if "://" in address else f"http://{address}"
+        host = urlsplit(raw).hostname  # lowercased; strips scheme/userinfo/port/[]
+        if not host or host == "localhost":
+            return False
+
+        def _ip_ok(ip: ipaddress.IPv4Address | ipaddress.IPv6Address) -> bool:
+            return (
+                ip.is_private
+                and not ip.is_loopback
+                and not ip.is_link_local
+                and not ip.is_reserved
+                and not ip.is_unspecified
+            )
+
         try:
-            ip = ipaddress.ip_address(host)
+            return _ip_ok(ipaddress.ip_address(host))
         except ValueError:
-            # Not an IP — treat as a LAN hostname (e.g. wican-abc123.local)
-            return True
-        return ip.is_private and not ip.is_loopback and not ip.is_link_local
+            pass  # not a literal IP — resolve the hostname and check every result
+
+        try:
+            infos = socket.getaddrinfo(host, None)
+        except socket.gaierror:
+            return False
+        resolved = {info[4][0] for info in infos}
+        return bool(resolved) and all(_ip_ok(ipaddress.ip_address(a)) for a in resolved)
 
     async def update_device_address(
         self, device_id: str, address: str | None, enabled: bool

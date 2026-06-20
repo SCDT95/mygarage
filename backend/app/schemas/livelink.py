@@ -311,6 +311,12 @@ class SdConfigUpdate(BaseModel):
     sd_backfill_enabled: bool = Field(False, description="Enable automatic SD-card backfill")
 
 
+class SdConfigResponse(BaseModel):
+    """Schema for SD-card config update response."""
+
+    status: str = "ok"
+
+
 class BackfillResultResponse(BaseModel):
     """Schema for SD-card backfill trigger response."""
 

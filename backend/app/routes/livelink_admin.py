@@ -27,6 +27,7 @@ from app.schemas.livelink import (
     MQTTSettingsUpdate,
     MQTTStatusResponse,
     MQTTTestResult,
+    SdConfigResponse,
     SdConfigUpdate,
     TokenGenerateResponse,
     TokenInfoResponse,
@@ -836,7 +837,7 @@ async def test_mqtt_connection(
 # =============================================================================
 
 
-@router.put("/devices/{device_id}/sd-config", response_model=dict)
+@router.put("/devices/{device_id}/sd-config", response_model=SdConfigResponse)
 async def set_sd_config(
     device_id: str,
     body: SdConfigUpdate,
@@ -856,7 +857,7 @@ async def set_sd_config(
             detail="device_address must be a private/LAN address (public IPs are rejected)",
         )
     await svc.update_device_address(device_id, body.device_address, body.sd_backfill_enabled)
-    return {"status": "ok"}
+    return SdConfigResponse()
 
 
 @router.post("/devices/{device_id}/backfill", response_model=BackfillResultResponse)
