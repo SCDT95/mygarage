@@ -20,8 +20,8 @@ class LiveLinkFirmwareCache(Base):
 
     __tablename__ = "livelink_firmware_cache"
 
-    id: Mapped[int] = mapped_column(primary_key=True, default=1)  # Singleton
-    track: Mapped[str | None] = mapped_column(String(10))  # "obd" | "pro" (unique per row)
+    id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
+    track: Mapped[str | None] = mapped_column(String(10), unique=True)  # "obd" | "pro"
     latest_version: Mapped[str | None] = mapped_column(String(20))  # e.g., "4.50"
     latest_tag: Mapped[str | None] = mapped_column(String(20))  # e.g., "v4.50p"
     release_url: Mapped[str | None] = mapped_column(Text)  # GitHub release URL
