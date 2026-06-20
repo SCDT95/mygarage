@@ -32,6 +32,7 @@ class SdLogParser:
     """Turns SD log bytes into canonical (param_key, value, timestamp) rows."""
 
     def parse(self, db_bytes: bytes, since_ts: int = 0) -> list[SdRow]:
+        """Parse SD-log bytes into canonical SdRows, dropping rows at/below max(since_ts, TS_FLOOR). Raises SdLogSchemaError if the param_info/param_data schema is absent."""
         floor = max(since_ts, TS_FLOOR)
         with tempfile.NamedTemporaryFile(suffix=".db") as tmp:
             tmp.write(db_bytes)

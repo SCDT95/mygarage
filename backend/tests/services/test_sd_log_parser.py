@@ -30,7 +30,10 @@ def _make_db(rows, *, good_schema=True) -> bytes:
         conn.execute("CREATE TABLE wrong (x INTEGER)")
     conn.commit()
     conn.close()
-    return Path(fd.name).read_bytes()
+    try:
+        return Path(fd.name).read_bytes()
+    finally:
+        Path(fd.name).unlink(missing_ok=True)
 
 
 def test_parse_yields_canonical_rows():
