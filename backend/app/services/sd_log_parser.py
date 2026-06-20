@@ -5,14 +5,20 @@ from __future__ import annotations
 import logging
 import sqlite3
 import tempfile
-from collections import namedtuple
 from datetime import UTC, datetime
+from typing import NamedTuple
 
 from app.utils.autopid_normalizer import canonical_param_key
 
 logger = logging.getLogger(__name__)
 
-SdRow = namedtuple("SdRow", "param_key value timestamp")
+
+class SdRow(NamedTuple):
+    param_key: str
+    value: float
+    timestamp: datetime
+
+
 TS_FLOOR = 1577836800  # 2020-01-01; rows at/below are pre-RTC-sync garbage
 
 
