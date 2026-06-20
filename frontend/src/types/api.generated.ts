@@ -1937,7 +1937,7 @@ export interface paths {
         put?: never;
         /**
          * Trigger Firmware Check
-         * @description Check for new WiCAN firmware (fetches from GitHub).
+         * @description Check GitHub for new firmware (refreshes ALL tracks); return one track.
          *
          *     **Security:**
          *     - Requires authentication
@@ -1958,7 +1958,7 @@ export interface paths {
         };
         /**
          * Get Device Firmware Status
-         * @description Get firmware status for all devices (current vs latest).
+         * @description Get firmware status for all devices (current vs latest, per track).
          *
          *     **Security:**
          *     - Requires authentication
@@ -1981,7 +1981,7 @@ export interface paths {
         };
         /**
          * Get Latest Firmware
-         * @description Get the latest WiCAN firmware version (from cache).
+         * @description Get the latest WiCAN firmware version for a track (from cache).
          *
          *     **Security:**
          *     - Requires authentication
@@ -6702,6 +6702,8 @@ export interface components {
             current_version: string | null;
             /** Device Id */
             device_id: string;
+            /** Firmware Track */
+            firmware_track?: string | null;
             /** Latest Version */
             latest_version: string | null;
             /** Release Url */
@@ -6710,7 +6712,7 @@ export interface components {
              * Update Available
              * @default false
              */
-            update_available: boolean;
+            update_available: boolean | null;
         };
         /**
          * DocumentListResponse
@@ -7188,6 +7190,11 @@ export interface components {
              */
             checked_at?: string | null;
             /**
+             * Firmware Track
+             * @description Firmware track: 'obd' or 'pro'
+             */
+            firmware_track?: string | null;
+            /**
              * Latest Tag
              * @description Git tag (e.g., v4.50p)
              */
@@ -7208,6 +7215,12 @@ export interface components {
              */
             release_url?: string | null;
         };
+        /**
+         * FirmwareTrack
+         * @description Firmware track selector for WiCAN device families.
+         * @enum {string}
+         */
+        FirmwareTrack: "obd" | "pro";
         /**
          * FuelEconomyDataPoint
          * @description Single fuel economy data point (metric canonical).
@@ -16291,7 +16304,10 @@ export interface operations {
     };
     trigger_firmware_check_api_livelink_firmware_check_post: {
         parameters: {
-            query?: never;
+            query?: {
+                /** @description Track to return after refresh */
+                track?: components["schemas"]["FirmwareTrack"];
+            };
             header?: never;
             path?: never;
             cookie?: never;
@@ -16305,6 +16321,15 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["FirmwareInfoResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
         };
@@ -16331,7 +16356,10 @@ export interface operations {
     };
     get_latest_firmware_api_livelink_firmware_latest_get: {
         parameters: {
-            query?: never;
+            query?: {
+                /** @description Firmware track */
+                track?: components["schemas"]["FirmwareTrack"];
+            };
             header?: never;
             path?: never;
             cookie?: never;
@@ -16345,6 +16373,15 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["FirmwareInfoResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
         };

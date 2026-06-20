@@ -2867,6 +2867,17 @@
             "title": "Device Id",
             "type": "string"
           },
+          "firmware_track": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Firmware Track"
+          },
           "latest_version": {
             "anyOf": [
               {
@@ -2890,9 +2901,16 @@
             "title": "Release Url"
           },
           "update_available": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
             "default": false,
-            "title": "Update Available",
-            "type": "boolean"
+            "title": "Update Available"
           }
         },
         "required": [
@@ -4000,6 +4018,18 @@
             "description": "When firmware was last checked",
             "title": "Checked At"
           },
+          "firmware_track": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Firmware track: 'obd' or 'pro'",
+            "title": "Firmware Track"
+          },
           "latest_tag": {
             "anyOf": [
               {
@@ -4051,6 +4081,15 @@
         },
         "title": "FirmwareInfoResponse",
         "type": "object"
+      },
+      "FirmwareTrack": {
+        "description": "Firmware track selector for WiCAN device families.",
+        "enum": [
+          "obd",
+          "pro"
+        ],
+        "title": "FirmwareTrack",
+        "type": "string"
       },
       "FuelEconomyDataPoint": {
         "description": "Single fuel economy data point (metric canonical).",
@@ -23542,8 +23581,21 @@
     },
     "/api/livelink/firmware/check": {
       "post": {
-        "description": "Check for new WiCAN firmware (fetches from GitHub).\n\n**Security:**\n- Requires authentication",
+        "description": "Check GitHub for new firmware (refreshes ALL tracks); return one track.\n\n**Security:**\n- Requires authentication",
         "operationId": "trigger_firmware_check_api_livelink_firmware_check_post",
+        "parameters": [
+          {
+            "description": "Track to return after refresh",
+            "in": "query",
+            "name": "track",
+            "required": false,
+            "schema": {
+              "$ref": "#/components/schemas/FirmwareTrack",
+              "default": "pro",
+              "description": "Track to return after refresh"
+            }
+          }
+        ],
         "responses": {
           "200": {
             "content": {
@@ -23554,6 +23606,16 @@
               }
             },
             "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
           }
         },
         "security": [
@@ -23569,7 +23631,7 @@
     },
     "/api/livelink/firmware/devices": {
       "get": {
-        "description": "Get firmware status for all devices (current vs latest).\n\n**Security:**\n- Requires authentication",
+        "description": "Get firmware status for all devices (current vs latest, per track).\n\n**Security:**\n- Requires authentication",
         "operationId": "get_device_firmware_status_api_livelink_firmware_devices_get",
         "responses": {
           "200": {
@@ -23600,8 +23662,21 @@
     },
     "/api/livelink/firmware/latest": {
       "get": {
-        "description": "Get the latest WiCAN firmware version (from cache).\n\n**Security:**\n- Requires authentication",
+        "description": "Get the latest WiCAN firmware version for a track (from cache).\n\n**Security:**\n- Requires authentication",
         "operationId": "get_latest_firmware_api_livelink_firmware_latest_get",
+        "parameters": [
+          {
+            "description": "Firmware track",
+            "in": "query",
+            "name": "track",
+            "required": false,
+            "schema": {
+              "$ref": "#/components/schemas/FirmwareTrack",
+              "default": "pro",
+              "description": "Firmware track"
+            }
+          }
+        ],
         "responses": {
           "200": {
             "content": {
@@ -23612,6 +23687,16 @@
               }
             },
             "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
           }
         },
         "security": [
