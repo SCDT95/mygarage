@@ -29,7 +29,7 @@ from app.models.vehicle_telemetry import (
     VehicleTelemetryLatest,
 )
 from app.services.telemetry_validator import TelemetryValidator
-from app.utils.autopid_normalizer import canonical_param_key
+from app.utils.autopid_normalizer import canonical_param_key, is_telemetry_param
 
 
 @dataclass
@@ -290,8 +290,13 @@ class TelemetryService:
             timestamp = utc_now()
 
         # Canonicalize all keys to UPPERCASE with spaces→underscores so every ingest
-        # path (MQTT, HTTPS, SD backfill) stores under the same param_key form.
-        autopid_data = {canonical_param_key(k): v for k, v in autopid_data.items()}
+        # path (MQTT, HTTPS, SD backfill) stores under the same param_key form, and
+        # drop WiCAN frame-metadata params (TS, TIMESTAMP) that are not telemetry.
+        autopid_data = {
+            ck: v
+            for ck, v in ((canonical_param_key(k), v) for k, v in autopid_data.items())
+            if is_telemetry_param(ck)
+        }
 
         received_at = utc_now()
 

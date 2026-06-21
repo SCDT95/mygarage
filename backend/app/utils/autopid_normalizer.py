@@ -26,6 +26,23 @@ def canonical_param_key(key: str) -> str:
 # Keys whose string values should be preserved (not dropped as non-numeric)
 STRING_VALUE_KEYS = frozenset({"DIAGNOSTIC_TROUBLE_CODES"})
 
+# WiCAN emits these as autopid "params" but they are per-frame metadata, not
+# vehicle telemetry: TS is a rolling 0–59999 millisecond counter and TIMESTAMP
+# is the device's unix epoch. They carry no diagnostic value and flood storage
+# (one truck's TS rows were 97% of its telemetry). Dropped at every ingest
+# chokepoint in canonical (UPPERCASE) form. See is_telemetry_param().
+NON_TELEMETRY_PARAM_KEYS = frozenset({"TS", "TIMESTAMP"})
+
+
+def is_telemetry_param(canonical_key: str) -> bool:
+    """True if a canonical param_key is real telemetry (not WiCAN frame metadata).
+
+    Expects the key already in canonical form (see canonical_param_key). Used by
+    every ingest path (live store_telemetry, SD-card parser) to drop the
+    non-telemetry metadata params WiCAN firmware emits alongside real PIDs.
+    """
+    return canonical_key not in NON_TELEMETRY_PARAM_KEYS
+
 
 def normalize_autopid_data(
     raw_data: dict[str, Any] | list[Any],

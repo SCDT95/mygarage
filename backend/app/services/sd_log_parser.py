@@ -8,7 +8,7 @@ import tempfile
 from datetime import UTC, datetime
 from typing import NamedTuple
 
-from app.utils.autopid_normalizer import canonical_param_key
+from app.utils.autopid_normalizer import canonical_param_key, is_telemetry_param
 
 logger = logging.getLogger(__name__)
 
@@ -54,11 +54,15 @@ class SdLogParser:
                     raw = conn.execute(_QUERY_NOINDEX, (floor,)).fetchall()
             finally:
                 conn.close()
-        return [
-            SdRow(canonical_param_key(name), float(value), datetime.fromtimestamp(ts, UTC))
-            for name, ts, value in raw
-            if name is not None and value is not None
-        ]
+        rows: list[SdRow] = []
+        for name, ts, value in raw:
+            if name is None or value is None:
+                continue
+            param_key = canonical_param_key(name)
+            if not is_telemetry_param(param_key):
+                continue  # drop WiCAN frame-metadata (TS, TIMESTAMP); not telemetry
+            rows.append(SdRow(param_key, float(value), datetime.fromtimestamp(ts, UTC)))
+        return rows
 
     @staticmethod
     def _assert_schema(conn: sqlite3.Connection) -> None:

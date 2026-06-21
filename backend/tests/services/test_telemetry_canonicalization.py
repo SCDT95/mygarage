@@ -74,3 +74,26 @@ async def test_store_telemetry_canonicalizes_keys(db_session, make_vehicle_and_d
 
     assert "0C-ENGINERPM" in rows
     assert "0C-EngineRPM" not in rows
+
+
+@pytest.mark.asyncio
+async def test_store_telemetry_drops_wican_metadata(db_session, make_vehicle_and_device):
+    """TS/TIMESTAMP are WiCAN frame metadata — must never reach the telemetry table."""
+    vin, device_id = await make_vehicle_and_device(db_session)
+    svc = TelemetryService(db_session)
+    await svc.store_telemetry(
+        vin,
+        device_id,
+        {"0C-EngineRPM": 1000, "TS": 49573, "Timestamp": 1781967506},
+        {},
+        None,
+    )
+
+    result = await db_session.execute(
+        select(VehicleTelemetry.param_key).where(VehicleTelemetry.device_id == device_id).distinct()
+    )
+    rows = {row[0] for row in result.fetchall()}
+
+    assert rows == {"0C-ENGINERPM"}
+    assert "TS" not in rows
+    assert "TIMESTAMP" not in rows

@@ -16,9 +16,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - LiveLink: unify telemetry param_key casing across MQTT/HTTPS ingest (uppercase canonical), ending duplicate per-PID streams; migration merges existing rows.
 - SQLite: enable WAL mode + 30s busy_timeout to stop "database is locked" errors under concurrent MQTT/scheduler/request writes.
 - LiveLink: commit SD backfill inserts in batches (500) so a large pull doesn't hold the SQLite write lock for the entire operation.
+- LiveLink: drop WiCAN frame-metadata params (`TS`, `TIMESTAMP`) at every ingest path — they aren't telemetry and flooded storage (existing rows purged).
 
 ### Security
 - Bump `pydantic-settings` 2.14.1 → 2.14.2 (GHSA symlink-traversal in `NestedSecretsSettingsSource`; unused here, alert cleanup).
+- LiveLink: sanitize `device_id` in SD-backfill task logs (CodeQL `py/log-injection`).
 
 ## [2.29.0] - 2026-06-20
 

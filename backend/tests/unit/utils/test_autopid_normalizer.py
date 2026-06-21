@@ -1,6 +1,31 @@
 """Unit tests for autopid_data normalizer."""
 
-from app.utils.autopid_normalizer import normalize_autopid_data
+from app.utils.autopid_normalizer import (
+    canonical_param_key,
+    is_telemetry_param,
+    normalize_autopid_data,
+)
+
+
+class TestIsTelemetryParam:
+    """WiCAN frame-metadata params must be classified as non-telemetry."""
+
+    def test_real_pid_is_telemetry(self):
+        """A canonical OBD PID key is telemetry."""
+        assert is_telemetry_param("0C-ENGINERPM") is True
+
+    def test_ts_is_not_telemetry(self):
+        """TS (rolling ms counter) is frame metadata, not telemetry."""
+        assert is_telemetry_param("TS") is False
+
+    def test_timestamp_is_not_telemetry(self):
+        """TIMESTAMP (unix epoch) is frame metadata, not telemetry."""
+        assert is_telemetry_param("TIMESTAMP") is False
+
+    def test_metadata_dropped_in_canonical_form(self):
+        """Lowercase 'ts'/'Timestamp' canonicalize to the denylisted form."""
+        assert is_telemetry_param(canonical_param_key("ts")) is False
+        assert is_telemetry_param(canonical_param_key("Timestamp")) is False
 
 
 class TestFlatFormat:

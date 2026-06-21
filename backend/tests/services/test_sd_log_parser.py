@@ -59,6 +59,19 @@ def test_parse_since_ts_filters():
     assert [r.value for r in rows] == [2.0]
 
 
+def test_parse_drops_wican_metadata_params():
+    """TS and TIMESTAMP are WiCAN frame metadata, not telemetry — must be dropped."""
+    db = _make_db(
+        [
+            ("TS", 1781967506, 49573.0),
+            ("0C-EngineRPM", 1781967506, 957.0),
+            ("Timestamp", 1781967506, 1781967506.0),  # canonicalizes to TIMESTAMP
+        ]
+    )
+    rows = SdLogParser().parse(db)
+    assert [r.param_key for r in rows] == ["0C-ENGINERPM"]
+
+
 def test_parse_bad_schema_raises():
     db = _make_db([], good_schema=False)
     with pytest.raises(SdLogSchemaError):
