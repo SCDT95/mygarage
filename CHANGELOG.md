@@ -10,6 +10,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [2.30.0] - 2026-06-20
 
 ### Added
+- Widget API: metric-native `/api/v2/widget/*` returning both metric (km, L/100km, km/L) and imperial (miles, MPG) units per vehicle; a strict superset of the legacy `/api/widget/*`, which is unchanged.
 - LiveLink: pull WiCAN SD-card telemetry into MyGarage to backfill offline gaps (auto on device reconnect + manual admin trigger).
 
 ### Fixed

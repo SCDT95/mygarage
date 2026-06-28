@@ -3132,6 +3132,66 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v2/widget/summary": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Summary
+         * @description Aggregate counts across all vehicles the key can see (unit-agnostic).
+         */
+        get: operations["get_summary_api_v2_widget_summary_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v2/widget/vehicle/{vin}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Widget Vehicle
+         * @description Per-vehicle rollup in both unit systems. 404 (not 403) for out-of-scope VINs.
+         */
+        get: operations["get_widget_vehicle_api_v2_widget_vehicle__vin__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v2/widget/vehicles": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Widget Vehicles
+         * @description VIN + label pairs for the key's accessible vehicles (unit-agnostic).
+         */
+        get: operations["list_widget_vehicles_api_v2_widget_vehicles_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/vehicles": {
         parameters: {
             query?: never;
@@ -13523,6 +13583,63 @@ export interface components {
             vin: string;
         };
         /**
+         * WidgetVehicleV2
+         * @description Per-vehicle rollup exposing BOTH unit systems (v2).
+         *
+         *     Metric is the canonical/native representation; the imperial fields are
+         *     boundary conversions included so a single endpoint serves users on either
+         *     system. Every field of the v1 ``WidgetVehicle`` is preserved verbatim
+         *     (``odometer`` in miles, ``recent_mpg``/``average_mpg``) so v2 is a strict
+         *     superset and the legacy imperial endpoint can be retired losslessly. The
+         *     homepage customapi widget picks which 4 fields to display.
+         */
+        WidgetVehicleV2: {
+            /** Average Km Per L */
+            average_km_per_l?: number | null;
+            /** Average L Per 100Km */
+            average_l_per_100km?: number | null;
+            /** Average Mpg */
+            average_mpg?: number | null;
+            /** Documents */
+            documents: number;
+            /** Fuel Records */
+            fuel_records: number;
+            /** Label */
+            label: string;
+            /** Last Fuel Date */
+            last_fuel_date?: string | null;
+            /** Last Service Date */
+            last_service_date?: string | null;
+            /** Make */
+            make?: string | null;
+            /** Model */
+            model?: string | null;
+            /** Notes */
+            notes: number;
+            /** Odometer */
+            odometer?: number | null;
+            /** Odometer Date */
+            odometer_date?: string | null;
+            /** Odometer Km */
+            odometer_km?: number | null;
+            /** Overdue Maintenance */
+            overdue_maintenance: number;
+            /** Photos */
+            photos: number;
+            /** Recent Km Per L */
+            recent_km_per_l?: number | null;
+            /** Recent L Per 100Km */
+            recent_l_per_100km?: number | null;
+            /** Recent Mpg */
+            recent_mpg?: number | null;
+            /** Service Records */
+            service_records: number;
+            /** Upcoming Maintenance */
+            upcoming_maintenance: number;
+            /** Year */
+            year?: number | null;
+        };
+        /**
          * WindowStickerDataUpdate
          * @description Schema for updating window sticker extracted data.
          */
@@ -17900,6 +18017,101 @@ export interface operations {
                 };
                 content: {
                     "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_summary_api_v2_widget_summary_get: {
+        parameters: {
+            query?: never;
+            header?: {
+                "X-API-Key"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WidgetSummary"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_widget_vehicle_api_v2_widget_vehicle__vin__get: {
+        parameters: {
+            query?: never;
+            header?: {
+                "X-API-Key"?: string | null;
+            };
+            path: {
+                vin: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WidgetVehicleV2"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_widget_vehicles_api_v2_widget_vehicles_get: {
+        parameters: {
+            query?: never;
+            header?: {
+                "X-API-Key"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WidgetVehicleList"];
                 };
             };
             /** @description Validation Error */

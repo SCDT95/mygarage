@@ -340,6 +340,7 @@ from app.routes.poi import router as poi_router
 from app.routes.quick_entry import router as quick_entry_router
 from app.routes.widget import router as widget_router
 from app.routes.widget_keys import router as widget_keys_router
+from app.routes.widget_v2 import router as widget_v2_router
 
 app.include_router(auth_router)
 app.include_router(family_router)
@@ -384,6 +385,7 @@ app.include_router(livelink_vehicle_router)
 app.include_router(quick_entry_router)
 app.include_router(widget_router)
 app.include_router(widget_keys_router)
+app.include_router(widget_v2_router)
 
 
 # Serve static files (frontend build) in production

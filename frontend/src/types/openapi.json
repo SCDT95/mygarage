@@ -18735,6 +18735,212 @@
         "title": "WidgetVehicleRef",
         "type": "object"
       },
+      "WidgetVehicleV2": {
+        "description": "Per-vehicle rollup exposing BOTH unit systems (v2).\n\nMetric is the canonical/native representation; the imperial fields are\nboundary conversions included so a single endpoint serves users on either\nsystem. Every field of the v1 ``WidgetVehicle`` is preserved verbatim\n(``odometer`` in miles, ``recent_mpg``/``average_mpg``) so v2 is a strict\nsuperset and the legacy imperial endpoint can be retired losslessly. The\nhomepage customapi widget picks which 4 fields to display.",
+        "properties": {
+          "average_km_per_l": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Average Km Per L"
+          },
+          "average_l_per_100km": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Average L Per 100Km"
+          },
+          "average_mpg": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Average Mpg"
+          },
+          "documents": {
+            "title": "Documents",
+            "type": "integer"
+          },
+          "fuel_records": {
+            "title": "Fuel Records",
+            "type": "integer"
+          },
+          "label": {
+            "title": "Label",
+            "type": "string"
+          },
+          "last_fuel_date": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Fuel Date"
+          },
+          "last_service_date": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Service Date"
+          },
+          "make": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Make"
+          },
+          "model": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Model"
+          },
+          "notes": {
+            "title": "Notes",
+            "type": "integer"
+          },
+          "odometer": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Odometer"
+          },
+          "odometer_date": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Odometer Date"
+          },
+          "odometer_km": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Odometer Km"
+          },
+          "overdue_maintenance": {
+            "title": "Overdue Maintenance",
+            "type": "integer"
+          },
+          "photos": {
+            "title": "Photos",
+            "type": "integer"
+          },
+          "recent_km_per_l": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Recent Km Per L"
+          },
+          "recent_l_per_100km": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Recent L Per 100Km"
+          },
+          "recent_mpg": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Recent Mpg"
+          },
+          "service_records": {
+            "title": "Service Records",
+            "type": "integer"
+          },
+          "upcoming_maintenance": {
+            "title": "Upcoming Maintenance",
+            "type": "integer"
+          },
+          "year": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Year"
+          }
+        },
+        "required": [
+          "label",
+          "upcoming_maintenance",
+          "overdue_maintenance",
+          "service_records",
+          "fuel_records",
+          "documents",
+          "notes",
+          "photos"
+        ],
+        "title": "WidgetVehicleV2",
+        "type": "object"
+      },
       "WindowStickerDataUpdate": {
         "description": "Schema for updating window sticker extracted data.",
         "properties": {
@@ -25911,6 +26117,165 @@
         "summary": "Ingest Wican Payload",
         "tags": [
           "LiveLink Ingestion"
+        ]
+      }
+    },
+    "/api/v2/widget/summary": {
+      "get": {
+        "description": "Aggregate counts across all vehicles the key can see (unit-agnostic).",
+        "operationId": "get_summary_api_v2_widget_summary_get",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "X-API-Key",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Api-Key"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WidgetSummary"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Summary",
+        "tags": [
+          "widget-v2"
+        ]
+      }
+    },
+    "/api/v2/widget/vehicle/{vin}": {
+      "get": {
+        "description": "Per-vehicle rollup in both unit systems. 404 (not 403) for out-of-scope VINs.",
+        "operationId": "get_widget_vehicle_api_v2_widget_vehicle__vin__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "vin",
+            "required": true,
+            "schema": {
+              "title": "Vin",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-API-Key",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Api-Key"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WidgetVehicleV2"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Widget Vehicle",
+        "tags": [
+          "widget-v2"
+        ]
+      }
+    },
+    "/api/v2/widget/vehicles": {
+      "get": {
+        "description": "VIN + label pairs for the key's accessible vehicles (unit-agnostic).",
+        "operationId": "list_widget_vehicles_api_v2_widget_vehicles_get",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "X-API-Key",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Api-Key"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WidgetVehicleList"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "List Widget Vehicles",
+        "tags": [
+          "widget-v2"
         ]
       }
     },
