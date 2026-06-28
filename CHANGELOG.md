@@ -7,14 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-## [2.30.0] - 2026-06-20
+## [2.30.0] - 2026-06-28
 
 ### Added
-- Widget API: metric-native `/api/v2/widget/*` returning both metric (km, L/100km, km/L) and imperial (miles, MPG) units per vehicle; a strict superset of the legacy `/api/widget/*`, which is unchanged.
+- Widget API: new metric-native `/api/v2/widget/*` exposing both metric and imperial units per vehicle (superset of the legacy `/api/widget/*`).
 - LiveLink: pull WiCAN SD-card telemetry into MyGarage to backfill offline gaps (auto on device reconnect + manual admin trigger).
 
 ### Fixed
-- Auth: stop bouncing `auth_mode=none` users to the login page (#98) — gate `/auth/me` behind the auth-mode check (frontend) and make it return `null` instead of 401 in that mode (backend), plus make the 401/CSRF response interceptor skip the `/login` redirect when auth is disabled.
+- Auth: stop redirecting `auth_mode=none` users to the login page (#98).
 - LiveLink: unify telemetry param_key casing across MQTT/HTTPS ingest (uppercase canonical), ending duplicate per-PID streams; migration merges existing rows.
 - SQLite: enable WAL mode + 30s busy_timeout to stop "database is locked" errors under concurrent MQTT/scheduler/request writes.
 - LiveLink: commit SD backfill inserts in batches (500) so a large pull doesn't hold the SQLite write lock for the entire operation.
