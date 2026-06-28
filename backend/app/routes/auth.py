@@ -33,6 +33,7 @@ from app.services.auth import (
     get_current_user,
     hash_password,
     optional_auth,
+    require_auth,
     verify_password,
 )
 from app.utils.datetime_utils import utc_now
@@ -276,11 +277,18 @@ async def refresh_csrf_token(
     return {"csrf_token": csrf_token_value}
 
 
-@router.get("/me", response_model=UserResponse)
+@router.get("/me", response_model=UserResponse | None)
 async def get_current_user_info(
-    current_user: User = Depends(get_current_user),
+    current_user: User | None = Depends(require_auth),
 ):
-    """Get current authenticated user information."""
+    """Get current authenticated user information.
+
+    Uses the mode-aware require_auth dependency: returns the authenticated user
+    normally, returns None (HTTP 200 with a null body) when auth_mode='none',
+    and raises 401 only when auth is enabled but the caller is unauthenticated.
+    Returning None instead of 401 in 'none' mode keeps auth-disabled clients off
+    the login-redirect path (bug #98).
+    """
     return current_user
 
 

@@ -20,6 +20,7 @@ vi.mock('../../services/api', () => {
     setCSRFToken: vi.fn(),
     getCSRFToken: vi.fn(),
     clearCSRFToken: vi.fn(),
+    setApiAuthMode: vi.fn(),
   }
 })
 
@@ -104,11 +105,13 @@ describe('AuthContext', () => {
     })
   })
 
-  it('ignores user response when auth mode is none', async () => {
-    // /settings/public and /auth/me are dispatched in parallel to cut
-    // bootstrap latency. When auth is disabled, /auth/me's result is
-    // simply ignored — `authenticated` should stay false regardless of
-    // what /auth/me returns.
+  it('does not call /auth/me when auth mode is none', async () => {
+    // Regression guard for bug #98. In auth_mode='none' there is no logged-in
+    // user, so /auth/me has nothing to return — with no cookie it 401s, and
+    // the global axios response interceptor hard-redirects to /login on any
+    // 401. loadUser must therefore decide auth_mode from /settings/public
+    // FIRST and never probe /auth/me when auth is disabled. The 401 mock below
+    // makes the test fail loudly if /auth/me is reintroduced into this path.
     mockedApi.get.mockImplementation((url: string) => {
       if (url === '/settings/public') {
         return Promise.resolve({
@@ -116,9 +119,7 @@ describe('AuthContext', () => {
         })
       }
       if (url === '/auth/me') {
-        return Promise.resolve({
-          data: { id: 1, username: 'ignored', email: 'x@y', is_admin: false },
-        })
+        return Promise.reject({ response: { status: 401 } })
       }
       return Promise.reject(new Error('Not found'))
     })
@@ -134,6 +135,10 @@ describe('AuthContext', () => {
       expect(screen.getByTestId('auth-mode')).toHaveTextContent('none')
       expect(screen.getByTestId('authenticated')).toHaveTextContent('false')
     })
+
+    const requestedUrls = mockedApi.get.mock.calls.map((call: unknown[]) => call[0])
+    expect(requestedUrls).toContain('/settings/public')
+    expect(requestedUrls).not.toContain('/auth/me')
   })
 
   it('handles 401 when cookie is expired', async () => {

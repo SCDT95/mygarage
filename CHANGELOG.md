@@ -13,6 +13,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - LiveLink: pull WiCAN SD-card telemetry into MyGarage to backfill offline gaps (auto on device reconnect + manual admin trigger).
 
 ### Fixed
+- Auth: stop bouncing `auth_mode=none` users to the login page (#98) — gate `/auth/me` behind the auth-mode check (frontend) and make it return `null` instead of 401 in that mode (backend), plus make the 401/CSRF response interceptor skip the `/login` redirect when auth is disabled.
 - LiveLink: unify telemetry param_key casing across MQTT/HTTPS ingest (uppercase canonical), ending duplicate per-PID streams; migration merges existing rows.
 - SQLite: enable WAL mode + 30s busy_timeout to stop "database is locked" errors under concurrent MQTT/scheduler/request writes.
 - LiveLink: commit SD backfill inserts in batches (500) so a large pull doesn't hold the SQLite write lock for the entire operation.

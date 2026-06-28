@@ -20293,14 +20293,22 @@
     },
     "/api/auth/me": {
       "get": {
-        "description": "Get current authenticated user information.",
+        "description": "Get current authenticated user information.\n\nUses the mode-aware require_auth dependency: returns the authenticated user\nnormally, returns None (HTTP 200 with a null body) when auth_mode='none',\nand raises 401 only when auth is enabled but the caller is unauthenticated.\nReturning None instead of 401 in 'none' mode keeps auth-disabled clients off\nthe login-redirect path (bug #98).",
         "operationId": "get_current_user_info_api_auth_me_get",
         "responses": {
           "200": {
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/UserResponse"
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/UserResponse"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ],
+                  "title": "Response Get Current User Info Api Auth Me Get"
                 }
               }
             },

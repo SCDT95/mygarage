@@ -254,6 +254,29 @@ class TestProtectedEndpoints:
 
         assert response.status_code == 401
 
+    async def test_get_current_user_auth_mode_none_returns_null(
+        self, client: AsyncClient, db_session
+    ):
+        """In auth_mode='none' there is no user, so /me returns 200 with a null
+        body — not 401. A 401 here is what bounced auth-disabled users to the
+        login page (bug #98); the endpoint uses the mode-aware require_auth
+        dependency so it never raises when authentication is turned off.
+        """
+        from app.models.settings import Setting
+
+        result = await db_session.execute(select(Setting).where(Setting.key == "auth_mode"))
+        auth_setting = result.scalar_one_or_none()
+        if auth_setting:
+            auth_setting.value = "none"
+        else:
+            db_session.add(Setting(key="auth_mode", value="none"))
+        await db_session.commit()
+
+        response = await client.get("/api/auth/me")
+
+        assert response.status_code == 200
+        assert response.json() is None
+
 
 @pytest.mark.integration
 @pytest.mark.auth

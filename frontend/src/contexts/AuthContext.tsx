@@ -1,5 +1,5 @@
 import { createContext, useContext, useState, useEffect, useCallback, ReactNode } from 'react'
-import api, { setCSRFToken, getCSRFToken, clearCSRFToken } from '../services/api'
+import api, { setCSRFToken, getCSRFToken, clearCSRFToken, setApiAuthMode } from '../services/api'
 
 interface User {
   id: number
@@ -56,40 +56,40 @@ export function AuthProvider({ children }: { children: ReactNode}) {
 
   // Load user info with proper dependencies (cookie-based auth).
   //
-  // Both requests are dispatched in parallel: the previous version waited
-  // for /settings/public to return before kicking off /auth/me, doubling
-  // the time the UI sat on a loading screen. When auth_mode is 'none' the
-  // /auth/me result is ignored; the wasted call is cheap and the parallel
-  // dispatch matches the common authenticated case.
+  // Auth mode MUST be resolved from /settings/public BEFORE /auth/me is ever
+  // touched. In auth_mode='none' there is no user to load, and probing
+  // /auth/me without a cookie returns 401 — which the global response
+  // interceptor turns into a hard redirect to /login, bouncing the user off
+  // the app (bug #98). A previous revision fired both calls in parallel to
+  // shave bootstrap latency; that reintroduced the 401-on-fresh-load redirect,
+  // so the gating is deliberate and load-bearing, not an accident. Only load
+  // the user when auth is enabled.
   const loadUser = useCallback(async () => {
     try {
-      const [settingsResult, meResult] = await Promise.allSettled([
-        api.get('/settings/public'),
-        api.get('/auth/me'),
-      ])
-
-      let fetchedAuthMode = 'none'
-      if (settingsResult.status === 'fulfilled') {
-        const authModeSetting = settingsResult.value.data.settings.find(
-          (s: { key: string; value?: string | null }) => s.key === 'auth_mode'
-        )
-        fetchedAuthMode = authModeSetting?.value || 'none'
-      }
+      const settingsResponse = await api.get('/settings/public')
+      const authModeSetting = settingsResponse.data.settings.find(
+        (s: { key: string; value?: string | null }) => s.key === 'auth_mode'
+      )
+      const fetchedAuthMode = authModeSetting?.value || 'none'
       setAuthMode(fetchedAuthMode)
+      // Mirror into the api module so the response interceptor can suppress the
+      // /login redirect on 401 when auth is disabled (bug #98).
+      setApiAuthMode(fetchedAuthMode)
 
+      // If auth is disabled, skip user loading entirely (no /auth/me probe).
       if (fetchedAuthMode === 'none') {
         return
       }
 
-      if (meResult.status === 'fulfilled') {
-        setUser(meResult.value.data)
-      } else {
-        const err = meResult.reason as { response?: { status?: number } }
-        if (err.response?.status === 401) {
-          // Cookie expired or invalid
-          setUser(null)
-          setToken(null)
-        }
+      // Auth is enabled — load the current user from the cookie session.
+      const response = await api.get('/auth/me')
+      setUser(response.data)
+    } catch (error: unknown) {
+      const err = error as { response?: { status?: number } }
+      if (err.response?.status === 401) {
+        // Cookie expired or invalid
+        setUser(null)
+        setToken(null)
       }
     } finally {
       setLoading(false)

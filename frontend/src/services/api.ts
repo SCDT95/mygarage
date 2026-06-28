@@ -26,6 +26,33 @@ export {
   isPermissionError,
 }
 
+// Auth mode mirror — the response interceptor lives outside React and cannot
+// read AuthContext, so AuthContext pushes the resolved auth_mode here via
+// setApiAuthMode(). It governs whether a 401 should redirect to /login.
+let currentAuthMode: string | null = null
+
+export const setApiAuthMode = (mode: string | null): void => {
+  currentAuthMode = mode
+}
+
+/**
+ * Decide whether a 401 response should redirect the browser to /login.
+ *
+ * In auth_mode='none' there is no login flow, so a 401 — which here means "this
+ * endpoint still requires a user" (e.g. /auth/me, widget keys), not "your
+ * session expired" — must NOT bounce the user to /login. Doing so stranded
+ * auth-disabled users on the login page (bug #98); instead the error surfaces
+ * to the caller, which renders an appropriate disabled state. When auth is
+ * enabled, an expired/invalid session still redirects, except when already on
+ * an auth page.
+ */
+export function shouldRedirectToLogin(authMode: string | null, pathname: string): boolean {
+  if (authMode === 'none') {
+    return false
+  }
+  return pathname !== '/login' && pathname !== '/register'
+}
+
 // CSRF Token Management (Security Enhancement v2.10.0)
 const CSRF_TOKEN_KEY = 'csrf_token'
 
@@ -130,10 +157,11 @@ api.interceptors.response.use(
           return api(originalRequest)
         }
 
-        // Recovery failed - redirect to login
+        // Recovery failed - redirect to login. Suppressed in auth_mode='none'
+        // (same reasoning as the 401 path, bug #98) via shouldRedirectToLogin.
         console.log('[CSRF] Recovery failed, redirecting to login')
         clearCSRFToken()
-        if (window.location.pathname !== '/login' && window.location.pathname !== '/register') {
+        if (shouldRedirectToLogin(currentAuthMode, window.location.pathname)) {
           window.location.href = '/login'
         }
       }
@@ -146,11 +174,13 @@ api.interceptors.response.use(
                          window.location.pathname === '/auth/link-account'
 
       if (!isOIDCFlow) {
-        // Cookie is invalid or expired - clear CSRF token and redirect to login
+        // Cookie is invalid or expired - clear CSRF token and redirect to login.
+        // In auth_mode='none' there is no login page to land on, so
+        // shouldRedirectToLogin suppresses the bounce (bug #98) and the 401
+        // surfaces to the caller instead.
         clearCSRFToken()
 
-        // Redirect to login page if not already there
-        if (window.location.pathname !== '/login' && window.location.pathname !== '/register') {
+        if (shouldRedirectToLogin(currentAuthMode, window.location.pathname)) {
           window.location.href = '/login'
         }
       }

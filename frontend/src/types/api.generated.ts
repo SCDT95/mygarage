@@ -339,6 +339,12 @@ export interface paths {
         /**
          * Get Current User Info
          * @description Get current authenticated user information.
+         *
+         *     Uses the mode-aware require_auth dependency: returns the authenticated user
+         *     normally, returns None (HTTP 200 with a null body) when auth_mode='none',
+         *     and raises 401 only when auth is enabled but the caller is unauthenticated.
+         *     Returning None instead of 401 in 'none' mode keeps auth-disabled clients off
+         *     the login-redirect path (bug #98).
          */
         get: operations["get_current_user_info_api_auth_me_get"];
         /**
@@ -14217,7 +14223,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["UserResponse"];
+                    "application/json": components["schemas"]["UserResponse"] | null;
                 };
             };
         };
