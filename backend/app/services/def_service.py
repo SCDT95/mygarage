@@ -8,6 +8,7 @@ from sqlalchemy import delete, func, select
 from sqlalchemy.exc import IntegrityError, OperationalError
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.constants.fuel import has_def_capacity
 from app.models.def_record import DEFRecord
 from app.models.user import User
 from app.models.vehicle import Vehicle
@@ -18,6 +19,7 @@ from app.schemas.def_record import (
     DEFRecordUpdate,
 )
 from app.utils.cache import invalidate_cache_for_vehicle
+from app.utils.def_sync import ensure_def_capable
 from app.utils.logging_utils import sanitize_for_log
 from app.utils.odometer_sync import sync_odometer_from_record
 
@@ -103,7 +105,8 @@ class DEFRecordService:
         vin = vin.upper().strip()
 
         try:
-            _ = await get_vehicle_or_403(vin, current_user, self.db, require_write=True)
+            vehicle = await get_vehicle_or_403(vin, current_user, self.db, require_write=True)
+            ensure_def_capable(vehicle)
 
             record_dict = record_data.model_dump()
             record_dict["vin"] = vin
@@ -173,7 +176,8 @@ class DEFRecordService:
         vin = vin.upper().strip()
 
         try:
-            await get_vehicle_or_403(vin, current_user, self.db, require_write=True)
+            vehicle = await get_vehicle_or_403(vin, current_user, self.db, require_write=True)
+            ensure_def_capable(vehicle)
 
             result = await self.db.execute(
                 select(DEFRecord).where(DEFRecord.id == record_id).where(DEFRecord.vin == vin)
@@ -373,7 +377,7 @@ class DEFRecordService:
             )
             tank_capacity = vehicle_result.scalar_one_or_none()
 
-            if tank_capacity is not None and tank_capacity > 0:
+            if has_def_capacity(tank_capacity):
                 estimated_remaining_liters = round(last_fill_level * tank_capacity, 2)
 
                 # Estimated km remaining

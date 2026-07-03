@@ -208,7 +208,12 @@
   },
   "events": {
     "title": "Powiadomienia o zdarzeniach",
-    "enableServiceFirst": "Włącz co najmniej jedną usługę powiadomień"
+    "enableServiceFirst": "Włącz co najmniej jedną usługę powiadomień",
+    "defLow": {
+      "group": "Poziom DEF",
+      "label": "Niski poziom DEF",
+      "description": "Powiadamiaj, gdy poziom płynu DEF (AdBlue) spadnie do progu lub poniżej"
+    }
   },
   "backup": {
     "loading": "Ładowanie danych kopii zapasowych...",

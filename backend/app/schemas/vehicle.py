@@ -6,6 +6,36 @@ from typing import Any, Literal
 
 from pydantic import BaseModel, Field, field_validator
 
+from app.constants.fuel import FUEL_TYPE_VALUES, normalize_fuel_type
+
+
+def _normalize_fuel_type_input(v: Any) -> Any:
+    """Normalize free-text / NHTSA fuel-type input to the canonical vocabulary.
+
+    Used as a `mode="before"` validator on `VehicleCreate` / `VehicleUpdate`
+    only — never on `VehicleBase`/`VehicleResponse`. Response schemas
+    validate from DB attributes, and a legacy unrecognized value already
+    persisted must not make a vehicle read 500.
+
+    - `None` / empty / whitespace-only -> `None`
+    - recognized (case/whitespace-insensitive) -> canonical enum value (str)
+    - unrecognized -> `ValueError` (Pydantic turns this into a 422), listing
+      the canonical values. Bulk import paths (see `import_data.py`) fall
+      back to `other` on unrecognized input; interactive writes fail loudly
+      instead.
+    """
+    if v is None:
+        return None
+    if not isinstance(v, str):
+        return v
+    if not v.strip():
+        return None
+    normalized = normalize_fuel_type(v)
+    if normalized is None:
+        raise ValueError(f"fuel_type must be one of {FUEL_TYPE_VALUES}, got {v!r}")
+    return normalized.value
+
+
 # Shared vehicle type literal for OpenAPI schema generation
 VehicleType = Literal[
     "Car",
@@ -88,6 +118,12 @@ class VehicleCreate(VehicleBase):
             raise ValueError(error or "Invalid VIN format")
         return v
 
+    @field_validator("fuel_type", "fuel_type_secondary", mode="before")
+    @classmethod
+    def normalize_fuel_type_fields(cls, v: Any) -> Any:
+        """Normalize free-text fuel-type input to the canonical vocabulary."""
+        return _normalize_fuel_type_input(v)
+
     model_config = {
         "json_schema_extra": {
             "examples": [
@@ -115,6 +151,12 @@ class VehicleUpdate(VehicleBase):
         None, description="User-friendly display name", min_length=1, max_length=100
     )
     vehicle_type: VehicleType | None = Field(None, description="Type of vehicle")
+
+    @field_validator("fuel_type", "fuel_type_secondary", mode="before")
+    @classmethod
+    def normalize_fuel_type_fields(cls, v: Any) -> Any:
+        """Normalize free-text fuel-type input to the canonical vocabulary."""
+        return _normalize_fuel_type_input(v)
 
     model_config = {
         "json_schema_extra": {

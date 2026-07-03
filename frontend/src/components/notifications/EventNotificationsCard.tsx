@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next'
 import { ChevronDown, ChevronRight, Bell, Settings2 } from 'lucide-react';
 
@@ -10,12 +10,24 @@ interface EventNotificationsCardProps {
   hasEnabledService: boolean;
 }
 
+// A boolean event toggle can pair with zero or more numeric companion
+// settings (e.g. "Service Due" pairs with both a days-before and a
+// miles-before field). Data-driven so a new unit (days/miles/percent/...)
+// is a config addition, not a new copy-pasted JSX block.
+interface NumberFieldConfig {
+  key: string;
+  default: string;
+  min: number;
+  max: number;
+  step?: number;
+  suffix: string;
+}
+
 interface EventItem {
   key: string;
   label: string;
   description: string;
-  daysKey?: string;
-  milesKey?: string;
+  numberFields?: NumberFieldConfig[];
 }
 
 interface EventGroup {
@@ -25,7 +37,10 @@ interface EventGroup {
   events: EventItem[];
 }
 
-const eventGroups: EventGroup[] = [
+// Static groups whose label/description are plain (untranslated, matching
+// this file's pre-existing convention) — defined once at module scope since
+// they don't depend on `t`.
+const STATIC_EVENT_GROUPS: EventGroup[] = [
   {
     id: 'safety',
     label: 'Safety Alerts',
@@ -47,8 +62,10 @@ const eventGroups: EventGroup[] = [
         key: 'notify_service_due',
         label: 'Service Due',
         description: 'Notify when scheduled service is coming due',
-        daysKey: 'notify_service_days',
-        milesKey: 'notify_service_miles',
+        numberFields: [
+          { key: 'notify_service_days', default: '30', min: 1, max: 90, suffix: 'days before' },
+          { key: 'notify_service_miles', default: '500', min: 100, max: 5000, step: 100, suffix: 'miles before' },
+        ],
       },
       {
         key: 'notify_service_overdue',
@@ -66,13 +83,17 @@ const eventGroups: EventGroup[] = [
         key: 'notify_insurance_expiring',
         label: 'Insurance Expiring',
         description: 'Notify before insurance policy expires',
-        daysKey: 'notify_insurance_days',
+        numberFields: [
+          { key: 'notify_insurance_days', default: '30', min: 1, max: 90, suffix: 'days before' },
+        ],
       },
       {
         key: 'notify_warranty_expiring',
         label: 'Warranty Expiring',
         description: 'Notify before warranty expires',
-        daysKey: 'notify_warranty_days',
+        numberFields: [
+          { key: 'notify_warranty_days', default: '30', min: 1, max: 90, suffix: 'days before' },
+        ],
       },
     ],
   },
@@ -100,6 +121,28 @@ export function EventNotificationsCard({
   const { t } = useTranslation('settings')
   const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set(['safety', 'maintenance']));
   const [showAdvanced, setShowAdvanced] = useState(false);
+
+  const eventGroups: EventGroup[] = useMemo(
+    () => [
+      ...STATIC_EVENT_GROUPS,
+      {
+        id: 'def',
+        label: t('events.defLow.group'),
+        icon: Bell,
+        events: [
+          {
+            key: 'notify_def_low',
+            label: t('events.defLow.label'),
+            description: t('events.defLow.description'),
+            numberFields: [
+              { key: 'notify_def_low_threshold_percent', default: '25', min: 1, max: 99, suffix: '%' },
+            ],
+          },
+        ],
+      },
+    ],
+    [t],
+  );
 
   const toggleGroup = (groupId: string) => {
     setExpandedGroups((prev) => {
@@ -184,37 +227,23 @@ export function EventNotificationsCard({
                         </label>
                         <p className="mt-1 ml-6 text-xs text-garage-text-muted">{event.description}</p>
                       </div>
-                      {(event.daysKey || event.milesKey) && (
+                      {event.numberFields && event.numberFields.length > 0 && (
                         <div className="flex flex-col gap-1">
-                          {event.daysKey && (
-                            <div className="flex items-center gap-2">
+                          {event.numberFields.map((field) => (
+                            <div key={field.key} className="flex items-center gap-2">
                               <input
                                 type="number"
-                                value={String(settings[event.daysKey] ?? '30')}
-                                onChange={(e) => onTextChange(event.daysKey!, e.target.value)}
+                                value={String(settings[field.key] ?? field.default)}
+                                onChange={(e) => onTextChange(field.key, e.target.value)}
                                 disabled={saving || settings[event.key] !== 'true'}
-                                min="1"
-                                max="90"
+                                min={field.min}
+                                max={field.max}
+                                step={field.step}
                                 className="w-16 px-2 py-1 text-sm bg-garage-bg border border-garage-border rounded text-garage-text disabled:opacity-50"
                               />
-                              <span className="text-xs text-garage-text-muted whitespace-nowrap">days before</span>
+                              <span className="text-xs text-garage-text-muted whitespace-nowrap">{field.suffix}</span>
                             </div>
-                          )}
-                          {event.milesKey && (
-                            <div className="flex items-center gap-2">
-                              <input
-                                type="number"
-                                value={String(settings[event.milesKey] ?? '500')}
-                                onChange={(e) => onTextChange(event.milesKey!, e.target.value)}
-                                disabled={saving || settings[event.key] !== 'true'}
-                                min="100"
-                                max="5000"
-                                step="100"
-                                className="w-16 px-2 py-1 text-sm bg-garage-bg border border-garage-border rounded text-garage-text disabled:opacity-50"
-                              />
-                              <span className="text-xs text-garage-text-muted whitespace-nowrap">miles before</span>
-                            </div>
-                          )}
+                          ))}
                         </div>
                       )}
                     </div>

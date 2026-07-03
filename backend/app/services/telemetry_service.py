@@ -29,7 +29,11 @@ from app.models.vehicle_telemetry import (
     VehicleTelemetryLatest,
 )
 from app.services.telemetry_validator import TelemetryValidator
-from app.utils.autopid_normalizer import canonical_param_key, is_telemetry_param
+from app.utils.autopid_normalizer import (
+    canonical_param_key,
+    infer_param_class,
+    is_telemetry_param,
+)
 
 
 @dataclass
@@ -143,22 +147,37 @@ class TelemetryService:
 
         Returns existing parameter if already registered.
         """
+        # Explicit config class always wins; otherwise fall back to the
+        # conservative catalog inference so MQTT-discovered params (which
+        # arrive with an empty config block) still get validator range/rate
+        # coverage. NOTE: the catalog matches on short substrings (e.g.
+        # PRES, TEMP) and a future PID could false-positive (e.g. a
+        # hypothetical COMPRESSOR key contains PRES) — extend
+        # `_PARAM_CLASS_PATTERNS` conservatively.
+        resolved_class = param_class or infer_param_class(param_key)
+
         existing = await self.get_parameter(param_key)
         if existing:
             # Update metadata if provided and not already set
             if unit and not existing.unit:
                 existing.unit = unit
-            if param_class and not existing.param_class:
-                existing.param_class = param_class
-                existing.category = self._classify_param(param_class)
+            if not existing.param_class and resolved_class:
+                existing.param_class = resolved_class
+                # Only recompute category when it's unset or still the
+                # "other" default — category is user-editable in the admin
+                # UI, and a hand-tuned value must survive the class backfill.
+                if not existing.category or existing.category == "other":
+                    existing.category = self._classify_param(resolved_class)
             return existing
 
         # Create new parameter
-        category = self._classify_param(param_class)
+        category = self._classify_param(resolved_class)
         display_name = self._format_display_name(param_key)
 
-        # Set sensible defaults based on class
-        show_on_dashboard = param_class in (
+        # Set sensible defaults based on the resolved class. Only applied to
+        # brand-new rows — existing rows keep whatever show_on_dashboard/
+        # archive_only a user has hand-tuned in the admin UI.
+        show_on_dashboard = resolved_class in (
             "speed",
             "frequency",
             "temperature",
@@ -171,7 +190,7 @@ class TelemetryService:
             param_key=param_key,
             display_name=display_name,
             unit=unit,
-            param_class=param_class,
+            param_class=resolved_class,
             category=category,
             show_on_dashboard=show_on_dashboard,
             archive_only=archive_only,
@@ -869,9 +888,21 @@ class TelemetryService:
         if not alert_type or threshold_value is None:
             return
 
-        # Check cooldown - get last alert time from param metadata
-        # For now, we'll skip cooldown logic and let the dispatcher handle it
-        # The dispatcher already has a mechanism for this
+        # Cooldown - skip dispatch while a prior notification for this
+        # parameter is still within the admin-configured cooldown window
+        # (Settings -> LiveLink, `livelink_alert_cooldown_minutes`, default
+        # 30). WiCAN can emit several breaching frames a minute; without
+        # this every one would dispatch. Thresholds live on the param (not
+        # per-vehicle), so the cooldown is global-per-param. The setting is
+        # only read once a prior stamp exists — first-ever breaches skip
+        # the extra settings query.
+        now = utc_now()
+        if param.warning_last_notified_at is not None:
+            from app.services.livelink_service import LiveLinkService
+
+            cooldown_minutes = await LiveLinkService(self.db).get_alert_cooldown_minutes()
+            if now - param.warning_last_notified_at < timedelta(minutes=cooldown_minutes):
+                return
 
         # Get vehicle name for notification
         from app.models.vehicle import Vehicle
@@ -889,7 +920,7 @@ class TelemetryService:
         from app.services.notifications.dispatcher import NotificationDispatcher
 
         dispatcher = NotificationDispatcher(self.db)
-        await dispatcher.notify_livelink_threshold_alert(
+        dispatch_results = await dispatcher.notify_livelink_threshold_alert(
             vehicle_name=vehicle_name,
             parameter_name=param.display_name or param_key,
             value=value,
@@ -897,3 +928,12 @@ class TelemetryService:
             threshold_value=threshold_value,
             unit=param.unit,
         )
+
+        # Stamp the cooldown only when at least one service actually accepted
+        # the notification. The dispatcher records False for attempted-but-
+        # failed sends, so an all-failed dict (e.g. transient outage) must not
+        # start the cooldown clock and silence real alerts; nor must an empty
+        # dict (event disabled / no services enabled). The caller commits the
+        # surrounding transaction, so no explicit commit here.
+        if any(dispatch_results.values()):
+            param.warning_last_notified_at = now

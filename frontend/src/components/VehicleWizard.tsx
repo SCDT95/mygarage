@@ -15,8 +15,8 @@ import { X, ChevronLeft, ChevronRight, Check } from 'lucide-react'
 import VINInput from './VINInput'
 import { FormError } from './FormError'
 import type { VINDecodeResponse } from '../types/vin'
-import type { VehicleCreate, VehicleType } from '../types/vehicle'
-import { FUEL_TYPE_VALUES, FUEL_TYPE_LABELS } from '../constants/fuel'
+import type { VehicleCreate } from '../types/vehicle'
+import { FUEL_TYPE_VALUES, FUEL_TYPE_LABELS, type FuelType } from '../constants/fuel'
 import vehicleService from '../services/vehicleService'
 import { vehicleEditSchema, VEHICLE_TYPES, type VehicleEditFormData } from '../schemas/vehicle'
 
@@ -70,19 +70,27 @@ export default function VehicleWizard({ onClose, onSuccess }: VehicleWizardProps
 
     // Set all decoded values using setValue
     setValue('year', data.year || undefined)
-    setValue('make', data.make || undefined)
-    setValue('model', data.model || undefined)
+    setValue('make', data.make || null)
+    setValue('model', data.model || null)
     setValue('nickname', currentNickname || generatedNickname)
-    setValue('trim', data.trim || undefined)
-    setValue('body_class', data.body_class || undefined)
-    setValue('drive_type', data.drive_type || undefined)
+    setValue('trim', data.trim || null)
+    setValue('body_class', data.body_class || null)
+    setValue('drive_type', data.drive_type || null)
     setValue('doors', data.doors || undefined)
-    setValue('gvwr_class', data.gvwr || undefined)
-    setValue('displacement_l', data.engine?.displacement_l || undefined)
+    setValue('gvwr_class', data.gvwr || null)
+    setValue('displacement_l', data.engine?.displacement_l || null)
     setValue('cylinders', data.engine?.cylinders || undefined)
-    setValue('fuel_type', data.engine?.fuel_type || undefined)
-    setValue('transmission_type', data.transmission?.type || undefined)
-    setValue('transmission_speeds', data.transmission?.speeds || undefined)
+    // Use the server-normalized fuel type (canonical FuelTypeEnum value),
+    // not the raw NHTSA string — the vehicle API rejects non-canonical
+    // fuel_type values with 422. Fall back to null when NHTSA's fuel type
+    // couldn't be normalized. The OpenAPI type is a plain `string | null`
+    // (the Pydantic field isn't a literal enum), but the value is always
+    // one of FUEL_TYPE_VALUES when non-null — normalize_fuel_type() on the
+    // backend guarantees it. The form's own zod validation (fuelTypeSchema)
+    // re-checks this at submit time regardless.
+    setValue('fuel_type', (data.engine?.fuel_type_normalized as FuelType | null) || null)
+    setValue('transmission_type', data.transmission?.type || null)
+    setValue('transmission_speeds', data.transmission?.speeds || null)
   }
 
   // Handle photo selection
@@ -130,8 +138,8 @@ export default function VehicleWizard({ onClose, onSuccess }: VehicleWizardProps
       // Create vehicle with validated form data
       const vehicleData: VehicleCreate = {
         vin: vin,
-        nickname: validatedData.nickname!,
-        vehicle_type: validatedData.vehicle_type as VehicleType,
+        nickname: validatedData.nickname,
+        vehicle_type: validatedData.vehicle_type,
         year: validatedData.year,
         make: validatedData.make,
         model: validatedData.model,
