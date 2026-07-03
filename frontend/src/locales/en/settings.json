@@ -208,7 +208,12 @@
   },
   "events": {
     "title": "Event Notifications",
-    "enableServiceFirst": "Enable at least one notification service"
+    "enableServiceFirst": "Enable at least one notification service",
+    "defLow": {
+      "group": "DEF Level",
+      "label": "DEF Level Low",
+      "description": "Notify when diesel exhaust fluid (DEF) level falls to or below the threshold"
+    }
   },
   "backup": {
     "loading": "Loading backup data...",
