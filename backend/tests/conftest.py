@@ -243,6 +243,9 @@ async def test_vehicle(db_session: AsyncSession, test_user: dict[str, object]) -
             year=2018,
             make="Honda",
             model="Accord",
+            # Diesel so DEF-record routes (fuel-type gate, Task 5) accept it.
+            # Fuel-record tests don't validate fuel_type_used against this.
+            fuel_type="diesel",
         )
         db_session.add(vehicle)
         await db_session.commit()

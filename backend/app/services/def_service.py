@@ -18,6 +18,7 @@ from app.schemas.def_record import (
     DEFRecordUpdate,
 )
 from app.utils.cache import invalidate_cache_for_vehicle
+from app.utils.def_sync import ensure_def_capable
 from app.utils.logging_utils import sanitize_for_log
 from app.utils.odometer_sync import sync_odometer_from_record
 
@@ -103,7 +104,8 @@ class DEFRecordService:
         vin = vin.upper().strip()
 
         try:
-            _ = await get_vehicle_or_403(vin, current_user, self.db, require_write=True)
+            vehicle = await get_vehicle_or_403(vin, current_user, self.db, require_write=True)
+            ensure_def_capable(vehicle)
 
             record_dict = record_data.model_dump()
             record_dict["vin"] = vin
@@ -173,7 +175,8 @@ class DEFRecordService:
         vin = vin.upper().strip()
 
         try:
-            await get_vehicle_or_403(vin, current_user, self.db, require_write=True)
+            vehicle = await get_vehicle_or_403(vin, current_user, self.db, require_write=True)
+            ensure_def_capable(vehicle)
 
             result = await self.db.execute(
                 select(DEFRecord).where(DEFRecord.id == record_id).where(DEFRecord.vin == vin)
