@@ -17,12 +17,28 @@ from decimal import Decimal
 import pytest
 import pytest_asyncio
 from httpx import AsyncClient
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.def_record import DEFRecord
+from app.models.fuel import FuelRecord
 from app.models.vehicle import Vehicle
 
 GATE_DETAIL = "DEF tracking applies only to diesel vehicles"
+
+
+def _fuel_payload(
+    *, def_fill_level: float | None = None, odometer_km: float = 50000.0
+) -> dict[str, object]:
+    payload: dict[str, object] = {
+        "date": "2024-01-15",
+        "odometer_km": odometer_km,
+        "liters": 45.0,
+    }
+    if def_fill_level is not None:
+        payload["def_fill_level"] = def_fill_level
+    return payload
+
 
 # Task 6: vehicle-level `def_tank_capacity_liters` create/update gate.
 # Hand-typed literals ON PURPOSE (not imported from vehicle_service): the
@@ -324,3 +340,102 @@ class TestVehicleDEFCapacityGate:
         )
 
         assert response.status_code == 200
+
+
+@pytest.mark.integration
+@pytest.mark.def_records
+@pytest.mark.asyncio
+class TestFuelRecordDEFFillLevelGate:
+    """Task 7: gate `def_fill_level` on fuel record create/update.
+
+    This is the last interactive bypass surface for DEF auto-sync — a
+    non-diesel vehicle could otherwise get a DEF observation row written
+    via `sync_def_from_fuel_record` just by including `def_fill_level` on
+    a fuel record. A fuel record WITHOUT `def_fill_level` must be
+    completely unaffected by this gate, on any vehicle.
+    """
+
+    async def test_create_fuel_with_def_fill_level_on_gasoline_rejected(
+        self,
+        client: AsyncClient,
+        auth_headers,
+        db_session: AsyncSession,
+        gasoline_vehicle: Vehicle,
+    ):
+        response = await client.post(
+            f"/api/vehicles/{gasoline_vehicle.vin}/fuel",
+            json={"vin": gasoline_vehicle.vin, **_fuel_payload(def_fill_level=0.75)},
+            headers=auth_headers,
+        )
+
+        assert response.status_code == 400
+        assert response.json()["detail"] == GATE_DETAIL
+
+        # The gate must fire BEFORE any DB insert — no orphaned fuel record.
+        count_result = await db_session.execute(
+            select(func.count())
+            .select_from(FuelRecord)
+            .where(FuelRecord.vin == gasoline_vehicle.vin)
+        )
+        assert count_result.scalar() == 0
+
+    async def test_create_fuel_with_def_fill_level_on_diesel_allowed_and_syncs_def(
+        self,
+        client: AsyncClient,
+        auth_headers,
+        db_session: AsyncSession,
+        test_user: dict[str, object],
+    ):
+        vehicle = await _make_vehicle(db_session, test_user["id"], fuel_type="diesel")
+
+        response = await client.post(
+            f"/api/vehicles/{vehicle.vin}/fuel",
+            json={"vin": vehicle.vin, **_fuel_payload(def_fill_level=0.75)},
+            headers=auth_headers,
+        )
+
+        assert response.status_code == 201
+        record_id = response.json()["id"]
+
+        def_result = await db_session.execute(
+            select(DEFRecord).where(DEFRecord.origin_fuel_record_id == record_id)
+        )
+        def_record = def_result.scalar_one()
+        assert def_record.entry_type == "auto_fuel_sync"
+
+    async def test_create_fuel_without_def_fill_level_on_gasoline_allowed(
+        self,
+        client: AsyncClient,
+        auth_headers,
+        gasoline_vehicle: Vehicle,
+    ):
+        response = await client.post(
+            f"/api/vehicles/{gasoline_vehicle.vin}/fuel",
+            json={"vin": gasoline_vehicle.vin, **_fuel_payload()},
+            headers=auth_headers,
+        )
+
+        assert response.status_code == 201
+
+    async def test_update_fuel_add_def_fill_level_on_gasoline_rejected(
+        self,
+        client: AsyncClient,
+        auth_headers,
+        gasoline_vehicle: Vehicle,
+    ):
+        create_response = await client.post(
+            f"/api/vehicles/{gasoline_vehicle.vin}/fuel",
+            json={"vin": gasoline_vehicle.vin, **_fuel_payload()},
+            headers=auth_headers,
+        )
+        assert create_response.status_code == 201
+        record_id = create_response.json()["id"]
+
+        response = await client.put(
+            f"/api/vehicles/{gasoline_vehicle.vin}/fuel/{record_id}",
+            json={"def_fill_level": 0.5},
+            headers=auth_headers,
+        )
+
+        assert response.status_code == 400
+        assert response.json()["detail"] == GATE_DETAIL

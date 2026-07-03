@@ -20,7 +20,7 @@ from app.models.fuel import FuelRecord
 from app.models.user import User
 from app.schemas.fuel import FuelRecordCreate, FuelRecordResponse, FuelRecordUpdate
 from app.utils.cache import cached, invalidate_cache_for_vehicle
-from app.utils.def_sync import sync_def_from_fuel_record
+from app.utils.def_sync import ensure_def_capable, sync_def_from_fuel_record
 from app.utils.fuel_station_sync import resolve_fuel_station
 from app.utils.logging_utils import sanitize_for_log
 from app.utils.odometer_sync import sync_odometer_from_record
@@ -265,13 +265,17 @@ class FuelRecordService:
         vin = vin.upper().strip()
 
         try:
-            _ = await get_vehicle_or_403(vin, current_user, self.db, require_write=True)
+            vehicle = await get_vehicle_or_403(vin, current_user, self.db, require_write=True)
 
             record_dict = record_data.model_dump()
             record_dict["vin"] = vin
 
             # Pop DEF fill level before creating FuelRecord (not a fuel table column)
             def_fill_level = record_dict.pop("def_fill_level", None)
+            # Gate BEFORE any DB insert/mutation so a rejected request leaves
+            # no fuel record row behind (the bypass surface this closes).
+            if def_fill_level is not None:
+                ensure_def_capable(vehicle)
             # Pop the one_time_visit form-only flag — not a column on fuel_records
             one_time_visit = bool(record_dict.pop("one_time_visit", False))
             station_id_in = record_dict.pop("station_address_book_id", None)
@@ -419,7 +423,7 @@ class FuelRecordService:
         vin = vin.upper().strip()
 
         try:
-            await get_vehicle_or_403(vin, current_user, self.db, require_write=True)
+            vehicle = await get_vehicle_or_403(vin, current_user, self.db, require_write=True)
 
             result = await self.db.execute(
                 select(FuelRecord).where(FuelRecord.id == record_id).where(FuelRecord.vin == vin)
@@ -432,6 +436,10 @@ class FuelRecordService:
             update_data = record_data.model_dump(exclude_unset=True)
             def_fill_level = update_data.pop("def_fill_level", None)
             def_fill_level_was_sent = "def_fill_level" in record_data.model_fields_set
+            # Gate BEFORE any field mutation so a rejected request leaves the
+            # existing fuel record untouched.
+            if def_fill_level_was_sent and def_fill_level is not None:
+                ensure_def_capable(vehicle)
 
             # Mirror filled_at into date when only filled_at was sent.
             if (
