@@ -29,7 +29,11 @@ from app.models.vehicle_telemetry import (
     VehicleTelemetryLatest,
 )
 from app.services.telemetry_validator import TelemetryValidator
-from app.utils.autopid_normalizer import canonical_param_key, is_telemetry_param
+from app.utils.autopid_normalizer import (
+    canonical_param_key,
+    infer_param_class,
+    is_telemetry_param,
+)
 
 
 @dataclass
@@ -143,22 +147,33 @@ class TelemetryService:
 
         Returns existing parameter if already registered.
         """
+        # Explicit config class always wins; otherwise fall back to the
+        # conservative catalog inference so MQTT-discovered params (which
+        # arrive with an empty config block) still get validator range/rate
+        # coverage. NOTE: the catalog matches on short substrings (e.g.
+        # PRES, TEMP) and a future PID could false-positive (e.g. a
+        # hypothetical COMPRESSOR key contains PRES) — extend
+        # `_PARAM_CLASS_PATTERNS` conservatively.
+        resolved_class = param_class or infer_param_class(param_key)
+
         existing = await self.get_parameter(param_key)
         if existing:
             # Update metadata if provided and not already set
             if unit and not existing.unit:
                 existing.unit = unit
-            if param_class and not existing.param_class:
-                existing.param_class = param_class
-                existing.category = self._classify_param(param_class)
+            if not existing.param_class and resolved_class:
+                existing.param_class = resolved_class
+                existing.category = self._classify_param(resolved_class)
             return existing
 
         # Create new parameter
-        category = self._classify_param(param_class)
+        category = self._classify_param(resolved_class)
         display_name = self._format_display_name(param_key)
 
-        # Set sensible defaults based on class
-        show_on_dashboard = param_class in (
+        # Set sensible defaults based on the resolved class. Only applied to
+        # brand-new rows — existing rows keep whatever show_on_dashboard/
+        # archive_only a user has hand-tuned in the admin UI.
+        show_on_dashboard = resolved_class in (
             "speed",
             "frequency",
             "temperature",
@@ -171,7 +186,7 @@ class TelemetryService:
             param_key=param_key,
             display_name=display_name,
             unit=unit,
-            param_class=param_class,
+            param_class=resolved_class,
             category=category,
             show_on_dashboard=show_on_dashboard,
             archive_only=archive_only,
