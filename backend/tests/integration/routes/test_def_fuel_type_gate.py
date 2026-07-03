@@ -21,14 +21,18 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.def_record import DEFRecord
 from app.models.vehicle import Vehicle
-from app.services.vehicle_service import (
-    DEF_CAPACITY_CLEAR_FIRST_DETAIL as CAPACITY_CLEAR_FIRST_DETAIL,
-)
-from app.services.vehicle_service import (
-    DEF_CAPACITY_NON_DIESEL_DETAIL as CAPACITY_GATE_DETAIL,
-)
 
 GATE_DETAIL = "DEF tracking applies only to diesel vehicles"
+
+# Task 6: vehicle-level `def_tank_capacity_liters` create/update gate.
+# Hand-typed literals ON PURPOSE (not imported from vehicle_service): the
+# assertions must pin the user-facing text, so a regression in the service
+# constants (blank/garbled message) fails these tests instead of passing
+# tautologically.
+NON_DIESEL_CAPACITY_DETAIL = "DEF tank capacity applies only to diesel vehicles"
+CAPACITY_CLEAR_FIRST_DETAIL = (
+    "Changing fuel type away from diesel requires clearing the DEF tank capacity first"
+)
 
 
 def _unique_vin() -> str:
@@ -254,7 +258,7 @@ class TestVehicleDEFCapacityGate:
         response = await client.post("/api/vehicles", json=payload, headers=auth_headers)
 
         assert response.status_code == 400
-        assert response.json()["detail"] == CAPACITY_GATE_DETAIL
+        assert response.json()["detail"] == NON_DIESEL_CAPACITY_DETAIL
 
     async def test_create_diesel_with_capacity_allowed(self, client: AsyncClient, auth_headers):
         payload = _vehicle_create_payload(fuel_type="diesel", def_tank_capacity_liters=75.0)
@@ -273,7 +277,7 @@ class TestVehicleDEFCapacityGate:
         )
 
         assert response.status_code == 400
-        assert response.json()["detail"] == CAPACITY_GATE_DETAIL
+        assert response.json()["detail"] == NON_DIESEL_CAPACITY_DETAIL
 
     async def test_update_diesel_to_gasoline_without_clearing_capacity_rejected(
         self,
