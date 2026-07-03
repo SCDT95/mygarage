@@ -15,8 +15,10 @@ from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.constants.fuel import has_def_capacity, is_diesel_vehicle
 from app.database import AsyncSessionLocal
 from app.models import (
+    DEFRecord,
     InsurancePolicy,
     OdometerRecord,
     Recall,
@@ -248,6 +250,105 @@ async def check_odometer_milestones() -> None:
             logger.error("Odometer milestone check failed: %s", str(e))
 
 
+async def _get_def_low_threshold_percent(db: AsyncSession) -> int:
+    """Read notify_def_low_threshold_percent, clamped to 1-99.
+
+    Falls back to 25 when the setting is missing, empty, or non-numeric
+    ("banana") — a garbage threshold must not brick the whole check.
+    """
+    raw = await _get_setting(db, "notify_def_low_threshold_percent", "25")
+    try:
+        value = int(raw)
+    except TypeError, ValueError:
+        return 25
+    return max(1, min(99, value))
+
+
+async def check_def_levels() -> None:
+    """Check DEF (Diesel Exhaust Fluid) levels and send low-level notifications.
+
+    Runs daily at 11 AM UTC. For each non-archived, diesel-capable vehicle
+    with a configured DEF tank capacity, reads the latest fill_level (a 0-1
+    fraction) and compares it against notify_def_low_threshold_percent.
+
+    Uses crossing-based dedup via Vehicle.def_low_notified_at rather than a
+    time cooldown: DEF depletes over weeks, so a 24h cooldown would either
+    nag daily or (if long enough) swallow a genuine post-refill depletion.
+    Crossing at/under the threshold notifies once and stamps; recovering
+    above the threshold clears the stamp so the next dip re-notifies.
+    """
+    async with AsyncSessionLocal() as db:
+        try:
+            dispatcher = NotificationDispatcher(db)
+            if not await dispatcher._has_any_service_enabled():
+                return
+
+            notify_def_low = await _get_setting(db, "notify_def_low", "false")
+            if notify_def_low.lower() != "true":
+                return
+
+            threshold_percent = await _get_def_low_threshold_percent(db)
+
+            vehicles_result = await db.execute(select(Vehicle).where(Vehicle.archived_at.is_(None)))
+            vehicles = vehicles_result.scalars().all()
+
+            for vehicle in vehicles:
+                try:
+                    if not is_diesel_vehicle(vehicle.fuel_type, vehicle.fuel_type_secondary):
+                        continue
+                    if not has_def_capacity(vehicle.def_tank_capacity_liters):
+                        continue
+
+                    def_result = await db.execute(
+                        select(DEFRecord.fill_level, DEFRecord.date)
+                        .where(DEFRecord.vin == vehicle.vin, DEFRecord.fill_level.is_not(None))
+                        .order_by(DEFRecord.date.desc(), DEFRecord.id.desc())
+                        .limit(1)
+                    )
+                    row = def_result.first()
+                    if row is None:
+                        continue
+
+                    fill_level, record_date = row
+                    percent = fill_level * 100
+
+                    if percent <= threshold_percent:
+                        if vehicle.def_low_notified_at is None:
+                            vehicle_name = (
+                                vehicle.nickname or f"{vehicle.year} {vehicle.make} {vehicle.model}"
+                            )
+                            remaining_liters = fill_level * vehicle.def_tank_capacity_liters
+                            await dispatcher.notify_def_low(
+                                vehicle_name=vehicle_name,
+                                vin=vehicle.vin,
+                                percent=percent,
+                                remaining_liters=remaining_liters,
+                                as_of_date=record_date,
+                            )
+                            vehicle.def_low_notified_at = utc_now()
+                            logger.info(
+                                "DEF low notification: %s at %.1f%%",
+                                vehicle_name,
+                                percent,
+                            )
+                    elif vehicle.def_low_notified_at is not None:
+                        # Recovery reset — the next dip below threshold re-notifies.
+                        vehicle.def_low_notified_at = None
+
+                except Exception as e:
+                    logger.error(
+                        "Error checking DEF level for %s: %s",
+                        vehicle.vin,
+                        str(e),
+                    )
+
+            await db.commit()
+            logger.info("DEF level check complete")
+
+        except Exception as e:
+            logger.error("DEF level check failed: %s", str(e))
+
+
 async def check_recalls_all_vehicles() -> None:
     """Auto-check NHTSA recalls for all vehicles.
 
@@ -373,6 +474,7 @@ def start_scheduler() -> None:
         - Maintenance notification check at 8 AM UTC
         - Document expiration check at 9 AM UTC
         - Odometer milestone check at 10 AM UTC
+        - DEF level check at 11 AM UTC
         - NHTSA recall check Sunday 2 AM UTC
         - LiveLink: Session timeout check every minute
         - LiveLink: Device offline check every 5 minutes
@@ -438,6 +540,16 @@ def start_scheduler() -> None:
         hour=10,
         minute=0,
         id="check_odometer_milestones",
+        replace_existing=True,
+    )
+
+    # DEF level check at 11 AM UTC
+    scheduler.add_job(
+        check_def_levels,
+        "cron",
+        hour=11,
+        minute=0,
+        id="check_def_levels",
         replace_existing=True,
     )
 
