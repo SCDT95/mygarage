@@ -16,7 +16,7 @@ import VINInput from './VINInput'
 import { FormError } from './FormError'
 import type { VINDecodeResponse } from '../types/vin'
 import type { VehicleCreate, VehicleType } from '../types/vehicle'
-import { FUEL_TYPE_VALUES, FUEL_TYPE_LABELS } from '../constants/fuel'
+import { FUEL_TYPE_VALUES, FUEL_TYPE_LABELS, type FuelType } from '../constants/fuel'
 import vehicleService from '../services/vehicleService'
 import { vehicleEditSchema, VEHICLE_TYPES, type VehicleEditFormData } from '../schemas/vehicle'
 
@@ -80,7 +80,15 @@ export default function VehicleWizard({ onClose, onSuccess }: VehicleWizardProps
     setValue('gvwr_class', data.gvwr || undefined)
     setValue('displacement_l', data.engine?.displacement_l || undefined)
     setValue('cylinders', data.engine?.cylinders || undefined)
-    setValue('fuel_type', data.engine?.fuel_type || undefined)
+    // Use the server-normalized fuel type (canonical FuelTypeEnum value),
+    // not the raw NHTSA string — the vehicle API rejects non-canonical
+    // fuel_type values with 422. Fall back to null when NHTSA's fuel type
+    // couldn't be normalized. The OpenAPI type is a plain `string | null`
+    // (the Pydantic field isn't a literal enum), but the value is always
+    // one of FUEL_TYPE_VALUES when non-null — normalize_fuel_type() on the
+    // backend guarantees it. The form's own zod validation (fuelTypeSchema)
+    // re-checks this at submit time regardless.
+    setValue('fuel_type', (data.engine?.fuel_type_normalized as FuelType | null) || null)
     setValue('transmission_type', data.transmission?.type || undefined)
     setValue('transmission_speeds', data.transmission?.speeds || undefined)
   }

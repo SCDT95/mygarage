@@ -1,4 +1,5 @@
 import { z } from 'zod'
+import { FUEL_TYPE_VALUES } from '../constants/fuel'
 
 /**
  * Vehicle schema for VehicleEdit and VehicleWizard forms.
@@ -72,6 +73,20 @@ const optionalStringSchema = z
   .optional()
   .transform(val => (val === null || val === '') ? undefined : val)
 
+// fuel_type is a nullable column and the vehicle update endpoint uses
+// `model_dump(exclude_unset=True)` — an omitted key means "leave
+// unchanged". Unlike the generic optionalStringSchema above (which
+// collapses blank -> undefined, so axios/JSON.stringify drops the key),
+// selecting the empty ("—") option must submit an explicit `null` so the
+// backend can actually clear a previously-set fuel type. Validated against
+// the canonical enum (the <select> only ever emits one of these values or
+// "") so a stray non-canonical value fails fast in the form instead of
+// round-tripping to a 422 from the API.
+const fuelTypeSchema = z
+  .union([z.enum(FUEL_TYPE_VALUES), z.literal(''), z.null()])
+  .optional()
+  .transform(val => val || null)
+
 export const vehicleEditSchema = z.object({
   // Basic Information
   nickname: optionalStringSchema,
@@ -94,7 +109,7 @@ export const vehicleEditSchema = z.object({
   // Engine & Transmission
   displacement_l: optionalStringSchema, // Backend expects string
   cylinders: cylindersSchema,
-  fuel_type: optionalStringSchema,
+  fuel_type: fuelTypeSchema,
   transmission_type: optionalStringSchema,
   transmission_speeds: optionalStringSchema,
 

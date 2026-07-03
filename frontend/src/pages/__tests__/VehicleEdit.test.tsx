@@ -1,0 +1,130 @@
+import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { render, screen, fireEvent, waitFor } from '@testing-library/react'
+import { MemoryRouter, Route, Routes } from 'react-router-dom'
+import { FUEL_TYPE_VALUES, FUEL_TYPE_LABELS } from '../../constants/fuel'
+import type { Vehicle } from '../../types/vehicle'
+
+vi.mock('../../services/api', () => ({
+  default: {
+    get: vi.fn(),
+    put: vi.fn().mockResolvedValue({ data: {} }),
+  },
+}))
+
+// Requires AuthProvider otherwise — same mock pattern as ServiceVisitForm.test.tsx
+vi.mock('../../hooks/useUnitPreference', () => ({
+  useUnitPreference: () => ({ system: 'metric', showBoth: false }),
+}))
+
+// CurrencyInputPrefix depends on this, which needs AuthProvider
+vi.mock('../../hooks/useCurrencyPreference', () => ({
+  useCurrencyPreference: () => ({
+    currencyCode: 'USD',
+    locale: 'en-US',
+    formatCurrency: () => '$0.00',
+  }),
+}))
+
+import api from '../../services/api'
+import VehicleEdit from '../VehicleEdit'
+
+const mockedApi = vi.mocked(api)
+
+const baseVehicle: Vehicle = {
+  vin: 'TEST12345678901234',
+  nickname: 'Test Car',
+  vehicle_type: 'Car',
+  year: 2024,
+  make: 'Toyota',
+  model: 'Camry',
+  created_at: '2024-01-15T00:00:00Z',
+  archived_visible: true,
+  fuel_type: 'diesel',
+}
+
+function renderVehicleEdit(vehicle: Vehicle, vin = vehicle.vin): void {
+  mockedApi.get.mockResolvedValue({ data: vehicle })
+  render(
+    <MemoryRouter initialEntries={[`/vehicles/${vin}/edit`]}>
+      <Routes>
+        <Route path="/vehicles/:vin/edit" element={<VehicleEdit />} />
+      </Routes>
+    </MemoryRouter>,
+  )
+}
+
+describe('VehicleEdit — canonical fuel-type select', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    // On successful save the component does `window.location.href = ...`
+    // for a hard reload, which jsdom doesn't implement and logs loudly.
+    // Not under test here — silence it.
+    vi.spyOn(console, 'error').mockImplementation(() => {})
+  })
+
+  it('renders a select with the empty option plus all 10 canonical fuel types (motorized)', async () => {
+    renderVehicleEdit(baseVehicle)
+
+    const select = (await screen.findByLabelText('edit.fuelType')) as HTMLSelectElement
+    const options = Array.from(select.options)
+
+    expect(options).toHaveLength(FUEL_TYPE_VALUES.length + 1)
+    expect(options[0].value).toBe('')
+
+    FUEL_TYPE_VALUES.forEach((value, index) => {
+      const option = options[index + 1]
+      expect(option.value).toBe(value)
+      expect(option.textContent).toBe(FUEL_TYPE_LABELS[value])
+    })
+
+    expect(select.value).toBe('diesel')
+  })
+
+  it('keeps working for the non-motorized (fifth wheel) propane path', async () => {
+    renderVehicleEdit({
+      ...baseVehicle,
+      vehicle_type: 'FifthWheel',
+      fuel_type: 'propane_lpg',
+    })
+
+    const select = (await screen.findByLabelText('edit.fuelType')) as HTMLSelectElement
+    expect(select.value).toBe('propane_lpg')
+
+    const options = Array.from(select.options).map((o) => o.value)
+    expect(options).toContain('propane_lpg')
+    expect(options).toHaveLength(FUEL_TYPE_VALUES.length + 1)
+  })
+
+  it('submits fuel_type as null (not omitted) when the empty option is selected', async () => {
+    renderVehicleEdit(baseVehicle)
+
+    const select = (await screen.findByLabelText('edit.fuelType')) as HTMLSelectElement
+    fireEvent.change(select, { target: { value: '' } })
+
+    const saveButton = screen.getByRole('button', { name: 'edit.saveChanges' })
+    fireEvent.click(saveButton)
+
+    await waitFor(() => expect(mockedApi.put).toHaveBeenCalled())
+
+    const [, payload] = mockedApi.put.mock.calls[0]
+    // `null` here (not `undefined`) matters: JSON.stringify drops
+    // `undefined` properties, which would silently no-op against the
+    // backend's `exclude_unset=True` partial-update logic. toMatchObject
+    // distinguishes `null` from a missing/`undefined` key.
+    expect(payload).toMatchObject({ fuel_type: null })
+  })
+
+  it('leaves an untouched fuel_type value unchanged on submit', async () => {
+    renderVehicleEdit(baseVehicle)
+
+    await screen.findByLabelText('edit.fuelType')
+
+    const saveButton = screen.getByRole('button', { name: 'edit.saveChanges' })
+    fireEvent.click(saveButton)
+
+    await waitFor(() => expect(mockedApi.put).toHaveBeenCalled())
+
+    const [, payload] = mockedApi.put.mock.calls[0]
+    expect(payload).toMatchObject({ fuel_type: 'diesel' })
+  })
+})
