@@ -129,6 +129,33 @@ describe('VehicleEdit — canonical fuel-type select', () => {
   })
 })
 
+describe('VehicleEdit — sibling optional-string field clear-on-blank', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    vi.spyOn(console, 'error').mockImplementation(() => {})
+  })
+
+  it('submits nickname as null (not omitted) when the field is cleared', async () => {
+    renderVehicleEdit(baseVehicle)
+
+    const nicknameInput = (await screen.findByLabelText(
+      'edit.nickname *',
+    )) as HTMLInputElement
+    fireEvent.change(nicknameInput, { target: { value: '' } })
+
+    const saveButton = screen.getByRole('button', { name: 'edit.saveChanges' })
+    fireEvent.click(saveButton)
+
+    await waitFor(() => expect(mockedApi.put).toHaveBeenCalled())
+
+    const [, payload] = mockedApi.put.mock.calls[0]
+    // `null` here (not `undefined`) matters: JSON.stringify drops
+    // `undefined` properties, which would silently no-op against the
+    // backend's `exclude_unset=True` partial-update logic.
+    expect(payload).toMatchObject({ nickname: null })
+  })
+})
+
 describe('VehicleEdit — DEF tank capacity diesel-only gate', () => {
   beforeEach(() => {
     vi.clearAllMocks()

@@ -128,3 +128,41 @@ describe('vehicleEditSchema — fuel_type null-vs-undefined', () => {
     expect(roundTripped).toHaveProperty('fuel_type', null)
   })
 })
+
+// Task 19 (fold-in fix): the same null-vs-undefined bug documented above for
+// fuel_type also affects every other optional string field on this schema
+// (nickname, trim, make, model, etc. — all backed by optionalStringSchema).
+// Clearing one of these fields in the UI must submit an explicit `null`, not
+// `undefined` (which JSON.stringify drops, and which the backend's
+// `exclude_unset=True` partial update then reads as "leave unchanged").
+describe('vehicleEditSchema — sibling optional-string fields null-vs-undefined', () => {
+  it('passes through a set nickname unchanged', () => {
+    const result = vehicleEditSchema.parse({ nickname: 'My Truck' })
+    expect(result.nickname).toBe('My Truck')
+  })
+
+  it('transforms a blanked-out nickname ("") to null', () => {
+    const result = vehicleEditSchema.parse({ nickname: '' })
+    expect(result.nickname).toBeNull()
+  })
+
+  it('transforms an omitted nickname to null', () => {
+    const result = vehicleEditSchema.parse({})
+    expect(result.nickname).toBeNull()
+  })
+
+  it('transforms a null nickname to null', () => {
+    const result = vehicleEditSchema.parse({ nickname: null })
+    expect(result.nickname).toBeNull()
+  })
+
+  // JSON.stringify's null-vs-undefined serialization behavior is already
+  // locked in by the fuel_type round-trip test above; nickname goes through
+  // the same `nullOnBlank` transform, so re-asserting it here would only
+  // re-test JSON.stringify itself, not new schema logic.
+
+  it('transforms a blanked-out trim ("") to null (spot-check a second sibling field)', () => {
+    const result = vehicleEditSchema.parse({ trim: '' })
+    expect(result.trim).toBeNull()
+  })
+})

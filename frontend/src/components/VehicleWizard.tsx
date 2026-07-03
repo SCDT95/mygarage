@@ -70,15 +70,15 @@ export default function VehicleWizard({ onClose, onSuccess }: VehicleWizardProps
 
     // Set all decoded values using setValue
     setValue('year', data.year || undefined)
-    setValue('make', data.make || undefined)
-    setValue('model', data.model || undefined)
+    setValue('make', data.make || null)
+    setValue('model', data.model || null)
     setValue('nickname', currentNickname || generatedNickname)
-    setValue('trim', data.trim || undefined)
-    setValue('body_class', data.body_class || undefined)
-    setValue('drive_type', data.drive_type || undefined)
+    setValue('trim', data.trim || null)
+    setValue('body_class', data.body_class || null)
+    setValue('drive_type', data.drive_type || null)
     setValue('doors', data.doors || undefined)
-    setValue('gvwr_class', data.gvwr || undefined)
-    setValue('displacement_l', data.engine?.displacement_l || undefined)
+    setValue('gvwr_class', data.gvwr || null)
+    setValue('displacement_l', data.engine?.displacement_l || null)
     setValue('cylinders', data.engine?.cylinders || undefined)
     // Use the server-normalized fuel type (canonical FuelTypeEnum value),
     // not the raw NHTSA string — the vehicle API rejects non-canonical
@@ -89,8 +89,8 @@ export default function VehicleWizard({ onClose, onSuccess }: VehicleWizardProps
     // backend guarantees it. The form's own zod validation (fuelTypeSchema)
     // re-checks this at submit time regardless.
     setValue('fuel_type', (data.engine?.fuel_type_normalized as FuelType | null) || null)
-    setValue('transmission_type', data.transmission?.type || undefined)
-    setValue('transmission_speeds', data.transmission?.speeds || undefined)
+    setValue('transmission_type', data.transmission?.type || null)
+    setValue('transmission_speeds', data.transmission?.speeds || null)
   }
 
   // Handle photo selection
