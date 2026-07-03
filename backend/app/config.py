@@ -1,10 +1,11 @@
 """Configuration settings for MyGarage application."""
 
+import logging
 import os
 import tomllib
 from pathlib import Path
 
-from pydantic import Field
+from pydantic import Field, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 from app.utils.secret_key import get_or_create_secret_key
@@ -22,6 +23,11 @@ def get_version() -> str:
         return "0.0.0-dev"
 
 
+# Default HTTP bind port. Single source of truth for both the field default and
+# the service-link guard below (issue #102).
+_DEFAULT_PORT = 8686
+
+
 class Settings(BaseSettings):
     """Application settings."""
 
@@ -33,7 +39,34 @@ class Settings(BaseSettings):
 
     # Server
     host: str = "0.0.0.0"
-    port: int = 8686
+    port: int = _DEFAULT_PORT
+
+    @field_validator("port", mode="before")
+    @classmethod
+    def _ignore_service_link_port(cls, v: object) -> object:
+        """Ignore Docker/Kubernetes service-link ``PORT`` variables.
+
+        When a Kubernetes Service is named ``mygarage``, the kubelet injects a
+        Docker-link compatibility variable ``MYGARAGE_PORT=tcp://<clusterIP>:<port>``.
+        That collides exactly with ``env_prefix='MYGARAGE_'`` + this ``port``
+        field, so pydantic tries to parse ``tcp://...`` as an int and crashes
+        the app at startup (issue #102).
+
+        Fall back to the default when the value is not a plain integer, so the
+        app boots without requiring ``enableServiceLinks: false``. Explicit
+        numeric overrides (e.g. ``MYGARAGE_PORT=9000``) are untouched.
+        """
+        if isinstance(v, str) and not v.strip().lstrip("+-").isdigit():
+            logging.getLogger(__name__).warning(
+                "Ignoring non-integer MYGARAGE_PORT=%r (looks like a "
+                "Kubernetes/Docker service-link variable); falling back to "
+                "default port %d. Set MYGARAGE_PORT to an integer, or set "
+                "enableServiceLinks: false on the pod, to override.",
+                v,
+                _DEFAULT_PORT,
+            )
+            return _DEFAULT_PORT
+        return v
 
     # Database
     database_url: str = "sqlite+aiosqlite:////data/mygarage.db"

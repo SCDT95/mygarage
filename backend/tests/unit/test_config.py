@@ -74,3 +74,44 @@ class TestCSRFTokenExpiry:
         expected = now + timedelta(minutes=30)
         delta = abs((expiry - expected).total_seconds())
         assert delta < 5
+
+
+class TestServiceLinkPort:
+    """Regression tests for issue #102 — K8s/Docker service-link PORT collision."""
+
+    def test_kubernetes_service_link_port_is_ignored(self, monkeypatch):
+        """A K8s Service named 'mygarage' injects MYGARAGE_PORT=tcp://ip:port.
+
+        That must not crash startup; the port falls back to the default.
+        """
+        monkeypatch.setenv("MYGARAGE_PORT", "tcp://10.104.104.172:8686")
+
+        from app.config import Settings
+
+        s = Settings()
+        assert s.port == 8686  # default, not the tcp:// string
+
+    def test_explicit_numeric_port_still_applies(self, monkeypatch):
+        """A real integer MYGARAGE_PORT override is preserved."""
+        monkeypatch.setenv("MYGARAGE_PORT", "9000")
+
+        from app.config import Settings
+
+        s = Settings()
+        assert s.port == 9000
+
+    def test_blank_port_falls_back_to_default(self, monkeypatch):
+        """An empty MYGARAGE_PORT falls back to the default rather than erroring."""
+        monkeypatch.setenv("MYGARAGE_PORT", "")
+
+        from app.config import Settings
+
+        s = Settings()
+        assert s.port == 8686
+
+    def test_default_port_when_unset(self):
+        """Sanity: with no env var, the default port applies."""
+        from app.config import Settings
+
+        s = Settings()
+        assert s.port == 8686
