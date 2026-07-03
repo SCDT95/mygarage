@@ -44,6 +44,60 @@ def is_telemetry_param(canonical_key: str) -> bool:
     return canonical_key not in NON_TELEMETRY_PARAM_KEYS
 
 
+# Ordered, conservative substring/prefix catalog mapping a token found in the
+# canonical (UPPERCASE) param key to a `TelemetryValidator.PARAM_CLASS_RANGES`
+# class. First match wins. A param key that matches nothing returns None from
+# infer_param_class(), which leaves it unvalidated — identical to today's
+# behavior for every MQTT-ingested param, so this can only ever add coverage,
+# never regress it.
+#
+# Ordering rationale: percentage tokens are checked first (highest-confidence,
+# narrowest matches: pedal/throttle/load/fuel-level keys never collide with
+# anything below). Pressure is checked before temperature so a hypothetical
+# future PID combining both concepts resolves to pressure. The distance
+# family is last — none of its tokens collide with anything above in the
+# live fixture set. Only the shortest token per class is listed (e.g. "PRES"
+# alone, not "PRESSURE" too) since the shorter token is always a substring of
+# the longer one — any key containing "PRESSURE" already contains "PRES", so
+# the longer form would never change the match outcome.
+_PARAM_CLASS_PATTERNS: tuple[tuple[str, str], ...] = (
+    ("FUELTANKLEVEL", "percentage"),
+    ("FUELLEVEL", "percentage"),
+    ("THROTTLE", "percentage"),
+    ("PEDALPOS", "percentage"),
+    ("ENGINELOAD", "percentage"),
+    ("RPM", "frequency"),
+    ("SPEED", "speed"),
+    ("PRES", "pressure"),
+    ("TEMP", "temperature"),
+    ("VOLT", "voltage"),
+    ("A6-", "distance"),
+    ("ODOMETER", "distance"),
+    ("ODO", "distance"),
+    ("MILEAGE", "distance"),
+    ("DISTANCE", "distance"),
+)
+
+
+def infer_param_class(param_key: str) -> str | None:
+    """Infer a conservative telemetry `param_class` from a param key.
+
+    Normalizes the key through `canonical_param_key` first so mixed-case
+    input (e.g. "2f-FuelTankLevel") infers identically to its canonical
+    form. Scans `_PARAM_CLASS_PATTERNS` in order and returns the class of
+    the first matching substring token, or None if nothing matches.
+
+    Only emits classes `TelemetryValidator.PARAM_CLASS_RANGES` understands.
+    A None result is never worse than today: an unset param_class already
+    bypasses all range/rate-of-change validation.
+    """
+    canonical = canonical_param_key(param_key)
+    for token, param_class in _PARAM_CLASS_PATTERNS:
+        if token in canonical:
+            return param_class
+    return None
+
+
 def normalize_autopid_data(
     raw_data: dict[str, Any] | list[Any],
 ) -> dict[str, float | int | str | None]:
