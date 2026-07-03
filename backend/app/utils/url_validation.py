@@ -24,6 +24,7 @@ References:
 # pyright: reportReturnType=false, reportOptionalOperand=false
 
 import ipaddress
+import os
 import socket
 from urllib.parse import ParseResult, urlparse
 
@@ -299,7 +300,69 @@ def validate_url_for_ssrf(
     return parsed
 
 
-def validate_oidc_url(url: str) -> ParseResult:
+def _get_trusted_hosts() -> set[str]:
+    """Get trusted hosts from MYGARAGE_TRUSTED_HOSTS env var.
+
+    Returns:
+        Set of trusted hostnames, IPs, or CIDR ranges.
+    """
+    raw = os.environ.get("MYGARAGE_TRUSTED_HOSTS", "")
+    return {h.strip() for h in raw.split(",") if h.strip()} if raw else set()
+
+
+def _is_trusted(hostname: str, trusted_hosts: set[str]) -> bool:
+    """Check if a hostname matches any trusted host entry.
+
+    Supports exact hostname match, exact IP match, and CIDR range match.
+    Also resolves hostnames via DNS to check if resolved IPs match.
+
+    Args:
+        hostname: Hostname or IP to check.
+        trusted_hosts: Set of trusted hostnames, IPs, or CIDR strings.
+
+    Returns:
+        True if the hostname is trusted.
+    """
+    if not trusted_hosts:
+        return False
+
+    # Exact hostname/IP match
+    if hostname in trusted_hosts:
+        return True
+
+    # Check if hostname is an IP in a trusted CIDR
+    try:
+        ip = ipaddress.ip_address(hostname)
+        for trusted in trusted_hosts:
+            if "/" in trusted:
+                try:
+                    if ip in ipaddress.ip_network(trusted, strict=False):
+                        return True
+                except ValueError:
+                    continue
+    except ValueError:
+        pass
+
+    # DNS resolution — check if resolved IPs match trusted entries
+    try:
+        for _, _, _, _, addr in socket.getaddrinfo(hostname, None):
+            resolved_ip = ipaddress.ip_address(addr[0])
+            if str(resolved_ip) in trusted_hosts:
+                return True
+            for trusted in trusted_hosts:
+                if "/" in trusted:
+                    try:
+                        if resolved_ip in ipaddress.ip_network(trusted, strict=False):
+                            return True
+                    except ValueError:
+                        continue
+    except socket.gaierror, ValueError, OSError:
+        pass
+
+    return False
+
+
+def validate_oidc_url(url: str, trusted_hosts: set[str] | None = None) -> ParseResult:
     """Validate a URL for OIDC provider endpoints.
 
     Convenience wrapper for OIDC-specific validation:
@@ -308,8 +371,14 @@ def validate_oidc_url(url: str) -> ParseResult:
     - Performs DNS rebinding checks
     - No domain whitelist (allows any public domain)
 
+    A self-hosted OIDC issuer (e.g. Rauthy behind split-horizon DNS) may
+    resolve to a private LAN IP. Such hosts can be allowlisted via the
+    MYGARAGE_TRUSTED_HOSTS env var (comma-separated hostnames, IPs, or CIDR
+    ranges), which relaxes the private-IP block for matching hosts only.
+
     Args:
         url: OIDC provider URL (e.g., issuer, token endpoint, userinfo endpoint)
+        trusted_hosts: Override for trusted hosts (defaults to env var)
 
     Returns:
         Parsed URL object if validation passes
@@ -318,10 +387,16 @@ def validate_oidc_url(url: str) -> ParseResult:
         SSRFProtectionError: If URL fails SSRF validation
         ValueError: If URL is malformed
     """
+    if trusted_hosts is None:
+        trusted_hosts = _get_trusted_hosts()
+
+    hostname = urlparse(url).hostname or ""
+    skip_private_block = _is_trusted(hostname, trusted_hosts)
+
     return validate_url_for_ssrf(
         url,
         allowed_schemes=["http", "https"],
-        block_private_ips=True,
+        block_private_ips=not skip_private_block,
         resolve_dns=True,
     )
 

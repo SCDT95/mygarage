@@ -268,6 +268,33 @@ class TestValidateOIDCUrl:
         with pytest.raises(SSRFProtectionError):
             validate_oidc_url("http://localhost:8080/")
 
+    def test_private_issuer_blocked_without_trust(self):
+        """A private-IP issuer is blocked when not allowlisted."""
+        with pytest.raises(SSRFProtectionError):
+            validate_oidc_url("https://10.10.1.11/auth/v1/")
+
+    def test_private_issuer_allowed_when_trusted_exact(self):
+        """A private-IP issuer passes when its host is an exact trusted entry."""
+        result = validate_oidc_url("https://10.10.1.11/auth/v1/", trusted_hosts={"10.10.1.11"})
+        assert result.hostname == "10.10.1.11"
+
+    def test_private_issuer_allowed_when_trusted_cidr(self):
+        """A private-IP issuer passes when its host falls in a trusted CIDR."""
+        result = validate_oidc_url("https://10.10.1.11/auth/v1/", trusted_hosts={"10.0.0.0/8"})
+        assert result.hostname == "10.10.1.11"
+
+    def test_trusted_hosts_read_from_env(self, monkeypatch):
+        """Trusted hosts default to the MYGARAGE_TRUSTED_HOSTS env var."""
+        monkeypatch.setenv("MYGARAGE_TRUSTED_HOSTS", "10.10.1.11")
+        result = validate_oidc_url("https://10.10.1.11/auth/v1/")
+        assert result.hostname == "10.10.1.11"
+
+    def test_untrusted_private_issuer_still_blocked_with_env(self, monkeypatch):
+        """A private host not in the env allowlist stays blocked."""
+        monkeypatch.setenv("MYGARAGE_TRUSTED_HOSTS", "10.10.1.11")
+        with pytest.raises(SSRFProtectionError):
+            validate_oidc_url("https://192.168.1.50/auth/v1/")
+
 
 @pytest.mark.unit
 class TestValidateNHTSAUrl:
