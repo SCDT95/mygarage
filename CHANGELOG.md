@@ -10,6 +10,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 - OIDC: `MYGARAGE_TRUSTED_HOSTS` allow-lists a self-hosted issuer that resolves to a private/LAN IP (split-horizon DNS), relaxing the SSRF private-IP block for those hosts only.
 
+### Fixed
+- Fuel: the "Fill-up time" field now enters time in unambiguous 24-hour form (HH:MM), replacing the native datetime-local widget whose 12/24-hour behavior varied by browser locale (#109).
+
 ## [2.31.0-rc1] - 2026-07-03
 
 ### Added
