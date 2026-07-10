@@ -1,16 +1,19 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { screen, waitFor } from '@testing-library/react'
+import { screen, waitFor, fireEvent } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { render } from '../../__tests__/test-utils'
 import FuelRecordForm from '../FuelRecordForm'
 import type { Vehicle } from '../../types/vehicle'
 
 const mockedApiGet = vi.fn()
+const mockedApiPost = vi.fn().mockResolvedValue({ data: {} })
+const mockedApiPut = vi.fn().mockResolvedValue({ data: {} })
 
 vi.mock('../../services/api', () => ({
   default: {
     get: (...args: unknown[]) => mockedApiGet(...args),
-    post: vi.fn().mockResolvedValue({ data: {} }),
-    put: vi.fn().mockResolvedValue({ data: {} }),
+    post: (...args: unknown[]) => mockedApiPost(...args),
+    put: (...args: unknown[]) => mockedApiPut(...args),
   },
 }))
 
@@ -81,5 +84,95 @@ describe('FuelRecordForm — DEF tank level visibility (diesel-only gate)', () =
 
     await waitFor(() => expect(mockedApiGet).toHaveBeenCalled())
     expect(screen.queryByText('fuel.defTankLevel')).not.toBeInTheDocument()
+  })
+})
+
+const REC = { id: 1, vin: DEFAULT_PROPS.vin, date: '2026-04-30', filled_at: '2026-04-30T22:00' }
+const timeInput = () => document.getElementById('filled_at_time') as HTMLInputElement
+const dateInput = (id: string) => document.getElementById(id) as HTMLInputElement
+
+describe('FuelRecordForm — 24-hour fill-up time (issue #109)', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    // "More details" expansion persists in localStorage; clear it so a click
+    // reliably OPENS (not toggles-closed) across tests (Codex R1-F1).
+    localStorage.removeItem('fuel_form:more_details_expanded')
+  })
+
+  async function openMoreDetails(user: ReturnType<typeof userEvent.setup>) {
+    await user.click(screen.getByText('fuel.moreDetails')) // collapsed by default
+  }
+
+  it('submits filled_at=YYYY-MM-DDTHH:mm from a RAW, never-blurred time (recompute proof)', async () => {
+    const user = userEvent.setup()
+    mockedApiGet.mockResolvedValue({ data: mockVehicle({ fuel_type: 'gasoline' }) })
+    const { container } = render(<FuelRecordForm {...DEFAULT_PROPS} />)
+    await waitFor(() => expect(mockedApiGet).toHaveBeenCalled())
+
+    fireEvent.change(dateInput('date'), { target: { value: '2026-04-30' } }) // required top field
+    await openMoreDetails(user)
+    fireEvent.change(dateInput('filled_at_date'), { target: { value: '2026-04-30' } })
+    // Raw compact value, NO blur — the field still holds "2200" at submit time.
+    fireEvent.change(timeInput(), { target: { value: '2200' } })
+    fireEvent.submit(container.querySelector('form') as HTMLFormElement)
+
+    await waitFor(() => expect(mockedApiPost).toHaveBeenCalled())
+    const body = mockedApiPost.mock.calls.at(-1)?.[1] as Record<string, unknown>
+    expect(body.filled_at).toBe('2026-04-30T22:00')
+  })
+
+  it('sends filled_at=null when clearing an existing timestamp (so the clear persists)', async () => {
+    const user = userEvent.setup()
+    mockedApiGet.mockResolvedValue({ data: mockVehicle({ fuel_type: 'gasoline' }) })
+    const { container } = render(<FuelRecordForm {...DEFAULT_PROPS} record={REC as never} />)
+    await waitFor(() => expect(mockedApiGet).toHaveBeenCalled())
+
+    await openMoreDetails(user)
+    // Clear BOTH sub-fields — clearing only one would trip the partial-value
+    // guard (both-or-neither), not clear the timestamp (Codex R1-F1).
+    fireEvent.change(dateInput('filled_at_date'), { target: { value: '' } })
+    fireEvent.change(timeInput(), { target: { value: '' } })
+    fireEvent.submit(container.querySelector('form') as HTMLFormElement)
+
+    await waitFor(() => expect(mockedApiPut).toHaveBeenCalled())
+    const body = mockedApiPut.mock.calls.at(-1)?.[1] as Record<string, unknown>
+    expect(body.filled_at).toBeNull()  // explicit null clears; undefined would preserve
+  })
+
+  it('blocks submission (no API call) on an invalid non-empty time — visible input not silently lost (Codex R1-H1)', async () => {
+    const user = userEvent.setup()
+    mockedApiGet.mockResolvedValue({ data: mockVehicle({ fuel_type: 'gasoline' }) })
+    const { container } = render(<FuelRecordForm {...DEFAULT_PROPS} />)
+    await waitFor(() => expect(mockedApiGet).toHaveBeenCalled())
+    fireEvent.change(dateInput('date'), { target: { value: '2026-04-30' } })
+    await openMoreDetails(user)
+    fireEvent.change(timeInput(), { target: { value: '25:00' } }) // invalid, non-empty
+    fireEvent.submit(container.querySelector('form') as HTMLFormElement)
+    // Error surfaces (the i18n test mock renders the KEY) and no create fires.
+    await screen.findByText('fuel.invalidFilledTime')
+    expect(mockedApiPost).not.toHaveBeenCalled()
+  })
+
+  it('blocks submission when only a date is entered (partial timestamp, Codex R1-H2)', async () => {
+    const user = userEvent.setup()
+    mockedApiGet.mockResolvedValue({ data: mockVehicle({ fuel_type: 'gasoline' }) })
+    const { container } = render(<FuelRecordForm {...DEFAULT_PROPS} />)
+    await waitFor(() => expect(mockedApiGet).toHaveBeenCalled())
+    fireEvent.change(dateInput('date'), { target: { value: '2026-04-30' } }) // required top field
+    await openMoreDetails(user)
+    fireEvent.change(dateInput('filled_at_date'), { target: { value: '2026-04-30' } }) // date, no time
+    fireEvent.submit(container.querySelector('form') as HTMLFormElement)
+    await screen.findByText('fuel.partialFilledAt')
+    expect(mockedApiPost).not.toHaveBeenCalled()
+  })
+
+  it('seeds both controls when editing an existing record', async () => {
+    const user = userEvent.setup()
+    mockedApiGet.mockResolvedValue({ data: mockVehicle({ fuel_type: 'gasoline' }) })
+    render(<FuelRecordForm {...DEFAULT_PROPS} record={REC as never} />)
+    await waitFor(() => expect(mockedApiGet).toHaveBeenCalled())
+    await openMoreDetails(user)
+    expect(dateInput('filled_at_date').value).toBe('2026-04-30')
+    expect(timeInput().value).toBe('22:00')
   })
 })
