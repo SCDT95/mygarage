@@ -2,6 +2,7 @@
 
 import logging
 import os
+import re
 import tomllib
 from pathlib import Path
 
@@ -67,6 +68,29 @@ class Settings(BaseSettings):
             )
             return _DEFAULT_PORT
         return v
+
+    # Reverse-proxy subpath (issue #107). Empty = served at domain root. The
+    # proxy must strip this prefix before forwarding; we use it to generate
+    # correct doc/asset/media/OIDC URLs. Normalized to "/seg" or "".
+    root_path: str = ""
+
+    @field_validator("root_path", mode="before")
+    @classmethod
+    def _normalize_root_path(cls, v: object) -> str:
+        """Normalize to '/seg[/seg...]' or ''. The value is interpolated into
+        <base href> and generated URLs, so reject anything that isn't a plain
+        path: query/fragment/backslash/quote/whitespace/dot-segments (Codex
+        R1-F2). Operator-set, but validated as defense-in-depth."""
+        if not v or not str(v).strip():
+            return ""
+        segments = [s for s in str(v).strip().strip("/").split("/") if s]
+        if not segments:
+            return ""
+        seg_re = re.compile(r"^[A-Za-z0-9._~-]+$")
+        for s in segments:
+            if s in (".", "..") or not seg_re.match(s):
+                raise ValueError(f"invalid MYGARAGE_ROOT_PATH segment: {s!r}")
+        return "/" + "/".join(segments)
 
     # Database
     database_url: str = "sqlite+aiosqlite:////data/mygarage.db"
