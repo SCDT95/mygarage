@@ -34,7 +34,7 @@ async def _sync_to_vendor(
     Updates to existing vendor fields are intentionally not performed here —
     a vendor may already be linked to service visits.
 
-    Skipped for `poi_category='fuel_station'` entries — gas stations are not
+    Skipped for `poi_category='gas_station'` entries — gas stations are not
     vendors in MyGarage's domain model and would pollute the vendors table.
     The fuel-record save path is the primary creator of these entries.
 
@@ -45,7 +45,7 @@ async def _sync_to_vendor(
         return
     # Defense-in-depth guard: gas stations never sync to vendors, regardless
     # of how the entry was created.
-    if getattr(entry, "poi_category", None) == "fuel_station":
+    if getattr(entry, "poi_category", None) == "gas_station":
         return
     name = business_name.strip()[:100]  # Enforce vendors.name VARCHAR(100) limit
     try:
@@ -79,7 +79,7 @@ async def list_entries(
     poi_category: str | None = Query(
         None,
         description=(
-            "Filter by POI category (e.g. 'fuel_station' for the Gas Stations "
+            "Filter by POI category (e.g. 'gas_station' for the Gas Stations "
             "filter view). Combine with `search` for autocomplete."
         ),
     ),
@@ -107,7 +107,7 @@ async def list_entries(
 
     # When filtering to fuel stations, rank by usage so frequently-visited
     # stations float to the top of autocomplete suggestions.
-    if poi_category == "fuel_station":
+    if poi_category == "gas_station":
         query = query.order_by(
             AddressBookEntry.usage_count.desc(),
             AddressBookEntry.last_used.desc().nullslast(),
