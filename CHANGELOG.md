@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 - OIDC: `MYGARAGE_TRUSTED_HOSTS` allow-lists a self-hosted issuer that resolves to a private/LAN IP (split-horizon DNS), relaxing the SSRF private-IP block for those hosts only.
+- Reverse proxy: `MYGARAGE_ROOT_PATH` serves MyGarage under a URL subpath (e.g. `/mygarage`) behind a prefix-stripping proxy — OIDC, PWA, media, and deep-links included; no image rebuild required (#107).
 
 ## [2.31.0-rc1] - 2026-07-03
 
