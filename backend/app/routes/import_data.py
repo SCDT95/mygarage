@@ -948,7 +948,7 @@ async def import_vehicle_json(
             results["service_records"]["success"] += 1
         except Exception as e:
             results["service_records"]["errors"] += 1
-            logger.warning("Import: service record %s failed: %s", idx, e)
+            logger.warning("Import: service record %s failed: %s", idx, sanitize_for_log(e))
             results["errors"].append(f"Service record {idx}: could not be imported")
 
     # Import fuel records
@@ -993,7 +993,7 @@ async def import_vehicle_json(
             results["fuel_records"]["success"] += 1
         except Exception as e:
             results["fuel_records"]["errors"] += 1
-            logger.warning("Import: fuel record %s failed: %s", idx, e)
+            logger.warning("Import: fuel record %s failed: %s", idx, sanitize_for_log(e))
             results["errors"].append(f"Fuel record {idx}: could not be imported")
 
     # Import DEF records
@@ -1047,7 +1047,7 @@ async def import_vehicle_json(
             results["def_records"]["success"] += 1
         except Exception as e:
             results["def_records"]["errors"] += 1
-            logger.warning("Import: DEF record %s failed: %s", idx, e)
+            logger.warning("Import: DEF record %s failed: %s", idx, sanitize_for_log(e))
             results["errors"].append(f"DEF record {idx}: could not be imported")
 
     # Import odometer records
@@ -1082,7 +1082,7 @@ async def import_vehicle_json(
             results["odometer_records"]["success"] += 1
         except Exception as e:
             results["odometer_records"]["errors"] += 1
-            logger.warning("Import: odometer record %s failed: %s", idx, e)
+            logger.warning("Import: odometer record %s failed: %s", idx, sanitize_for_log(e))
             results["errors"].append(f"Odometer record {idx}: could not be imported")
 
     # Import reminders → map to vehicle_reminders
@@ -1121,7 +1121,7 @@ async def import_vehicle_json(
             results["reminders"]["success"] += 1
         except Exception as e:
             results["reminders"]["errors"] += 1
-            logger.warning("Import: reminder %s failed: %s", idx, e)
+            logger.warning("Import: reminder %s failed: %s", idx, sanitize_for_log(e))
             results["errors"].append(f"Reminder {idx}: could not be imported")
 
     # Import notes
@@ -1139,7 +1139,7 @@ async def import_vehicle_json(
             results["notes"]["success"] += 1
         except Exception as e:
             results["notes"]["errors"] += 1
-            logger.warning("Import: note %s failed: %s", idx, e)
+            logger.warning("Import: note %s failed: %s", idx, sanitize_for_log(e))
             results["errors"].append(f"Note {idx}: could not be imported")
 
     await db.commit()
