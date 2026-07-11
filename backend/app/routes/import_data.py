@@ -948,7 +948,8 @@ async def import_vehicle_json(
             results["service_records"]["success"] += 1
         except Exception as e:
             results["service_records"]["errors"] += 1
-            results["errors"].append(f"Service record {idx}: {str(e)}")
+            logger.warning("Import: service record %s failed: %s", idx, e)
+            results["errors"].append(f"Service record {idx}: could not be imported")
 
     # Import fuel records
     for idx, record_data in enumerate(data.get("fuel_records", [])):
@@ -992,7 +993,8 @@ async def import_vehicle_json(
             results["fuel_records"]["success"] += 1
         except Exception as e:
             results["fuel_records"]["errors"] += 1
-            results["errors"].append(f"Fuel record {idx}: {str(e)}")
+            logger.warning("Import: fuel record %s failed: %s", idx, e)
+            results["errors"].append(f"Fuel record {idx}: could not be imported")
 
     # Import DEF records
     # Deliberately NOT gated by ensure_def_capable (unlike import_def_csv and
@@ -1045,7 +1047,8 @@ async def import_vehicle_json(
             results["def_records"]["success"] += 1
         except Exception as e:
             results["def_records"]["errors"] += 1
-            results["errors"].append(f"DEF record {idx}: {str(e)}")
+            logger.warning("Import: DEF record %s failed: %s", idx, e)
+            results["errors"].append(f"DEF record {idx}: could not be imported")
 
     # Import odometer records
     for idx, record_data in enumerate(data.get("odometer_records", [])):
@@ -1079,7 +1082,8 @@ async def import_vehicle_json(
             results["odometer_records"]["success"] += 1
         except Exception as e:
             results["odometer_records"]["errors"] += 1
-            results["errors"].append(f"Odometer record {idx}: {str(e)}")
+            logger.warning("Import: odometer record %s failed: %s", idx, e)
+            results["errors"].append(f"Odometer record {idx}: could not be imported")
 
     # Import reminders → map to vehicle_reminders
     for idx, reminder_data in enumerate(data.get("reminders", [])):
@@ -1117,7 +1121,8 @@ async def import_vehicle_json(
             results["reminders"]["success"] += 1
         except Exception as e:
             results["reminders"]["errors"] += 1
-            results["errors"].append(f"Reminder {idx}: {str(e)}")
+            logger.warning("Import: reminder %s failed: %s", idx, e)
+            results["errors"].append(f"Reminder {idx}: could not be imported")
 
     # Import notes
     for idx, note_data in enumerate(data.get("notes", [])):
@@ -1134,7 +1139,8 @@ async def import_vehicle_json(
             results["notes"]["success"] += 1
         except Exception as e:
             results["notes"]["errors"] += 1
-            results["errors"].append(f"Note {idx}: {str(e)}")
+            logger.warning("Import: note %s failed: %s", idx, e)
+            results["errors"].append(f"Note {idx}: could not be imported")
 
     await db.commit()
 

@@ -97,7 +97,7 @@ export default defineConfig({
     // is independent of dist so the poll doesn't race the build.
     {
       command:
-        'rm -f /tmp/mygarage-e2e-subpath.db* && bun run build && cd ../backend && uv run python -m granian --interface asgi --host 127.0.0.1 --port ' +
+        'rm -f /tmp/mygarage-e2e-subpath.db* && rm -rf /tmp/mygarage-e2e-subpath-data && bun run build && cd ../backend && uv run python -m granian --interface asgi --host 127.0.0.1 --port ' +
         `${SUBPATH_BACKEND_PORT} app.main:app`,
       url: `http://127.0.0.1:${SUBPATH_BACKEND_PORT}/health`,
       reuseExistingServer: !process.env.CI,
@@ -109,6 +109,12 @@ export default defineConfig({
         MYGARAGE_TEST_MODE: 'true',
         MYGARAGE_ROOT_PATH: SUBPATH_PREFIX,
         MYGARAGE_STATIC_DIR: DIST_DIR,
+        // Writable data dirs — the default /data/photos isn't writable on the CI
+        // runner, so media seeding (seedMedia: true) 500s "Upload failed" without these.
+        MYGARAGE_DATA_DIR: '/tmp/mygarage-e2e-subpath-data',
+        MYGARAGE_PHOTOS_DIR: '/tmp/mygarage-e2e-subpath-data/photos',
+        MYGARAGE_ATTACHMENTS_DIR: '/tmp/mygarage-e2e-subpath-data/attachments',
+        MYGARAGE_DOCUMENTS_DIR: '/tmp/mygarage-e2e-subpath-data/documents',
         LOG_LEVEL: 'WARNING',
       },
     },

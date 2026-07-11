@@ -84,7 +84,7 @@ test.describe('Fuel Record Workflow', () => {
     }
   })
 
-  test('fill-up time uses unambiguous 24-hour form and round-trips on edit (#109)', async ({
+  test('fill-up time is unambiguous (12h AM/PM) and round-trips on edit (#109)', async ({
     page,
   }) => {
     await goToFuelTab(page)
@@ -104,19 +104,22 @@ test.describe('Fuel Record Workflow', () => {
     if ((await moreDetailsToggle.getAttribute('aria-expanded')) !== 'true') {
       await moreDetailsToggle.click()
     }
-    await page.locator('#filled_at_date').fill('2026-04-30')
-    await page.locator('#filled_at_time').fill('2200')
+    // 12-hour mode is the default: enter the hour, then pick AM/PM explicitly —
+    // a bare hour is never silently assigned a meridiem. The fill-up date comes
+    // from the top-level #date field (set to `today` above).
+    await page.locator('#filled_at_time').fill('10:00')
+    await page.getByRole('button', { name: 'PM' }).click()
 
-    // Capture the create request and assert the recomputed payload — proves
-    // TimeInput24 normalizes raw "2200" and the form recomputes filled_at
-    // from raw state at submit time, not only on blur.
+    // Capture the create request and assert the recomputed payload — proves the
+    // 12h control (10:00 + PM) normalizes to canonical 22:00 and the form
+    // recomputes filled_at from the record date + time at submit.
     const [req] = await Promise.all([
       page.waitForRequest(
         (r) => /\/vehicles\/[^/]+\/fuel$/.test(new URL(r.url()).pathname) && r.method() === 'POST'
       ),
       page.getByRole('button', { name: /create/i }).click(),
     ])
-    expect(JSON.parse(req.postData() ?? '{}').filled_at).toBe('2026-04-30T22:00')
+    expect(JSON.parse(req.postData() ?? '{}').filled_at).toBe(`${today}T22:00`)
 
     await expect(page.getByText('Add Fuel Record')).not.toBeVisible({ timeout: 10000 })
 
@@ -133,7 +136,8 @@ test.describe('Fuel Record Workflow', () => {
     if ((await editMoreDetailsToggle.getAttribute('aria-expanded')) !== 'true') {
       await editMoreDetailsToggle.click()
     }
-    await expect(page.locator('#filled_at_time')).toHaveValue('22:00')
+    await expect(page.locator('#filled_at_time')).toHaveValue('10:00')
+    await expect(page.getByRole('button', { name: 'PM' })).toHaveAttribute('aria-pressed', 'true')
 
     // Close without saving, then clean up
     await page.getByRole('button', { name: /cancel/i }).click()
