@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.31.0-rc3] - 2026-07-13
+
 ### Added
 - Fuel: optional **Rebate** field (points, discounts, cash back) next to Total Cost; Total Cost then stores the net paid (price × volume − rebate), so all cost surfaces and CSV/JSON export/import reflect it (migration 067).
 - Settings: Brazilian timezones in the System timezone dropdown — 12 IANA zones covering Brazil's UTC-2/-3/-4/-5 offsets; thanks [@sigrist](https://github.com/sigrist) (#112).
