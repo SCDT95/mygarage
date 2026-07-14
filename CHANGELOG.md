@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+- Fuel tracking (fuel, DEF, propane) is now its own primary vehicle tab instead of a Maintenance sub-tab; `?tab=fuel/def/propane` deep-links still work (#116).
+
 ## [2.31.0-rc3] - 2026-07-13
 
 ### Added

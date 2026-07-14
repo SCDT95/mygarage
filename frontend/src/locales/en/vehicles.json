@@ -145,6 +145,7 @@
     "standardEquipment": "Standard Equipment",
     "tabs": {
       "financial": "Financial",
+      "fuel": "Fuel",
       "maintenance": "Maintenance",
       "media": "Media",
       "overview": "Overview",
