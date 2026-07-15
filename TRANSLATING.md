@@ -17,6 +17,7 @@ frontend/public/locales/
     analytics.json       # Analytics pages
   uk/                    # Ukrainian (same structure)
   ru/                    # Russian (same structure)
+  pt-BR/                 # Brazilian Portuguese (same structure)
 ```
 
 The **canonical English** files live in `frontend/src/locales/en/` and serve as the reference.
@@ -114,17 +115,30 @@ bun run validate:translations
 
 ## Supported Languages
 
-| Code | Language | Status |
-|------|----------|--------|
-| en | English | Complete (canonical) |
-| pl | Polish | 99% translated |
-| uk | Ukrainian | 100% translated |
-| ru | Russian | 100% translated |
+Every key is translated in all of them. See [TRANSLATIONS.md](TRANSLATIONS.md) for
+the live percentages — they sit just under 100% because strings like `VIN`,
+`MyGarage` and `Diesel` are correctly identical to English (see
+[Things NOT to Translate](#things-not-to-translate)), not because anything is missing.
 
-To add a new language, also update:
+| Code | Language |
+|------|----------|
+| en | English (canonical source) |
+| pl | Polish |
+| uk | Ukrainian |
+| ru | Russian |
+| pt-BR | Brazilian Portuguese |
+
+To add a new language, translating the files is not enough — a locale directory
+that isn't registered in **all three** allowlists is never loaded, and
+`validate:translations` fails on it:
+
 - `backend/app/constants/i18n.py` — add to `SUPPORTED_LANGUAGES`
-- `frontend/src/constants/i18n.ts` — add to `SUPPORTED_LANGUAGES` array
-- `frontend/src/i18n.ts` — add to `supportedLngs` array
+- `frontend/src/constants/i18n.ts` — add to the `SUPPORTED_LANGUAGES` array **and** `languageToLocale()`
+- `frontend/src/i18n.ts` — add to the `supportedLngs` array
+
+Use the full region tag (`pt-BR`) only when the language ships as a region
+variant; `load: 'currentOnly'` means a base tag like `pt` will not serve `pt-BR`
+users, and vice versa.
 
 ## Questions?
 

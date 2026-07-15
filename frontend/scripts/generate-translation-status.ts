@@ -162,7 +162,14 @@ We welcome translation contributions! Here's how to help:
 1. Create a new directory under \`frontend/public/locales/\` with the [ISO 639-1 code](https://en.wikipedia.org/wiki/List_of_ISO_639-1_codes) (e.g., \`fr\` for French)
 2. Copy all JSON files from \`frontend/src/locales/en/\` into your new directory
 3. Translate the values
-4. The language will be automatically detected and available in the app
+4. Register the language in all three allowlists — it is **not** picked up
+   automatically, and a directory that isn't registered is never loaded:
+   - \`frontend/src/constants/i18n.ts\` — \`SUPPORTED_LANGUAGES\` (and \`languageToLocale\`)
+   - \`frontend/src/i18n.ts\` — \`supportedLngs\`
+   - \`backend/app/constants/i18n.py\` — \`SUPPORTED_LANGUAGES\`
+5. Run \`bun run validate:translations\` — it fails on an unregistered directory
+
+See [TRANSLATING.md](TRANSLATING.md) for the full guide.
 
 ---
 
