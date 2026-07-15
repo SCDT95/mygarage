@@ -162,6 +162,11 @@
   "enabled": "Увімкнено",
   "endDate": "Дата завершення",
   "inactive": "Неактивний",
+  "installPrompt": {
+    "title": "Встановити MyGarage",
+    "description": "Додайте MyGarage на головний екран для швидкого доступу.",
+    "install": "Встановити"
+  },
   "mileage": "Пробіг",
   "none": "Немає",
   "notes": "Нотатки",

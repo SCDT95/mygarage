@@ -164,6 +164,11 @@
   "enabled": "Ativado",
   "endDate": "Data final",
   "inactive": "Inativo",
+  "installPrompt": {
+    "title": "Instalar o MyGarage",
+    "description": "Adicione o MyGarage à sua tela inicial para acesso rápido.",
+    "install": "Instalar"
+  },
   "mileage": "Quilometragem",
   "none": "Nenhum",
   "notes": "Notas",

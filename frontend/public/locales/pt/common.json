@@ -144,5 +144,10 @@
     "vinDecoder": "Decodificador de VIN",
     "madeWith": "Feito com",
     "forCommunity": "para a comunidade Homelab"
+  },
+  "installPrompt": {
+    "title": "Instalar o MyGarage",
+    "description": "Adicione o MyGarage ao ecrã principal para acesso rápido.",
+    "install": "Instalar"
   }
 }

@@ -162,6 +162,11 @@
   "enabled": "Włączone",
   "endDate": "Data końcowa",
   "inactive": "Nieaktywny",
+  "installPrompt": {
+    "title": "Zainstaluj MyGarage",
+    "description": "Dodaj MyGarage do ekranu głównego, aby mieć szybki dostęp.",
+    "install": "Zainstaluj"
+  },
   "mileage": "Przebieg",
   "none": "Brak",
   "notes": "Notatki",

@@ -164,6 +164,11 @@
   "enabled": "Enabled",
   "endDate": "End Date",
   "inactive": "Inactive",
+  "installPrompt": {
+    "title": "Install MyGarage",
+    "description": "Add MyGarage to your home screen for quick access.",
+    "install": "Install"
+  },
   "mileage": "Mileage",
   "none": "None",
   "notes": "Notes",

@@ -16,6 +16,7 @@
     "wherePurchased": "Local de compra"
   },
   "fuel": {
+    "addStation": "Adicionar posto",
     "rebate": "Desconto / Cashback",
     "rebateHint": "Pontos, descontos ou dinheiro de volta — deduzido do custo total",
     "autoCalculatedHint": "Dica de cálculo automático",

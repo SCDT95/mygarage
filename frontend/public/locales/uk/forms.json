@@ -16,6 +16,7 @@
     "wherePurchased": "Місце покупки"
   },
   "fuel": {
+    "addStation": "Додати станцію",
     "autoCalculatedHint": "Підказка про автоматичний розрахунок",
     "autoPopulatedHint": "Підказка про автоматичне заповнення",
     "createTitle": "Додати заправку",

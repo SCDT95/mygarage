@@ -16,6 +16,7 @@
     "wherePurchased": "Miejsce zakupu"
   },
   "fuel": {
+    "addStation": "Dodaj stację",
     "autoCalculatedHint": "Automatycznie obliczana wskazówka",
     "autoPopulatedHint": "Automatycznie wypełniana wskazówka",
     "createTitle": "Dodaj tankowanie",

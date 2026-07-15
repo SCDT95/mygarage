@@ -16,6 +16,7 @@
     "wherePurchased": "Where Purchased"
   },
   "fuel": {
+    "addStation": "Add station",
     "autoCalculatedHint": "Auto-calculated from price, volume, and rebate",
     "autoPopulatedHint": "Auto-populated from vehicle information",
     "rebate": "Rebate",

@@ -16,6 +16,7 @@
     "wherePurchased": "Local de compra"
   },
   "fuel": {
+    "addStation": "Adicionar posto",
     "autoCalculatedHint": "Dica de cálculo automático",
     "autoPopulatedHint": "Dica de preenchimento automático",
     "createTitle": "Adicionar abastecimento",
