@@ -55,6 +55,8 @@ def test_069_creates_table(engine_for_migration):
     } <= cols
     index_names = {ix["name"] for ix in insp.get_indexes("location_points")}
     assert "idx_location_points_vin_time" in index_names
+    assert "uq_location_points_dedup" in index_names
+    assert "idx_location_points_session" in index_names
 
 
 def test_069_idempotent(engine_for_migration):

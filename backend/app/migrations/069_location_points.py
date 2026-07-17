@@ -42,7 +42,7 @@ def upgrade(engine=None):
                 speed NUMERIC(6, 2),
                 heading NUMERIC(5, 1),
                 altitude NUMERIC(7, 1),
-                received_at {ts_type} DEFAULT CURRENT_TIMESTAMP
+                received_at {ts_type} NOT NULL DEFAULT CURRENT_TIMESTAMP
             )
         """)
         )
