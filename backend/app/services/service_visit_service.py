@@ -12,6 +12,7 @@ from sqlalchemy.orm import selectinload
 
 from app.models.service_line_item import ServiceLineItem
 from app.models.service_visit import ServiceVisit
+from app.models.supply import SupplyUsage
 from app.models.user import User
 from app.schemas.service_visit import (
     ServiceLineItemCreate,
@@ -23,11 +24,41 @@ from app.schemas.service_visit import (
     VendorSummary,
 )
 from app.services import reminder_service
+from app.services.supply_service import SupplyService
 from app.utils.cache import invalidate_cache_for_vehicle
 from app.utils.logging_utils import sanitize_for_log
 from app.utils.odometer_sync import sync_odometer_from_record
 
 logger = logging.getLogger(__name__)
+
+
+def service_visit_full_load_options():
+    """Loader options for building a full ServiceVisitResponse: line_items →
+    supply_usages → supply (needed for SupplyUsageResponse.supply_name) + vendor.
+
+    Required before any read of calculated_total_cost / parts_supplies_cost —
+    async SQLAlchemy raises MissingGreenlet on an unloaded relationship rather
+    than lazy-loading it.
+    """
+    return (
+        selectinload(ServiceVisit.line_items)
+        .selectinload(ServiceLineItem.supply_usages)
+        .selectinload(SupplyUsage.supply),
+        selectinload(ServiceVisit.vendor),
+    )
+
+
+def service_visit_cost_load_options():
+    """Loader options sufficient to read calculated_total_cost /
+    parts_supplies_cost without building a full response: line_items →
+    supply_usages (the supply row itself isn't needed for the cost math) +
+    vendor. Shared by analytics/export/reports routes, which read visit-level
+    costs but never a usage's supply_name.
+    """
+    return (
+        selectinload(ServiceVisit.line_items).selectinload(ServiceLineItem.supply_usages),
+        selectinload(ServiceVisit.vendor),
+    )
 
 
 class ServiceVisitService:
@@ -63,11 +94,10 @@ class ServiceVisitService:
             # Check vehicle ownership
             await get_vehicle_or_403(vin, current_user, self.db)
 
-            # Get visits with line items and vendor
+            # Get visits with line items, supply usages, and vendor
             result = await self.db.execute(
                 select(ServiceVisit)
-                .options(selectinload(ServiceVisit.line_items))
-                .options(selectinload(ServiceVisit.vendor))
+                .options(*service_visit_full_load_options())
                 .where(ServiceVisit.vin == vin)
                 .order_by(ServiceVisit.date.desc())
                 .offset(skip)
@@ -116,8 +146,7 @@ class ServiceVisitService:
 
         result = await self.db.execute(
             select(ServiceVisit)
-            .options(selectinload(ServiceVisit.line_items))
-            .options(selectinload(ServiceVisit.vendor))
+            .options(*service_visit_full_load_options())
             .where(ServiceVisit.id == visit_id)
             .where(ServiceVisit.vin == vin)
         )
@@ -210,10 +239,8 @@ class ServiceVisitService:
                         line_item_id=line_item.id,
                     )
 
-            # Always recompute total_cost from line items + fees (denormalized cache)
-            await self.db.refresh(visit, attribute_names=["line_items"])
-            visit.total_cost = visit.calculated_total_cost
-            await self.db.flush()
+            # Always recompute total_cost from line items + supplies + fees (denormalized cache)
+            await self._recompute_visit_total(visit.id)
 
             await self.db.commit()
             await self.db.refresh(visit)
@@ -375,10 +402,9 @@ class ServiceVisitService:
                 if submitted_cats:
                     visit.service_category = submitted_cats[0]
 
-            # Always recompute total_cost from line items + fees (denormalized cache)
+            # Always recompute total_cost from line items + supplies + fees (denormalized cache)
             await self.db.flush()
-            await self.db.refresh(visit, attribute_names=["line_items"])
-            visit.total_cost = visit.calculated_total_cost
+            await self._recompute_visit_total(visit_id)
 
             await self.db.commit()
             await self.db.refresh(visit)
@@ -516,9 +542,7 @@ class ServiceVisitService:
             await self.db.flush()
 
             # Recompute total_cost (denormalized cache)
-            await self.db.flush()
-            await self.db.refresh(visit, attribute_names=["line_items"])
-            visit.total_cost = visit.calculated_total_cost
+            await self._recompute_visit_total(visit.id)
 
             await self.db.commit()
             await self.db.refresh(line_item)
@@ -582,20 +606,11 @@ class ServiceVisitService:
             if not line_item:
                 raise HTTPException(status_code=404, detail=f"Line item {line_item_id} not found")
 
-            # Get the visit before deleting line item to recompute total
-            visit_result = await self.db.execute(
-                select(ServiceVisit)
-                .options(selectinload(ServiceVisit.line_items))
-                .where(ServiceVisit.id == visit_id)
-            )
-            visit = visit_result.scalar_one()
-
             await self.db.delete(line_item)
             await self.db.flush()
 
             # Recompute total_cost (denormalized cache)
-            await self.db.refresh(visit, attribute_names=["line_items"])
-            visit.total_cost = visit.calculated_total_cost
+            await self._recompute_visit_total(visit_id)
 
             await self.db.commit()
 
@@ -618,6 +633,34 @@ class ServiceVisitService:
             )
             raise HTTPException(status_code=503, detail="Database temporarily unavailable")
 
+    async def _reload_visit_full(self, visit_id: int) -> ServiceVisit:
+        """Reload a visit with line_items → supply_usages eager-loaded — just
+        enough to compute calculated_total_cost / parts_supplies_cost, which
+        only reads cost_snapshot off each usage (not the usage's Supply row,
+        not vendor).
+
+        Required before any read of those properties (async: unloaded
+        relationships raise, they never lazy-load). populate_existing=True
+        overwrites already-loaded identity-map collections so a just-mutated
+        visit reflects its new usages (R1-F1).
+        """
+        result = await self.db.execute(
+            select(ServiceVisit)
+            .options(
+                selectinload(ServiceVisit.line_items).selectinload(ServiceLineItem.supply_usages)
+            )
+            .where(ServiceVisit.id == visit_id)
+            .execution_options(populate_existing=True)
+        )
+        return result.scalar_one()
+
+    async def _recompute_visit_total(self, visit_id: int) -> ServiceVisit:
+        """Reload the full chain, set the denormalized total_cost cache, return the visit."""
+        visit = await self._reload_visit_full(visit_id)
+        visit.total_cost = visit.calculated_total_cost
+        await self.db.flush()
+        return visit
+
     def _visit_to_response(self, visit: ServiceVisit) -> ServiceVisitResponse:
         """Convert ServiceVisit model to response schema."""
         vendor_summary = None
@@ -628,6 +671,12 @@ class ServiceVisitService:
                 city=visit.vendor.city,
                 state=visit.vendor.state,
             )
+
+        # Reuse SupplyService's usage->response mapping rather than duplicating
+        # it here (it also fills in service_visit_id/service_visit_date via
+        # usage.line_item.visit, both back_populates-populated for free by the
+        # line_items/supply_usages eager-load above — no extra query).
+        supply_service = SupplyService(self.db)
 
         line_item_responses = [
             ServiceLineItemResponse(  # type: ignore[arg-type]
@@ -644,6 +693,7 @@ class ServiceVisitService:
                 created_at=item.created_at,
                 is_failed_inspection=item.is_failed_inspection,
                 needs_followup=item.needs_followup,
+                supply_usages=[supply_service.to_usage_response(u) for u in item.supply_usages],
             )
             for item in visit.line_items
         ]
@@ -660,6 +710,7 @@ class ServiceVisitService:
             misc_fees=visit.misc_fees,
             subtotal=visit.subtotal,
             calculated_total_cost=visit.calculated_total_cost,
+            parts_supplies_cost=visit.parts_supplies_cost,
             notes=visit.notes,
             service_category=visit.service_category,
             insurance_claim_number=visit.insurance_claim_number,
