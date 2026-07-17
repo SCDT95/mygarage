@@ -177,6 +177,15 @@
       "purchaseLogged": "Purchase logged",
       "adjustmentLogged": "Adjustment logged",
       "adjustmentHint": "Records stock removed outside of a service job (e.g. spillage, gifted, discarded)."
+    },
+    "usedTab": {
+      "title": "Supplies Used",
+      "count": "{{count}} supply usages logged",
+      "loading": "Loading supplies used...",
+      "loadError": "Failed to load supplies used",
+      "empty": "No supplies logged for this vehicle yet.",
+      "quantity": "Quantity",
+      "viewVisit": "View service visit"
     }
   },
   "poiFinder": {
