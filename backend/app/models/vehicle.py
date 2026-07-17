@@ -116,6 +116,10 @@ class Vehicle(Base):
     archive_sale_date: Mapped[date | None] = mapped_column(Date)
     archive_notes: Mapped[str | None] = mapped_column(String(1000))
     archived_visible: Mapped[bool] = mapped_column(Boolean, server_default="1")
+    # GPS location tracking opt-out (default on), migration 070, #118
+    location_tracking_enabled: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, server_default="1"
+    )
     # DEF tracking
     def_tank_capacity_liters: Mapped[Decimal | None] = mapped_column(Numeric(6, 2))
     # Milestone notification tracking (km, per migration 053)
