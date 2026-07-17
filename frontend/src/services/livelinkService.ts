@@ -38,7 +38,7 @@ import type {
   TorqueSourceCreateResponse,
   TorqueSourceListResponse,
 } from '../types/livelink'
-import type { TripList, LocationTrackingResponse } from '../types/trips'
+import type { TripList, LocationTrackingResponse, TripPointsResponse } from '../types/trips'
 import { withBase } from '../utils/basePath'
 
 export const livelinkService = {
@@ -306,6 +306,14 @@ export const livelinkService = {
     const response = await api.patch<LocationTrackingResponse>(`/vehicles/${vin}/livelink/location-tracking`, {
       enabled,
     })
+    return response.data
+  },
+
+  /**
+   * Get a trip's GPS points as an ordered polyline (for map rendering, Task 15)
+   */
+  async getTripPoints(vin: string, sessionId: number): Promise<TripPointsResponse> {
+    const response = await api.get<TripPointsResponse>(`/vehicles/${vin}/livelink/trips/${sessionId}/points`)
     return response.data
   },
 

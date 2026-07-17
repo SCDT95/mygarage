@@ -1,21 +1,24 @@
 /**
  * LiveLink Trips Tab - GPS-tracked drive session list
  *
- * List only (Task 14). Task 15 renders the route map into the placeholder
- * slot below when a trip is selected; Task 16 adds a last-location card.
+ * List (Task 14) + selected-trip route map (Task 15). Task 16 adds a
+ * last-location card.
  */
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, lazy, Suspense } from 'react'
 import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
 import { Clock, MapPin, Calendar, RefreshCw, Route, Map as MapIcon } from 'lucide-react'
 import { livelinkService } from '@/services/livelinkService'
 import vehicleService from '@/services/vehicleService'
-import type { Trip, TripList } from '@/types/trips'
+import type { Trip, TripList, TripPoint } from '@/types/trips'
 import { useUnitPreference } from '@/hooks/useUnitPreference'
 import { useTimeFormat } from '@/hooks/useTimeFormat'
 import { formatAPITimestamp, formatTime } from '@/utils/parseAPITimestamp'
 import { UnitFormatter } from '@/utils/units'
+
+// Lazy-load map component — keeps Leaflet's ~150KB out of the main bundle
+const TripRouteMap = lazy(() => import('@/components/maps/TripRouteMap'))
 
 interface LiveLinkTripsTabProps {
   vin: string
@@ -26,6 +29,8 @@ export default function LiveLinkTripsTab({ vin }: LiveLinkTripsTabProps) {
   const [trips, setTrips] = useState<TripList | null>(null)
   const [loading, setLoading] = useState(true)
   const [selectedTripId, setSelectedTripId] = useState<number | null>(null)
+  const [tripPoints, setTripPoints] = useState<TripPoint[]>([])
+  const [pointsLoading, setPointsLoading] = useState(false)
   const [locationTrackingEnabled, setLocationTrackingEnabled] = useState<boolean | null>(null)
   const [trackingSaving, setTrackingSaving] = useState(false)
   const { system: unitSystem, showBoth } = useUnitPreference()
@@ -56,6 +61,31 @@ export default function LiveLinkTripsTab({ vin }: LiveLinkTripsTabProps) {
     fetchTrips()
     fetchLocationTrackingState()
   }, [fetchTrips, fetchLocationTrackingState])
+
+  const fetchTripPoints = useCallback(
+    async (sessionId: number) => {
+      setPointsLoading(true)
+      try {
+        const data = await livelinkService.getTripPoints(vin, sessionId)
+        setTripPoints(data.points ?? [])
+      } catch (err) {
+        console.error('Failed to fetch trip points:', err)
+        toast.error(t('livelink.trips.mapLoadError'))
+        setTripPoints([])
+      } finally {
+        setPointsLoading(false)
+      }
+    },
+    [vin, t],
+  )
+
+  useEffect(() => {
+    if (selectedTripId != null) {
+      fetchTripPoints(selectedTripId)
+    } else {
+      setTripPoints([])
+    }
+  }, [selectedTripId, fetchTripPoints])
 
   const handleToggleLocationTracking = async (): Promise<void> => {
     if (locationTrackingEnabled === null || trackingSaving) return
@@ -170,11 +200,23 @@ export default function LiveLinkTripsTab({ vin }: LiveLinkTripsTabProps) {
         ))}
       </div>
 
-      {/* Route map placeholder — Task 15 renders the selected trip's GPS polyline here */}
+      {/* Route map — selected trip's GPS polyline */}
       {selectedTripId != null && (
-        <div className="bg-garage-surface rounded-lg border border-garage-border p-8 text-center">
-          <MapIcon className="w-12 h-12 mx-auto mb-3 text-garage-text-muted opacity-50" />
-          <p className="text-garage-text-muted">{t('livelink.trips.mapComingSoon')}</p>
+        <div className="bg-garage-surface rounded-lg border border-garage-border p-4">
+          {pointsLoading ? (
+            <div className="flex items-center justify-center py-12">
+              <RefreshCw className="w-8 h-8 text-primary animate-spin" />
+            </div>
+          ) : tripPoints.length === 0 ? (
+            <div className="text-center py-8">
+              <MapIcon className="w-12 h-12 mx-auto mb-3 text-garage-text-muted opacity-50" />
+              <p className="text-garage-text-muted">{t('livelink.trips.mapEmpty')}</p>
+            </div>
+          ) : (
+            <Suspense fallback={<div className="h-[400px] bg-garage-bg rounded-lg animate-pulse" />}>
+              <TripRouteMap points={tripPoints} />
+            </Suspense>
+          )}
         </div>
       )}
     </div>
