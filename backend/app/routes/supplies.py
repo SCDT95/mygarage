@@ -23,10 +23,15 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.database import get_db
 from app.models.user import User
 from app.schemas.supply import (
+    SupplyAdjustmentCreate,
     SupplyCreate,
+    SupplyHistoryResponse,
     SupplyListResponse,
+    SupplyPurchaseCreate,
+    SupplyPurchaseResponse,
     SupplyResponse,
     SupplyUpdate,
+    SupplyUsageResponse,
 )
 from app.services.auth import require_auth
 from app.services.supply_service import SupplyService
@@ -91,3 +96,71 @@ async def delete_supply(
     """Delete a catalog supply — hard-delete if unused, soft-archive if it has ledger history."""
     await SupplyService(db).delete_supply(supply_id, current_user)
     return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+
+@router.post(
+    "/{supply_id}/purchases",
+    response_model=SupplyPurchaseResponse,
+    status_code=status.HTTP_201_CREATED,
+)
+async def add_purchase(
+    supply_id: int,
+    data: SupplyPurchaseCreate,
+    db: Annotated[AsyncSession, Depends(get_db)],
+    current_user: Annotated[User | None, Depends(require_auth)],
+) -> SupplyPurchaseResponse:
+    """Record a stock-in purchase for a supply."""
+    purchase = await SupplyService(db).add_purchase(supply_id, data, current_user)
+    return SupplyPurchaseResponse.model_validate(purchase)
+
+
+@router.delete("/{supply_id}/purchases/{purchase_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_purchase(
+    supply_id: int,
+    purchase_id: int,
+    db: Annotated[AsyncSession, Depends(get_db)],
+    current_user: Annotated[User | None, Depends(require_auth)],
+) -> Response:
+    """Delete a purchase (and its receipt, if any) from the ledger."""
+    await SupplyService(db).delete_purchase(supply_id, purchase_id, current_user)
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+
+@router.post(
+    "/{supply_id}/adjustments",
+    response_model=SupplyUsageResponse,
+    status_code=status.HTTP_201_CREATED,
+)
+async def add_adjustment(
+    supply_id: int,
+    data: SupplyAdjustmentCreate,
+    db: Annotated[AsyncSession, Depends(get_db)],
+    current_user: Annotated[User | None, Depends(require_auth)],
+) -> SupplyUsageResponse:
+    """Record a standalone stock-out (not tied to a service line item)."""
+    svc = SupplyService(db)
+    usage = await svc.add_adjustment(supply_id, data, current_user)
+    await db.refresh(usage, attribute_names=["supply"])
+    return svc.to_usage_response(usage)
+
+
+@router.delete("/{supply_id}/adjustments/{usage_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_adjustment(
+    supply_id: int,
+    usage_id: int,
+    db: Annotated[AsyncSession, Depends(get_db)],
+    current_user: Annotated[User | None, Depends(require_auth)],
+) -> Response:
+    """Delete a standalone adjustment. Job-linked usages must be edited via the visit."""
+    await SupplyService(db).delete_adjustment(supply_id, usage_id, current_user)
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+
+@router.get("/{supply_id}/history", response_model=SupplyHistoryResponse)
+async def supply_history(
+    supply_id: int,
+    db: Annotated[AsyncSession, Depends(get_db)],
+    current_user: Annotated[User | None, Depends(require_auth)],
+) -> SupplyHistoryResponse:
+    """Full chronological purchase/usage ledger for a supply, with running balance."""
+    return await SupplyService(db).get_supply_history(supply_id, current_user)
