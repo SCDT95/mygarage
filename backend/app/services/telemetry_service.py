@@ -613,6 +613,38 @@ class TelemetryService:
         await self.db.commit()  # flush the final partial batch
         return inserted
 
+    async def store_torque_telemetry(
+        self, vin: str, device_id: str, timestamp: datetime, values: dict[str, float]
+    ) -> int:
+        """Idempotently store Torque OBD readings (all at one timestamp).
+
+        Auto-registers unknown params, dedups on (device_id, param_key, timestamp)
+        via on_conflict_do_nothing, and keeps vehicle_telemetry_latest current.
+        Does NOT commit — the caller owns the transaction. `values` keys are already
+        canonical param_keys (see torque_pid_map). `timestamp` must be naive UTC.
+        """
+        if not values:
+            return 0
+        ts = timestamp.replace(tzinfo=None) if timestamp.tzinfo is not None else timestamp
+        inserted = 0
+        for param_key, value in values.items():
+            await self.auto_register_parameter(param_key)
+            stmt = (
+                dialect_insert(VehicleTelemetry)
+                .values(
+                    vin=vin,
+                    device_id=device_id,
+                    param_key=param_key,
+                    value=float(value),
+                    timestamp=ts,
+                )
+                .on_conflict_do_nothing(index_elements=["device_id", "param_key", "timestamp"])
+            )
+            result = await self.db.execute(stmt)
+            inserted += result.rowcount or 0
+            await self._update_latest_if_newer(vin, param_key, float(value), ts)
+        return inserted
+
     async def _update_latest_if_newer(
         self, vin: str, param_key: str, value: float, ts: datetime
     ) -> None:
