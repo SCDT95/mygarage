@@ -5,7 +5,7 @@ from __future__ import annotations
 from datetime import datetime
 from typing import TYPE_CHECKING
 
-from sqlalchemy import Boolean, DateTime, Float, ForeignKey, Index, Integer, String
+from sqlalchemy import Boolean, DateTime, Float, ForeignKey, Index, Integer, String, text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from sqlalchemy.sql import func
 
@@ -41,6 +41,12 @@ class LiveLinkDevice(Base):
         String(255)
     )  # admin-set IP/host for SD pulls
     sd_backfill_enabled: Mapped[bool] = mapped_column(Boolean, default=False)
+    kind: Mapped[str] = mapped_column(
+        String(10), nullable=False, server_default=text("'wican'")
+    )  # 'wican' | 'torque'
+    torque_device_id: Mapped[str | None] = mapped_column(
+        String(40)
+    )  # Torque's raw 32-hex id (kind='torque' only)
     rssi: Mapped[int | None] = mapped_column(Integer)  # WiFi signal strength
     battery_voltage: Mapped[float | None] = mapped_column(Float)  # Vehicle battery from device
 
