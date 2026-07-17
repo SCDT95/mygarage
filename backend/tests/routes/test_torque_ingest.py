@@ -1,0 +1,341 @@
+"""Route tests for the Torque Pro ingest endpoint (Task 9):
+GET|POST /api/v1/torque/{token}/upload.
+
+Integration keystone — composes T4 parse_torque_query, T5
+TorqueService.resolve_by_token, T6 TelemetryService.store_torque_telemetry, T7
+SessionService.resolve_torque_session, T8 LocationService.record_point, and T3
+Vehicle.location_tracking_enabled. See task-9-brief.md.
+
+Fixtures: ``client`` / ``db_session`` from tests/conftest.py (base conftest).
+No auth headers — the device path token IS the auth.
+"""
+
+import itertools
+import logging
+from datetime import UTC, datetime, timedelta
+
+import pytest
+from httpx import AsyncClient
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from app.models.drive_session import DriveSession
+from app.models.livelink_device import LiveLinkDevice
+from app.models.location_point import LocationPoint
+from app.models.user import User
+from app.models.vehicle import Vehicle
+from app.models.vehicle_telemetry import VehicleTelemetry
+from app.routes.torque import TorqueTokenRedactionFilter, redact_torque_path
+from app.services.torque_service import TorqueService
+
+# Module-level counter for unique identifiers across all tests in this file.
+_SEQ = itertools.count()
+
+
+async def _make_torque_source(
+    db_session: AsyncSession, location_tracking_enabled: bool = True
+) -> tuple[str, LiveLinkDevice, str]:
+    """Create a user + vehicle + kind='torque' device, return (vin, device, raw_token)."""
+    n = next(_SEQ)
+    user = User(
+        username=f"torque_route_user_{n}",
+        email=f"torque_route_{n}@example.com",
+        hashed_password="x",
+        is_active=True,
+        is_admin=False,
+    )
+    db_session.add(user)
+    await db_session.flush()
+
+    vin = f"TORQROUTETST{n:05d}"  # 17 chars
+    vehicle = Vehicle(
+        vin=vin,
+        user_id=user.id,
+        nickname=f"Torque Route Car {n}",
+        vehicle_type="Car",
+        location_tracking_enabled=location_tracking_enabled,
+    )
+    db_session.add(vehicle)
+    await db_session.flush()
+
+    device, raw_token = await TorqueService(db_session).create_source(vin)
+    await db_session.commit()
+    return vin, device, raw_token
+
+
+def _epoch_ms(dt: datetime) -> str:
+    """Format a datetime as a Torque-style millisecond epoch query value."""
+    return str(int(dt.timestamp() * 1000))
+
+
+async def _telemetry_rows(db_session: AsyncSession, vin: str) -> list[VehicleTelemetry]:
+    return list(
+        (await db_session.execute(select(VehicleTelemetry).where(VehicleTelemetry.vin == vin)))
+        .scalars()
+        .all()
+    )
+
+
+async def _location_rows(db_session: AsyncSession, vin: str) -> list[LocationPoint]:
+    return list(
+        (await db_session.execute(select(LocationPoint).where(LocationPoint.vin == vin)))
+        .scalars()
+        .all()
+    )
+
+
+async def _get_session(
+    db_session: AsyncSession, device_id: str, external_session_id: str
+) -> DriveSession:
+    return (
+        await db_session.execute(
+            select(DriveSession).where(
+                DriveSession.device_id == device_id,
+                DriveSession.external_session_id == external_session_id,
+            )
+        )
+    ).scalar_one()
+
+
+@pytest.mark.asyncio
+async def test_get_ingest_stores_telemetry_and_session(
+    client: AsyncClient, db_session: AsyncSession
+):
+    """A GET with OBD PIDs + a session id: 200 OK!, telemetry stored, session created."""
+    vin, device, token = await _make_torque_source(db_session)
+    t = datetime.now(UTC) - timedelta(seconds=5)
+
+    r = await client.get(
+        f"/api/v1/torque/{token}/upload",
+        params={"session": "S1", "id": "abc", "time": _epoch_ms(t), "k0c": "1800", "k0d": "60"},
+    )
+
+    assert r.status_code == 200
+    assert r.text == "OK!"
+    assert r.headers["content-type"].startswith("text/plain")
+
+    rows = await _telemetry_rows(db_session, vin)
+    param_keys = {row.param_key for row in rows}
+    assert "ENGINE_RPM" in param_keys
+    assert "SPEED" in param_keys
+
+    session = await _get_session(db_session, device.device_id, "S1")
+    assert session.vin == vin
+
+
+@pytest.mark.asyncio
+async def test_minimal_test_request_returns_ok_with_no_pids(
+    client: AsyncClient, db_session: AsyncSession
+):
+    """Torque's connectivity/settings-test GET (eml + v, no PIDs, no session) is a no-crash 200."""
+    vin, _device, token = await _make_torque_source(db_session)
+
+    r = await client.get(f"/api/v1/torque/{token}/upload", params={"eml": "x", "v": "3"})
+
+    assert r.status_code == 200
+    assert r.text == "OK!"
+    assert await _telemetry_rows(db_session, vin) == []
+
+
+@pytest.mark.asyncio
+async def test_gps_pids_write_location_point_when_tracking_enabled(
+    client: AsyncClient, db_session: AsyncSession
+):
+    """GPS PIDs + location_tracking_enabled=True write a location_points row
+    attached to the session, and never leak into VehicleTelemetry."""
+    vin, device, token = await _make_torque_source(db_session, location_tracking_enabled=True)
+    t = datetime.now(UTC) - timedelta(seconds=5)
+
+    r = await client.get(
+        f"/api/v1/torque/{token}/upload",
+        params={
+            "session": "S1",
+            "time": _epoch_ms(t),
+            "kff1006": "40.712800",
+            "kff1005": "-74.006000",
+        },
+    )
+
+    assert r.status_code == 200
+    assert r.text == "OK!"
+
+    points = await _location_rows(db_session, vin)
+    assert len(points) == 1
+
+    session = await _get_session(db_session, device.device_id, "S1")
+    assert points[0].drive_session_id == session.id
+
+    assert await _telemetry_rows(db_session, vin) == []
+
+
+@pytest.mark.asyncio
+async def test_tracking_disabled_stores_obd_but_skips_location(
+    client: AsyncClient, db_session: AsyncSession
+):
+    """location_tracking_enabled=False: OBD telemetry still stored, no location_points row."""
+    vin, _device, token = await _make_torque_source(db_session, location_tracking_enabled=False)
+    t = datetime.now(UTC) - timedelta(seconds=5)
+
+    r = await client.get(
+        f"/api/v1/torque/{token}/upload",
+        params={
+            "session": "S1",
+            "time": _epoch_ms(t),
+            "k0c": "1800",
+            "kff1006": "40.712800",
+            "kff1005": "-74.006000",
+        },
+    )
+
+    assert r.status_code == 200
+    assert r.text == "OK!"
+
+    rows = await _telemetry_rows(db_session, vin)
+    assert any(row.param_key == "ENGINE_RPM" for row in rows)
+    assert await _location_rows(db_session, vin) == []
+
+
+@pytest.mark.asyncio
+async def test_invalid_token_returns_403(client: AsyncClient):
+    """An unrecognized token: 403, plain-text body that is not the OK! sentinel."""
+    r = await client.get("/api/v1/torque/not-a-real-token/upload", params={"eml": "x"})
+
+    assert r.status_code == 403
+    assert r.text != "OK!"
+
+
+@pytest.mark.asyncio
+async def test_replay_is_idempotent(client: AsyncClient, db_session: AsyncSession):
+    """Replaying the same request twice: still 200 OK!, no duplicate telemetry or location rows."""
+    vin, _device, token = await _make_torque_source(db_session)
+    t = datetime.now(UTC) - timedelta(seconds=5)
+    params = {
+        "session": "S1",
+        "time": _epoch_ms(t),
+        "k0c": "1800",
+        "kff1006": "40.712800",
+        "kff1005": "-74.006000",
+    }
+
+    r1 = await client.get(f"/api/v1/torque/{token}/upload", params=params)
+    r2 = await client.get(f"/api/v1/torque/{token}/upload", params=params)
+
+    assert r1.status_code == 200
+    assert r2.status_code == 200
+    assert r1.text == "OK!"
+    assert r2.text == "OK!"
+
+    rows = await _telemetry_rows(db_session, vin)
+    engine_rpm_rows = [row for row in rows if row.param_key == "ENGINE_RPM"]
+    assert len(engine_rpm_rows) == 1
+
+    points = await _location_rows(db_session, vin)
+    assert len(points) == 1
+
+
+@pytest.mark.asyncio
+async def test_post_variant_accepted(client: AsyncClient, db_session: AsyncSession):
+    """POST with a form body is accepted for robustness (Torque itself uses GET)."""
+    vin, _device, token = await _make_torque_source(db_session)
+    t = datetime.now(UTC) - timedelta(seconds=5)
+
+    r = await client.post(
+        f"/api/v1/torque/{token}/upload",
+        data={"session": "S1", "time": _epoch_ms(t), "k0c": "1800"},
+    )
+
+    assert r.status_code == 200
+    assert r.text == "OK!"
+
+    rows = await _telemetry_rows(db_session, vin)
+    assert any(row.param_key == "ENGINE_RPM" for row in rows)
+
+
+def test_redact_torque_path_strips_the_token():
+    """redact_torque_path replaces the token segment, regardless of surrounding text."""
+    raw = 'GET /api/v1/torque/abcdef0123456789/upload?session=S1 HTTP/1.1" 200 3'
+
+    redacted = redact_torque_path(raw)
+
+    assert "abcdef0123456789" not in redacted
+    assert "/api/v1/torque/<redacted>/upload" in redacted
+
+
+def test_redaction_filter_scrubs_the_token_from_a_log_record():
+    """R1-H3: a log record whose message contains the raw token in the ingest
+    path is rewritten so the raw token is absent from the rendered message."""
+    real_token = "super-secret-torque-device-token-000111"
+    record = logging.LogRecord(
+        name="granian.access",
+        level=logging.INFO,
+        pathname=__file__,
+        lineno=1,
+        msg=(
+            f'1.2.3.4 - - [17/Jul/2026] "GET /api/v1/torque/{real_token}/upload?session=S1 '
+            'HTTP/1.1" 200 3'
+        ),
+        args=(),
+        exc_info=None,
+    )
+
+    kept = TorqueTokenRedactionFilter().filter(record)
+
+    assert kept is True  # never drops the record
+    rendered = record.getMessage()
+    assert real_token not in rendered
+    assert "/api/v1/torque/<redacted>/upload" in rendered
+
+
+@pytest.mark.asyncio
+async def test_future_device_time_is_clamped_so_duration_stays_non_negative(
+    client: AsyncClient, db_session: AsyncSession
+):
+    """R2-H2: a device clock 2h in the future must not become started_at. When a
+    chronologically-newer session id finalizes the trip, duration_seconds >= 0.
+    """
+    _vin, device, token = await _make_torque_source(db_session)
+    future = datetime.now(UTC) + timedelta(hours=2)
+
+    r1 = await client.get(
+        f"/api/v1/torque/{token}/upload",
+        params={"session": "S1", "time": _epoch_ms(future), "k0c": "1800"},
+    )
+    assert r1.status_code == 200
+
+    # Chronologically-newer session id finalizes S1 at server-now.
+    later = datetime.now(UTC) + timedelta(seconds=1)
+    r2 = await client.get(
+        f"/api/v1/torque/{token}/upload",
+        params={"session": "S2", "time": _epoch_ms(later), "k0c": "1900"},
+    )
+    assert r2.status_code == 200
+
+    s1 = await _get_session(db_session, device.device_id, "S1")
+    assert s1.ended_at is not None
+    assert s1.duration_seconds is not None
+    assert s1.duration_seconds >= 0
+
+
+@pytest.mark.asyncio
+async def test_ecu_status_online_after_data_bearing_ingest(
+    client: AsyncClient, db_session: AsyncSession
+):
+    """resolve_torque_session's newer-drive branch can set ecu_status='offline' via
+    end_session; a data-bearing ingest must re-assert 'online' so the LiveLink
+    status endpoint doesn't show an actively-uploading device as offline.
+    """
+    _vin, device, token = await _make_torque_source(db_session)
+    t = datetime.now(UTC) - timedelta(seconds=5)
+
+    r = await client.get(
+        f"/api/v1/torque/{token}/upload",
+        params={"session": "S1", "time": _epoch_ms(t), "k0c": "1800"},
+    )
+    assert r.status_code == 200
+
+    refreshed = (
+        await db_session.execute(
+            select(LiveLinkDevice).where(LiveLinkDevice.device_id == device.device_id)
+        )
+    ).scalar_one()
+    assert refreshed.ecu_status == "online"

@@ -339,6 +339,8 @@ from app.routes.livelink_vehicle import router as livelink_vehicle_router
 from app.routes.oidc import router as oidc_router
 from app.routes.poi import router as poi_router
 from app.routes.quick_entry import router as quick_entry_router
+from app.routes.torque import TorqueTokenRedactionFilter
+from app.routes.torque import router as torque_router
 from app.routes.widget import router as widget_router
 from app.routes.widget_keys import router as widget_keys_router
 from app.routes.widget_v2 import router as widget_v2_router
@@ -383,6 +385,8 @@ app.include_router(reminders_router)
 app.include_router(livelink_ingest_router)
 app.include_router(livelink_admin_router)
 app.include_router(livelink_vehicle_router)
+app.include_router(torque_router)
+logging.getLogger("granian.access").addFilter(TorqueTokenRedactionFilter())
 app.include_router(quick_entry_router)
 app.include_router(widget_router)
 app.include_router(widget_keys_router)
