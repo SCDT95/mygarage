@@ -4,6 +4,7 @@ import importlib.util
 import inspect as python_inspect
 import logging
 from pathlib import Path
+from types import ModuleType
 
 from sqlalchemy import create_engine, text
 
@@ -104,7 +105,7 @@ class MigrationRunner:
         logger.debug("Discovered %s migration file(s)", len(migrations))
         return migrations
 
-    def _load_module(self, name: str, path: Path):
+    def _load_module(self, name: str, path: Path) -> ModuleType:
         """Dynamically import a migration module from its file path.
 
         Raises:
@@ -117,7 +118,7 @@ class MigrationRunner:
         spec.loader.exec_module(module)
         return module
 
-    def _get_replaces(self, module) -> list[str]:
+    def _get_replaces(self, module: ModuleType) -> list[str]:
         """Return the migration's REPLACES list of superseded stems (default []).
 
         Non-list/tuple values are ignored with a warning; non-str entries are
@@ -138,7 +139,7 @@ class MigrationRunner:
             result.append(stem)
         return result
 
-    def _run_upgrade(self, name: str, module) -> None:
+    def _run_upgrade(self, name: str, module: ModuleType) -> None:
         """Execute an already-loaded migration module's upgrade().
 
         Passes the runner engine when the signature accepts it, else calls with

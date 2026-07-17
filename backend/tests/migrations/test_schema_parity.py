@@ -261,6 +261,14 @@ def test_structural_parity(engine_for_migration):
     (data is covered separately by test_seed_data_inventory). A non-empty diff is
     model<->migration drift — do NOT edit the test to force green; the diff is the
     finding (see Step 5).
+
+    Scope: this proves fresh-install create_all == create_all+migrations parity,
+    guarding against future model<->migration drift and confirming the create_all
+    baseline is faithful for fresh installs. It does NOT exercise migrations
+    069/070/071's transformation DDL against a real prod-shaped DB — DB-B already
+    has the target schema from create_all before those migrations run, so on this
+    path they are no-ops. Convergence of an existing prod DB is validated by the
+    per-migration unit tests plus a pre-tag local prod-copy run.
     """
     dialect, engine, url = engine_for_migration
     metadata = _register_all_models()
