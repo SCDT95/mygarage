@@ -6309,6 +6309,82 @@
         "title": "InsurancePolicyUpdate",
         "type": "object"
       },
+      "LastLocationResponse": {
+        "description": "Schema for GET .../livelink/location/last.",
+        "properties": {
+          "altitude": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Altitude (metres)",
+            "title": "Altitude"
+          },
+          "drive_session_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Trip this point belongs to, if any",
+            "title": "Drive Session Id"
+          },
+          "heading": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Heading (degrees)",
+            "title": "Heading"
+          },
+          "latitude": {
+            "description": "Latitude (decimal degrees)",
+            "title": "Latitude",
+            "type": "number"
+          },
+          "longitude": {
+            "description": "Longitude (decimal degrees)",
+            "title": "Longitude",
+            "type": "number"
+          },
+          "speed": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Speed (km/h)",
+            "title": "Speed"
+          },
+          "timestamp": {
+            "description": "When the point was recorded",
+            "format": "date-time",
+            "title": "Timestamp",
+            "type": "string"
+          }
+        },
+        "required": [
+          "latitude",
+          "longitude",
+          "timestamp"
+        ],
+        "title": "LastLocationResponse",
+        "type": "object"
+      },
       "LinkOIDCAccountRequest": {
         "description": "Request to link OIDC account with password verification.",
         "properties": {
@@ -7122,6 +7198,106 @@
           }
         },
         "title": "LiveLinkSettingsUpdate",
+        "type": "object"
+      },
+      "LocationPointOut": {
+        "description": "A single GPS breadcrumb point, coordinates as float for map rendering.",
+        "properties": {
+          "altitude": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Altitude (metres)",
+            "title": "Altitude"
+          },
+          "heading": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Heading (degrees)",
+            "title": "Heading"
+          },
+          "id": {
+            "description": "Location point ID",
+            "title": "Id",
+            "type": "integer"
+          },
+          "latitude": {
+            "description": "Latitude (decimal degrees)",
+            "title": "Latitude",
+            "type": "number"
+          },
+          "longitude": {
+            "description": "Longitude (decimal degrees)",
+            "title": "Longitude",
+            "type": "number"
+          },
+          "speed": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Speed (km/h)",
+            "title": "Speed"
+          },
+          "timestamp": {
+            "description": "When the point was recorded",
+            "format": "date-time",
+            "title": "Timestamp",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "timestamp",
+          "latitude",
+          "longitude"
+        ],
+        "title": "LocationPointOut",
+        "type": "object"
+      },
+      "LocationTrackingResponse": {
+        "description": "Response body for PATCH .../livelink/location-tracking.",
+        "properties": {
+          "location_tracking_enabled": {
+            "description": "Whether GPS location tracking is now enabled",
+            "title": "Location Tracking Enabled",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "location_tracking_enabled"
+        ],
+        "title": "LocationTrackingResponse",
+        "type": "object"
+      },
+      "LocationTrackingUpdate": {
+        "description": "Request body for PATCH .../livelink/location-tracking.",
+        "properties": {
+          "enabled": {
+            "description": "Whether GPS location tracking is enabled",
+            "title": "Enabled",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "enabled"
+        ],
+        "title": "LocationTrackingUpdate",
         "type": "object"
       },
       "LoginRequest": {
@@ -13778,6 +13954,132 @@
         "title": "TollTransactionUpdate",
         "type": "object"
       },
+      "TorqueSourceCreate": {
+        "description": "Request body for POST .../livelink/torque-sources.",
+        "properties": {
+          "label": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Optional friendly name for this source",
+            "title": "Label"
+          }
+        },
+        "title": "TorqueSourceCreate",
+        "type": "object"
+      },
+      "TorqueSourceCreateResponse": {
+        "description": "Response body for POST .../livelink/torque-sources.\n\n``token`` is the raw device token embedded in ``upload_url`` -- shown\nONCE. It is stored hashed and cannot be retrieved again.",
+        "properties": {
+          "device_id": {
+            "description": "Newly created torque-kind device id",
+            "title": "Device Id",
+            "type": "string"
+          },
+          "label": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Friendly name for this source",
+            "title": "Label"
+          },
+          "token": {
+            "description": "One-time device token (shown once, save it now)",
+            "title": "Token",
+            "type": "string"
+          },
+          "upload_url": {
+            "description": "Paste this into Torque Pro's 'Upload URL' setting",
+            "title": "Upload Url",
+            "type": "string"
+          }
+        },
+        "required": [
+          "device_id",
+          "upload_url",
+          "token"
+        ],
+        "title": "TorqueSourceCreateResponse",
+        "type": "object"
+      },
+      "TorqueSourceListResponse": {
+        "description": "Schema for GET .../livelink/torque-sources.",
+        "properties": {
+          "sources": {
+            "description": "This vehicle's registered Torque sources",
+            "items": {
+              "$ref": "#/components/schemas/TorqueSourceResponse"
+            },
+            "title": "Sources",
+            "type": "array"
+          }
+        },
+        "title": "TorqueSourceListResponse",
+        "type": "object"
+      },
+      "TorqueSourceResponse": {
+        "description": "One entry in the torque-sources list -- no token.",
+        "properties": {
+          "created_at": {
+            "description": "When this source was registered",
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "device_id": {
+            "description": "Torque device id",
+            "title": "Device Id",
+            "type": "string"
+          },
+          "device_status": {
+            "description": "online / offline / unknown",
+            "title": "Device Status",
+            "type": "string"
+          },
+          "label": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Friendly name for this source",
+            "title": "Label"
+          },
+          "last_seen": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Last time this source uploaded data",
+            "title": "Last Seen"
+          }
+        },
+        "required": [
+          "device_id",
+          "device_status",
+          "created_at"
+        ],
+        "title": "TorqueSourceResponse",
+        "type": "object"
+      },
       "TrailerDetailsCreate": {
         "description": "Schema for creating trailer details.",
         "properties": {
@@ -14203,6 +14505,109 @@
           }
         },
         "title": "TransmissionInfo",
+        "type": "object"
+      },
+      "TripListResponse": {
+        "description": "Schema for GET .../livelink/trips.",
+        "properties": {
+          "trips": {
+            "description": "Trips, newest first",
+            "items": {
+              "$ref": "#/components/schemas/TripSummary"
+            },
+            "title": "Trips",
+            "type": "array"
+          }
+        },
+        "title": "TripListResponse",
+        "type": "object"
+      },
+      "TripPointsResponse": {
+        "description": "Schema for GET .../livelink/trips/{session_id}/points.",
+        "properties": {
+          "points": {
+            "description": "Points ordered by timestamp ascending",
+            "items": {
+              "$ref": "#/components/schemas/LocationPointOut"
+            },
+            "title": "Points",
+            "type": "array"
+          },
+          "session_id": {
+            "description": "Drive session ID",
+            "title": "Session Id",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "session_id"
+        ],
+        "title": "TripPointsResponse",
+        "type": "object"
+      },
+      "TripSummary": {
+        "description": "Summary of one GPS-tracked trip (a drive session with >=1 location point).",
+        "properties": {
+          "distance_km": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Distance traveled (km)",
+            "title": "Distance Km"
+          },
+          "duration_seconds": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Trip duration in seconds",
+            "title": "Duration Seconds"
+          },
+          "ended_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Trip end time",
+            "title": "Ended At"
+          },
+          "point_count": {
+            "description": "Number of GPS points recorded for this trip",
+            "title": "Point Count",
+            "type": "integer"
+          },
+          "session_id": {
+            "description": "Drive session ID",
+            "title": "Session Id",
+            "type": "integer"
+          },
+          "started_at": {
+            "description": "Trip start time",
+            "format": "date-time",
+            "title": "Started At",
+            "type": "string"
+          }
+        },
+        "required": [
+          "session_id",
+          "started_at",
+          "point_count"
+        ],
+        "title": "TripSummary",
         "type": "object"
       },
       "UserCreate": {
@@ -16179,6 +16584,11 @@
             ],
             "description": "License plate number",
             "title": "License Plate"
+          },
+          "location_tracking_enabled": {
+            "default": true,
+            "title": "Location Tracking Enabled",
+            "type": "boolean"
           },
           "main_photo": {
             "anyOf": [
@@ -26174,6 +26584,86 @@
         ]
       }
     },
+    "/api/v1/torque/{token}/upload": {
+      "get": {
+        "description": "Torque Pro's primary ingest path: GET with all data in the query string.",
+        "operationId": "torque_ingest_get_api_v1_torque__token__upload_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "token",
+            "required": true,
+            "schema": {
+              "title": "Token",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Torque Ingest Get",
+        "tags": [
+          "torque"
+        ]
+      },
+      "post": {
+        "description": "Accept POST (query string and/or form body) for robustness; Torque itself uses GET.",
+        "operationId": "torque_ingest_post_api_v1_torque__token__upload_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "token",
+            "required": true,
+            "schema": {
+              "title": "Token",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Torque Ingest Post",
+        "tags": [
+          "torque"
+        ]
+      }
+    },
     "/api/v2/widget/summary": {
       "get": {
         "description": "Aggregate counts across all vehicles the key can see (unit-agnostic).",
@@ -28695,6 +29185,120 @@
         ]
       }
     },
+    "/api/vehicles/{vin}/livelink/location-tracking": {
+      "patch": {
+        "description": "Set the vehicle's GPS location-tracking opt-out flag (R1-H4).\n\nTorque ingest reads ``Vehicle.location_tracking_enabled`` to decide\nwhether to persist GPS breadcrumbs; this is the only setter for it.\n\n**Path Parameters:**\n- **vin**: Vehicle VIN\n\n**Security:**\n- Requires authentication AND a write-share (or ownership/admin) --\n  a read-only share must be rejected.",
+        "operationId": "update_location_tracking_api_vehicles__vin__livelink_location_tracking_patch",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "vin",
+            "required": true,
+            "schema": {
+              "title": "Vin",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LocationTrackingUpdate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LocationTrackingResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Update Location Tracking",
+        "tags": [
+          "Vehicle LiveLink"
+        ]
+      }
+    },
+    "/api/vehicles/{vin}/livelink/location/last": {
+      "get": {
+        "description": "Get the vehicle's most recent GPS location point, if any.\n\n**Path Parameters:**\n- **vin**: Vehicle VIN\n\n**Security:**\n- Requires authentication",
+        "operationId": "get_last_location_api_vehicles__vin__livelink_location_last_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "vin",
+            "required": true,
+            "schema": {
+              "title": "Vin",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/LastLocationResponse"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ],
+                  "title": "Response Get Last Location Api Vehicles  Vin  Livelink Location Last Get"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Get Last Location",
+        "tags": [
+          "Vehicle LiveLink"
+        ]
+      }
+    },
     "/api/vehicles/{vin}/livelink/sessions": {
       "get": {
         "description": "Get drive sessions for a vehicle.\n\n**Path Parameters:**\n- **vin**: Vehicle VIN\n\n**Query Parameters:**\n- **limit**: Max results (default 50)\n- **offset**: Pagination offset\n- **start**: Filter by start time\n- **end**: Filter by end time\n\n**Security:**\n- Requires authentication",
@@ -29008,6 +29612,279 @@
           }
         ],
         "summary": "Get Vehicle Telemetry",
+        "tags": [
+          "Vehicle LiveLink"
+        ]
+      }
+    },
+    "/api/vehicles/{vin}/livelink/torque-sources": {
+      "get": {
+        "description": "List this vehicle's registered Torque Pro sources (no token).\n\n**Path Parameters:**\n- **vin**: Vehicle VIN\n\n**Security:**\n- Requires vehicle OWNERSHIP (a write-share does NOT pass).",
+        "operationId": "list_torque_sources_api_vehicles__vin__livelink_torque_sources_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "vin",
+            "required": true,
+            "schema": {
+              "title": "Vin",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TorqueSourceListResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "List Torque Sources",
+        "tags": [
+          "Vehicle LiveLink"
+        ]
+      },
+      "post": {
+        "description": "Register a new Torque Pro upload source for this vehicle.\n\nReturns the ready-to-paste Torque \"Upload URL\" plus the raw device token\nembedded in it -- both are shown ONCE; the token is stored hashed and\ncannot be retrieved again (revoke and create a new source instead).\n\n**Path Parameters:**\n- **vin**: Vehicle VIN\n\n**Security:**\n- Requires vehicle OWNERSHIP (a write-share does NOT pass) -- matches the\n  per-device admin ops in livelink_admin.py.",
+        "operationId": "create_torque_source_api_vehicles__vin__livelink_torque_sources_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "vin",
+            "required": true,
+            "schema": {
+              "title": "Vin",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TorqueSourceCreate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TorqueSourceCreateResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Create Torque Source",
+        "tags": [
+          "Vehicle LiveLink"
+        ]
+      }
+    },
+    "/api/vehicles/{vin}/livelink/torque-sources/{device_id}": {
+      "delete": {
+        "description": "Revoke (delete) a Torque Pro source.\n\n**R1-H5:** loads the device and verifies it belongs to THIS vin (the\nnormalized path vin) AND is kind='torque' before deleting -- an owner of\nVIN-A must not be able to delete VIN-B's device by supplying B's\ndevice_id. Never hands device_id to the unscoped\n``LiveLinkService.delete_device``.\n\n**Path Parameters:**\n- **vin**: Vehicle VIN\n- **device_id**: Torque source device id\n\n**Security:**\n- Requires vehicle OWNERSHIP (a write-share does NOT pass).",
+        "operationId": "delete_torque_source_api_vehicles__vin__livelink_torque_sources__device_id__delete",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "vin",
+            "required": true,
+            "schema": {
+              "title": "Vin",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "device_id",
+            "required": true,
+            "schema": {
+              "title": "Device Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Delete Torque Source",
+        "tags": [
+          "Vehicle LiveLink"
+        ]
+      }
+    },
+    "/api/vehicles/{vin}/livelink/trips": {
+      "get": {
+        "description": "Get GPS-tracked trips (drive sessions with >=1 location point) for a vehicle.\n\n**Path Parameters:**\n- **vin**: Vehicle VIN\n\n**Query Parameters:**\n- **limit**: Max trips to return, newest first (default 50)\n\n**Security:**\n- Requires authentication",
+        "operationId": "get_trips_api_vehicles__vin__livelink_trips_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "vin",
+            "required": true,
+            "schema": {
+              "title": "Vin",
+              "type": "string"
+            }
+          },
+          {
+            "description": "Max trips to return",
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 50,
+              "description": "Max trips to return",
+              "maximum": 500,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TripListResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Get Trips",
+        "tags": [
+          "Vehicle LiveLink"
+        ]
+      }
+    },
+    "/api/vehicles/{vin}/livelink/trips/{session_id}/points": {
+      "get": {
+        "description": "Get a trip's GPS points as an ordered polyline (for map rendering).\n\n**Path Parameters:**\n- **vin**: Vehicle VIN\n- **session_id**: Drive session ID\n\n**Security:**\n- Requires authentication",
+        "operationId": "get_trip_points_api_vehicles__vin__livelink_trips__session_id__points_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "vin",
+            "required": true,
+            "schema": {
+              "title": "Vin",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "session_id",
+            "required": true,
+            "schema": {
+              "title": "Session Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TripPointsResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Get Trip Points",
         "tags": [
           "Vehicle LiveLink"
         ]

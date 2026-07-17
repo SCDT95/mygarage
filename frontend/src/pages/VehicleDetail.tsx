@@ -69,6 +69,7 @@ import WindowStickerUpload from '../components/WindowStickerUpload'
 import VehicleRemoveModal from '../components/modals/VehicleRemoveModal'
 import VehicleTransferWizard from '../components/modals/VehicleTransferWizard'
 import VehicleSharingModal from '../components/modals/VehicleSharingModal'
+import TorqueSourceModal from '../components/modals/TorqueSourceModal'
 import TransferHistorySection from '../components/TransferHistorySection'
 import { useOnlineStatus } from '../hooks/useOnlineStatus'
 import { useAuth } from '../contexts/AuthContext'
@@ -106,7 +107,7 @@ const getApiErrorMessage = (error: unknown, fallback: string) => {
   return fallback
 }
 
-type ModalType = 'remove' | 'transfer' | 'sharing' | 'windowSticker' | null
+type ModalType = 'remove' | 'transfer' | 'sharing' | 'windowSticker' | 'torqueSource' | null
 type PrimaryTabType = 'overview' | 'media' | 'maintenance' | 'fuel' | 'tracking' | 'financial' | 'livelink'
 type SubTabType = 'photos' | 'documents' | 'service' | 'fuel' | 'def' | 'propane' | 'odometer' | 'notes' | 'warranties' | 'insurance' | 'tax' | 'tolls' | 'spotrentals' | 'recalls' | 'reports' | 'reminders' | 'live' | 'dtcs' | 'sessions' | 'charts'
 
@@ -846,6 +847,29 @@ export default function VehicleDetail() {
               </div>
             )}
 
+            {/* Connected Devices — owner-reachable Torque Pro source registration (R1-H6).
+                Lives here (not the admin-gated LiveLinkSettingsModal, and not inside the
+                LiveLink primary tab, which stays hidden until a device exists) so an owner
+                can register a source before any device is linked. */}
+            <div className="bg-garage-surface rounded-lg border border-garage-border p-6 break-inside-avoid">
+              <h2 className="text-xl font-semibold text-garage-text mb-4">Connected Devices</h2>
+              <div className="flex items-center justify-between gap-4">
+                <div>
+                  <p className="text-sm text-garage-text-muted">
+                    {t('forms:modal.torque.description')}
+                  </p>
+                </div>
+                <button
+                  onClick={() => setOpenModal('torqueSource')}
+                  className="flex items-center gap-2 px-4 py-2 btn btn-primary rounded-lg shrink-0"
+                  title={t('forms:modal.torque.launchButtonTooltip')}
+                >
+                  <Radio className="w-4 h-4" />
+                  <span>{t('forms:modal.torque.launchButton')}</span>
+                </button>
+              </div>
+            </div>
+
             {/* Transfer History */}
             <TransferHistorySection vin={vehicle.vin} />
 
@@ -1298,6 +1322,15 @@ export default function VehicleDetail() {
           onClose={() => setOpenModal(null)}
           vin={vin}
           vehicleNickname={vehicle.nickname}
+        />
+      )}
+
+      {/* Torque Source Modal (Task 13, owner-reachable) */}
+      {vin && (
+        <TorqueSourceModal
+          isOpen={openModal === 'torqueSource'}
+          onClose={() => setOpenModal(null)}
+          vin={vin}
         />
       )}
 

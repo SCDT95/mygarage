@@ -40,6 +40,7 @@ const baseVehicle: Vehicle = {
   created_at: '2024-01-15T00:00:00Z',
   archived_visible: true,
   fuel_type: 'diesel',
+  location_tracking_enabled: true,
 }
 
 function renderVehicleEdit(vehicle: Vehicle, vin = vehicle.vin): void {

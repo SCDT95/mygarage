@@ -30,6 +30,7 @@ describe('VehicleCard', () => {
     purchase_price: '25000',
     created_at: '2020-01-15T00:00:00Z',
     archived_visible: true,
+    location_tracking_enabled: true,
   }
 
   it('renders vehicle information', () => {

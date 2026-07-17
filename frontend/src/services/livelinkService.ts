@@ -35,6 +35,8 @@ import type {
   DeviceCommandResponse,
   SdConfigUpdate,
   BackfillResultResponse,
+  TorqueSourceCreateResponse,
+  TorqueSourceListResponse,
 } from '../types/livelink'
 import { withBase } from '../utils/basePath'
 
@@ -437,6 +439,36 @@ export const livelinkService = {
   async triggerSdBackfill(deviceId: string): Promise<BackfillResultResponse> {
     const response = await api.post<BackfillResultResponse>(`/livelink/devices/${deviceId}/backfill`)
     return response.data
+  },
+
+  // ===========================================================================
+  // Torque Sources (owner-scoped, per-vehicle)
+  // ===========================================================================
+
+  /**
+   * List this vehicle's registered Torque Pro sources (no token)
+   */
+  async getTorqueSources(vin: string): Promise<TorqueSourceListResponse> {
+    const response = await api.get<TorqueSourceListResponse>(`/vehicles/${vin}/livelink/torque-sources`)
+    return response.data
+  },
+
+  /**
+   * Register a new Torque Pro source for a vehicle.
+   * Returns the upload URL + one-time device token (shown once).
+   */
+  async createTorqueSource(vin: string, label?: string): Promise<TorqueSourceCreateResponse> {
+    const response = await api.post<TorqueSourceCreateResponse>(`/vehicles/${vin}/livelink/torque-sources`, {
+      label: label || null,
+    })
+    return response.data
+  },
+
+  /**
+   * Revoke (delete) a Torque Pro source
+   */
+  async deleteTorqueSource(vin: string, deviceId: string): Promise<void> {
+    await api.delete(`/vehicles/${vin}/livelink/torque-sources/${deviceId}`)
   },
 }
 
