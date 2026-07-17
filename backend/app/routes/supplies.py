@@ -1,9 +1,18 @@
 """Global parts & supplies catalog routes.
 
-Authenticated-only (no vehicle gate) — a shared household catalog, mirroring
-address_book. Queries are by id, never by vin, so these routes are invisible to
-the AST authz tripwire. A per-vehicle usages read route (Task 8) is vin-scoped
-and carries a read gate; it lives in a separate module.
+Authorization model: supplies are a shared household catalog, exactly like
+``address_book``. Every route is authenticated (``require_auth``). There is no
+per-vehicle authorization here because a supply is NOT a vehicle-owned child
+record — it is a household-level item with an optional, non-authoritative ``vin``
+pin (see ``Supply.created_by_user_id`` "provenance only, not an access wall").
+Routes therefore key on the supply ``id``; the ``vin`` query param is a display
+filter, never an access boundary.
+
+Vehicle-scoped access control lives where it belongs: the per-vehicle
+supply-usages read route is vin-scoped and gates with ``get_vehicle_or_403``,
+and job consumption is written through the already write-gated service-visit
+flow. This module deliberately has no vehicle gate because it guards no
+vehicle-owned data.
 """
 
 from typing import Annotated
