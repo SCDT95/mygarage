@@ -18,3 +18,6 @@ export type LocationTrackingResponse = components['schemas']['LocationTrackingRe
 // -- Trip Points (GPS polyline) Types (Task 15) --
 export type TripPoint = components['schemas']['LocationPointOut']
 export type TripPointsResponse = components['schemas']['TripPointsResponse']
+
+// -- Last Known Location Type (Task 16) --
+export type LastLocation = components['schemas']['LastLocationResponse']

@@ -38,7 +38,7 @@ import type {
   TorqueSourceCreateResponse,
   TorqueSourceListResponse,
 } from '../types/livelink'
-import type { TripList, LocationTrackingResponse, TripPointsResponse } from '../types/trips'
+import type { TripList, LocationTrackingResponse, TripPointsResponse, LastLocation } from '../types/trips'
 import { withBase } from '../utils/basePath'
 
 export const livelinkService = {
@@ -314,6 +314,16 @@ export const livelinkService = {
    */
   async getTripPoints(vin: string, sessionId: number): Promise<TripPointsResponse> {
     const response = await api.get<TripPointsResponse>(`/vehicles/${vin}/livelink/trips/${sessionId}/points`)
+    return response.data
+  },
+
+  /**
+   * Get the vehicle's most recent GPS location point, if any (Overview
+   * "Last seen here" card, Task 16). Returns null if no location has ever
+   * been recorded.
+   */
+  async getLastLocation(vin: string): Promise<LastLocation | null> {
+    const response = await api.get<LastLocation | null>(`/vehicles/${vin}/livelink/location/last`)
     return response.data
   },
 

@@ -125,6 +125,8 @@
     "importError": "Failed to import data",
     "importSuccess": "Import completed successfully",
     "importing": "Importing...",
+    "lastLocation": "Last Seen Here",
+    "lastLocationSeenAt": "Last seen: {{time}}",
     "loading": "Loading vehicle details...",
     "manufacturing": "Manufacturing",
     "msrpPricing": "MSRP Pricing",
