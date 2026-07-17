@@ -6,6 +6,10 @@ the same column(s) under a different name; nothing dedupes differently-named
 indexes, so a fresh create_all-then-migrate replay carries both):
   - csrf_tokens: ``idx_csrf_token`` (migration 012) dup of the model's
     ``ix_csrf_tokens_token``.
+  - csrf_tokens: ``idx_csrf_user_id`` (migration 012), a solo index on
+    ``user_id`` — redundant because the model's composite
+    ``ix_csrf_user_token`` is on ``(user_id, token)`` with ``user_id``
+    leading, which already serves ``user_id``-only queries.
   - odometer_records: ``idx_odometer_fuel_record_id`` (migration 055) dup of
     the model's ``ix_odometer_records_fuel_record_id``.
   - users: ``idx_users_auth_method`` (migration 011) dup of the model's
@@ -37,6 +41,7 @@ MIGRATION = "071_dedupe_indexes"
 
 DROPPED_INDEXES = (
     "idx_csrf_token",
+    "idx_csrf_user_id",
     "idx_odometer_fuel_record_id",
     "idx_users_auth_method",
     "ix_users_oidc_subject",
@@ -111,9 +116,10 @@ def _create_dossier_tables(engine, dialect: str) -> None:
             """)
         )
 
-        # csrf_tokens: model index (kept) + migration 012's redundant duplicate.
+        # csrf_tokens: model index (kept) + migration 012's redundant duplicates.
         conn.execute(text("CREATE UNIQUE INDEX ix_csrf_tokens_token ON csrf_tokens(token)"))
         conn.execute(text("CREATE UNIQUE INDEX idx_csrf_token ON csrf_tokens(token)"))
+        conn.execute(text("CREATE INDEX idx_csrf_user_id ON csrf_tokens(user_id)"))
 
         # odometer_records: model index (kept) + migration 055's redundant duplicate.
         conn.execute(

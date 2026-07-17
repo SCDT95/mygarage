@@ -17,6 +17,7 @@ from sqlalchemy import create_engine, text
 
 REDUNDANT_INDEXES = (
     "idx_csrf_token",  # dup of ix_csrf_tokens_token (mig 012)
+    "idx_csrf_user_id",  # solo user_id index (mig 012); redundant — composite ix_csrf_user_token (user_id, token) covers user_id-only queries
     "idx_odometer_fuel_record_id",  # dup of ix_odometer_records_fuel_record_id (mig 055)
     "idx_users_auth_method",  # dup of ix_users_auth_method (mig 011)
     "ix_users_oidc_subject",  # old plain create_all index; model now uses partial idx_users_oidc_subject
