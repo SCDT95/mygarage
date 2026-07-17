@@ -68,6 +68,11 @@ def _to_float(raw: str) -> float | None:
 
 
 def parse_torque_query(params: Mapping[str, str]) -> TorqueReading:
+    """Parse a Torque Pro upload query string into a TorqueReading.
+
+    Splits metadata (session/id/time/email), GPS PIDs (→ ``gps``), and OBD PIDs
+    (→ ``obd``, canonical keys). Non-numeric / NaN / inf values are dropped.
+    """
     r = TorqueReading()
     for key, raw in params.items():
         lk = key.lower()
@@ -90,7 +95,9 @@ def parse_torque_query(params: Mapping[str, str]) -> TorqueReading:
                 continue
             # Unmapped PIDs go through the shared canonicalizer so Torque param_keys
             # match every other ingest path (space→underscore + upper, migration 059).
-            canonical = TORQUE_OBD_PID_MAP.get(lk) or canonical_param_key(lk)
+            canonical = (
+                TORQUE_OBD_PID_MAP[lk] if lk in TORQUE_OBD_PID_MAP else canonical_param_key(lk)
+            )
             r.obd[canonical] = val
         # other keys (Torque protocol "v", unknown metadata) are ignored
     return r

@@ -1,4 +1,4 @@
-from app.services.torque_pid_map import GPS_PIDS, parse_torque_query
+from app.services.torque_pid_map import parse_torque_query
 
 
 def test_maps_common_obd_pids_to_canonical_keys():
@@ -39,7 +39,8 @@ def test_splits_gps_pids_out_of_obd():
     assert r.gps["speed"] == 55.0
     assert r.gps["heading"] == 270.0
     assert r.gps["altitude"] == 12.0
-    assert "ENGINE_RPM" in r.obd and not (GPS_PIDS & set(r.obd))
+    # Exactly one OBD key (k0c→ENGINE_RPM); no GPS PID leaked into obd under any name.
+    assert set(r.obd) == {"ENGINE_RPM"}
 
 
 def test_unknown_pid_auto_canonicalizes_uppercase():
