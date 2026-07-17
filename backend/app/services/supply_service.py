@@ -76,7 +76,7 @@ class SupplyService:
         for sid in supply_ids:
             p_qty, p_cost, costed_qty = purchases.get(sid, (_ZERO, _ZERO, _ZERO))
             u_qty = usages.get(sid, _ZERO)
-            on_hand = (p_qty - u_qty).quantize(Decimal("0.001"))
+            on_hand = (p_qty - u_qty).quantize(Decimal("0.001"), rounding=ROUND_HALF_UP)
             avg = (
                 (p_cost / costed_qty).quantize(Decimal("0.0001"), rounding=ROUND_HALF_UP)
                 if costed_qty > 0
