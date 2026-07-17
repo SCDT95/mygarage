@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
-import { Plus, Edit, Trash2, X, Save, Package, AlertTriangle } from 'lucide-react'
+import { Plus, Edit, Trash2, Save, Package, AlertTriangle } from 'lucide-react'
 import { toast } from 'sonner'
 import {
   useSupplies,
@@ -16,6 +16,7 @@ import { useCurrencyPreference } from '@/hooks/useCurrencyPreference'
 import { canonicalToDisplay, supplyUnitLabel } from '@/utils/supplyUnits'
 import { supplySchema, SUPPLY_UNIT_TYPES, type SupplyFormData } from '@/schemas/supplies'
 import { FormError } from '@/components/FormError'
+import FormModalWrapper from '@/components/FormModalWrapper'
 import type { Supply, SupplyCreate, SupplyUpdate } from '@/types/supplies'
 
 export default function Supplies() {
@@ -283,18 +284,11 @@ export function SupplyForm({ supply, onClose, onSuccess }: SupplyFormProps) {
   }
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center p-4 z-50">
-      <div className="bg-garage-surface rounded-lg shadow-2xl max-w-full sm:max-w-2xl w-full max-h-[90vh] overflow-y-auto border border-garage-border">
-        <div className="sticky top-0 bg-garage-surface border-b border-garage-border px-6 py-4 flex justify-between items-center rounded-t-lg">
-          <h2 className="text-xl font-semibold text-garage-text">
-            {isEdit ? t('supplies.editSupply') : t('supplies.addSupply')}
-          </h2>
-          <button onClick={onClose} className="text-garage-text-muted hover:text-garage-text">
-            <X className="w-5 h-5" />
-          </button>
-        </div>
-
-        <form onSubmit={handleSubmit(onSubmit)} className="p-6 space-y-4">
+    <FormModalWrapper
+      title={isEdit ? t('supplies.editSupply') : t('supplies.addSupply')}
+      onClose={onClose}
+    >
+      <form onSubmit={handleSubmit(onSubmit)} className="p-6 space-y-4">
           {error && (
             <div className="bg-danger/10 border border-danger rounded-lg p-3">
               <p className="text-sm text-danger">{error}</p>
@@ -452,8 +446,7 @@ export function SupplyForm({ supply, onClose, onSuccess }: SupplyFormProps) {
               {t('common:cancel')}
             </button>
           </div>
-        </form>
-      </div>
-    </div>
+      </form>
+    </FormModalWrapper>
   )
 }
