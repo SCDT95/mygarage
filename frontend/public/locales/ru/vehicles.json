@@ -345,6 +345,20 @@
       "sessionCount": "{{count}} сессий записано"
     },
     "telemetryWillAppear": "Здесь появится телеметрия",
+    "trips": {
+      "autoDetected": "Trips are automatically detected when your vehicle's ECU comes online with GPS location data",
+      "distance": "Distance",
+      "duration": "Duration",
+      "loadError": "Failed to load trips",
+      "locationTracking": "Location Tracking",
+      "locationTrackingDisabled": "Location tracking disabled",
+      "locationTrackingEnabled": "Location tracking enabled",
+      "locationTrackingError": "Failed to update location tracking",
+      "mapComingSoon": "Route map coming soon",
+      "noRecords": "No trips recorded",
+      "pointCount": "{{count}} GPS points",
+      "tripCount": "{{count}} trips recorded"
+    },
     "vehicleParked": "Транспортное средство припарковано",
     "vehicleRunning": "Транспортное средство заведено",
     "wicanOffline": "Wican не в сети",

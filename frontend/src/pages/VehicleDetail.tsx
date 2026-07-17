@@ -62,6 +62,7 @@ import LiveLinkLiveTab from '../components/tabs/LiveLinkLiveTab'
 import LiveLinkDTCsTab from '../components/tabs/LiveLinkDTCsTab'
 import LiveLinkSessionsTab from '../components/tabs/LiveLinkSessionsTab'
 import LiveLinkChartsTab from '../components/tabs/LiveLinkChartsTab'
+import LiveLinkTripsTab from '../components/tabs/LiveLinkTripsTab'
 import ReminderList from '../components/ReminderList'
 import SubTabNav from '../components/SubTabNav'
 import { livelinkService } from '../services/livelinkService'
@@ -109,7 +110,7 @@ const getApiErrorMessage = (error: unknown, fallback: string) => {
 
 type ModalType = 'remove' | 'transfer' | 'sharing' | 'windowSticker' | 'torqueSource' | null
 type PrimaryTabType = 'overview' | 'media' | 'maintenance' | 'fuel' | 'tracking' | 'financial' | 'livelink'
-type SubTabType = 'photos' | 'documents' | 'service' | 'fuel' | 'def' | 'propane' | 'odometer' | 'notes' | 'warranties' | 'insurance' | 'tax' | 'tolls' | 'spotrentals' | 'recalls' | 'reports' | 'reminders' | 'live' | 'dtcs' | 'sessions' | 'charts'
+type SubTabType = 'photos' | 'documents' | 'service' | 'fuel' | 'def' | 'propane' | 'odometer' | 'notes' | 'warranties' | 'insurance' | 'tax' | 'tolls' | 'spotrentals' | 'recalls' | 'reports' | 'reminders' | 'live' | 'dtcs' | 'sessions' | 'charts' | 'trips'
 
 export default function VehicleDetail() {
   const { t } = useTranslation('vehicles')
@@ -516,6 +517,7 @@ export default function VehicleDetail() {
       { id: 'dtcs' as const, label: 'DTCs', icon: AlertTriangle },
       { id: 'sessions' as const, label: 'Sessions', icon: Clock },
       { id: 'charts' as const, label: 'Charts', icon: BarChart3 },
+      { id: 'trips' as const, label: 'Trips', icon: MapPin },
     ],
   }
 
@@ -1291,6 +1293,7 @@ export default function VehicleDetail() {
         {activePrimaryTab === 'livelink' && activeSubTab === 'dtcs' && vin && <LiveLinkDTCsTab vin={vin} />}
         {activePrimaryTab === 'livelink' && activeSubTab === 'sessions' && vin && <LiveLinkSessionsTab vin={vin} />}
         {activePrimaryTab === 'livelink' && activeSubTab === 'charts' && vin && <LiveLinkChartsTab vin={vin} />}
+        {activePrimaryTab === 'livelink' && activeSubTab === 'trips' && vin && <LiveLinkTripsTab vin={vin} />}
       </div>
 
       {/* Vehicle Remove Modal */}

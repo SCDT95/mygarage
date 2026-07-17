@@ -38,6 +38,7 @@ import type {
   TorqueSourceCreateResponse,
   TorqueSourceListResponse,
 } from '../types/livelink'
+import type { TripList, LocationTrackingResponse } from '../types/trips'
 import { withBase } from '../utils/basePath'
 
 export const livelinkService = {
@@ -281,6 +282,30 @@ export const livelinkService = {
       `/vehicles/${vin}/livelink/sessions/${sessionId}/telemetry`,
       { params }
     )
+    return response.data
+  },
+
+  // ===========================================================================
+  // Trips (GPS-tracked drive sessions, Task 14)
+  // ===========================================================================
+
+  /**
+   * Get GPS-tracked trips for a vehicle (drive sessions with >=1 location point)
+   */
+  async getTrips(vin: string, params?: { limit?: number }): Promise<TripList> {
+    const response = await api.get<TripList>(`/vehicles/${vin}/livelink/trips`, {
+      params: params || {},
+    })
+    return response.data
+  },
+
+  /**
+   * Set the vehicle's GPS location-tracking opt-out flag (R1-H4)
+   */
+  async setLocationTracking(vin: string, enabled: boolean): Promise<LocationTrackingResponse> {
+    const response = await api.patch<LocationTrackingResponse>(`/vehicles/${vin}/livelink/location-tracking`, {
+      enabled,
+    })
     return response.data
   },
 
