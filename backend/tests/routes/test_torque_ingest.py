@@ -317,6 +317,33 @@ async def test_future_device_time_is_clamped_so_duration_stays_non_negative(
 
 
 @pytest.mark.asyncio
+async def test_garbage_overrange_time_falls_back_to_server_now(
+    client: AsyncClient, db_session: AsyncSession
+):
+    """`time` is only digit-validated upstream (torque_pid_map.parse_torque_query), not
+    range-checked. A 20-digit garbage value overflows datetime.fromtimestamp — the route
+    must degrade to server-now instead of 500ing (Torque retries on any non-OK! response,
+    so an unhandled overflow would wedge a misconfigured device in a retry loop).
+    """
+    vin, _device, token = await _make_torque_source(db_session)
+    before = datetime.now(UTC).replace(tzinfo=None)
+
+    r = await client.get(
+        f"/api/v1/torque/{token}/upload",
+        params={"session": "S1", "time": "99999999999999999999", "k0c": "1800"},
+    )
+    after = datetime.now(UTC).replace(tzinfo=None)
+
+    assert r.status_code == 200
+    assert r.text == "OK!"
+
+    rows = await _telemetry_rows(db_session, vin)
+    engine_rpm = next(row for row in rows if row.param_key == "ENGINE_RPM")
+    # Server-now-ish, not the far future the garbage value would have implied.
+    assert before <= engine_rpm.timestamp <= after
+
+
+@pytest.mark.asyncio
 async def test_ecu_status_online_after_data_bearing_ingest(
     client: AsyncClient, db_session: AsyncSession
 ):

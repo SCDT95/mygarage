@@ -880,7 +880,7 @@ export default function VehicleDetail() {
                 LiveLink primary tab, which stays hidden until a device exists) so an owner
                 can register a source before any device is linked. */}
             <div className="bg-garage-surface rounded-lg border border-garage-border p-6 break-inside-avoid">
-              <h2 className="text-xl font-semibold text-garage-text mb-4">Connected Devices</h2>
+              <h2 className="text-xl font-semibold text-garage-text mb-4">{t('detail.connectedDevices')}</h2>
               <div className="flex items-center justify-between gap-4">
                 <div>
                   <p className="text-sm text-garage-text-muted">

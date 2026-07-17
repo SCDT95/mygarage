@@ -85,7 +85,15 @@ async def _ingest(token: str, params: Mapping[str, str], db: AsyncSession) -> Re
     now = datetime.now(UTC).replace(tzinfo=None)
     ts = now
     if reading.time_ms:
-        candidate = datetime.fromtimestamp(reading.time_ms / 1000, tz=UTC).replace(tzinfo=None)
+        try:
+            candidate = datetime.fromtimestamp(reading.time_ms / 1000, tz=UTC).replace(tzinfo=None)
+        except OverflowError, OSError, ValueError:
+            # `time_ms` is only digit-validated (torque_pid_map.parse_torque_query), not
+            # range-checked — an out-of-range value (e.g. a 20-digit garbage `time`) blows
+            # up fromtimestamp. Degrade to server-now rather than 500ing: Torque retries on
+            # any non-OK! response, so a bad device clock plugin would otherwise wedge in a
+            # retry loop.
+            candidate = now
         # Trust the device clock for PAST timestamps (legit replay/backfill), but never
         # allow a FUTURE started_at/data ts — clamp to now. A future started_at would
         # finalize (at server-now) to a NEGATIVE duration and poison ordering/dedup (R2-H2).
