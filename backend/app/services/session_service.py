@@ -198,6 +198,15 @@ class SessionService:
         if session.start_odometer and session.end_odometer:
             session.distance_km = session.end_odometer - session.start_odometer
 
+        # GPS fallback: Torque trips have no odometer PID -> derive distance from the breadcrumb.
+        if session.distance_km is None:
+            from app.services.location_service import LocationService  # local import avoids cycle
+
+            points = await LocationService(self.db).get_trip_points(session.vin, session.id)
+            if len(points) >= 2:
+                coords = [(float(p.latitude), float(p.longitude)) for p in points]
+                session.distance_km = float(LocationService.haversine_km(coords))
+
         # Calculate aggregates from telemetry
         await self._calculate_session_aggregates(session)
 
