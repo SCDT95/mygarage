@@ -3030,6 +3030,30 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/torque/{token}/upload": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Torque Ingest Get
+         * @description Torque Pro's primary ingest path: GET with all data in the query string.
+         */
+        get: operations["torque_ingest_get_api_v1_torque__token__upload_get"];
+        put?: never;
+        /**
+         * Torque Ingest Post
+         * @description Accept POST (query string and/or form body) for robustness; Torque itself uses GET.
+         */
+        post: operations["torque_ingest_post_api_v1_torque__token__upload_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v2/widget/summary": {
         parameters: {
             query?: never;
@@ -3855,6 +3879,62 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/vehicles/{vin}/livelink/location-tracking": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /**
+         * Update Location Tracking
+         * @description Set the vehicle's GPS location-tracking opt-out flag (R1-H4).
+         *
+         *     Torque ingest reads ``Vehicle.location_tracking_enabled`` to decide
+         *     whether to persist GPS breadcrumbs; this is the only setter for it.
+         *
+         *     **Path Parameters:**
+         *     - **vin**: Vehicle VIN
+         *
+         *     **Security:**
+         *     - Requires authentication AND a write-share (or ownership/admin) --
+         *       a read-only share must be rejected.
+         */
+        patch: operations["update_location_tracking_api_vehicles__vin__livelink_location_tracking_patch"];
+        trace?: never;
+    };
+    "/api/vehicles/{vin}/livelink/location/last": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Last Location
+         * @description Get the vehicle's most recent GPS location point, if any.
+         *
+         *     **Path Parameters:**
+         *     - **vin**: Vehicle VIN
+         *
+         *     **Security:**
+         *     - Requires authentication
+         */
+        get: operations["get_last_location_api_vehicles__vin__livelink_location_last_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/vehicles/{vin}/livelink/sessions": {
         parameters: {
             query?: never;
@@ -3973,6 +4053,136 @@ export interface paths {
          *     - Requires authentication
          */
         get: operations["get_vehicle_telemetry_api_vehicles__vin__livelink_telemetry_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/vehicles/{vin}/livelink/torque-sources": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Torque Sources
+         * @description List this vehicle's registered Torque Pro sources (no token).
+         *
+         *     **Path Parameters:**
+         *     - **vin**: Vehicle VIN
+         *
+         *     **Security:**
+         *     - Requires vehicle OWNERSHIP (a write-share does NOT pass).
+         */
+        get: operations["list_torque_sources_api_vehicles__vin__livelink_torque_sources_get"];
+        put?: never;
+        /**
+         * Create Torque Source
+         * @description Register a new Torque Pro upload source for this vehicle.
+         *
+         *     Returns the ready-to-paste Torque "Upload URL" plus the raw device token
+         *     embedded in it -- both are shown ONCE; the token is stored hashed and
+         *     cannot be retrieved again (revoke and create a new source instead).
+         *
+         *     **Path Parameters:**
+         *     - **vin**: Vehicle VIN
+         *
+         *     **Security:**
+         *     - Requires vehicle OWNERSHIP (a write-share does NOT pass) -- matches the
+         *       per-device admin ops in livelink_admin.py.
+         */
+        post: operations["create_torque_source_api_vehicles__vin__livelink_torque_sources_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/vehicles/{vin}/livelink/torque-sources/{device_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /**
+         * Delete Torque Source
+         * @description Revoke (delete) a Torque Pro source.
+         *
+         *     **R1-H5:** loads the device and verifies it belongs to THIS vin (the
+         *     normalized path vin) AND is kind='torque' before deleting -- an owner of
+         *     VIN-A must not be able to delete VIN-B's device by supplying B's
+         *     device_id. Never hands device_id to the unscoped
+         *     ``LiveLinkService.delete_device``.
+         *
+         *     **Path Parameters:**
+         *     - **vin**: Vehicle VIN
+         *     - **device_id**: Torque source device id
+         *
+         *     **Security:**
+         *     - Requires vehicle OWNERSHIP (a write-share does NOT pass).
+         */
+        delete: operations["delete_torque_source_api_vehicles__vin__livelink_torque_sources__device_id__delete"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/vehicles/{vin}/livelink/trips": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Trips
+         * @description Get GPS-tracked trips (drive sessions with >=1 location point) for a vehicle.
+         *
+         *     **Path Parameters:**
+         *     - **vin**: Vehicle VIN
+         *
+         *     **Query Parameters:**
+         *     - **limit**: Max trips to return, newest first (default 50)
+         *
+         *     **Security:**
+         *     - Requires authentication
+         */
+        get: operations["get_trips_api_vehicles__vin__livelink_trips_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/vehicles/{vin}/livelink/trips/{session_id}/points": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Trip Points
+         * @description Get a trip's GPS points as an ordered polyline (for map rendering).
+         *
+         *     **Path Parameters:**
+         *     - **vin**: Vehicle VIN
+         *     - **session_id**: Drive session ID
+         *
+         *     **Security:**
+         *     - Requires authentication
+         */
+        get: operations["get_trip_points_api_vehicles__vin__livelink_trips__session_id__points_get"];
         put?: never;
         post?: never;
         delete?: never;
@@ -8200,6 +8410,48 @@ export interface components {
             start_date?: string | null;
         };
         /**
+         * LastLocationResponse
+         * @description Schema for GET .../livelink/location/last.
+         */
+        LastLocationResponse: {
+            /**
+             * Altitude
+             * @description Altitude (metres)
+             */
+            altitude?: number | null;
+            /**
+             * Drive Session Id
+             * @description Trip this point belongs to, if any
+             */
+            drive_session_id?: number | null;
+            /**
+             * Heading
+             * @description Heading (degrees)
+             */
+            heading?: number | null;
+            /**
+             * Latitude
+             * @description Latitude (decimal degrees)
+             */
+            latitude: number;
+            /**
+             * Longitude
+             * @description Longitude (decimal degrees)
+             */
+            longitude: number;
+            /**
+             * Speed
+             * @description Speed (km/h)
+             */
+            speed?: number | null;
+            /**
+             * Timestamp
+             * Format: date-time
+             * @description When the point was recorded
+             */
+            timestamp: string;
+        };
+        /**
          * LinkOIDCAccountRequest
          * @description Request to link OIDC account with password verification.
          */
@@ -8562,6 +8814,70 @@ export interface components {
             session_timeout_minutes?: number | null;
             /** Telemetry Retention Days */
             telemetry_retention_days?: number | null;
+        };
+        /**
+         * LocationPointOut
+         * @description A single GPS breadcrumb point, coordinates as float for map rendering.
+         */
+        LocationPointOut: {
+            /**
+             * Altitude
+             * @description Altitude (metres)
+             */
+            altitude?: number | null;
+            /**
+             * Heading
+             * @description Heading (degrees)
+             */
+            heading?: number | null;
+            /**
+             * Id
+             * @description Location point ID
+             */
+            id: number;
+            /**
+             * Latitude
+             * @description Latitude (decimal degrees)
+             */
+            latitude: number;
+            /**
+             * Longitude
+             * @description Longitude (decimal degrees)
+             */
+            longitude: number;
+            /**
+             * Speed
+             * @description Speed (km/h)
+             */
+            speed?: number | null;
+            /**
+             * Timestamp
+             * Format: date-time
+             * @description When the point was recorded
+             */
+            timestamp: string;
+        };
+        /**
+         * LocationTrackingResponse
+         * @description Response body for PATCH .../livelink/location-tracking.
+         */
+        LocationTrackingResponse: {
+            /**
+             * Location Tracking Enabled
+             * @description Whether GPS location tracking is now enabled
+             */
+            location_tracking_enabled: boolean;
+        };
+        /**
+         * LocationTrackingUpdate
+         * @description Request body for PATCH .../livelink/location-tracking.
+         */
+        LocationTrackingUpdate: {
+            /**
+             * Enabled
+             * @description Whether GPS location tracking is enabled
+             */
+            enabled: boolean;
         };
         /**
          * LoginRequest
@@ -11366,6 +11682,89 @@ export interface components {
             transaction_date?: string | null;
         };
         /**
+         * TorqueSourceCreate
+         * @description Request body for POST .../livelink/torque-sources.
+         */
+        TorqueSourceCreate: {
+            /**
+             * Label
+             * @description Optional friendly name for this source
+             */
+            label?: string | null;
+        };
+        /**
+         * TorqueSourceCreateResponse
+         * @description Response body for POST .../livelink/torque-sources.
+         *
+         *     ``token`` is the raw device token embedded in ``upload_url`` -- shown
+         *     ONCE. It is stored hashed and cannot be retrieved again.
+         */
+        TorqueSourceCreateResponse: {
+            /**
+             * Device Id
+             * @description Newly created torque-kind device id
+             */
+            device_id: string;
+            /**
+             * Label
+             * @description Friendly name for this source
+             */
+            label?: string | null;
+            /**
+             * Token
+             * @description One-time device token (shown once, save it now)
+             */
+            token: string;
+            /**
+             * Upload Url
+             * @description Paste this into Torque Pro's 'Upload URL' setting
+             */
+            upload_url: string;
+        };
+        /**
+         * TorqueSourceListResponse
+         * @description Schema for GET .../livelink/torque-sources.
+         */
+        TorqueSourceListResponse: {
+            /**
+             * Sources
+             * @description This vehicle's registered Torque sources
+             */
+            sources?: components["schemas"]["TorqueSourceResponse"][];
+        };
+        /**
+         * TorqueSourceResponse
+         * @description One entry in the torque-sources list -- no token.
+         */
+        TorqueSourceResponse: {
+            /**
+             * Created At
+             * Format: date-time
+             * @description When this source was registered
+             */
+            created_at: string;
+            /**
+             * Device Id
+             * @description Torque device id
+             */
+            device_id: string;
+            /**
+             * Device Status
+             * @description online / offline / unknown
+             */
+            device_status: string;
+            /**
+             * Label
+             * @description Friendly name for this source
+             */
+            label?: string | null;
+            /**
+             * Last Seen
+             * @description Last time this source uploaded data
+             */
+            last_seen?: string | null;
+        };
+        /**
          * TrailerDetailsCreate
          * @description Schema for creating trailer details.
          */
@@ -11535,6 +11934,70 @@ export interface components {
              * @description Transmission type
              */
             type?: string | null;
+        };
+        /**
+         * TripListResponse
+         * @description Schema for GET .../livelink/trips.
+         */
+        TripListResponse: {
+            /**
+             * Trips
+             * @description Trips, newest first
+             */
+            trips?: components["schemas"]["TripSummary"][];
+        };
+        /**
+         * TripPointsResponse
+         * @description Schema for GET .../livelink/trips/{session_id}/points.
+         */
+        TripPointsResponse: {
+            /**
+             * Points
+             * @description Points ordered by timestamp ascending
+             */
+            points?: components["schemas"]["LocationPointOut"][];
+            /**
+             * Session Id
+             * @description Drive session ID
+             */
+            session_id: number;
+        };
+        /**
+         * TripSummary
+         * @description Summary of one GPS-tracked trip (a drive session with >=1 location point).
+         */
+        TripSummary: {
+            /**
+             * Distance Km
+             * @description Distance traveled (km)
+             */
+            distance_km?: number | null;
+            /**
+             * Duration Seconds
+             * @description Trip duration in seconds
+             */
+            duration_seconds?: number | null;
+            /**
+             * Ended At
+             * @description Trip end time
+             */
+            ended_at?: string | null;
+            /**
+             * Point Count
+             * @description Number of GPS points recorded for this trip
+             */
+            point_count: number;
+            /**
+             * Session Id
+             * @description Drive session ID
+             */
+            session_id: number;
+            /**
+             * Started At
+             * Format: date-time
+             * @description Trip start time
+             */
+            started_at: string;
         };
         /**
          * UserCreate
@@ -12378,6 +12841,11 @@ export interface components {
              * @description License plate number
              */
             license_plate?: string | null;
+            /**
+             * Location Tracking Enabled
+             * @default true
+             */
+            location_tracking_enabled: boolean;
             /** Main Photo */
             main_photo?: string | null;
             /**
@@ -17737,6 +18205,68 @@ export interface operations {
             };
         };
     };
+    torque_ingest_get_api_v1_torque__token__upload_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                token: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    torque_ingest_post_api_v1_torque__token__upload_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                token: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     get_summary_api_v2_widget_summary_get: {
         parameters: {
             query?: never;
@@ -19157,6 +19687,72 @@ export interface operations {
             };
         };
     };
+    update_location_tracking_api_vehicles__vin__livelink_location_tracking_patch: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                vin: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["LocationTrackingUpdate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LocationTrackingResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_last_location_api_vehicles__vin__livelink_location_last_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                vin: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LastLocationResponse"] | null;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     list_vehicle_sessions_api_vehicles__vin__livelink_sessions_get: {
         parameters: {
             query?: {
@@ -19285,6 +19881,168 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["TelemetryQueryResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_torque_sources_api_vehicles__vin__livelink_torque_sources_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                vin: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TorqueSourceListResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    create_torque_source_api_vehicles__vin__livelink_torque_sources_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                vin: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["TorqueSourceCreate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TorqueSourceCreateResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    delete_torque_source_api_vehicles__vin__livelink_torque_sources__device_id__delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                vin: string;
+                device_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_trips_api_vehicles__vin__livelink_trips_get: {
+        parameters: {
+            query?: {
+                /** @description Max trips to return */
+                limit?: number;
+            };
+            header?: never;
+            path: {
+                vin: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TripListResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_trip_points_api_vehicles__vin__livelink_trips__session_id__points_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                vin: string;
+                session_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TripPointsResponse"];
                 };
             };
             /** @description Validation Error */

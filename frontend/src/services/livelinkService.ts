@@ -35,7 +35,10 @@ import type {
   DeviceCommandResponse,
   SdConfigUpdate,
   BackfillResultResponse,
+  TorqueSourceCreateResponse,
+  TorqueSourceListResponse,
 } from '../types/livelink'
+import type { TripList, LocationTrackingResponse, TripPointsResponse, LastLocation } from '../types/trips'
 import { withBase } from '../utils/basePath'
 
 export const livelinkService = {
@@ -283,6 +286,48 @@ export const livelinkService = {
   },
 
   // ===========================================================================
+  // Trips (GPS-tracked drive sessions, Task 14)
+  // ===========================================================================
+
+  /**
+   * Get GPS-tracked trips for a vehicle (drive sessions with >=1 location point)
+   */
+  async getTrips(vin: string, params?: { limit?: number }): Promise<TripList> {
+    const response = await api.get<TripList>(`/vehicles/${vin}/livelink/trips`, {
+      params: params || {},
+    })
+    return response.data
+  },
+
+  /**
+   * Set the vehicle's GPS location-tracking opt-out flag (R1-H4)
+   */
+  async setLocationTracking(vin: string, enabled: boolean): Promise<LocationTrackingResponse> {
+    const response = await api.patch<LocationTrackingResponse>(`/vehicles/${vin}/livelink/location-tracking`, {
+      enabled,
+    })
+    return response.data
+  },
+
+  /**
+   * Get a trip's GPS points as an ordered polyline (for map rendering, Task 15)
+   */
+  async getTripPoints(vin: string, sessionId: number): Promise<TripPointsResponse> {
+    const response = await api.get<TripPointsResponse>(`/vehicles/${vin}/livelink/trips/${sessionId}/points`)
+    return response.data
+  },
+
+  /**
+   * Get the vehicle's most recent GPS location point, if any (Overview
+   * "Last seen here" card, Task 16). Returns null if no location has ever
+   * been recorded.
+   */
+  async getLastLocation(vin: string): Promise<LastLocation | null> {
+    const response = await api.get<LastLocation | null>(`/vehicles/${vin}/livelink/location/last`)
+    return response.data
+  },
+
+  // ===========================================================================
   // Vehicle DTCs
   // ===========================================================================
 
@@ -437,6 +482,36 @@ export const livelinkService = {
   async triggerSdBackfill(deviceId: string): Promise<BackfillResultResponse> {
     const response = await api.post<BackfillResultResponse>(`/livelink/devices/${deviceId}/backfill`)
     return response.data
+  },
+
+  // ===========================================================================
+  // Torque Sources (owner-scoped, per-vehicle)
+  // ===========================================================================
+
+  /**
+   * List this vehicle's registered Torque Pro sources (no token)
+   */
+  async getTorqueSources(vin: string): Promise<TorqueSourceListResponse> {
+    const response = await api.get<TorqueSourceListResponse>(`/vehicles/${vin}/livelink/torque-sources`)
+    return response.data
+  },
+
+  /**
+   * Register a new Torque Pro source for a vehicle.
+   * Returns the upload URL + one-time device token (shown once).
+   */
+  async createTorqueSource(vin: string, label?: string): Promise<TorqueSourceCreateResponse> {
+    const response = await api.post<TorqueSourceCreateResponse>(`/vehicles/${vin}/livelink/torque-sources`, {
+      label: label || null,
+    })
+    return response.data
+  },
+
+  /**
+   * Revoke (delete) a Torque Pro source
+   */
+  async deleteTorqueSource(vin: string, deviceId: string): Promise<void> {
+    await api.delete(`/vehicles/${vin}/livelink/torque-sources/${deviceId}`)
   },
 }
 

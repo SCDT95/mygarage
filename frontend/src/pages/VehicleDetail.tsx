@@ -3,7 +3,7 @@
  * Tabs: Overview, Photos, Service, Fuel, Notes
  */
 
-import { useState, useEffect, useRef, useCallback } from 'react'
+import { useState, useEffect, useRef, useCallback, lazy, Suspense } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useParams, useNavigate, Link, useSearchParams } from 'react-router-dom'
 import { toast } from 'sonner'
@@ -42,6 +42,7 @@ import vehicleService from '../services/vehicleService'
 import api from '../services/api'
 import { withBase } from '../utils/basePath'
 import type { Vehicle } from '../types/vehicle'
+import type { LastLocation } from '../types/trips'
 import { isDieselFuelType } from '../constants/fuel'
 import ServiceTab from '../components/tabs/ServiceTab'
 import FuelTab from '../components/tabs/FuelTab'
@@ -62,6 +63,7 @@ import LiveLinkLiveTab from '../components/tabs/LiveLinkLiveTab'
 import LiveLinkDTCsTab from '../components/tabs/LiveLinkDTCsTab'
 import LiveLinkSessionsTab from '../components/tabs/LiveLinkSessionsTab'
 import LiveLinkChartsTab from '../components/tabs/LiveLinkChartsTab'
+import LiveLinkTripsTab from '../components/tabs/LiveLinkTripsTab'
 import ReminderList from '../components/ReminderList'
 import SubTabNav from '../components/SubTabNav'
 import { livelinkService } from '../services/livelinkService'
@@ -69,6 +71,7 @@ import WindowStickerUpload from '../components/WindowStickerUpload'
 import VehicleRemoveModal from '../components/modals/VehicleRemoveModal'
 import VehicleTransferWizard from '../components/modals/VehicleTransferWizard'
 import VehicleSharingModal from '../components/modals/VehicleSharingModal'
+import TorqueSourceModal from '../components/modals/TorqueSourceModal'
 import TransferHistorySection from '../components/TransferHistorySection'
 import { useOnlineStatus } from '../hooks/useOnlineStatus'
 import { useAuth } from '../contexts/AuthContext'
@@ -78,6 +81,11 @@ import { UnitFormatter } from '../utils/units'
 import { formatDateForDisplay } from '../utils/dateUtils'
 import { useCurrencyPreference } from '../hooks/useCurrencyPreference'
 import { useDateLocale } from '../hooks/useDateLocale'
+import { useTimeFormat } from '../hooks/useTimeFormat'
+import { formatDateTime } from '../utils/parseAPITimestamp'
+
+// Lazy-load map component — keeps Leaflet's ~150KB out of the main bundle
+const LastLocationMap = lazy(() => import('../components/maps/LastLocationMap'))
 
 type ApiError = {
   response?: {
@@ -106,9 +114,9 @@ const getApiErrorMessage = (error: unknown, fallback: string) => {
   return fallback
 }
 
-type ModalType = 'remove' | 'transfer' | 'sharing' | 'windowSticker' | null
+type ModalType = 'remove' | 'transfer' | 'sharing' | 'windowSticker' | 'torqueSource' | null
 type PrimaryTabType = 'overview' | 'media' | 'maintenance' | 'fuel' | 'tracking' | 'financial' | 'livelink'
-type SubTabType = 'photos' | 'documents' | 'service' | 'fuel' | 'def' | 'propane' | 'odometer' | 'notes' | 'warranties' | 'insurance' | 'tax' | 'tolls' | 'spotrentals' | 'recalls' | 'reports' | 'reminders' | 'live' | 'dtcs' | 'sessions' | 'charts'
+type SubTabType = 'photos' | 'documents' | 'service' | 'fuel' | 'def' | 'propane' | 'odometer' | 'notes' | 'warranties' | 'insurance' | 'tax' | 'tolls' | 'spotrentals' | 'recalls' | 'reports' | 'reminders' | 'live' | 'dtcs' | 'sessions' | 'charts' | 'trips'
 
 export default function VehicleDetail() {
   const { t } = useTranslation('vehicles')
@@ -129,9 +137,11 @@ export default function VehicleDetail() {
   const [fromCache, setFromCache] = useState(false)
   const [showMobileMenu, setShowMobileMenu] = useState(false)
   const [hasLiveLinkDevice, setHasLiveLinkDevice] = useState(false)
+  const [lastLocation, setLastLocation] = useState<LastLocation | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const isOnline = useOnlineStatus()
   const { currencyCode, locale } = useCurrencyPreference()
+  const { timeFormat } = useTimeFormat()
   const loadVehicle = useCallback(async () => {
     if (!vin) return
     const cacheKey = `vehicle-cache-${vin}`
@@ -180,6 +190,24 @@ export default function VehicleDetail() {
       }
     }
     checkLiveLinkDevice()
+  }, [vin])
+
+  // Fetch the vehicle's most-recent GPS location for the Overview "Last seen
+  // here" card (Task 16). Independent of hasLiveLinkDevice: Torque Pro
+  // sources can post location data before any LiveLink device exists, and
+  // the Overview tab (unlike the LiveLink primary tab) is always present.
+  useEffect(() => {
+    const fetchLastLocation = async () => {
+      if (!vin) return
+      try {
+        const location = await livelinkService.getLastLocation(vin)
+        setLastLocation(location)
+      } catch {
+        // Silently fail - card just won't show
+        setLastLocation(null)
+      }
+    }
+    fetchLastLocation()
   }, [vin])
 
   // Handle URL tab parameter from calendar navigation
@@ -515,6 +543,7 @@ export default function VehicleDetail() {
       { id: 'dtcs' as const, label: 'DTCs', icon: AlertTriangle },
       { id: 'sessions' as const, label: 'Sessions', icon: Clock },
       { id: 'charts' as const, label: 'Charts', icon: BarChart3 },
+      { id: 'trips' as const, label: 'Trips', icon: MapPin },
     ],
   }
 
@@ -843,6 +872,47 @@ export default function VehicleDetail() {
                     <p className="text-garage-text font-medium mt-1">{formatCurrency(vehicle.sold_price, { currencyCode, locale, fallback: 'Not specified' })}</p>
                   </div>
                 </div>
+              </div>
+            )}
+
+            {/* Connected Devices — owner-reachable Torque Pro source registration (R1-H6).
+                Lives here (not the admin-gated LiveLinkSettingsModal, and not inside the
+                LiveLink primary tab, which stays hidden until a device exists) so an owner
+                can register a source before any device is linked. */}
+            <div className="bg-garage-surface rounded-lg border border-garage-border p-6 break-inside-avoid">
+              <h2 className="text-xl font-semibold text-garage-text mb-4">{t('detail.connectedDevices')}</h2>
+              <div className="flex items-center justify-between gap-4">
+                <div>
+                  <p className="text-sm text-garage-text-muted">
+                    {t('forms:modal.torque.description')}
+                  </p>
+                </div>
+                <button
+                  onClick={() => setOpenModal('torqueSource')}
+                  className="flex items-center gap-2 px-4 py-2 btn btn-primary rounded-lg shrink-0"
+                  title={t('forms:modal.torque.launchButtonTooltip')}
+                >
+                  <Radio className="w-4 h-4" />
+                  <span>{t('forms:modal.torque.launchButton')}</span>
+                </button>
+              </div>
+            </div>
+
+            {/* Last Known Location — "Last seen here" mini-map (Task 16). Gated on a
+                last location existing. This is the one place a Torque Pro last-location
+                shows even before the LiveLink primary tab exists (it stays hidden until
+                a device is linked), since the Overview tab is always present. */}
+            {lastLocation != null && (
+              <div className="bg-garage-surface rounded-lg border border-garage-border p-6 break-inside-avoid">
+                <h2 className="text-xl font-semibold text-garage-text mb-4">{t('detail.lastLocation')}</h2>
+                <Suspense fallback={<div className="h-[220px] bg-garage-bg rounded-lg animate-pulse" />}>
+                  <LastLocationMap latitude={lastLocation.latitude} longitude={lastLocation.longitude} />
+                </Suspense>
+                <p className="text-sm text-garage-text-muted mt-3">
+                  {t('detail.lastLocationSeenAt', {
+                    time: formatDateTime(lastLocation.timestamp, timeFormat),
+                  })}
+                </p>
               </div>
             )}
 
@@ -1267,6 +1337,7 @@ export default function VehicleDetail() {
         {activePrimaryTab === 'livelink' && activeSubTab === 'dtcs' && vin && <LiveLinkDTCsTab vin={vin} />}
         {activePrimaryTab === 'livelink' && activeSubTab === 'sessions' && vin && <LiveLinkSessionsTab vin={vin} />}
         {activePrimaryTab === 'livelink' && activeSubTab === 'charts' && vin && <LiveLinkChartsTab vin={vin} />}
+        {activePrimaryTab === 'livelink' && activeSubTab === 'trips' && vin && <LiveLinkTripsTab vin={vin} />}
       </div>
 
       {/* Vehicle Remove Modal */}
@@ -1298,6 +1369,15 @@ export default function VehicleDetail() {
           onClose={() => setOpenModal(null)}
           vin={vin}
           vehicleNickname={vehicle.nickname}
+        />
+      )}
+
+      {/* Torque Source Modal (Task 13, owner-reachable) */}
+      {vin && (
+        <TorqueSourceModal
+          isOpen={openModal === 'torqueSource'}
+          onClose={() => setOpenModal(null)}
+          vin={vin}
         />
       )}
 

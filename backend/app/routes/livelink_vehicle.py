@@ -12,6 +12,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_db
+from app.models.livelink_device import LiveLinkDevice
 from app.models.user import User
 from app.models.vehicle import Vehicle
 from app.schemas.drive_session import (
@@ -32,11 +33,27 @@ from app.schemas.telemetry import (
     TelemetrySeriesResponse,
     VehicleLiveLinkStatus,
 )
-from app.services.auth import get_vehicle_or_403, require_auth
+from app.schemas.torque import (
+    LastLocationResponse,
+    LocationPointOut,
+    LocationTrackingResponse,
+    LocationTrackingUpdate,
+    TorqueSourceCreate,
+    TorqueSourceCreateResponse,
+    TorqueSourceListResponse,
+    TorqueSourceResponse,
+    TripListResponse,
+    TripPointsResponse,
+    TripSummary,
+)
+from app.services.auth import get_vehicle_for_owner_or_403, get_vehicle_or_403, require_auth
 from app.services.dtc_service import DTCService
 from app.services.livelink_service import LiveLinkService
+from app.services.location_service import LocationService
 from app.services.session_service import SessionService
+from app.services.settings_service import SettingsService
 from app.services.telemetry_service import TelemetryService
+from app.services.torque_service import TorqueService
 from app.utils.csv_safe import sanitize_csv_row
 from app.utils.datetime_utils import utc_now
 
@@ -724,3 +741,258 @@ async def export_sessions(
         media_type="text/csv",
         headers={"Content-Disposition": f"attachment; filename=sessions_{vin}.csv"},
     )
+
+
+# =============================================================================
+# Trip + Location Endpoints (#118, Task 10)
+# =============================================================================
+
+
+@router.get("/trips", response_model=TripListResponse)
+async def get_trips(
+    vin: str,
+    limit: int = Query(50, ge=1, le=500, description="Max trips to return"),
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(require_auth),
+) -> TripListResponse:
+    """
+    Get GPS-tracked trips (drive sessions with >=1 location point) for a vehicle.
+
+    **Path Parameters:**
+    - **vin**: Vehicle VIN
+
+    **Query Parameters:**
+    - **limit**: Max trips to return, newest first (default 50)
+
+    **Security:**
+    - Requires authentication
+    """
+    await verify_vehicle_access(db, vin, current_user)
+    vin = vin.upper().strip()
+
+    trips = await LocationService(db).get_trips(vin, limit=limit)
+    return TripListResponse(trips=[TripSummary(**t) for t in trips])
+
+
+@router.get("/trips/{session_id}/points", response_model=TripPointsResponse)
+async def get_trip_points(
+    vin: str,
+    session_id: int,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(require_auth),
+) -> TripPointsResponse:
+    """
+    Get a trip's GPS points as an ordered polyline (for map rendering).
+
+    **Path Parameters:**
+    - **vin**: Vehicle VIN
+    - **session_id**: Drive session ID
+
+    **Security:**
+    - Requires authentication
+    """
+    await verify_vehicle_access(db, vin, current_user)
+    vin = vin.upper().strip()
+
+    session_service = SessionService(db)
+    session = await session_service.get_session(session_id)
+
+    if not session:
+        raise HTTPException(status_code=404, detail=f"Session {session_id} not found")
+
+    if session.vin != vin:
+        raise HTTPException(status_code=404, detail="Session does not belong to this vehicle")
+
+    points = await LocationService(db).get_trip_points(vin, session_id)
+    return TripPointsResponse(
+        session_id=session_id,
+        points=[
+            LocationPointOut(
+                id=p.id,
+                timestamp=p.timestamp,
+                latitude=float(p.latitude),
+                longitude=float(p.longitude),
+                speed=float(p.speed) if p.speed is not None else None,
+                heading=float(p.heading) if p.heading is not None else None,
+                altitude=float(p.altitude) if p.altitude is not None else None,
+            )
+            for p in points
+        ],
+    )
+
+
+@router.get("/location/last", response_model=LastLocationResponse | None)
+async def get_last_location(
+    vin: str,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(require_auth),
+) -> LastLocationResponse | None:
+    """
+    Get the vehicle's most recent GPS location point, if any.
+
+    **Path Parameters:**
+    - **vin**: Vehicle VIN
+
+    **Security:**
+    - Requires authentication
+    """
+    await verify_vehicle_access(db, vin, current_user)
+    vin = vin.upper().strip()
+
+    point = await LocationService(db).get_last_location(vin)
+    if point is None:
+        return None
+
+    return LastLocationResponse(
+        latitude=float(point.latitude),
+        longitude=float(point.longitude),
+        timestamp=point.timestamp,
+        speed=float(point.speed) if point.speed is not None else None,
+        heading=float(point.heading) if point.heading is not None else None,
+        altitude=float(point.altitude) if point.altitude is not None else None,
+        drive_session_id=point.drive_session_id,
+    )
+
+
+@router.patch("/location-tracking", response_model=LocationTrackingResponse)
+async def update_location_tracking(
+    vin: str,
+    payload: LocationTrackingUpdate,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(require_auth),
+) -> LocationTrackingResponse:
+    """
+    Set the vehicle's GPS location-tracking opt-out flag (R1-H4).
+
+    Torque ingest reads ``Vehicle.location_tracking_enabled`` to decide
+    whether to persist GPS breadcrumbs; this is the only setter for it.
+
+    **Path Parameters:**
+    - **vin**: Vehicle VIN
+
+    **Security:**
+    - Requires authentication AND a write-share (or ownership/admin) --
+      a read-only share must be rejected.
+    """
+    vehicle = await verify_vehicle_access(db, vin, current_user, require_write=True)
+
+    vehicle.location_tracking_enabled = payload.enabled
+    await db.commit()
+
+    return LocationTrackingResponse(location_tracking_enabled=vehicle.location_tracking_enabled)
+
+
+# =============================================================================
+# Torque Source Registration Endpoints (Task 13, owner-scoped)
+# =============================================================================
+
+
+@router.post("/torque-sources", response_model=TorqueSourceCreateResponse)
+async def create_torque_source(
+    vin: str,
+    payload: TorqueSourceCreate,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(require_auth),
+) -> TorqueSourceCreateResponse:
+    """
+    Register a new Torque Pro upload source for this vehicle.
+
+    Returns the ready-to-paste Torque "Upload URL" plus the raw device token
+    embedded in it -- both are shown ONCE; the token is stored hashed and
+    cannot be retrieved again (revoke and create a new source instead).
+
+    **Path Parameters:**
+    - **vin**: Vehicle VIN
+
+    **Security:**
+    - Requires vehicle OWNERSHIP (a write-share does NOT pass) -- matches the
+      per-device admin ops in livelink_admin.py.
+    """
+    vin = vin.upper().strip()
+    await get_vehicle_for_owner_or_403(vin, current_user, db)
+
+    device, raw_token = await TorqueService(db).create_source(vin, payload.label)
+    await db.commit()
+
+    base_url = await SettingsService.get(db, "app_base_url")
+    upload_url = f"{base_url.value if base_url else ''}/api/v1/torque/{raw_token}/upload"
+
+    return TorqueSourceCreateResponse(
+        device_id=device.device_id,
+        label=device.label,
+        upload_url=upload_url,
+        token=raw_token,
+    )
+
+
+@router.get("/torque-sources", response_model=TorqueSourceListResponse)
+async def list_torque_sources(
+    vin: str,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(require_auth),
+) -> TorqueSourceListResponse:
+    """
+    List this vehicle's registered Torque Pro sources (no token).
+
+    **Path Parameters:**
+    - **vin**: Vehicle VIN
+
+    **Security:**
+    - Requires vehicle OWNERSHIP (a write-share does NOT pass).
+    """
+    vin = vin.upper().strip()
+    await get_vehicle_for_owner_or_403(vin, current_user, db)
+
+    result = await db.execute(
+        select(LiveLinkDevice)
+        .where(LiveLinkDevice.vin == vin, LiveLinkDevice.kind == "torque")
+        .order_by(LiveLinkDevice.created_at.desc())
+    )
+    devices = result.scalars().all()
+
+    return TorqueSourceListResponse(
+        sources=[
+            TorqueSourceResponse(
+                device_id=d.device_id,
+                label=d.label,
+                device_status=d.device_status,
+                last_seen=d.last_seen,
+                created_at=d.created_at,
+            )
+            for d in devices
+        ]
+    )
+
+
+@router.delete("/torque-sources/{device_id}", status_code=204)
+async def delete_torque_source(
+    vin: str,
+    device_id: str,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(require_auth),
+) -> None:
+    """
+    Revoke (delete) a Torque Pro source.
+
+    **R1-H5:** loads the device and verifies it belongs to THIS vin (the
+    normalized path vin) AND is kind='torque' before deleting -- an owner of
+    VIN-A must not be able to delete VIN-B's device by supplying B's
+    device_id. Never hands device_id to the unscoped
+    ``LiveLinkService.delete_device``.
+
+    **Path Parameters:**
+    - **vin**: Vehicle VIN
+    - **device_id**: Torque source device id
+
+    **Security:**
+    - Requires vehicle OWNERSHIP (a write-share does NOT pass).
+    """
+    vin = vin.upper().strip()
+    await get_vehicle_for_owner_or_403(vin, current_user, db)
+
+    device = await LiveLinkService(db).get_device_by_id(device_id)
+    if device is None or device.vin != vin or device.kind != "torque":
+        raise HTTPException(status_code=404, detail="Torque source not found")
+
+    await db.delete(device)
+    await db.commit()

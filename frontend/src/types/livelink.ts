@@ -76,6 +76,12 @@ export type SdConfigUpdate = components['schemas']['SdConfigUpdate']
 export type SdConfigResponse = components['schemas']['SdConfigResponse']
 export type BackfillResultResponse = components['schemas']['BackfillResultResponse']
 
+// -- Torque Source Types (owner-scoped, Task 13) --
+export type TorqueSourceCreate = components['schemas']['TorqueSourceCreate']
+export type TorqueSourceCreateResponse = components['schemas']['TorqueSourceCreateResponse']
+export type TorqueSourceResponse = components['schemas']['TorqueSourceResponse']
+export type TorqueSourceListResponse = components['schemas']['TorqueSourceListResponse']
+
 // =============================================================================
 // Section B — Manual types (backend uses str, frontend-only, or no generated schema)
 // =============================================================================

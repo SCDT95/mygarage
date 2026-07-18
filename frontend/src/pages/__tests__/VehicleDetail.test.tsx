@@ -115,6 +115,7 @@ const mockVehicle: Vehicle = {
   purchase_price: '35000',
   created_at: '2024-01-15T00:00:00Z',
   archived_visible: true,
+  location_tracking_enabled: true,
 }
 
 function renderVehicleDetail(initialPath = '/vehicles/TEST12345678901234') {

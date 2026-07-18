@@ -61,6 +61,11 @@ class DriveSession(Base):
     # Metadata
     created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
 
+    # Torque ingest
+    external_session_id: Mapped[str | None] = mapped_column(
+        String(64)
+    )  # e.g. Torque `session` id; NULL for WiCAN
+
     # Relationships
     vehicle: Mapped[Vehicle] = relationship("Vehicle", foreign_keys=[vin])
     device: Mapped[LiveLinkDevice] = relationship(
@@ -74,4 +79,5 @@ class DriveSession(Base):
         Index("idx_sessions_vehicle_time", "vin", "started_at"),
         Index("idx_sessions_device", "device_id", "started_at"),
         Index("idx_sessions_ended", "ended_at"),
+        Index("uq_drive_session_external", "device_id", "external_session_id", unique=True),
     )
