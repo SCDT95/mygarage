@@ -12,7 +12,6 @@ from app.routes.export import router as export_router
 from app.routes.fuel import router as fuel_router
 from app.routes.import_data import router as import_router
 from app.routes.insurance import router as insurance_router
-from app.routes.maintenance_templates import maintenance_templates_router
 from app.routes.notes import router as notes_router
 from app.routes.notifications import router as notifications_router
 from app.routes.odometer import router as odometer_router
@@ -62,7 +61,6 @@ __all__ = [
     "calendar_router",
     "window_sticker_router",
     "notifications_router",
-    "maintenance_templates_router",
     "shop_discovery_router",
     "vendors_router",
     "reminders_router",

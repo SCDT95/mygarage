@@ -309,7 +309,6 @@ from app.routes import (
     fuel_router,
     import_router,
     insurance_router,
-    maintenance_templates_router,
     notes_router,
     notifications_router,
     odometer_router,
@@ -374,7 +373,6 @@ app.include_router(address_book_router)
 app.include_router(calendar_router)
 app.include_router(window_sticker_router)
 app.include_router(notifications_router)
-app.include_router(maintenance_templates_router)
 app.include_router(poi_router)  # New POI router
 app.include_router(shop_discovery_router)  # Backward compatibility (deprecated)
 app.include_router(vendors_router)

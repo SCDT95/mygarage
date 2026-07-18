@@ -28,7 +28,6 @@ if TYPE_CHECKING:
     from app.models.document import Document
     from app.models.fuel import FuelRecord
     from app.models.insurance import InsurancePolicy
-    from app.models.maintenance_template import MaintenanceTemplate
     from app.models.note import Note
     from app.models.odometer import OdometerRecord
     from app.models.photo import VehiclePhoto
@@ -172,9 +171,6 @@ class Vehicle(Base):
     )
     toll_transactions: Mapped[list[TollTransaction]] = relationship(
         "TollTransaction", back_populates="vehicle", cascade="all, delete-orphan"
-    )
-    maintenance_templates: Mapped[list[MaintenanceTemplate]] = relationship(
-        "MaintenanceTemplate", back_populates="vehicle", cascade="all, delete-orphan"
     )
     service_visits: Mapped[list[ServiceVisit]] = relationship(
         "ServiceVisit", back_populates="vehicle", cascade="all, delete-orphan"
