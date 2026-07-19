@@ -15,6 +15,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - i18n: the photo gallery, document upload, line-item editor (including all 82 service autocomplete suggestions), shop finder, widget-key modal, and the Telegram/email notification setup are now translatable (~209 strings).
 
 ### Fixed
+- Numbers: thousands separators followed the browser's locale rather than the language selected in the app, so a German user could still see `12,345` instead of `12.345`. All unit and telemetry formatting now follows the selected language.
+- Shop finder: distances and the search-radius options were always in miles regardless of the unit preference. Metric users now get kilometres, and the radius sent to the API matches what they picked.
 - Calendar: the month grid and weekday headers rendered in English for every language — the calendar had no locale set. Dates, month names and number separators now follow the selected language, and update on a live language switch.
 - Analytics: chart axis labels and the spending-anomaly figures showed a hardcoded `$` and are now formatted in the selected currency.
 - Vehicle wizard and window sticker: purchase price and option prices showed a hardcoded `$` and are now formatted in the selected currency.

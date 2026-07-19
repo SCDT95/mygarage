@@ -16,6 +16,7 @@
  */
 
 import type { UnitSystem } from './units'
+import { getActiveLocale } from '@/constants/i18n'
 
 interface ConvertedTelemetry {
   value: number
@@ -201,7 +202,7 @@ export function formatTelemetryValue(value: number, paramKey: string): string {
     key.includes('odometer') ||
     key.includes('distance')
   ) {
-    return Math.round(value).toLocaleString()
+    return Math.round(value).toLocaleString(getActiveLocale())
   }
 
   // One decimal for temperatures and percentages

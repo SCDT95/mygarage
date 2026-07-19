@@ -43,7 +43,8 @@
       "foundShops": "Found {{count}} shop(s)",
       "source": "Source: {{source}}",
       "noResultsHint": "Try searching from a different location or expanding your search radius."
-    }
+    },
+    "distanceUnknown": "Distance unknown"
   },
   "success": "Success",
   "confirm": "Confirm",

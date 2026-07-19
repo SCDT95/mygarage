@@ -16,6 +16,7 @@ import type { Reminder, ReminderType } from '../types/reminder'
 import { useUnitPreference } from '../hooks/useUnitPreference'
 import { UnitConverter, UnitFormatter } from '../utils/units'
 import { toCanonicalKm } from '../utils/decimalSafe'
+import { getActiveLocale } from '@/constants/i18n'
 
 interface ReminderFormProps {
   vin: string
@@ -214,7 +215,7 @@ export default function ReminderForm({ vin, reminder, currentMileage, onClose, o
             />
             {hasMileage && mileageInterval && currentDisplay != null ? (
               <p className="text-xs text-garage-text-muted mt-1">
-                Current: {Math.round(currentDisplay).toLocaleString()} + {mileageInterval.toLocaleString()} = {Math.round(absoluteTarget ?? 0).toLocaleString()} {UnitFormatter.getDistanceUnit(system)} target
+                Current: {Math.round(currentDisplay).toLocaleString(getActiveLocale())} + {mileageInterval.toLocaleString(getActiveLocale())} = {Math.round(absoluteTarget ?? 0).toLocaleString(getActiveLocale())} {UnitFormatter.getDistanceUnit(system)} target
               </p>
             ) : !hasMileage ? (
               <p className="text-xs text-warning mt-1">{t('reminder.noOdometerData')}</p>

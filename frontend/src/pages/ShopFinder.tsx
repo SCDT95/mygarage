@@ -10,12 +10,15 @@ import { useTranslation } from 'react-i18next'
 import { MapPin, Loader2, Navigation, Star, Phone, Globe, Save, Check,  AlertTriangle } from 'lucide-react'
 import { toast } from 'sonner'
 import api from '@/services/api'
+import { useUnitPreference } from '@/hooks/useUnitPreference'
+import { UnitConverter, UnitFormatter } from '@/utils/units'
 import type { PlaceResult, ShopRecommendation, ShopSearchResponse, ShopRecommendationsResponse } from '@/types/shopDiscovery'
 
 type Step = 'permission' | 'searching' | 'results'
 
 export default function ShopFinder() {
   const { t } = useTranslation('common')
+  const { system } = useUnitPreference()
   const [step, setStep] = useState<Step>('permission')
   const [recommendations, setRecommendations] = useState<ShopRecommendation[]>([])
   const [searchResults, setSearchResults] = useState<PlaceResult[]>([])
@@ -24,7 +27,11 @@ export default function ShopFinder() {
   const [savedShops, setSavedShops] = useState<Set<string>>(new Set())
 
   // Search options
-  const [searchRadius, setSearchRadius] = useState<number>(5) // miles
+  // Radius is held in the user's own unit and converted at request time.
+  // Imperial users pick miles, metric users pick kilometres — hardcoding miles
+  // showed "5 miles" to metric users and searched an imperial radius.
+  const radiusOptions = system === 'metric' ? [10, 25, 50, 100, 150] : [5, 10, 25, 50, 100]
+  const [searchRadius, setSearchRadius] = useState<number>(system === 'metric' ? 25 : 5)
   const [shopType, setShopType] = useState<'auto' | 'rv'>('auto')
 
   // Load recommendations on mount
@@ -59,9 +66,12 @@ export default function ShopFinder() {
   }
 
   const formatDistance = (meters?: number): string => {
-    if (!meters) return 'Distance unknown'
-    const miles = meters * 0.000621371
-    return `${miles.toFixed(1)} mi`
+    if (!meters) return t('shopFinder.distanceUnknown')
+    const km = meters / 1000
+    const value = system === 'metric' ? km : (UnitConverter.kmToMiles(km) ?? 0)
+    // One decimal, not UnitFormatter.formatDistance — that rounds to whole
+    // units, which collapses every nearby shop to "0 mi".
+    return `${value.toFixed(1)} ${UnitFormatter.getDistanceUnit(system)}`
   }
 
   const handleRequestLocation = () => {
@@ -105,8 +115,10 @@ export default function ShopFinder() {
 
   const searchNearbyShops = async (latitude: number, longitude: number) => {
     try {
-      // Convert miles to meters
-      const radiusMeters = Math.round(searchRadius * 1609.34)
+      const radiusMeters =
+        system === 'metric'
+          ? Math.round(searchRadius * 1000)
+          : Math.round(searchRadius * 1609.34)
 
       const response = await api.post<ShopSearchResponse>('/shop-discovery/search', {
         latitude,
@@ -196,15 +208,15 @@ export default function ShopFinder() {
                 </label>
                 <select
                   id="search_radius"
-                  value={searchRadius}
+                  value={radiusOptions.includes(searchRadius) ? searchRadius : radiusOptions[0]}
                   onChange={(e) => setSearchRadius(Number(e.target.value))}
                   className="w-full px-3 py-2 bg-garage-bg border border-garage-border rounded-lg text-garage-text focus:outline-none focus:ring-2 focus:ring-primary"
                 >
-                  <option value={5}>5 miles</option>
-                  <option value={10}>10 miles</option>
-                  <option value={25}>25 miles</option>
-                  <option value={50}>50 miles</option>
-                  <option value={100}>100 miles</option>
+                  {radiusOptions.map((r) => (
+                    <option key={r} value={r}>
+                      {r} {UnitFormatter.getDistanceUnit(system)}
+                    </option>
+                  ))}
                 </select>
               </div>
 

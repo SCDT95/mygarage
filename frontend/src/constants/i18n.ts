@@ -54,3 +54,21 @@ export function languageToLocale(lang: string): string {
   }
   return map[lang] ?? 'en-US'
 }
+
+/**
+ * The active Intl locale, kept in sync with the i18n language by src/i18n.ts.
+ *
+ * Non-React code (UnitFormatter and friends) cannot call useDateLocale(), and a
+ * bare `toLocaleString()` follows the BROWSER locale, not the language the user
+ * picked in the app — so a German user could still get English separators.
+ * Reading it from here keeps number formatting tied to the chosen language.
+ */
+let activeLocale = 'en-US'
+
+export function setActiveLocale(lang: string): void {
+  activeLocale = languageToLocale(lang)
+}
+
+export function getActiveLocale(): string {
+  return activeLocale
+}

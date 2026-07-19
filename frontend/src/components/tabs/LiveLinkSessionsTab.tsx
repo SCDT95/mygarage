@@ -21,6 +21,7 @@ import type { DriveSession, DriveSessionListResponse } from '@/types/livelink'
 import { useUnitPreference } from '@/hooks/useUnitPreference'
 import { useTimeFormat } from '@/hooks/useTimeFormat'
 import { formatAPITimestamp, formatTime } from '@/utils/parseAPITimestamp'
+import { getActiveLocale } from '@/constants/i18n'
 
 interface LiveLinkSessionsTabProps {
   vin: string
@@ -64,7 +65,7 @@ export default function LiveLinkSessionsTab({ vin }: LiveLinkSessionsTabProps) {
   const formatOdometer = (value: number | null | undefined) => {
     if (value == null) return '--'
     const label = unitSystem === 'imperial' ? 'mi' : 'km'
-    return `${Math.round(value).toLocaleString()} ${label}`
+    return `${Math.round(value).toLocaleString(getActiveLocale())} ${label}`
   }
 
   const formatSpeed = (kmh: number | null | undefined) => {

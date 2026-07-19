@@ -20,6 +20,7 @@ import { FormError } from '@/components/FormError'
 import FormModalWrapper from '@/components/FormModalWrapper'
 import SupplyHistoryModal from '@/components/SupplyHistoryModal'
 import type { Supply, SupplyCreate, SupplyUpdate } from '@/types/supplies'
+import { getActiveLocale } from '@/constants/i18n'
 
 export default function Supplies() {
   const { t } = useTranslation('common')
@@ -62,7 +63,7 @@ export default function Supplies() {
   const formatOnHand = (supply: Supply): string => {
     const value = canonicalToDisplay(Number(supply.on_hand), supply.unit_type, system)
     if (supply.unit_type === 'count') {
-      return Math.round(value).toLocaleString()
+      return Math.round(value).toLocaleString(getActiveLocale())
     }
     const label = supplyUnitLabel(supply.unit_type, system)
     return `${value.toFixed(2)} ${label}`.trim()

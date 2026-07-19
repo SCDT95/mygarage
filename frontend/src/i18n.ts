@@ -5,6 +5,7 @@
  * Non-English loaded lazily via i18next-http-backend with cache-busting.
  */
 import i18n from 'i18next'
+import { setActiveLocale } from './constants/i18n'
 import { initReactI18next } from 'react-i18next'
 import LanguageDetector from 'i18next-browser-languagedetector'
 import HttpBackend from 'i18next-http-backend'
@@ -69,5 +70,9 @@ i18n
       escapeValue: false, // React already escapes
     },
   })
+
+// Keep the Intl locale used by non-React formatters in step with the language.
+setActiveLocale(i18n.language)
+i18n.on('languageChanged', (lng) => setActiveLocale(lng))
 
 export default i18n

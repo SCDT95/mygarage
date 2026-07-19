@@ -10,6 +10,7 @@ import SupplyUsedPicker from './SupplyUsedPicker'
 import { useCurrencyPreference } from '../hooks/useCurrencyPreference'
 import { useUnitPreference } from '../hooks/useUnitPreference'
 import { UnitConverter, UnitFormatter } from '../utils/units'
+import { getActiveLocale } from '@/constants/i18n'
 
 // Service suggestions per category. Module scope can't reach `t`, so these are
 // translation-key suffixes under `lineItemEditor.misc.suggestions.*`, resolved
@@ -405,9 +406,9 @@ export default function LineItemEditor({
                           return (
                             <p className="text-xs text-garage-text-muted mt-1">
                               {t('lineItemEditor.misc.targetCalc', {
-                                current: Math.round(currentDisplay).toLocaleString(),
-                                interval: intervalDisplay.toLocaleString(),
-                                target: (Math.round(currentDisplay) + intervalDisplay).toLocaleString(),
+                                current: Math.round(currentDisplay).toLocaleString(getActiveLocale()),
+                                interval: intervalDisplay.toLocaleString(getActiveLocale()),
+                                target: (Math.round(currentDisplay) + intervalDisplay).toLocaleString(getActiveLocale()),
                                 unit: UnitFormatter.getDistanceUnit(system),
                               })}
                             </p>

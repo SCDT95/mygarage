@@ -20,6 +20,7 @@ import { toast } from 'sonner'
 import { X, Radio, Plus, Copy, Eye, EyeOff, Trash2, Loader2, AlertTriangle } from 'lucide-react'
 import { livelinkService } from '@/services/livelinkService'
 import type { TorqueSourceResponse, TorqueSourceCreateResponse } from '@/types/livelink'
+import { getActiveLocale } from '@/constants/i18n'
 
 interface TorqueSourceModalProps {
   vin: string
@@ -237,7 +238,7 @@ export default function TorqueSourceModal({ vin, isOpen, onClose }: TorqueSource
                           </p>
                           <p className="text-xs text-garage-text-muted">
                             {source.last_seen
-                              ? `${t('modal.torque.lastSeen')}: ${new Date(source.last_seen).toLocaleString()}`
+                              ? `${t('modal.torque.lastSeen')}: ${new Date(source.last_seen).toLocaleString(getActiveLocale())}`
                               : t('modal.torque.neverSeen')}
                           </p>
                         </div>

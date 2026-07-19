@@ -40,6 +40,7 @@ import type {
   BackfillResultResponse,
 } from '@/types/livelink'
 import type { Vehicle } from '@/types/vehicle'
+import { getActiveLocale } from '@/constants/i18n'
 
 interface LiveLinkSettingsModalProps {
   isOpen: boolean
@@ -638,7 +639,7 @@ export default function LiveLinkSettingsModal({ isOpen, onClose }: LiveLinkSetti
                         {mqttStatus.messages_processed > 0 && (
                           <span className="text-garage-text-muted">
                             {t('modal.livelink.messagesProcessed', {
-                              count: mqttStatus.messages_processed.toLocaleString(),
+                              count: mqttStatus.messages_processed.toLocaleString(getActiveLocale()),
                             })}
                           </span>
                         )}

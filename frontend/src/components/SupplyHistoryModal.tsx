@@ -25,6 +25,7 @@ import type { Supply } from '@/types/supplies'
 import type { AddressBookEntry } from '@/types/addressBook'
 import type { UnitSystem } from '@/utils/units'
 import type { components } from '@/types/api.generated'
+import { getActiveLocale } from '@/constants/i18n'
 
 type SupplyLedgerEntry = components['schemas']['SupplyLedgerEntry']
 
@@ -39,7 +40,7 @@ const RECEIPT_ACCEPT = '.jpg,.jpeg,.png,.gif,.pdf'
 /** Canonical → display magnitude, formatted per unit type (whole numbers for count). */
 function formatMagnitude(value: number, supply: Supply, system: UnitSystem): string {
   const display = canonicalToDisplay(value, supply.unit_type, system)
-  return supply.unit_type === 'count' ? Math.round(display).toLocaleString() : display.toFixed(2)
+  return supply.unit_type === 'count' ? Math.round(display).toLocaleString(getActiveLocale()) : display.toFixed(2)
 }
 
 function formatQuantity(raw: string, supply: Supply, system: UnitSystem): string {

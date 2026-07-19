@@ -23,6 +23,7 @@ import { parseAPITimestampMs } from '@/utils/parseAPITimestamp'
 // import { useUnitPreference } from '@/hooks/useUnitPreference'
 import { useTimeFormat } from '@/hooks/useTimeFormat'
 import { formatTime, formatDateTime } from '@/utils/parseAPITimestamp'
+import { getActiveLocale } from '@/constants/i18n'
 
 interface LiveLinkChartsTabProps {
   vin: string
@@ -366,7 +367,7 @@ export default function LiveLinkChartsTab({ vin }: LiveLinkChartsTabProps) {
       {/* Data Points Info */}
       {telemetry && telemetry.total_points > 0 && (
         <p className="text-xs text-garage-text-muted text-right">
-          {t('livelink.charts.dataPoints', { count: telemetry.total_points.toLocaleString() })}
+          {t('livelink.charts.dataPoints', { count: telemetry.total_points.toLocaleString(getActiveLocale()) })}
         </p>
       )}
     </div>

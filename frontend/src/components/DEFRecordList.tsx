@@ -11,6 +11,7 @@ import { useUnitPreference } from '../hooks/useUnitPreference'
 import { UnitConverter, UnitFormatter } from '../utils/units'
 import { useDEFRecords, useDEFAnalytics, useDeleteDEFRecord } from '../hooks/queries/useDEFRecords'
 import { useQueryClient } from '@tanstack/react-query'
+import { getActiveLocale } from '@/constants/i18n'
 
 interface DEFRecordListProps {
   vin: string
@@ -134,8 +135,8 @@ export default function DEFRecordList({ vin, readOnly = false }: DEFRecordListPr
               </div>
               <div className={`text-lg font-semibold ${milesRemainingColor(parseNum(analytics.estimated_km_remaining) ?? 0)}`}>
                 {system === 'imperial'
-                  ? Math.round(UnitConverter.kmToMiles(parseNum(analytics.estimated_km_remaining) ?? 0) ?? 0).toLocaleString()
-                  : Math.round(parseNum(analytics.estimated_km_remaining) ?? 0).toLocaleString()}
+                  ? Math.round(UnitConverter.kmToMiles(parseNum(analytics.estimated_km_remaining) ?? 0) ?? 0).toLocaleString(getActiveLocale())
+                  : Math.round(parseNum(analytics.estimated_km_remaining) ?? 0).toLocaleString(getActiveLocale())}
               </div>
               {analytics.estimated_days_remaining !== null && (
                 <p className="text-xs text-garage-text-muted">

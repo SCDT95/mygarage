@@ -21,6 +21,8 @@
  * - Electric: kWh, kW, voltage (no conversion needed, universal)
  */
 
+import { getActiveLocale } from '@/constants/i18n';
+
 export type UnitSystem = 'imperial' | 'metric';
 
 type Numeric = number | null | undefined;
@@ -420,17 +422,17 @@ export class UnitFormatter {
     if (isNaN(kmNum)) return 'N/A';
 
     if (system === 'metric') {
-      const primary = `${Math.round(kmNum).toLocaleString()} km`;
+      const primary = `${Math.round(kmNum).toLocaleString(getActiveLocale())} km`;
       if (showBoth) {
         const miles = UnitConverter.kmToMiles(kmNum);
-        return `${primary} (${miles?.toLocaleString()} mi)`;
+        return `${primary} (${miles?.toLocaleString(getActiveLocale())} mi)`;
       }
       return primary;
     } else {
       const miles = UnitConverter.kmToMiles(kmNum);
-      const primary = `${miles?.toLocaleString()} mi`;
+      const primary = `${miles?.toLocaleString(getActiveLocale())} mi`;
       if (showBoth) {
-        return `${primary} (${Math.round(kmNum).toLocaleString()} km)`;
+        return `${primary} (${Math.round(kmNum).toLocaleString(getActiveLocale())} km)`;
       }
       return primary;
     }
@@ -550,17 +552,17 @@ export class UnitFormatter {
     if (isNaN(kgNum)) return 'N/A';
 
     if (system === 'metric') {
-      const primary = `${kgNum.toLocaleString()} kg`;
+      const primary = `${kgNum.toLocaleString(getActiveLocale())} kg`;
       if (showBoth) {
         const lbs = UnitConverter.kgToLbs(kgNum);
-        return `${primary} (${lbs?.toLocaleString()} lbs)`;
+        return `${primary} (${lbs?.toLocaleString(getActiveLocale())} lbs)`;
       }
       return primary;
     } else {
       const lbs = UnitConverter.kgToLbs(kgNum);
-      const primary = `${lbs?.toLocaleString()} lbs`;
+      const primary = `${lbs?.toLocaleString(getActiveLocale())} lbs`;
       if (showBoth) {
-        return `${primary} (${kgNum.toLocaleString()} kg)`;
+        return `${primary} (${kgNum.toLocaleString(getActiveLocale())} kg)`;
       }
       return primary;
     }
