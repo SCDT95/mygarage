@@ -83,7 +83,7 @@ const DEFAULT_PROPS = {
 }
 
 function fillRequiredDescription() {
-  fireEvent.change(screen.getByPlaceholderText('Select a category first...'), {
+  fireEvent.change(screen.getByPlaceholderText('lineItemEditor.misc.selectCategoryFirst'), {
     target: { value: 'Oil change' },
   })
 }

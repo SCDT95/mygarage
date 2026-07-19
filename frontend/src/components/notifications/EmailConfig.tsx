@@ -33,8 +33,8 @@ export function EmailConfig({
       <div className="flex items-center gap-3 mb-6">
         <Mail className="w-6 h-6 text-primary" />
         <div>
-          <h2 className="text-lg font-semibold text-garage-text">Email Configuration</h2>
-          <p className="text-sm text-garage-text-muted">Send notifications via SMTP email</p>
+          <h2 className="text-lg font-semibold text-garage-text">{t('email.misc.title')}</h2>
+          <p className="text-sm text-garage-text-muted">{t('email.misc.subtitle')}</p>
         </div>
       </div>
 
@@ -55,7 +55,7 @@ export function EmailConfig({
         <div className="grid grid-cols-3 gap-3">
           <div className="col-span-2">
             <label htmlFor="email_smtp_host" className="block text-sm font-medium text-garage-text mb-1">
-              SMTP Server
+              {t('email.smtpHost')}
             </label>
             <input
               type="text"
@@ -69,7 +69,7 @@ export function EmailConfig({
           </div>
           <div>
             <label htmlFor="email_smtp_port" className="block text-sm font-medium text-garage-text mb-1">
-              Port
+              {t('email.misc.port')}
             </label>
             <input
               type="number"
@@ -86,14 +86,14 @@ export function EmailConfig({
         {/* {t('email.smtpUsername')} */}
         <div>
           <label htmlFor="email_smtp_user" className="block text-sm font-medium text-garage-text mb-1">
-            SMTP Username
+            {t('email.smtpUsername')}
           </label>
           <input
             type="text"
             id="email_smtp_user"
             value={String(settings.email_smtp_user ?? '')}
             onChange={(e) => onTextChange('email_smtp_user', e.target.value)}
-            placeholder="your-email@gmail.com"
+            placeholder={t('email.misc.smtpUsernamePlaceholder')}
             disabled={saving || !isEnabled}
             className="w-full px-3 py-2 bg-garage-bg border border-garage-border rounded-lg text-garage-text placeholder-garage-text-muted focus:outline-none focus:ring-2 focus:ring-primary disabled:opacity-50"
           />
@@ -102,19 +102,19 @@ export function EmailConfig({
         {/* {t('email.smtpPassword')} */}
         <div>
           <label htmlFor="email_smtp_password" className="block text-sm font-medium text-garage-text mb-1">
-            SMTP Password / App Password
+            {t('email.misc.smtpPasswordLabel')}
           </label>
           <input
             type="password"
             id="email_smtp_password"
             value={String(settings.email_smtp_password ?? '')}
             onChange={(e) => onTextChange('email_smtp_password', e.target.value)}
-            placeholder="App password or SMTP password"
+            placeholder={t('email.misc.smtpPasswordPlaceholder')}
             disabled={saving || !isEnabled}
             className="w-full px-3 py-2 bg-garage-bg border border-garage-border rounded-lg text-garage-text placeholder-garage-text-muted focus:outline-none focus:ring-2 focus:ring-primary disabled:opacity-50"
           />
           <p className="mt-1 text-xs text-garage-text-muted">
-            For Gmail, use an App Password (not your regular password)
+            {t('email.misc.smtpPasswordHint')}
           </p>
         </div>
 
@@ -127,13 +127,13 @@ export function EmailConfig({
             disabled={saving || !isEnabled}
             className="w-4 h-4 text-primary bg-garage-bg border-garage-border rounded focus:ring-primary focus:ring-2 disabled:opacity-50"
           />
-          <span className="ml-2 text-sm text-garage-text">Use STARTTLS (recommended)</span>
+          <span className="ml-2 text-sm text-garage-text">{t('email.misc.useStartTls')}</span>
         </label>
 
         {/* {t('email.fromAddress')} */}
         <div>
           <label htmlFor="email_from" className="block text-sm font-medium text-garage-text mb-1">
-            From Address
+            {t('email.fromAddress')}
           </label>
           <input
             type="email"
@@ -149,7 +149,7 @@ export function EmailConfig({
         {/* {t('email.toAddress')} */}
         <div>
           <label htmlFor="email_to" className="block text-sm font-medium text-garage-text mb-1">
-            Recipient Address
+            {t('email.toAddress')}
           </label>
           <input
             type="email"
@@ -170,7 +170,7 @@ export function EmailConfig({
             className="flex items-center gap-2 px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
           >
             <Send size={16} />
-            {testing ? 'Sending...' : 'Test Connection'}
+            {testing ? t('email.misc.sending') : t('email.misc.testConnection')}
           </button>
         </div>
 
@@ -179,14 +179,14 @@ export function EmailConfig({
           <div className="flex items-start gap-2">
             <Info className="w-4 h-4 text-garage-text-muted mt-0.5" />
             <div className="text-xs text-garage-text-muted space-y-2">
-              <p><strong>Common SMTP settings:</strong></p>
+              <p><strong>{t('email.misc.commonSettingsTitle')}</strong></p>
               <ul className="space-y-1">
-                <li><strong>Gmail:</strong> smtp.gmail.com:587 (use App Password)</li>
+                <li><strong>Gmail:</strong> {t('email.misc.gmailSetting')}</li>
                 <li><strong>Outlook:</strong> smtp.office365.com:587</li>
                 <li><strong>Yahoo:</strong> smtp.mail.yahoo.com:587</li>
                 <li><strong>Mailgun:</strong> smtp.mailgun.org:587</li>
               </ul>
-              <p className="mt-2">For Gmail, enable 2FA and create an App Password in your Google Account settings.</p>
+              <p className="mt-2">{t('email.misc.gmailNote')}</p>
             </div>
           </div>
         </div>

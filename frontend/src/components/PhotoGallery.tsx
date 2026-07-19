@@ -58,28 +58,28 @@ function PhotoGallery({ vin, onAddClick }: PhotoGalleryProps) {
         if (cached) {
           const parsed: PhotoCache = JSON.parse(cached)
           setPhotos(parsed.photos)
-          setError('Offline: showing your last saved gallery.')
+          setError(t('photoGallery.misc.offlineCachedGallery'))
           setLoading(false)
           return
         }
       }
-      setError(err instanceof Error ? err.message : 'An error occurred')
+      setError(err instanceof Error ? err.message : t('photoGallery.misc.errorOccurred'))
     } finally {
       setLoading(false)
     }
-  }, [vin, cacheKey])
+  }, [vin, cacheKey, t])
 
   useEffect(() => {
     fetchPhotos()
   }, [fetchPhotos])
 
   const handleDelete = async (photo: Photo) => {
-    if (!photo.filename || !confirm('Are you sure you want to delete this photo?')) {
+    if (!photo.filename || !confirm(t('photoGallery.misc.confirmDelete'))) {
       return
     }
     if (!isOnline) {
-      toast.error('You are offline', {
-        description: 'Connect to the internet to delete photos.'
+      toast.error(t('photoGallery.misc.offlineTitle'), {
+        description: t('photoGallery.misc.offlineDeleteDesc')
       })
       return
     }
@@ -89,7 +89,7 @@ function PhotoGallery({ vin, onAddClick }: PhotoGalleryProps) {
       await vehicleService.deletePhoto(vin, photo.filename)
       await fetchPhotos()
     } catch (err) {
-      toast.error('Failed to delete photo', {
+      toast.error(t('photoGallery.misc.deleteError'), {
         description: err instanceof Error ? err.message : undefined
       })
     } finally {
@@ -99,17 +99,17 @@ function PhotoGallery({ vin, onAddClick }: PhotoGalleryProps) {
 
   const handleSetMain = async (photo: Photo) => {
     if (!isOnline) {
-      toast.error('You are offline', {
-        description: 'Connect to the internet to update the main photo.'
+      toast.error(t('photoGallery.misc.offlineTitle'), {
+        description: t('photoGallery.misc.offlineMainPhotoDesc')
       })
       return
     }
     try {
       await vehicleService.setMainPhoto(vin, photo.filename)
       await fetchPhotos()
-      toast.success('Main photo updated')
+      toast.success(t('photoGallery.misc.mainPhotoUpdated'))
     } catch (err) {
-      toast.error('Failed to set main photo', {
+      toast.error(t('photoGallery.misc.setMainError'), {
         description: err instanceof Error ? err.message : undefined
       })
     }
@@ -131,8 +131,8 @@ function PhotoGallery({ vin, onAddClick }: PhotoGalleryProps) {
   const handleCaptionSave = async () => {
     if (!editingId) return
     if (!isOnline) {
-      toast.error('You are offline', {
-        description: 'Connect to the internet to update captions.'
+      toast.error(t('photoGallery.misc.offlineTitle'), {
+        description: t('photoGallery.misc.offlineCaptionDesc')
       })
       return
     }
@@ -142,9 +142,9 @@ function PhotoGallery({ vin, onAddClick }: PhotoGalleryProps) {
       setEditingId(null)
       setCaptionDraft('')
       await fetchPhotos()
-      toast.success('Caption updated')
+      toast.success(t('photoGallery.misc.captionUpdated'))
     } catch (err) {
-      toast.error('Failed to update caption', {
+      toast.error(t('photoGallery.misc.captionError'), {
         description: err instanceof Error ? err.message : undefined
       })
     } finally {
@@ -166,15 +166,17 @@ function PhotoGallery({ vin, onAddClick }: PhotoGalleryProps) {
         <div className="flex items-center gap-2">
           <ImageIcon className="w-5 h-5 text-garage-text-muted" />
           <h3 className="text-lg font-semibold text-garage-text">
-            Photo Gallery
+            {t('photoGallery.misc.title')}
           </h3>
-          <span className="text-sm text-garage-text-muted">({photos.length} photos)</span>
+          <span className="text-sm text-garage-text-muted">
+            {t('photoGallery.misc.photoCount', { count: photos.length })}
+          </span>
         </div>
         <div className="flex flex-wrap items-center gap-3">
           {!isOnline && (
             <div className="flex items-center gap-1 text-xs text-amber-500">
               <AlertTriangle className="w-4 h-4" />
-              Offline actions disabled
+              {t('photoGallery.misc.offlineActionsDisabled')}
             </div>
           )}
           <button
@@ -183,7 +185,7 @@ function PhotoGallery({ vin, onAddClick }: PhotoGalleryProps) {
             disabled={!isOnline}
           >
             <Plus className="w-4 h-4" />
-            <span>Upload Photo</span>
+            <span>{t('photoUpload.uploadBtn')}</span>
           </button>
         </div>
       </div>
@@ -224,14 +226,14 @@ function PhotoGallery({ vin, onAddClick }: PhotoGalleryProps) {
                 {photo.is_main && (
                   <div className="absolute top-2 left-2 z-10 px-2 py-1 bg-warning text-white text-xs font-medium rounded flex items-center gap-1">
                     <Star className="w-3 h-3" />
-                    Main Photo
+                    {t('photoGallery.misc.mainPhoto')}
                   </div>
                 )}
 
                 <div className="relative aspect-video bg-garage-bg">
                   <img
                     src={withBase(photo.thumbnail_url ?? photo.path)}
-                    alt={photo.caption || 'Vehicle photo'}
+                    alt={photo.caption || t('photoGallery.misc.photoAlt')}
                     className="w-full h-full object-cover"
                     onError={(e) => {
                       // Removed console.error
@@ -269,7 +271,7 @@ function PhotoGallery({ vin, onAddClick }: PhotoGalleryProps) {
                         value={captionDraft}
                         onChange={(e) => setCaptionDraft(e.target.value)}
                         className="w-full rounded-md border border-garage-border bg-garage-bg text-garage-text text-sm p-2 focus:ring-2 focus:ring-primary"
-                        placeholder="Add a caption..."
+                        placeholder={t('photoGallery.misc.captionPlaceholder')}
                         maxLength={200}
                       />
                       <div className="flex items-center gap-2 justify-end">
@@ -278,7 +280,7 @@ function PhotoGallery({ vin, onAddClick }: PhotoGalleryProps) {
                           className="px-3 py-1 text-sm text-garage-text-muted hover:text-garage-text flex items-center gap-1"
                         >
                           <X className="w-4 h-4" />
-                          Cancel
+                          {t('common:cancel')}
                         </button>
                         <button
                           onClick={handleCaptionSave}
@@ -286,14 +288,16 @@ function PhotoGallery({ vin, onAddClick }: PhotoGalleryProps) {
                           className="px-3 py-1 text-sm bg-primary text-white rounded-md flex items-center gap-1 disabled:opacity-50"
                         >
                           <Check className="w-4 h-4" />
-                          {savingCaption ? 'Saving...' : 'Save'}
+                          {savingCaption
+                            ? t('common:saving')
+                            : t('photoGallery.misc.save')}
                         </button>
                       </div>
                     </div>
                   ) : (
                     <>
                       <p className="text-sm text-garage-text">
-                        {photo.caption ? photo.caption : <span className="text-garage-text-muted italic">No caption</span>}
+                        {photo.caption ? photo.caption : <span className="text-garage-text-muted italic">{t('photoGallery.misc.noCaption')}</span>}
                       </p>
                       <div className="flex items-center justify-between text-xs text-garage-text-muted">
                         <span>{formatAPITimestamp(photo.uploaded_at, (d) => d.toLocaleDateString())}</span>
@@ -304,7 +308,7 @@ function PhotoGallery({ vin, onAddClick }: PhotoGalleryProps) {
                             disabled={!isOnline}
                           >
                             <Edit3 className="w-4 h-4" />
-                            Edit caption
+                            {t('photoGallery.misc.editCaption')}
                           </button>
                         )}
                       </div>

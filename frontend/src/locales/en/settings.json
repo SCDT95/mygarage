@@ -208,7 +208,26 @@
   },
   "telegram": {
     "botToken": "Bot Token",
-    "enable": "Enable Telegram notifications"
+    "enable": "Enable Telegram notifications",
+    "misc": {
+      "title": "Telegram Configuration",
+      "subtitle": "Send notifications via Telegram bot",
+      "botTokenHint": "Get from @BotFather on Telegram",
+      "chatId": "Chat ID",
+      "chatIdPlaceholder": "-1001234567890 or 123456789",
+      "chatIdHint": "Your user ID, group ID, or channel ID",
+      "sending": "Sending...",
+      "testConnection": "Test Connection",
+      "setupTitle": "To set up Telegram notifications:",
+      "step1Prefix": "Message",
+      "step1Suffix": "on Telegram",
+      "step2": "Create a new bot with",
+      "step3": "Copy the bot token",
+      "step4": "Start a chat with your bot",
+      "step5": "Get your chat ID from",
+      "groupsNote": "For groups/channels, add your bot to the group and use the group chat ID (starts with -).",
+      "docsLink": "Telegram Bot Documentation"
+    }
   },
   "email": {
     "enable": "Enable Email notifications",
@@ -216,7 +235,22 @@
     "smtpHost": "SMTP Host",
     "smtpPassword": "SMTP Password",
     "smtpUsername": "SMTP Username",
-    "toAddress": "To Address"
+    "toAddress": "To Address",
+    "misc": {
+      "title": "Email Configuration",
+      "subtitle": "Send notifications via SMTP email",
+      "port": "Port",
+      "smtpUsernamePlaceholder": "your-email@gmail.com",
+      "smtpPasswordLabel": "SMTP Password / App Password",
+      "smtpPasswordPlaceholder": "App password or SMTP password",
+      "smtpPasswordHint": "For Gmail, use an App Password (not your regular password)",
+      "useStartTls": "Use STARTTLS (recommended)",
+      "sending": "Sending...",
+      "testConnection": "Test Connection",
+      "commonSettingsTitle": "Common SMTP settings:",
+      "gmailSetting": "smtp.gmail.com:587 (use App Password)",
+      "gmailNote": "For Gmail, enable 2FA and create an App Password in your Google Account settings."
+    }
   },
   "events": {
     "title": "Event Notifications",
@@ -293,5 +327,27 @@
     "twelveHour": "12-hour (2:30 PM)",
     "twentyFourHour": "24-hour (14:30)",
     "description": "Choose how times are displayed throughout the app."
+  },
+  "widgetKeys": {
+    "createTitle": "New API Key",
+    "createdTitle": "API Key Created",
+    "revealWarningLabel": "Copy this key now.",
+    "revealWarningDesc": "This is the only time it will be shown. If you lose it, revoke this key and create a new one.",
+    "secretLabel": "API Key",
+    "copy": "Copy",
+    "copied": "Copied",
+    "done": "Done",
+    "nameLabel": "Name",
+    "namePlaceholder": "e.g. Homepage",
+    "nameHelp": "A label to help you identify this key later.",
+    "scopeLegend": "Scope",
+    "scopeAllLabel": "All my vehicles",
+    "scopeAllDesc": "Key sees every vehicle you currently own. New vehicles are included automatically.",
+    "scopeSelectedLabel": "Selected vehicles only",
+    "scopeSelectedDesc": "Pick the exact vehicles this key is allowed to read.",
+    "loadingVehicles": "Loading vehicles…",
+    "noVehicles": "You don't own any vehicles yet.",
+    "creating": "Creating…",
+    "submit": "Create Key"
   }
 }

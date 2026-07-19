@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { X, Copy, AlertTriangle, Check, Car } from 'lucide-react'
 import { useCreateWidgetKey } from '@/hooks/queries/useWidgetKeys'
 import { vehicleService } from '@/services/vehicleService'
@@ -17,6 +18,7 @@ interface Props {
  * retrieved later.
  */
 export default function CreateWidgetKeyModal({ isOpen, onClose }: Props) {
+  const { t } = useTranslation('settings')
   const [name, setName] = useState('')
   const [scope, setScope] = useState<WidgetKeyScope>('all_vehicles')
   const [selectedVins, setSelectedVins] = useState<string[]>([])
@@ -84,13 +86,13 @@ export default function CreateWidgetKeyModal({ isOpen, onClose }: Props) {
       <div className="w-full max-w-xl rounded-lg bg-garage-surface border border-garage-border shadow-xl">
         <div className="flex items-center justify-between border-b border-garage-border px-6 py-4">
           <h2 className="text-lg font-semibold text-garage-text">
-            {revealed ? 'API Key Created' : 'New API Key'}
+            {revealed ? t('widgetKeys.createdTitle') : t('widgetKeys.createTitle')}
           </h2>
           <button
             type="button"
             onClick={close}
             className="rounded-lg p-1 text-garage-text-muted hover:bg-garage-bg"
-            aria-label="Close"
+            aria-label={t('common:close')}
           >
             <X className="h-5 w-5" />
           </button>
@@ -101,16 +103,13 @@ export default function CreateWidgetKeyModal({ isOpen, onClose }: Props) {
             <div className="flex items-start gap-3 rounded-lg border border-danger-500/40 bg-danger-500/10 p-4">
               <AlertTriangle className="h-5 w-5 flex-shrink-0 text-danger-500" />
               <div className="text-sm text-danger-500">
-                <p className="font-semibold">Copy this key now.</p>
-                <p className="mt-1">
-                  This is the only time it will be shown. If you lose it, revoke this key and
-                  create a new one.
-                </p>
+                <p className="font-semibold">{t('widgetKeys.revealWarningLabel')}</p>
+                <p className="mt-1">{t('widgetKeys.revealWarningDesc')}</p>
               </div>
             </div>
 
             <label className="block text-sm font-medium text-garage-text">
-              API Key
+              {t('widgetKeys.secretLabel')}
             </label>
             <div className="flex items-center gap-2">
               <code className="flex-1 overflow-x-auto rounded-lg border border-garage-border bg-garage-bg px-3 py-2 text-sm text-garage-text">
@@ -122,7 +121,7 @@ export default function CreateWidgetKeyModal({ isOpen, onClose }: Props) {
                 className="btn btn-primary inline-flex items-center gap-1 rounded-lg px-3 py-2 text-sm font-medium"
               >
                 {copied ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
-                {copied ? 'Copied' : 'Copy'}
+                {copied ? t('widgetKeys.copied') : t('widgetKeys.copy')}
               </button>
             </div>
 
@@ -132,7 +131,7 @@ export default function CreateWidgetKeyModal({ isOpen, onClose }: Props) {
                 onClick={close}
                 className="btn btn-secondary rounded-lg px-4 py-2 text-sm font-medium"
               >
-                Done
+                {t('widgetKeys.done')}
               </button>
             </div>
           </div>
@@ -140,24 +139,24 @@ export default function CreateWidgetKeyModal({ isOpen, onClose }: Props) {
           <form onSubmit={handleSubmit} className="space-y-4 p-6">
             <div>
               <label className="block text-sm font-medium text-garage-text">
-                Name
+                {t('widgetKeys.nameLabel')}
               </label>
               <input
                 type="text"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
                 maxLength={100}
-                placeholder="e.g. Homepage"
+                placeholder={t('widgetKeys.namePlaceholder')}
                 className="mt-1 w-full rounded-lg border border-garage-border bg-garage-surface px-3 py-2 text-sm text-garage-text placeholder-garage-text-muted focus:outline-none focus:ring-2 focus:ring-primary-500"
               />
               <p className="mt-1 text-xs text-garage-text-muted">
-                A label to help you identify this key later.
+                {t('widgetKeys.nameHelp')}
               </p>
             </div>
 
             <fieldset className="space-y-2">
               <legend className="text-sm font-medium text-garage-text">
-                Scope
+                {t('widgetKeys.scopeLegend')}
               </legend>
               <label className="flex items-start gap-2 text-sm">
                 <input
@@ -169,10 +168,9 @@ export default function CreateWidgetKeyModal({ isOpen, onClose }: Props) {
                   className="mt-1"
                 />
                 <span>
-                  <span className="text-garage-text">All my vehicles</span>
+                  <span className="text-garage-text">{t('widgetKeys.scopeAllLabel')}</span>
                   <span className="block text-xs text-garage-text-muted">
-                    Key sees every vehicle you currently own. New vehicles are included
-                    automatically.
+                    {t('widgetKeys.scopeAllDesc')}
                   </span>
                 </span>
               </label>
@@ -186,9 +184,9 @@ export default function CreateWidgetKeyModal({ isOpen, onClose }: Props) {
                   className="mt-1"
                 />
                 <span>
-                  <span className="text-garage-text">Selected vehicles only</span>
+                  <span className="text-garage-text">{t('widgetKeys.scopeSelectedLabel')}</span>
                   <span className="block text-xs text-garage-text-muted">
-                    Pick the exact vehicles this key is allowed to read.
+                    {t('widgetKeys.scopeSelectedDesc')}
                   </span>
                 </span>
               </label>
@@ -197,7 +195,9 @@ export default function CreateWidgetKeyModal({ isOpen, onClose }: Props) {
             {scope === 'selected_vins' && (
               <div className="rounded-lg border border-garage-border bg-garage-bg p-3">
                 {vehiclesQuery.isLoading ? (
-                  <p className="text-sm text-garage-text-muted">Loading vehicles…</p>
+                  <p className="text-sm text-garage-text-muted">
+                    {t('widgetKeys.loadingVehicles')}
+                  </p>
                 ) : vehiclesQuery.data && vehiclesQuery.data.vehicles.length > 0 ? (
                   <div className="space-y-1 max-h-48 overflow-y-auto">
                     {vehiclesQuery.data.vehicles.map((v) => {
@@ -229,7 +229,7 @@ export default function CreateWidgetKeyModal({ isOpen, onClose }: Props) {
                   </div>
                 ) : (
                   <p className="text-sm text-garage-text-muted">
-                    You don&apos;t own any vehicles yet.
+                    {t('widgetKeys.noVehicles')}
                   </p>
                 )}
               </div>
@@ -247,14 +247,14 @@ export default function CreateWidgetKeyModal({ isOpen, onClose }: Props) {
                 onClick={close}
                 className="btn btn-secondary rounded-lg px-4 py-2 text-sm font-medium"
               >
-                Cancel
+                {t('common:cancel')}
               </button>
               <button
                 type="submit"
                 disabled={submitDisabled}
                 className="btn btn-primary rounded-lg px-4 py-2 text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                {createMutation.isPending ? 'Creating…' : 'Create Key'}
+                {createMutation.isPending ? t('widgetKeys.creating') : t('widgetKeys.submit')}
               </button>
             </div>
           </form>

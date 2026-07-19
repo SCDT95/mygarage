@@ -53,13 +53,13 @@ export default function DocumentUpload({ vin, onSuccess, onClose }: DocumentUplo
     const validExtensions = ['pdf', 'doc', 'docx', 'txt', 'jpg', 'jpeg', 'png', 'webp', 'xls', 'xlsx', 'csv']
 
     if (!ext || !validExtensions.includes(ext)) {
-      setError('Invalid file type. Allowed: PDF, DOC, DOCX, TXT, JPG, PNG, WEBP, XLS, XLSX, CSV')
+      setError(t('documentUpload.misc.invalidFileType'))
       return
     }
 
     // Validate file size (25MB)
     if (selectedFile.size > 25 * 1024 * 1024) {
-      setError('File size must be less than 25MB')
+      setError(t('documentUpload.misc.fileTooLarge'))
       return
     }
 
@@ -92,16 +92,20 @@ export default function DocumentUpload({ vin, onSuccess, onClose }: DocumentUplo
       onSuccess()
       onClose()
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'An error occurred')
+      setError(err instanceof Error ? err.message : t('documentUpload.misc.errorOccurred'))
     } finally {
       setUploading(false)
     }
   }
 
   const formatFileSize = (bytes: number): string => {
-    if (bytes === 0) return '0 Bytes'
+    if (bytes === 0) return t('documentUpload.misc.sizeZero')
     const k = 1024
-    const sizes = ['Bytes', 'KB', 'MB']
+    const sizes = [
+      t('documentUpload.misc.unitBytes'),
+      t('documentUpload.misc.unitKb'),
+      t('documentUpload.misc.unitMb'),
+    ]
     const i = Math.floor(Math.log(bytes) / Math.log(k))
     return Math.round(bytes / Math.pow(k, i) * 100) / 100 + ' ' + sizes[i]
   }
@@ -140,10 +144,10 @@ export default function DocumentUpload({ vin, onSuccess, onClose }: DocumentUplo
             >
               <Upload className="w-12 h-12 text-garage-text-muted mx-auto mb-4" />
               <p className="text-garage-text mb-2">
-                Drag and drop a document here, or click to select
+                {t('documentUpload.misc.dragDropPrompt')}
               </p>
               <p className="text-sm text-garage-text-muted mb-4">
-                PDF, DOC, DOCX, TXT, Images, XLS, XLSX, CSV (max 25MB)
+                {t('documentUpload.misc.fileTypes')}
               </p>
               <input
                 ref={fileInputRef}
@@ -157,7 +161,7 @@ export default function DocumentUpload({ vin, onSuccess, onClose }: DocumentUplo
                 onClick={() => fileInputRef.current?.click()}
                 className="btn btn-primary rounded-lg transition-colors"
               >
-                Select File
+                {t('documentUpload.misc.selectFile')}
               </button>
             </div>
           ) : (
@@ -184,7 +188,7 @@ export default function DocumentUpload({ vin, onSuccess, onClose }: DocumentUplo
 
               <div>
                 <label htmlFor="title" className="block text-sm font-medium text-garage-text mb-1">
-                  Title <span className="text-danger">*</span>
+                  {t('documentList.titleLabel')} <span className="text-danger">*</span>
                 </label>
                 <input
                   type="text"
@@ -193,14 +197,14 @@ export default function DocumentUpload({ vin, onSuccess, onClose }: DocumentUplo
                   maxLength={200}
                   value={title}
                   onChange={(e) => setTitle(e.target.value)}
-                  placeholder="Document title"
+                  placeholder={t('documentUpload.misc.titlePlaceholder')}
                   className="w-full px-3 py-2 border border-garage-border rounded-md focus:outline-none focus:ring-2 focus:ring-primary bg-garage-bg text-garage-text"
                 />
               </div>
 
               <div>
                 <label htmlFor="document_type" className="block text-sm font-medium text-garage-text mb-1">
-                  Document Type
+                  {t('documentUpload.misc.documentTypeLabel')}
                 </label>
                 <select
                   id="document_type"
@@ -208,26 +212,26 @@ export default function DocumentUpload({ vin, onSuccess, onClose }: DocumentUplo
                   onChange={(e) => setDocumentType(e.target.value)}
                   className="w-full px-3 py-2 border border-garage-border rounded-md focus:outline-none focus:ring-2 focus:ring-primary bg-garage-bg text-garage-text"
                 >
-                  <option value="" className="bg-garage-bg text-garage-text">Select type</option>
-                  <option value="Insurance" className="bg-garage-bg text-garage-text">Insurance</option>
-                  <option value="Registration" className="bg-garage-bg text-garage-text">Registration</option>
-                  <option value="Manual" className="bg-garage-bg text-garage-text">Manual</option>
-                  <option value="Receipt" className="bg-garage-bg text-garage-text">Receipt</option>
-                  <option value="Inspection" className="bg-garage-bg text-garage-text">Inspection</option>
-                  <option value="Other" className="bg-garage-bg text-garage-text">Other</option>
+                  <option value="" className="bg-garage-bg text-garage-text">{t('documentList.selectType')}</option>
+                  <option value="Insurance" className="bg-garage-bg text-garage-text">{t('documentUpload.misc.typeInsurance')}</option>
+                  <option value="Registration" className="bg-garage-bg text-garage-text">{t('documentUpload.misc.typeRegistration')}</option>
+                  <option value="Manual" className="bg-garage-bg text-garage-text">{t('documentUpload.misc.typeManual')}</option>
+                  <option value="Receipt" className="bg-garage-bg text-garage-text">{t('documentUpload.misc.typeReceipt')}</option>
+                  <option value="Inspection" className="bg-garage-bg text-garage-text">{t('documentUpload.misc.typeInspection')}</option>
+                  <option value="Other" className="bg-garage-bg text-garage-text">{t('documentUpload.misc.typeOther')}</option>
                 </select>
               </div>
 
               <div>
                 <label htmlFor="description" className="block text-sm font-medium text-garage-text mb-1">
-                  Description
+                  {t('documentList.descriptionLabel')}
                 </label>
                 <textarea
                   id="description"
                   rows={3}
                   value={description}
                   onChange={(e) => setDescription(e.target.value)}
-                  placeholder="Additional notes about this document..."
+                  placeholder={t('documentUpload.misc.descriptionPlaceholder')}
                   className="w-full px-3 py-2 border border-garage-border rounded-md focus:outline-none focus:ring-2 focus:ring-primary bg-garage-bg text-garage-text"
                 />
               </div>
@@ -249,7 +253,7 @@ export default function DocumentUpload({ vin, onSuccess, onClose }: DocumentUplo
               onClick={onClose}
               className="btn btn-primary rounded-lg transition-colors"
             >
-              Cancel
+              {t('common:cancel')}
             </button>
           </div>
         </form>

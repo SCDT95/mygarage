@@ -15,6 +15,7 @@
  */
 
 import { useState, useEffect } from 'react'
+import { useTranslation } from 'react-i18next'
 import { MapPin, Loader2, Navigation, Star, Phone, Save, Check, X, AlertTriangle } from 'lucide-react'
 import { toast } from 'sonner'
 import api from '@/services/api'
@@ -28,6 +29,7 @@ interface ShopDiscoveryModalProps {
 type Step = 'permission' | 'searching' | 'results'
 
 export default function ShopDiscoveryModal({ onClose, onSelectShop }: ShopDiscoveryModalProps) {
+  const { t } = useTranslation('common')
   const [step, setStep] = useState<Step>('permission')
   const [recommendations, setRecommendations] = useState<ShopRecommendation[]>([])
   const [searchResults, setSearchResults] = useState<PlaceResult[]>([])
@@ -67,9 +69,9 @@ export default function ShopDiscoveryModal({ onClose, onSelectShop }: ShopDiscov
   }
 
   const formatDistance = (meters?: number): string => {
-    if (!meters) return 'Distance unknown'
+    if (!meters) return t('shopFinder.misc.distanceUnknown')
     const miles = meters * 0.000621371
-    return `${miles.toFixed(1)} mi`
+    return t('shopFinder.misc.distanceMiles', { miles: miles.toFixed(1) })
   }
 
   const handleRequestLocation = () => {
@@ -77,7 +79,7 @@ export default function ShopDiscoveryModal({ onClose, onSelectShop }: ShopDiscov
     setError('')
 
     if (!navigator.geolocation) {
-      setError('Geolocation is not supported by your browser')
+      setError(t('shopFinder.misc.geolocationUnsupported'))
       setStep('permission')
       return
     }
@@ -87,16 +89,16 @@ export default function ShopDiscoveryModal({ onClose, onSelectShop }: ShopDiscov
         await searchNearbyShops(position.coords.latitude, position.coords.longitude)
       },
       (err) => {
-        let errorMessage = 'Failed to get your location'
+        let errorMessage = t('shopFinder.misc.locationFailed')
         switch (err.code) {
           case err.PERMISSION_DENIED:
-            errorMessage = 'Location permission denied. Please enable location access in your browser settings.'
+            errorMessage = t('shopFinder.misc.permissionDenied')
             break
           case err.POSITION_UNAVAILABLE:
-            errorMessage = 'Location information is unavailable.'
+            errorMessage = t('shopFinder.misc.positionUnavailable')
             break
           case err.TIMEOUT:
-            errorMessage = 'Location request timed out.'
+            errorMessage = t('shopFinder.misc.locationTimeout')
             break
         }
         setError(errorMessage)
@@ -133,7 +135,7 @@ export default function ShopDiscoveryModal({ onClose, onSelectShop }: ShopDiscov
       setStep('results')
     } catch (err) {
       const detail = (err as { response?: { data?: { detail?: string } } }).response?.data?.detail
-      const errorMessage = typeof detail === 'string' ? detail : 'Failed to search for shops'
+      const errorMessage = typeof detail === 'string' ? detail : t('shopFinder.misc.searchFailed')
       setError(errorMessage)
       toast.error(errorMessage)
       setStep('permission')
@@ -159,10 +161,10 @@ export default function ShopDiscoveryModal({ onClose, onSelectShop }: ShopDiscov
       })
 
       setSavedShops((prev) => new Set(prev).add(shop.external_id || shop.business_name))
-      toast.success(`${shop.business_name} saved to address book!`)
+      toast.success(t('shopFinder.misc.savedToAddressBook', { name: shop.business_name }))
     } catch (err) {
       const detail = (err as { response?: { data?: { detail?: string } } }).response?.data?.detail
-      toast.error(typeof detail === 'string' ? detail : 'Failed to save shop')
+      toast.error(typeof detail === 'string' ? detail : t('shopFinder.misc.saveFailed'))
     }
   }
 
@@ -182,16 +184,16 @@ export default function ShopDiscoveryModal({ onClose, onSelectShop }: ShopDiscov
                 <MapPin className="w-6 h-6 text-primary" />
               </div>
               <div>
-                <h2 className="text-xl font-bold text-garage-text">Find Nearby Shop</h2>
+                <h2 className="text-xl font-bold text-garage-text">{t('shopFinder.title')}</h2>
                 <p className="text-sm text-garage-text-muted">
-                  Discover auto repair shops near your location
+                  {t('shopFinder.subtitle')}
                 </p>
               </div>
             </div>
             <button
               onClick={onClose}
               className="p-2 hover:bg-garage-bg rounded-lg transition-colors"
-              aria-label="Close"
+              aria-label={t('close')}
             >
               <X className="w-5 h-5 text-garage-text-muted" />
             </button>
@@ -203,7 +205,7 @@ export default function ShopDiscoveryModal({ onClose, onSelectShop }: ShopDiscov
               {/* Recommendations Section */}
               {recommendations.length > 0 && (
                 <div className="space-y-3">
-                  <h3 className="text-sm font-semibold text-garage-text">Previously Used Shops</h3>
+                  <h3 className="text-sm font-semibold text-garage-text">{t('shopFinder.previouslyUsed')}</h3>
                   <div className="space-y-2">
                     {recommendations.map((shop) => (
                       <div
@@ -225,14 +227,14 @@ export default function ShopDiscoveryModal({ onClose, onSelectShop }: ShopDiscov
                               </p>
                             )}
                             <p className="text-xs text-garage-text-muted mt-2">
-                              Used {shop.usage_count} time{shop.usage_count !== 1 ? 's' : ''}
+                              {t('shopFinder.misc.usedTimes', { count: shop.usage_count })}
                             </p>
                           </div>
                           <button
                             onClick={() => handleSelectShop(shop)}
                             className="px-3 py-1.5 bg-primary text-white rounded-lg hover:bg-primary/90 transition-colors text-sm whitespace-nowrap"
                           >
-                            Select
+                            {t('select')}
                           </button>
                         </div>
                       </div>
@@ -250,9 +252,9 @@ export default function ShopDiscoveryModal({ onClose, onSelectShop }: ShopDiscov
                   </div>
                 </div>
                 <div>
-                  <h3 className="text-lg font-semibold text-garage-text">Enable Location Access</h3>
+                  <h3 className="text-lg font-semibold text-garage-text">{t('shopFinder.enableLocation')}</h3>
                   <p className="text-sm text-garage-text-muted mt-2">
-                    We need your location to find nearby auto repair shops within 5 miles.
+                    {t('shopFinder.misc.locationRationale')}
                   </p>
                 </div>
 
@@ -268,11 +270,11 @@ export default function ShopDiscoveryModal({ onClose, onSelectShop }: ShopDiscov
                   className="px-6 py-3 bg-primary text-white rounded-lg hover:bg-primary/90 transition-colors flex items-center gap-2 mx-auto"
                 >
                   <Navigation className="w-4 h-4" />
-                  Enable Location
+                  {t('shopFinder.enableLocationBtn')}
                 </button>
 
                 <p className="text-xs text-garage-text-muted">
-                  Powered by TomTom Places & OpenStreetMap
+                  {t('shopFinder.misc.poweredBy', { providers: 'TomTom Places & OpenStreetMap' })}
                 </p>
               </div>
             </>
@@ -283,9 +285,9 @@ export default function ShopDiscoveryModal({ onClose, onSelectShop }: ShopDiscov
             <div className="text-center space-y-4 py-12">
               <Loader2 className="w-12 h-12 text-primary animate-spin mx-auto" />
               <div>
-                <h3 className="text-lg font-semibold text-garage-text">Searching for Shops...</h3>
+                <h3 className="text-lg font-semibold text-garage-text">{t('shopFinder.searching')}</h3>
                 <p className="text-sm text-garage-text-muted mt-2">
-                  Finding nearby auto repair shops within 5 miles
+                  {t('shopFinder.misc.searchingDesc')}
                 </p>
               </div>
             </div>
@@ -297,26 +299,28 @@ export default function ShopDiscoveryModal({ onClose, onSelectShop }: ShopDiscov
               <div className="flex items-center justify-between">
                 <div>
                   <h3 className="text-sm font-semibold text-garage-text">
-                    Found {searchResults.length} shop{searchResults.length !== 1 ? 's' : ''}
+                    {t('shopFinder.misc.foundShops', { count: searchResults.length })}
                   </h3>
                   <p className="text-xs text-garage-text-muted mt-1">
-                    Source: {searchSource === 'tomtom' ? 'TomTom Places' : 'OpenStreetMap'}
+                    {t('shopFinder.misc.source', {
+                      source: searchSource === 'tomtom' ? 'TomTom Places' : 'OpenStreetMap',
+                    })}
                   </p>
                 </div>
                 <button
                   onClick={() => setStep('permission')}
                   className="text-sm text-primary hover:underline"
                 >
-                  Search Again
+                  {t('shopFinder.searchAgain')}
                 </button>
               </div>
 
               {searchResults.length === 0 ? (
                 <div className="text-center py-12">
                   <MapPin className="w-12 h-12 text-garage-text-muted mx-auto mb-4" />
-                  <h3 className="text-lg font-semibold text-garage-text">No Shops Found</h3>
+                  <h3 className="text-lg font-semibold text-garage-text">{t('shopFinder.noShopsFound')}</h3>
                   <p className="text-sm text-garage-text-muted mt-2">
-                    Try searching from a different location or expanding your search radius.
+                    {t('shopFinder.misc.noResultsHint')}
                   </p>
                 </div>
               ) : (
@@ -335,7 +339,9 @@ export default function ShopDiscoveryModal({ onClose, onSelectShop }: ShopDiscov
                             <div className="flex-1 min-w-0">
                               <h4 className="font-semibold text-sm text-garage-text truncate">{shop.business_name}</h4>
                               <p className="text-xs text-garage-text-muted">
-                                {formatDistance(shop.distance_meters)} away
+                                {t('shopFinder.misc.distanceAway', {
+                                  distance: formatDistance(shop.distance_meters),
+                                })}
                               </p>
                             </div>
                             <button
@@ -346,7 +352,7 @@ export default function ShopDiscoveryModal({ onClose, onSelectShop }: ShopDiscov
                                   ? 'bg-success/20 text-success cursor-not-allowed'
                                   : 'bg-garage-surface border border-garage-border hover:bg-primary/10 text-garage-text'
                               }`}
-                              title={isSaved ? 'Saved' : 'Save to address book'}
+                              title={isSaved ? t('shopFinder.saved') : t('shopFinder.saveToAddressBook')}
                             >
                               {isSaved ? (
                                 <Check className="w-3.5 h-3.5" />
@@ -383,7 +389,7 @@ export default function ShopDiscoveryModal({ onClose, onSelectShop }: ShopDiscov
                             onClick={() => handleSelectShop(shop)}
                             className="w-full px-3 py-1.5 bg-primary text-white rounded-lg hover:bg-primary/90 transition-colors text-sm"
                           >
-                            Select
+                            {t('select')}
                           </button>
                         </div>
                       </div>
@@ -401,7 +407,7 @@ export default function ShopDiscoveryModal({ onClose, onSelectShop }: ShopDiscov
                 onClick={onClose}
                 className="px-4 py-2 bg-garage-bg border border-garage-border text-garage-text rounded-lg hover:bg-garage-surface transition-colors"
               >
-                Cancel
+                {t('cancel')}
               </button>
             </div>
           )}
