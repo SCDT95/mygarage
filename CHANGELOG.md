@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 - i18n: the Analytics and Garage Analytics pages and their help modals are now translatable (~350 strings) — they previously rendered in English regardless of the selected language.
+- i18n: the vehicle detail page, the OIDC / local-auth / LiveLink settings modals, and the event notification card are now translatable (~222 strings).
 
 ### Fixed
 - Analytics: chart axis labels and the spending-anomaly figures showed a hardcoded `$` and are now formatted in the selected currency.

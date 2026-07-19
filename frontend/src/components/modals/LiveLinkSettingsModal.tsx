@@ -147,11 +147,7 @@ export default function LiveLinkSettingsModal({ isOpen, onClose }: LiveLinkSetti
 
   // Generate global token
   const handleRegenerateToken = async () => {
-    if (
-      !confirm(
-        'Regenerating the global token will immediately invalidate the current token. Any WiCAN devices using the old token will stop sending data until reconfigured. Continue?'
-      )
-    ) {
+    if (!confirm(t('modal.livelink.confirmRegenerateToken'))) {
       return
     }
 
@@ -175,7 +171,7 @@ export default function LiveLinkSettingsModal({ isOpen, onClose }: LiveLinkSetti
   const copyToClipboard = async (text: string, label: string) => {
     try {
       await navigator.clipboard.writeText(text)
-      toast.success(`${label} copied to clipboard`)
+      toast.success(t('modal.livelink.copiedToClipboard', { label }))
     } catch {
       toast.error(t('modal.failedToCopy'))
     }
@@ -279,11 +275,7 @@ export default function LiveLinkSettingsModal({ isOpen, onClose }: LiveLinkSetti
 
   // Delete device
   const handleDeleteDevice = async (deviceId: string) => {
-    if (
-      !confirm(
-        'Delete this device? Historical telemetry data will be retained but the device will need to be re-discovered.'
-      )
-    ) {
+    if (!confirm(t('modal.livelink.confirmDeleteDevice'))) {
       return
     }
 
@@ -313,7 +305,7 @@ export default function LiveLinkSettingsModal({ isOpen, onClose }: LiveLinkSetti
 
   // Revoke device token
   const handleRevokeDeviceToken = async (deviceId: string) => {
-    if (!confirm('Revoke this device token? The device will fall back to using the global token.')) {
+    if (!confirm(t('modal.livelink.confirmRevokeDeviceToken'))) {
       return
     }
 
@@ -344,17 +336,20 @@ export default function LiveLinkSettingsModal({ isOpen, onClose }: LiveLinkSetti
   ): Promise<void> => {
     try {
       await livelinkService.setSdConfig(deviceId, config)
-      toast.success('SD config saved')
+      toast.success(t('modal.livelink.sdConfigSaved'))
     } catch (error) {
       console.error('Failed to save SD config:', error)
-      toast.error('Failed to save SD config')
+      toast.error(t('modal.livelink.failedToSaveSdConfig'))
     }
   }
 
   const handleSdBackfill = async (deviceId: string): Promise<BackfillResultResponse | null> => {
     try {
       const result = await livelinkService.triggerSdBackfill(deviceId)
-      const summary = `Ingested ${result.rows_ingested}, skipped ${result.rows_skipped}`
+      const summary = t('modal.livelink.backfillSummary', {
+        ingested: result.rows_ingested,
+        skipped: result.rows_skipped,
+      })
       if (result.errors && result.errors.length > 0) {
         toast.warning(`${summary} — ${result.errors[0]}`)
       } else {
@@ -363,7 +358,7 @@ export default function LiveLinkSettingsModal({ isOpen, onClose }: LiveLinkSetti
       return result
     } catch (error) {
       console.error('Failed to trigger SD backfill:', error)
-      toast.error('SD backfill failed')
+      toast.error(t('modal.livelink.sdBackfillFailed'))
       return null
     }
   }
@@ -429,7 +424,7 @@ export default function LiveLinkSettingsModal({ isOpen, onClose }: LiveLinkSetti
                         className="flex-1 px-3 py-2 bg-garage-surface border border-garage-border rounded-lg text-garage-text font-mono text-xs"
                       />
                       <button
-                        onClick={() => copyToClipboard(settings?.ingestion_url ?? '', 'URL')}
+                        onClick={() => copyToClipboard(settings?.ingestion_url ?? '', t('modal.livelink.urlLabel'))}
                         className="px-3 py-2 bg-garage-surface border border-garage-border rounded-lg text-garage-text hover:bg-garage-bg"
                       >
                         <Copy className="w-4 h-4" />
@@ -456,7 +451,7 @@ export default function LiveLinkSettingsModal({ isOpen, onClose }: LiveLinkSetti
                             {showToken ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                           </button>
                           <button
-                            onClick={() => copyToClipboard(newToken, 'Token')}
+                            onClick={() => copyToClipboard(newToken, t('modal.livelink.tokenLabel'))}
                             className="px-3 py-2 bg-garage-surface border border-garage-border rounded-lg text-garage-text hover:bg-garage-bg"
                           >
                             <Copy className="w-4 h-4" />
@@ -464,7 +459,8 @@ export default function LiveLinkSettingsModal({ isOpen, onClose }: LiveLinkSetti
                         </div>
                         <div className="p-2 bg-yellow-500/10 border border-yellow-500/30 rounded-lg">
                           <p className="text-xs text-yellow-500">
-                            <strong>Save this token now!</strong> It will not be shown again.
+                            <strong>{t('modal.livelink.saveTokenNowLabel')}</strong>{' '}
+                            {t('modal.livelink.saveTokenNowDesc')}
                           </p>
                         </div>
                       </div>
@@ -473,12 +469,12 @@ export default function LiveLinkSettingsModal({ isOpen, onClose }: LiveLinkSetti
                         {settings?.has_global_token ? (
                           <span className="flex items-center gap-2 text-sm text-green-500">
                             <CheckCircle className="w-4 h-4" />
-                            Token configured
+                            {t('modal.livelink.tokenConfigured')}
                           </span>
                         ) : (
                           <span className="flex items-center gap-2 text-sm text-yellow-500">
                             <AlertCircle className="w-4 h-4" />
-                            No token configured
+                            {t('modal.livelink.noTokenConfigured')}
                           </span>
                         )}
                         <button
@@ -487,7 +483,9 @@ export default function LiveLinkSettingsModal({ isOpen, onClose }: LiveLinkSetti
                           className="flex items-center gap-2 btn btn-primary rounded-lg disabled:opacity-50"
                         >
                           <RefreshCw className={`w-4 h-4 ${generatingToken ? 'animate-spin' : ''}`} />
-                          {settings?.has_global_token ? 'Regenerate' : 'Generate'}
+                          {settings?.has_global_token
+                            ? t('modal.livelink.regenerate')
+                            : t('modal.livelink.generate')}
                         </button>
                       </div>
                     )}
@@ -564,21 +562,24 @@ export default function LiveLinkSettingsModal({ isOpen, onClose }: LiveLinkSetti
                         type="text"
                         value={mqttSettings?.username ?? ''}
                         onChange={(e) => handleSaveMqttSettings({ username: e.target.value })}
-                        placeholder="Optional"
+                        placeholder={t('modal.livelink.optional')}
                         disabled={savingMqtt}
                         className="w-full px-3 py-2 bg-garage-surface border border-garage-border rounded-lg text-garage-text text-sm focus:ring-2 focus:ring-primary"
                       />
                     </div>
                     <div>
                       <label className="block text-sm font-medium text-garage-text mb-1">
-                        Password {mqttSettings?.has_password && <span className="text-green-500 text-xs">(set)</span>}
+                        {t('modal.password')}{' '}
+                        {mqttSettings?.has_password && (
+                          <span className="text-green-500 text-xs">{t('modal.livelink.passwordSet')}</span>
+                        )}
                       </label>
                       <div className="flex gap-2">
                         <input
                           type="password"
                           value={mqttPassword}
                           onChange={(e) => setMqttPassword(e.target.value)}
-                          placeholder={mqttSettings?.has_password ? '••••••••' : 'Optional'}
+                          placeholder={mqttSettings?.has_password ? '••••••••' : t('modal.livelink.optional')}
                           disabled={savingMqtt}
                           className="flex-1 px-3 py-2 bg-garage-surface border border-garage-border rounded-lg text-garage-text text-sm focus:ring-2 focus:ring-primary"
                         />
@@ -588,7 +589,7 @@ export default function LiveLinkSettingsModal({ isOpen, onClose }: LiveLinkSetti
                             disabled={savingMqtt}
                             className="btn btn-primary rounded-lg disabled:opacity-50"
                           >
-                            Save
+                            {t('modal.livelink.save')}
                           </button>
                         )}
                       </div>
@@ -631,10 +632,14 @@ export default function LiveLinkSettingsModal({ isOpen, onClose }: LiveLinkSetti
                         ) : (
                           <Square className="w-4 h-4 text-gray-500" />
                         )}
-                        <span className="text-garage-text">{mqttStatus.running ? 'Running' : 'Stopped'}</span>
+                        <span className="text-garage-text">
+                          {mqttStatus.running ? t('modal.livelink.running') : t('modal.livelink.stopped')}
+                        </span>
                         {mqttStatus.messages_processed > 0 && (
                           <span className="text-garage-text-muted">
-                            ({mqttStatus.messages_processed.toLocaleString()} msgs)
+                            {t('modal.livelink.messagesProcessed', {
+                              count: mqttStatus.messages_processed.toLocaleString(),
+                            })}
                           </span>
                         )}
                       </div>
@@ -647,7 +652,7 @@ export default function LiveLinkSettingsModal({ isOpen, onClose }: LiveLinkSetti
                         className="flex items-center gap-2 px-4 py-2 bg-garage-surface border border-garage-border rounded-lg text-garage-text hover:bg-garage-bg disabled:opacity-50"
                       >
                         {testingMqtt ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Wifi className="w-4 h-4" />}
-                        Test
+                        {t('modal.test')}
                       </button>
                       <button
                         onClick={handleRestartMqtt}
@@ -655,7 +660,7 @@ export default function LiveLinkSettingsModal({ isOpen, onClose }: LiveLinkSetti
                         className="flex items-center gap-2 btn btn-primary rounded-lg disabled:opacity-50"
                       >
                         {restartingMqtt ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Play className="w-4 h-4" />}
-                        {mqttStatus?.running ? 'Restart' : 'Start'}
+                        {mqttStatus?.running ? t('modal.livelink.restart') : t('modal.livelink.start')}
                       </button>
                     </div>
                   </div>
@@ -668,7 +673,10 @@ export default function LiveLinkSettingsModal({ isOpen, onClose }: LiveLinkSetti
                   <Cpu className="w-5 h-5 text-primary" />
                   <h3 className="text-lg font-semibold text-garage-text">{t('modal.devices')}</h3>
                   <span className="text-sm text-garage-text-muted">
-                    ({devices?.total ?? 0} discovered, {devices?.online_count ?? 0} online)
+                    {t('modal.livelink.deviceCounts', {
+                      total: devices?.total ?? 0,
+                      online: devices?.online_count ?? 0,
+                    })}
                   </span>
                 </div>
 
@@ -677,11 +685,11 @@ export default function LiveLinkSettingsModal({ isOpen, onClose }: LiveLinkSetti
                     <table className="w-full text-sm">
                       <thead>
                         <tr className="border-b border-garage-border">
-                          <th className="text-left py-2 px-3 text-garage-text">Device</th>
-                          <th className="text-left py-2 px-3 text-garage-text">Status</th>
-                          <th className="text-left py-2 px-3 text-garage-text">Vehicle</th>
-                          <th className="text-left py-2 px-3 text-garage-text">Firmware</th>
-                          <th className="text-right py-2 px-3 text-garage-text">Actions</th>
+                          <th className="text-left py-2 px-3 text-garage-text">{t('modal.livelink.device')}</th>
+                          <th className="text-left py-2 px-3 text-garage-text">{t('modal.livelink.status')}</th>
+                          <th className="text-left py-2 px-3 text-garage-text">{t('modal.vehicle')}</th>
+                          <th className="text-left py-2 px-3 text-garage-text">{t('modal.livelink.firmware')}</th>
+                          <th className="text-right py-2 px-3 text-garage-text">{t('modal.livelink.actions')}</th>
                         </tr>
                       </thead>
                       <tbody>
@@ -728,11 +736,11 @@ export default function LiveLinkSettingsModal({ isOpen, onClose }: LiveLinkSetti
                       disabled={saving}
                       className="w-full px-3 py-2 bg-garage-surface border border-garage-border rounded-lg text-garage-text text-sm focus:ring-2 focus:ring-primary"
                     >
-                      <option value="30">30 days</option>
-                      <option value="60">60 days</option>
-                      <option value="90">90 days</option>
-                      <option value="180">180 days</option>
-                      <option value="365">365 days</option>
+                      <option value="30">{t('modal.livelink.retentionDays', { count: 30 })}</option>
+                      <option value="60">{t('modal.livelink.retentionDays', { count: 60 })}</option>
+                      <option value="90">{t('modal.livelink.retentionDays', { count: 90 })}</option>
+                      <option value="180">{t('modal.livelink.retentionDays', { count: 180 })}</option>
+                      <option value="365">{t('modal.livelink.retentionDays', { count: 365 })}</option>
                     </select>
                   </div>
                   <div className="flex items-center">
@@ -745,8 +753,12 @@ export default function LiveLinkSettingsModal({ isOpen, onClose }: LiveLinkSetti
                         className="w-4 h-4 text-primary bg-garage-bg border-garage-border rounded focus:ring-primary focus:ring-2"
                       />
                       <div>
-                        <span className="text-garage-text font-medium text-sm">Daily Aggregation</span>
-                        <p className="text-xs text-garage-text-muted">Keep daily summaries after raw data is deleted</p>
+                        <span className="text-garage-text font-medium text-sm">
+                          {t('modal.livelink.dailyAggregation')}
+                        </span>
+                        <p className="text-xs text-garage-text-muted">
+                          {t('modal.livelink.dailyAggregationDesc')}
+                        </p>
                       </div>
                     </label>
                   </div>
@@ -757,12 +769,14 @@ export default function LiveLinkSettingsModal({ isOpen, onClose }: LiveLinkSetti
               <section className="bg-garage-bg rounded-lg border border-garage-border p-4">
                 <div className="flex items-center gap-2 mb-4">
                   <Bell className="w-5 h-5 text-primary" />
-                  <h3 className="text-lg font-semibold text-garage-text">Alerts & Notifications</h3>
+                  <h3 className="text-lg font-semibold text-garage-text">{t('modal.livelink.alertsNotifications')}</h3>
                 </div>
 
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-sm font-medium text-garage-text mb-1">Device Offline Timeout</label>
+                    <label className="block text-sm font-medium text-garage-text mb-1">
+                      {t('modal.livelink.deviceOfflineTimeout')}
+                    </label>
                     <div className="flex items-center gap-2">
                       <input
                         type="number"
@@ -775,11 +789,13 @@ export default function LiveLinkSettingsModal({ isOpen, onClose }: LiveLinkSetti
                         disabled={saving}
                         className="w-20 px-3 py-2 bg-garage-surface border border-garage-border rounded-lg text-garage-text text-sm focus:ring-2 focus:ring-primary"
                       />
-                      <span className="text-garage-text-muted text-sm">minutes</span>
+                      <span className="text-garage-text-muted text-sm">{t('modal.livelink.minutes')}</span>
                     </div>
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-garage-text mb-1">Alert Cooldown</label>
+                    <label className="block text-sm font-medium text-garage-text mb-1">
+                      {t('modal.livelink.alertCooldown')}
+                    </label>
                     <div className="flex items-center gap-2">
                       <input
                         type="number"
@@ -790,11 +806,13 @@ export default function LiveLinkSettingsModal({ isOpen, onClose }: LiveLinkSetti
                         disabled={saving}
                         className="w-20 px-3 py-2 bg-garage-surface border border-garage-border rounded-lg text-garage-text text-sm focus:ring-2 focus:ring-primary"
                       />
-                      <span className="text-garage-text-muted text-sm">minutes</span>
+                      <span className="text-garage-text-muted text-sm">{t('modal.livelink.minutes')}</span>
                     </div>
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-garage-text mb-1">Session Grace Period</label>
+                    <label className="block text-sm font-medium text-garage-text mb-1">
+                      {t('modal.livelink.sessionGracePeriod')}
+                    </label>
                     <div className="flex items-center gap-2">
                       <input
                         type="number"
@@ -807,10 +825,10 @@ export default function LiveLinkSettingsModal({ isOpen, onClose }: LiveLinkSetti
                         disabled={saving}
                         className="w-20 px-3 py-2 bg-garage-surface border border-garage-border rounded-lg text-garage-text text-sm focus:ring-2 focus:ring-primary"
                       />
-                      <span className="text-garage-text-muted text-sm">seconds</span>
+                      <span className="text-garage-text-muted text-sm">{t('modal.livelink.seconds')}</span>
                     </div>
                     <p className="text-xs text-garage-text-muted mt-1">
-                      Delay before ending a drive session after WiFi drop (0 = disabled)
+                      {t('modal.livelink.sessionGracePeriodDesc')}
                     </p>
                   </div>
                   <div /> {/* Empty cell for grid alignment */}
@@ -823,7 +841,7 @@ export default function LiveLinkSettingsModal({ isOpen, onClose }: LiveLinkSetti
                         disabled={saving}
                         className="w-4 h-4 text-primary bg-garage-bg border-garage-border rounded"
                       />
-                      <span className="text-sm text-garage-text">New device discovered</span>
+                      <span className="text-sm text-garage-text">{t('modal.livelink.notifyNewDevice')}</span>
                     </label>
                     <label className="flex items-center gap-2">
                       <input
@@ -833,7 +851,7 @@ export default function LiveLinkSettingsModal({ isOpen, onClose }: LiveLinkSetti
                         disabled={saving}
                         className="w-4 h-4 text-primary bg-garage-bg border-garage-border rounded"
                       />
-                      <span className="text-sm text-garage-text">Device goes offline</span>
+                      <span className="text-sm text-garage-text">{t('modal.livelink.notifyDeviceOffline')}</span>
                     </label>
                     <label className="flex items-center gap-2">
                       <input
@@ -843,7 +861,7 @@ export default function LiveLinkSettingsModal({ isOpen, onClose }: LiveLinkSetti
                         disabled={saving}
                         className="w-4 h-4 text-primary bg-garage-bg border-garage-border rounded"
                       />
-                      <span className="text-sm text-garage-text">Parameter threshold breaches</span>
+                      <span className="text-sm text-garage-text">{t('modal.livelink.notifyThresholdAlerts')}</span>
                     </label>
                     <label className="flex items-center gap-2">
                       <input
@@ -853,7 +871,7 @@ export default function LiveLinkSettingsModal({ isOpen, onClose }: LiveLinkSetti
                         disabled={saving}
                         className="w-4 h-4 text-primary bg-garage-bg border-garage-border rounded"
                       />
-                      <span className="text-sm text-garage-text">Firmware update available</span>
+                      <span className="text-sm text-garage-text">{t('modal.livelink.notifyFirmwareUpdate')}</span>
                     </label>
                   </div>
                 </div>
@@ -863,7 +881,7 @@ export default function LiveLinkSettingsModal({ isOpen, onClose }: LiveLinkSetti
               <section className="bg-garage-bg rounded-lg border border-garage-border p-4">
                 <div className="flex items-center gap-2 mb-4">
                   <Settings className="w-5 h-5 text-primary" />
-                  <h3 className="text-lg font-semibold text-garage-text">Firmware Updates</h3>
+                  <h3 className="text-lg font-semibold text-garage-text">{t('modal.livelink.firmwareUpdates')}</h3>
                 </div>
 
                 <div className="space-y-4">
@@ -876,15 +894,19 @@ export default function LiveLinkSettingsModal({ isOpen, onClose }: LiveLinkSetti
                       className="w-4 h-4 text-primary bg-garage-bg border-garage-border rounded focus:ring-primary focus:ring-2"
                     />
                     <div>
-                      <span className="text-garage-text font-medium text-sm">Auto-check for updates</span>
-                      <p className="text-xs text-garage-text-muted">Check GitHub daily for new WiCAN firmware releases</p>
+                      <span className="text-garage-text font-medium text-sm">
+                        {t('modal.livelink.autoCheckUpdates')}
+                      </span>
+                      <p className="text-xs text-garage-text-muted">{t('modal.livelink.autoCheckUpdatesDesc')}</p>
                     </div>
                   </label>
 
                   <div className="flex items-center gap-4">
                     <div>
-                      <p className="text-xs text-garage-text-muted">Latest available</p>
-                      <p className="text-lg font-mono text-garage-text">{firmware?.latest_tag ?? 'Unknown'}</p>
+                      <p className="text-xs text-garage-text-muted">{t('modal.livelink.latestAvailable')}</p>
+                      <p className="text-lg font-mono text-garage-text">
+                        {firmware?.latest_tag ?? t('modal.livelink.unknown')}
+                      </p>
                     </div>
                     <button
                       onClick={handleCheckFirmware}
@@ -892,7 +914,7 @@ export default function LiveLinkSettingsModal({ isOpen, onClose }: LiveLinkSetti
                       className="flex items-center gap-2 px-4 py-2 bg-garage-surface border border-garage-border rounded-lg text-garage-text hover:bg-garage-bg disabled:opacity-50"
                     >
                       <RefreshCw className={`w-4 h-4 ${checkingFirmware ? 'animate-spin' : ''}`} />
-                      Check Now
+                      {t('modal.livelink.checkNow')}
                     </button>
                     {firmware?.release_url && (
                       <button
@@ -900,7 +922,7 @@ export default function LiveLinkSettingsModal({ isOpen, onClose }: LiveLinkSetti
                         className="flex items-center gap-2 px-4 py-2 bg-garage-surface border border-garage-border rounded-lg text-garage-text hover:bg-garage-bg"
                       >
                         <ExternalLink className="w-4 h-4" />
-                        View Release
+                        {t('modal.livelink.viewRelease')}
                       </button>
                     )}
                   </div>
@@ -916,7 +938,7 @@ export default function LiveLinkSettingsModal({ isOpen, onClose }: LiveLinkSetti
             onClick={onClose}
             className="px-4 py-2 bg-garage-surface border border-garage-border rounded-lg text-garage-text hover:bg-garage-bg"
           >
-            Close
+            {t('modal.livelink.close')}
           </button>
         </div>
       </div>
@@ -925,11 +947,13 @@ export default function LiveLinkSettingsModal({ isOpen, onClose }: LiveLinkSetti
       {deviceTokenModal && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[60]">
           <div className="bg-garage-surface rounded-lg border border-garage-border p-6 max-w-lg w-full mx-4">
-            <h3 className="text-lg font-semibold text-garage-text mb-4">Device Token Generated</h3>
+            <h3 className="text-lg font-semibold text-garage-text mb-4">
+              {t('modal.livelink.deviceTokenGenerated')}
+            </h3>
             <div className="space-y-4">
               <div>
                 <label className="block text-sm text-garage-text-muted mb-2">
-                  Token for device {deviceTokenModal.deviceId}
+                  {t('modal.livelink.tokenForDevice', { deviceId: deviceTokenModal.deviceId })}
                 </label>
                 <div className="flex gap-2">
                   <input
@@ -939,7 +963,7 @@ export default function LiveLinkSettingsModal({ isOpen, onClose }: LiveLinkSetti
                     className="flex-1 px-3 py-2 bg-garage-bg border border-garage-border rounded-lg text-garage-text font-mono text-sm"
                   />
                   <button
-                    onClick={() => copyToClipboard(deviceTokenModal.token ?? '', 'Token')}
+                    onClick={() => copyToClipboard(deviceTokenModal.token ?? '', t('modal.livelink.tokenLabel'))}
                     className="px-3 py-2 bg-garage-bg border border-garage-border rounded-lg text-garage-text hover:bg-garage-surface"
                   >
                     <Copy className="w-4 h-4" />
@@ -948,7 +972,8 @@ export default function LiveLinkSettingsModal({ isOpen, onClose }: LiveLinkSetti
               </div>
               <div className="p-3 bg-yellow-500/10 border border-yellow-500/30 rounded-lg">
                 <p className="text-sm text-yellow-500">
-                  <strong>Save this token now!</strong> It will not be shown again.
+                  <strong>{t('modal.livelink.saveTokenNowLabel')}</strong>{' '}
+                  {t('modal.livelink.saveTokenNowDesc')}
                 </p>
               </div>
               <div className="flex justify-end">
@@ -956,7 +981,7 @@ export default function LiveLinkSettingsModal({ isOpen, onClose }: LiveLinkSetti
                   onClick={() => setDeviceTokenModal(null)}
                   className="btn btn-primary rounded-lg"
                 >
-                  Done
+                  {t('modal.livelink.done')}
                 </button>
               </div>
             </div>
@@ -996,6 +1021,7 @@ function DeviceRow({
   ) => Promise<void>
   onSdBackfill: (deviceId: string) => Promise<BackfillResultResponse | null>
 }) {
+  const { t } = useTranslation('forms')
   const [editing, setEditing] = useState(false)
   const [label, setLabel] = useState(device.label ?? '')
   const [showSdConfig, setShowSdConfig] = useState(false)
@@ -1046,7 +1072,7 @@ function DeviceRow({
                 type="text"
                 value={label}
                 onChange={(e) => setLabel(e.target.value)}
-                placeholder="Label"
+                placeholder={t('modal.livelink.labelPlaceholder')}
                 className="px-2 py-1 bg-garage-surface border border-garage-border rounded text-xs text-garage-text w-24"
               />
               <button onClick={handleSaveLabel} className="text-green-500 hover:text-green-400">
@@ -1069,7 +1095,7 @@ function DeviceRow({
           </span>
           <span className={`flex items-center gap-1 text-xs ${getStatusColor(device.ecu_status)}`}>
             {device.ecu_status === 'online' ? <Link2 className="w-3 h-3" /> : <Link2Off className="w-3 h-3" />}
-            ECU: {device.ecu_status}
+            {t('modal.livelink.ecuLabel')} {device.ecu_status}
           </span>
         </div>
       </td>
@@ -1079,7 +1105,7 @@ function DeviceRow({
           onChange={(e) => onUpdate(device.device_id, { vin: e.target.value || null })}
           className="px-2 py-1 bg-garage-surface border border-garage-border rounded text-xs text-garage-text"
         >
-          <option value="">Unlinked</option>
+          <option value="">{t('modal.livelink.unlinked')}</option>
           {vehicles.map((v) => (
             <option key={v.vin} value={v.vin}>
               {v.nickname || `${v.year} ${v.make} ${v.model}`}
@@ -1088,9 +1114,11 @@ function DeviceRow({
         </select>
       </td>
       <td className="py-2 px-3">
-        <span className="text-xs text-garage-text">{device.fw_version ?? 'Unknown'}</span>
+        <span className="text-xs text-garage-text">{device.fw_version ?? t('modal.livelink.unknown')}</span>
         {deviceFirmware?.update_available && (
-          <span className="ml-1 px-1 py-0.5 bg-yellow-500/20 text-yellow-500 text-xs rounded">Update</span>
+          <span className="ml-1 px-1 py-0.5 bg-yellow-500/20 text-yellow-500 text-xs rounded">
+            {t('modal.livelink.updateBadge')}
+          </span>
         )}
       </td>
       <td className="py-2 px-3 text-right">
@@ -1099,7 +1127,7 @@ function DeviceRow({
             <button
               onClick={() => onSendCommand(device.device_id, 'get_vbatt')}
               className="p-1 text-garage-text-muted hover:text-green-500"
-              title="Check battery voltage"
+              title={t('modal.livelink.checkBatteryVoltage')}
             >
               <Battery className="w-4 h-4" />
             </button>
@@ -1110,7 +1138,7 @@ function DeviceRow({
               target="_blank"
               rel="noopener noreferrer"
               className="p-1 text-garage-text-muted hover:text-primary"
-              title="Open device UI"
+              title={t('modal.livelink.openDeviceUi')}
             >
               <ExternalLink className="w-4 h-4" />
             </a>
@@ -1119,7 +1147,7 @@ function DeviceRow({
             <button
               onClick={() => onRevokeToken(device.device_id)}
               className="p-1 text-yellow-500 hover:text-yellow-400"
-              title="Revoke device token"
+              title={t('modal.livelink.revokeDeviceToken')}
             >
               <Key className="w-4 h-4" />
             </button>
@@ -1127,7 +1155,7 @@ function DeviceRow({
             <button
               onClick={() => onGenerateToken(device.device_id)}
               className="p-1 text-garage-text-muted hover:text-primary"
-              title="Generate device token"
+              title={t('modal.livelink.generateDeviceToken')}
             >
               <Key className="w-4 h-4" />
             </button>
@@ -1135,14 +1163,14 @@ function DeviceRow({
           <button
             onClick={() => setShowSdConfig(!showSdConfig)}
             className={`p-1 ${showSdConfig ? 'text-primary' : 'text-garage-text-muted hover:text-primary'}`}
-            title="SD-card backfill config"
+            title={t('modal.livelink.sdBackfillConfig')}
           >
             <Download className="w-4 h-4" />
           </button>
           <button
             onClick={() => onDelete(device.device_id)}
             className="p-1 text-garage-text-muted hover:text-red-500"
-            title="Delete device"
+            title={t('modal.livelink.deleteDevice')}
           >
             <Trash2 className="w-4 h-4" />
           </button>
@@ -1154,7 +1182,9 @@ function DeviceRow({
         <td colSpan={5} className="px-4 py-3">
           <div className="flex flex-wrap items-end gap-4">
             <div>
-              <label className="block text-xs font-medium text-garage-text mb-1">Device address (IP or hostname)</label>
+              <label className="block text-xs font-medium text-garage-text mb-1">
+                {t('modal.livelink.deviceAddress')}
+              </label>
               <input
                 type="text"
                 value={sdAddress}
@@ -1170,7 +1200,7 @@ function DeviceRow({
                 onChange={(e) => setSdEnabled(e.target.checked)}
                 className="w-4 h-4 text-primary bg-garage-bg border-garage-border rounded focus:ring-primary focus:ring-2"
               />
-              <span className="text-xs text-garage-text">Auto SD backfill</span>
+              <span className="text-xs text-garage-text">{t('modal.livelink.autoSdBackfill')}</span>
             </label>
             <button
               onClick={handleSaveSdConfig}
@@ -1178,7 +1208,7 @@ function DeviceRow({
               className="flex items-center gap-1 px-3 py-1 bg-garage-surface border border-garage-border rounded text-xs text-garage-text hover:bg-garage-bg disabled:opacity-50"
             >
               {savingSd ? <RefreshCw className="w-3 h-3 animate-spin" /> : <CheckCircle className="w-3 h-3" />}
-              Save
+              {t('modal.livelink.save')}
             </button>
             <button
               onClick={handleBackfill}
@@ -1186,7 +1216,7 @@ function DeviceRow({
               className="flex items-center gap-1 px-3 py-1 btn btn-primary rounded text-xs disabled:opacity-50"
             >
               {backfilling ? <RefreshCw className="w-3 h-3 animate-spin" /> : <Download className="w-3 h-3" />}
-              Pull SD logs now
+              {t('modal.livelink.pullSdLogsNow')}
             </button>
           </div>
         </td>

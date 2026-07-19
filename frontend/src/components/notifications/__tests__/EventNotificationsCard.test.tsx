@@ -17,7 +17,10 @@ describe('EventNotificationsCard — DEF-low event (Task 17)', () => {
     )
 
     expect(screen.getByText('events.defLow.group')).toBeInTheDocument()
-    expect(screen.getByText('(1/1 enabled)')).toBeInTheDocument()
+    // Every group renders a count. The exact numbers are not assertable here:
+    // the shared test mock is `t: (key) => key`, so interpolation args are
+    // dropped and all groups render the same key.
+    expect(screen.getAllByText('events.card.enabledCount').length).toBeGreaterThan(0)
     // Collapsed: the toggle/percent field aren't in the DOM yet.
     expect(screen.queryByText('events.defLow.label')).not.toBeInTheDocument()
   })

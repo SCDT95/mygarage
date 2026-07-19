@@ -37,80 +37,6 @@ interface EventGroup {
   events: EventItem[];
 }
 
-// Static groups whose label/description are plain (untranslated, matching
-// this file's pre-existing convention) — defined once at module scope since
-// they don't depend on `t`.
-const STATIC_EVENT_GROUPS: EventGroup[] = [
-  {
-    id: 'safety',
-    label: 'Safety Alerts',
-    icon: Bell,
-    events: [
-      {
-        key: 'notify_recalls',
-        label: 'New Recalls Detected',
-        description: 'Notify when NHTSA recalls are found for your vehicles',
-      },
-    ],
-  },
-  {
-    id: 'maintenance',
-    label: 'Maintenance',
-    icon: Settings2,
-    events: [
-      {
-        key: 'notify_service_due',
-        label: 'Service Due',
-        description: 'Notify when scheduled service is coming due',
-        numberFields: [
-          { key: 'notify_service_days', default: '30', min: 1, max: 90, suffix: 'days before' },
-          { key: 'notify_service_miles', default: '500', min: 100, max: 5000, step: 100, suffix: 'miles before' },
-        ],
-      },
-      {
-        key: 'notify_service_overdue',
-        label: 'Service Overdue',
-        description: 'Notify when service is past due',
-      },
-    ],
-  },
-  {
-    id: 'coverage',
-    label: 'Insurance & Warranty',
-    icon: Bell,
-    events: [
-      {
-        key: 'notify_insurance_expiring',
-        label: 'Insurance Expiring',
-        description: 'Notify before insurance policy expires',
-        numberFields: [
-          { key: 'notify_insurance_days', default: '30', min: 1, max: 90, suffix: 'days before' },
-        ],
-      },
-      {
-        key: 'notify_warranty_expiring',
-        label: 'Warranty Expiring',
-        description: 'Notify before warranty expires',
-        numberFields: [
-          { key: 'notify_warranty_days', default: '30', min: 1, max: 90, suffix: 'days before' },
-        ],
-      },
-    ],
-  },
-  {
-    id: 'milestones',
-    label: 'Milestones',
-    icon: Bell,
-    events: [
-      {
-        key: 'notify_milestones',
-        label: 'Odometer Milestones',
-        description: 'Notify when reaching significant mileage milestones (e.g., 100k miles)',
-      },
-    ],
-  },
-];
-
 export function EventNotificationsCard({
   settings,
   onSettingChange,
@@ -122,9 +48,104 @@ export function EventNotificationsCard({
   const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set(['safety', 'maintenance']));
   const [showAdvanced, setShowAdvanced] = useState(false);
 
+  // Built inside the component (not at module scope) because every label and
+  // description resolves through `t` — a module-scope constant has no access
+  // to the translator.
   const eventGroups: EventGroup[] = useMemo(
     () => [
-      ...STATIC_EVENT_GROUPS,
+      {
+        id: 'safety',
+        label: t('events.card.groupSafety'),
+        icon: Bell,
+        events: [
+          {
+            key: 'notify_recalls',
+            label: t('events.card.recallsLabel'),
+            description: t('events.card.recallsDesc'),
+          },
+        ],
+      },
+      {
+        id: 'maintenance',
+        label: t('events.card.groupMaintenance'),
+        icon: Settings2,
+        events: [
+          {
+            key: 'notify_service_due',
+            label: t('events.card.serviceDueLabel'),
+            description: t('events.card.serviceDueDesc'),
+            numberFields: [
+              {
+                key: 'notify_service_days',
+                default: '30',
+                min: 1,
+                max: 90,
+                suffix: t('events.card.daysBefore'),
+              },
+              {
+                key: 'notify_service_miles',
+                default: '500',
+                min: 100,
+                max: 5000,
+                step: 100,
+                suffix: t('events.card.milesBefore'),
+              },
+            ],
+          },
+          {
+            key: 'notify_service_overdue',
+            label: t('events.card.serviceOverdueLabel'),
+            description: t('events.card.serviceOverdueDesc'),
+          },
+        ],
+      },
+      {
+        id: 'coverage',
+        label: t('events.card.groupCoverage'),
+        icon: Bell,
+        events: [
+          {
+            key: 'notify_insurance_expiring',
+            label: t('events.card.insuranceExpiringLabel'),
+            description: t('events.card.insuranceExpiringDesc'),
+            numberFields: [
+              {
+                key: 'notify_insurance_days',
+                default: '30',
+                min: 1,
+                max: 90,
+                suffix: t('events.card.daysBefore'),
+              },
+            ],
+          },
+          {
+            key: 'notify_warranty_expiring',
+            label: t('events.card.warrantyExpiringLabel'),
+            description: t('events.card.warrantyExpiringDesc'),
+            numberFields: [
+              {
+                key: 'notify_warranty_days',
+                default: '30',
+                min: 1,
+                max: 90,
+                suffix: t('events.card.daysBefore'),
+              },
+            ],
+          },
+        ],
+      },
+      {
+        id: 'milestones',
+        label: t('events.card.groupMilestones'),
+        icon: Bell,
+        events: [
+          {
+            key: 'notify_milestones',
+            label: t('events.card.milestonesLabel'),
+            description: t('events.card.milestonesDesc'),
+          },
+        ],
+      },
       {
         id: 'def',
         label: t('events.defLow.group'),
@@ -167,9 +188,7 @@ export function EventNotificationsCard({
           <Bell className="w-6 h-6 text-garage-text-muted" />
           <h2 className="text-lg font-semibold text-garage-text">{t('events.title')}</h2>
         </div>
-        <p className="text-sm text-garage-text-muted">
-          {t('events.enableServiceFirst')} to configure event notifications.
-        </p>
+        <p className="text-sm text-garage-text-muted">{t('events.card.enableServiceFirstFull')}</p>
       </div>
     );
   }
@@ -179,8 +198,8 @@ export function EventNotificationsCard({
       <div className="flex items-center gap-3 mb-4">
         <Bell className="w-6 h-6 text-primary" />
         <div>
-          <h2 className="text-lg font-semibold text-garage-text">Event Notifications</h2>
-          <p className="text-sm text-garage-text-muted">Choose which events trigger notifications</p>
+          <h2 className="text-lg font-semibold text-garage-text">{t('events.title')}</h2>
+          <p className="text-sm text-garage-text-muted">{t('events.card.subtitle')}</p>
         </div>
       </div>
 
@@ -204,7 +223,7 @@ export function EventNotificationsCard({
                   <span className="text-sm font-medium text-garage-text">{group.label}</span>
                   {!isExpanded && (
                     <span className="ml-2 text-xs text-garage-text-muted">
-                      ({enabledCount}/{group.events.length} enabled)
+                      {t('events.card.enabledCount', { enabled: enabledCount, total: group.events.length })}
                     </span>
                   )}
                 </div>
@@ -267,8 +286,8 @@ export function EventNotificationsCard({
             )}
             <Settings2 className="w-4 h-4 text-garage-text-muted" />
             <div className="flex-1">
-              <span className="text-sm font-medium text-garage-text">Advanced</span>
-              <p className="text-xs text-garage-text-muted">Retry settings for high-priority notifications</p>
+              <span className="text-sm font-medium text-garage-text">{t('events.card.advanced')}</span>
+              <p className="text-xs text-garage-text-muted">{t('events.card.advancedDesc')}</p>
             </div>
           </button>
 
@@ -276,8 +295,8 @@ export function EventNotificationsCard({
             <div className="p-3 space-y-3 bg-garage-surface">
               <div className="flex items-center justify-between gap-4">
                 <div className="flex-1 min-w-0">
-                  <label className="text-sm text-garage-text">Retry Attempts</label>
-                  <p className="text-xs text-garage-text-muted">Max retries for urgent/high priority events</p>
+                  <label className="text-sm text-garage-text">{t('events.card.retryAttempts')}</label>
+                  <p className="text-xs text-garage-text-muted">{t('events.card.retryAttemptsDesc')}</p>
                 </div>
                 <input
                   type="number"
@@ -291,8 +310,8 @@ export function EventNotificationsCard({
               </div>
               <div className="flex items-center justify-between gap-4">
                 <div className="flex-1 min-w-0">
-                  <label className="text-sm text-garage-text">Retry Delay (seconds)</label>
-                  <p className="text-xs text-garage-text-muted">Base delay between retry attempts</p>
+                  <label className="text-sm text-garage-text">{t('events.card.retryDelay')}</label>
+                  <p className="text-xs text-garage-text-muted">{t('events.card.retryDelayDesc')}</p>
                 </div>
                 <input
                   type="number"
@@ -305,9 +324,7 @@ export function EventNotificationsCard({
                   className="w-20 px-2 py-1 text-sm bg-garage-bg border border-garage-border rounded text-garage-text disabled:opacity-50"
                 />
               </div>
-              <p className="text-xs text-garage-text-muted italic">
-                Retries only apply to urgent/high priority events (recalls, overdue service, expiring insurance)
-              </p>
+              <p className="text-xs text-garage-text-muted italic">{t('events.card.retryNote')}</p>
             </div>
           )}
         </div>

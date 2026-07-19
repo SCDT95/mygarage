@@ -116,6 +116,13 @@ const getApiErrorMessage = (error: unknown, fallback: string) => {
   return fallback
 }
 
+/** Per-record-type tallies returned by the JSON import endpoint. */
+type ImportSectionResult = {
+  success_count: number
+  skipped_count: number
+  error_count: number
+}
+
 type ModalType = 'remove' | 'transfer' | 'sharing' | 'windowSticker' | 'torqueSource' | null
 type PrimaryTabType = 'overview' | 'media' | 'maintenance' | 'fuel' | 'tracking' | 'financial' | 'livelink'
 type SubTabType = 'photos' | 'documents' | 'service' | 'fuel' | 'def' | 'propane' | 'odometer' | 'notes' | 'warranties' | 'insurance' | 'tax' | 'tolls' | 'spotrentals' | 'suppliesused' | 'recalls' | 'reports' | 'reminders' | 'live' | 'dtcs' | 'sessions' | 'charts' | 'trips'
@@ -169,11 +176,11 @@ export default function VehicleDetail() {
           }
         }
       }
-      setError(getApiErrorMessage(error, 'Failed to load vehicle'))
+      setError(getApiErrorMessage(error, t('detail.misc.loadError')))
     } finally {
       setLoading(false)
     }
-  }, [vin])
+  }, [vin, t])
 
   useEffect(() => {
     loadVehicle()
@@ -316,50 +323,23 @@ export default function VehicleDetail() {
       const result = response.data
 
       // Show results
-      let message = 'Import completed:\n'
-      if (result.service_records) {
-        message += `\nService Records: ✓ ${result.service_records.success_count} imported`
-        if (result.service_records.skipped_count > 0) {
-          message += `, ○ ${result.service_records.skipped_count} skipped`
+      const sections: Array<[string, ImportSectionResult | undefined]> = [
+        [t('detail.misc.importServiceRecords'), result.service_records],
+        [t('detail.misc.importFuelRecords'), result.fuel_records],
+        [t('detail.misc.importOdometerRecords'), result.odometer_records],
+        [t('detail.misc.importMaintenanceRecords'), result.reminders],
+        [t('noteList.title'), result.notes],
+      ]
+
+      let message = `${t('detail.misc.importSummaryHeading')}\n`
+      for (const [label, section] of sections) {
+        if (!section) continue
+        message += `\n${label}: ✓ ${t('detail.misc.importedCount', { count: section.success_count })}`
+        if (section.skipped_count > 0) {
+          message += `, ○ ${t('detail.misc.skippedCount', { count: section.skipped_count })}`
         }
-        if (result.service_records.error_count > 0) {
-          message += `, ✗ ${result.service_records.error_count} errors`
-        }
-      }
-      if (result.fuel_records) {
-        message += `\nFuel Records: ✓ ${result.fuel_records.success_count} imported`
-        if (result.fuel_records.skipped_count > 0) {
-          message += `, ○ ${result.fuel_records.skipped_count} skipped`
-        }
-        if (result.fuel_records.error_count > 0) {
-          message += `, ✗ ${result.fuel_records.error_count} errors`
-        }
-      }
-      if (result.odometer_records) {
-        message += `\nOdometer Records: ✓ ${result.odometer_records.success_count} imported`
-        if (result.odometer_records.skipped_count > 0) {
-          message += `, ○ ${result.odometer_records.skipped_count} skipped`
-        }
-        if (result.odometer_records.error_count > 0) {
-          message += `, ✗ ${result.odometer_records.error_count} errors`
-        }
-      }
-      if (result.reminders) {
-        message += `\nMaintenance (from reminders): ✓ ${result.reminders.success_count} imported`
-        if (result.reminders.skipped_count > 0) {
-          message += `, ○ ${result.reminders.skipped_count} skipped`
-        }
-        if (result.reminders.error_count > 0) {
-          message += `, ✗ ${result.reminders.error_count} errors`
-        }
-      }
-      if (result.notes) {
-        message += `\nNotes: ✓ ${result.notes.success_count} imported`
-        if (result.notes.skipped_count > 0) {
-          message += `, ○ ${result.notes.skipped_count} skipped`
-        }
-        if (result.notes.error_count > 0) {
-          message += `, ✗ ${result.notes.error_count} errors`
+        if (section.error_count > 0) {
+          message += `, ✗ ${t('detail.misc.errorCount', { count: section.error_count })}`
         }
       }
 
@@ -385,6 +365,22 @@ export default function VehicleDetail() {
   const formatDate = (dateString?: string | null) => {
     if (!dateString) return t('detail.notSpecified')
     return formatDateForDisplay(dateString, { year: 'numeric', month: 'long', day: 'numeric' }, dateLocale)
+  }
+
+  /**
+   * Render a window-sticker detail value.
+   *
+   * Option prices arrive as plain decimal strings and get the user's currency
+   * (a hardcoded "$" was wrong for the 15 non-USD currencies). Package entries
+   * hold contents rather than prices (e.g. ["358 miles"]), so anything that is
+   * not a bare number renders verbatim instead of being coerced into money.
+   */
+  const formatStickerValue = (raw: unknown): string | null => {
+    const text = Array.isArray(raw) ? raw.join(', ') : typeof raw === 'string' ? raw : null
+    if (!text) return null
+    return /^\d+(\.\d+)?$/.test(text)
+      ? formatCurrency(text, { currencyCode, locale, zeroIsValid: true })
+      : text
   }
 
   // Handle primary tab click
@@ -515,44 +511,46 @@ export default function VehicleDetail() {
   // Sub-tabs for each primary tab
   const subTabsConfig: Record<string, Array<{ id: SubTabType; label: string; icon: LucideIcon; visible?: boolean }>> = {
     media: [
-      { id: 'photos' as const, label: 'Photos', icon: Image },
-      { id: 'documents' as const, label: 'Documents', icon: FileText },
+      { id: 'photos' as const, label: t('detail.misc.photos'), icon: Image },
+      { id: 'documents' as const, label: t('documentList.title'), icon: FileText },
     ],
     maintenance: [
-      { id: 'service' as const, label: 'Service', icon: Wrench },
-      { id: 'odometer' as const, label: 'Odometer', icon: Gauge, visible: isMotorized },
-      { id: 'recalls' as const, label: 'Recalls', icon: AlertTriangle },
+      { id: 'service' as const, label: t('vehicleStats.service'), icon: Wrench },
+      { id: 'odometer' as const, label: t('detail.misc.odometer'), icon: Gauge, visible: isMotorized },
+      { id: 'recalls' as const, label: t('detail.misc.recalls'), icon: AlertTriangle },
     ],
     fuel: [
-      { id: 'fuel' as const, label: 'Fuel', icon: Fuel, visible: isMotorized },
+      { id: 'fuel' as const, label: t('detail.tabs.fuel'), icon: Fuel, visible: isMotorized },
+      // i18n-exempt — DEF is an untranslated acronym (Diesel Exhaust Fluid)
       { id: 'def' as const, label: 'DEF', icon: Droplets, visible: hasDEF },
-      { id: 'propane' as const, label: 'Propane', icon: Fuel, visible: hasPropane },
+      { id: 'propane' as const, label: t('detail.misc.propane'), icon: Fuel, visible: hasPropane },
     ],
     tracking: [
-      { id: 'notes' as const, label: 'Notes', icon: FileText },
-      { id: 'reminders' as const, label: 'Reminders', icon: Bell },
-      { id: 'reports' as const, label: 'Reports', icon: BarChart3 },
+      { id: 'notes' as const, label: t('noteList.title'), icon: FileText },
+      { id: 'reminders' as const, label: t('reminderList.title'), icon: Bell },
+      { id: 'reports' as const, label: t('detail.misc.reports'), icon: BarChart3 },
     ],
     financial: [
-      { id: 'warranties' as const, label: 'Warranties', icon: Shield },
-      { id: 'insurance' as const, label: 'Insurance', icon: Shield },
-      { id: 'tax' as const, label: 'Tax & Registration', icon: DollarSign },
-      { id: 'tolls' as const, label: 'Tolls', icon: CreditCard },
-      { id: 'spotrentals' as const, label: 'Spot Rentals', icon: MapPin, visible: isRVOrFifthWheel },
-      { id: 'suppliesused' as const, label: 'Supplies', icon: Package },
+      { id: 'warranties' as const, label: t('warrantyList.title'), icon: Shield },
+      { id: 'insurance' as const, label: t('detail.misc.insurance'), icon: Shield },
+      { id: 'tax' as const, label: t('detail.misc.taxRegistration'), icon: DollarSign },
+      { id: 'tolls' as const, label: t('detail.misc.tolls'), icon: CreditCard },
+      { id: 'spotrentals' as const, label: t('spotRentalList.title'), icon: MapPin, visible: isRVOrFifthWheel },
+      { id: 'suppliesused' as const, label: t('detail.misc.supplies'), icon: Package },
     ],
     livelink: [
-      { id: 'live' as const, label: 'Live', icon: Activity },
+      { id: 'live' as const, label: t('detail.misc.live'), icon: Activity },
+      // i18n-exempt — DTCs is an untranslated acronym (Diagnostic Trouble Codes)
       { id: 'dtcs' as const, label: 'DTCs', icon: AlertTriangle },
-      { id: 'sessions' as const, label: 'Sessions', icon: Clock },
-      { id: 'charts' as const, label: 'Charts', icon: BarChart3 },
-      { id: 'trips' as const, label: 'Trips', icon: MapPin },
+      { id: 'sessions' as const, label: t('detail.misc.sessions'), icon: Clock },
+      { id: 'charts' as const, label: t('detail.misc.charts'), icon: BarChart3 },
+      { id: 'trips' as const, label: t('detail.misc.trips'), icon: MapPin },
     ],
   }
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-screen" role="status" aria-label="Loading vehicle">
+      <div className="flex items-center justify-center min-h-screen" role="status" aria-label={t('detail.loading')}>
         <div className="w-12 h-12 border-4 border-primary border-t-transparent rounded-full animate-spin" />
         <span className="sr-only">{t('detail.loading')}</span>
       </div>
@@ -623,7 +621,7 @@ export default function VehicleDetail() {
                   </span>
                   {vehicle.sold_date && (
                     <span className="px-2 py-1 bg-warning/10 text-warning text-xs font-medium rounded flex-shrink-0">
-                      Sold
+                      {t('vehicleCard.sold')}
                     </span>
                   )}
                 </div>
@@ -651,7 +649,7 @@ export default function VehicleDetail() {
                   onClick={handleImportClick}
                   disabled={importing || !isOnline}
                   className="flex items-center space-x-2 px-5 py-3 btn btn-primary rounded-lg disabled:opacity-50"
-                  title="Import vehicle data from JSON"
+                  title={t('detail.misc.importTooltip')}
                 >
                   <Upload className="w-4 h-4" />
                   <span>{importing ? t('detail.importing') : t('detail.import')}</span>
@@ -692,7 +690,7 @@ export default function VehicleDetail() {
                   <button
                     onClick={() => setOpenModal('transfer')}
                     className="flex items-center space-x-2 px-5 py-3 bg-amber-900/30 border border-amber-700 text-amber-400 rounded-lg hover:bg-amber-800/50 transition-colors"
-                    title="Transfer vehicle ownership"
+                    title={t('detail.misc.transferTooltip')}
                   >
                     <ArrowRightLeft className="w-4 h-4" />
                     <span>{t('detail.transfer')}</span>
@@ -711,7 +709,7 @@ export default function VehicleDetail() {
             <button
               onClick={() => setShowMobileMenu(true)}
               className="md:hidden absolute top-0 right-0 p-2 text-garage-text-muted hover:text-garage-text rounded-lg transition-colors"
-              title="More actions"
+              title={t('detail.misc.moreActions')}
             >
               <MoreVertical className="w-5 h-5" />
             </button>
@@ -720,7 +718,7 @@ export default function VehicleDetail() {
           {/* Primary Tabs — Mobile: 3-column icon grid */}
           <div
             role="tablist"
-            aria-label="Vehicle sections"
+            aria-label={t('detail.misc.vehicleSections')}
             className="md:hidden grid grid-cols-3 gap-2 mt-4"
           >
             {primaryTabs.map((tab) => {
@@ -750,7 +748,7 @@ export default function VehicleDetail() {
           {/* Primary Tabs — Desktop: horizontal scroll bar */}
           <div
             role="tablist"
-            aria-label="Vehicle sections"
+            aria-label={t('detail.misc.vehicleSections')}
             className="hidden md:flex items-center space-x-1 mt-6 border-b border-garage-border -mb-px overflow-x-auto scrollbar-hide"
           >
             {primaryTabs.map((tab) => {
@@ -803,33 +801,33 @@ export default function VehicleDetail() {
               <div className="space-y-3">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
-                    <p className="text-sm text-garage-text-muted">Year</p>
-                    <p className="text-garage-text font-medium">{vehicle.year || 'Not specified'}</p>
+                    <p className="text-sm text-garage-text-muted">{t('edit.year')}</p>
+                    <p className="text-garage-text font-medium">{vehicle.year || t('detail.notSpecified')}</p>
                   </div>
                   <div>
-                    <p className="text-sm text-garage-text-muted">Make</p>
-                    <p className="text-garage-text font-medium">{vehicle.make || 'Not specified'}</p>
+                    <p className="text-sm text-garage-text-muted">{t('edit.make')}</p>
+                    <p className="text-garage-text font-medium">{vehicle.make || t('detail.notSpecified')}</p>
                   </div>
                   <div>
-                    <p className="text-sm text-garage-text-muted">Model</p>
-                    <p className="text-garage-text font-medium">{vehicle.model || 'Not specified'}</p>
+                    <p className="text-sm text-garage-text-muted">{t('edit.model')}</p>
+                    <p className="text-garage-text font-medium">{vehicle.model || t('detail.notSpecified')}</p>
                   </div>
                   <div>
-                    <p className="text-sm text-garage-text-muted">Exterior Color</p>
-                    <p className="text-garage-text font-medium">{vehicle.exterior_color || vehicle.color || 'Not specified'}</p>
+                    <p className="text-sm text-garage-text-muted">{t('detail.misc.exteriorColor')}</p>
+                    <p className="text-garage-text font-medium">{vehicle.exterior_color || vehicle.color || t('detail.notSpecified')}</p>
                   </div>
                   {vehicle.interior_color && (
                     <div>
-                      <p className="text-sm text-garage-text-muted">Interior Color</p>
+                      <p className="text-sm text-garage-text-muted">{t('detail.misc.interiorColor')}</p>
                       <p className="text-garage-text font-medium">{vehicle.interior_color}</p>
                     </div>
                   )}
                   <div>
-                    <p className="text-sm text-garage-text-muted">License Plate</p>
-                    <p className="text-garage-text font-medium">{vehicle.license_plate || 'Not specified'}</p>
+                    <p className="text-sm text-garage-text-muted">{t('edit.licensePlate')}</p>
+                    <p className="text-garage-text font-medium">{vehicle.license_plate || t('detail.notSpecified')}</p>
                   </div>
                   <div>
-                    <p className="text-sm text-garage-text-muted">VIN</p>
+                    <p className="text-sm text-garage-text-muted">{t('wizard.vin')}</p>
                     <p className="text-garage-text font-mono text-sm">{vehicle.vin}</p>
                   </div>
                 </div>
@@ -843,15 +841,15 @@ export default function VehicleDetail() {
                 <div>
                   <p className="text-sm text-garage-text-muted flex items-center space-x-2">
                     <Calendar className="w-4 h-4" />
-                    <span>Purchase Date</span>
+                    <span>{t('edit.purchaseDate')}</span>
                   </p>
                   <p className="text-garage-text font-medium mt-1">{formatDate(vehicle.purchase_date)}</p>
                 </div>
                 <div>
                   <p className="text-sm text-garage-text-muted">
-                    <span>Purchase Price</span>
+                    <span>{t('edit.purchasePrice')}</span>
                   </p>
-                  <p className="text-garage-text font-medium mt-1">{formatCurrency(vehicle.purchase_price, { currencyCode, locale, fallback: 'Not specified' })}</p>
+                  <p className="text-garage-text font-medium mt-1">{formatCurrency(vehicle.purchase_price, { currencyCode, locale, fallback: t('detail.notSpecified') })}</p>
                 </div>
               </div>
             </div>
@@ -864,15 +862,15 @@ export default function VehicleDetail() {
                   <div>
                     <p className="text-sm text-garage-text-muted flex items-center space-x-2">
                       <Calendar className="w-4 h-4" />
-                      <span>Sale Date</span>
+                      <span>{t('detail.misc.saleDate')}</span>
                     </p>
                     <p className="text-garage-text font-medium mt-1">{formatDate(vehicle.sold_date)}</p>
                   </div>
                   <div>
                     <p className="text-sm text-garage-text-muted">
-                      <span>Sale Price</span>
+                      <span>{t('detail.misc.salePrice')}</span>
                     </p>
-                    <p className="text-garage-text font-medium mt-1">{formatCurrency(vehicle.sold_price, { currencyCode, locale, fallback: 'Not specified' })}</p>
+                    <p className="text-garage-text font-medium mt-1">{formatCurrency(vehicle.sold_price, { currencyCode, locale, fallback: t('detail.notSpecified') })}</p>
                   </div>
                 </div>
               </div>
@@ -930,50 +928,50 @@ export default function VehicleDetail() {
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     {vehicle.trim && (
                       <div>
-                        <p className="text-sm text-garage-text-muted">Trim</p>
+                        <p className="text-sm text-garage-text-muted">{t('edit.trim')}</p>
                         <p className="text-garage-text font-medium">{vehicle.trim}</p>
                       </div>
                     )}
                     {vehicle.body_class && (
                       <div>
-                        <p className="text-sm text-garage-text-muted">Body Class</p>
+                        <p className="text-sm text-garage-text-muted">{t('edit.bodyClass')}</p>
                         <p className="text-garage-text font-medium">{vehicle.body_class}</p>
                       </div>
                     )}
                     {vehicle.drive_type && (
                       <div>
-                        <p className="text-sm text-garage-text-muted">Drive Type</p>
+                        <p className="text-sm text-garage-text-muted">{t('edit.driveType')}</p>
                         <p className="text-garage-text font-medium">{vehicle.drive_type}</p>
                       </div>
                     )}
                     {vehicle.doors && (
                       <div>
-                        <p className="text-sm text-garage-text-muted">Doors</p>
+                        <p className="text-sm text-garage-text-muted">{t('edit.doors')}</p>
                         <p className="text-garage-text font-medium">{vehicle.doors}</p>
                       </div>
                     )}
                     {vehicle.gvwr_class && (
                       <div>
-                        <p className="text-sm text-garage-text-muted">GVWR Class</p>
+                        <p className="text-sm text-garage-text-muted">{t('detail.misc.gvwrClass')}</p>
                         <p className="text-garage-text font-medium">{vehicle.gvwr_class}</p>
                       </div>
                     )}
                     {vehicle.wheel_specs && (
                       <div>
-                        <p className="text-sm text-garage-text-muted">Wheels</p>
+                        <p className="text-sm text-garage-text-muted">{t('detail.misc.wheels')}</p>
                         <p className="text-garage-text font-medium">{vehicle.wheel_specs}</p>
                       </div>
                     )}
                     {vehicle.tire_specs && (
                       <div>
-                        <p className="text-sm text-garage-text-muted">Tires</p>
+                        <p className="text-sm text-garage-text-muted">{t('detail.misc.tires')}</p>
                         <p className="text-garage-text font-medium">{vehicle.tire_specs}</p>
                       </div>
                     )}
                     {/* Show fuel type in Vehicle Details for non-motorized vehicles (e.g., propane for fifth wheels) */}
                     {!isMotorized && vehicle.fuel_type && (
                       <div>
-                        <p className="text-sm text-garage-text-muted">Fuel Type</p>
+                        <p className="text-sm text-garage-text-muted">{t('edit.fuelType')}</p>
                         <p className="text-garage-text font-medium">{vehicle.fuel_type}</p>
                       </div>
                     )}
@@ -992,25 +990,25 @@ export default function VehicleDetail() {
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       {vehicle.sticker_engine_description && (
                         <div className="md:col-span-2">
-                          <p className="text-sm text-garage-text-muted">Engine</p>
+                          <p className="text-sm text-garage-text-muted">{t('detail.misc.engine')}</p>
                           <p className="text-garage-text font-medium">{vehicle.sticker_engine_description}</p>
                         </div>
                       )}
                       {vehicle.displacement_l && (
                         <div>
-                          <p className="text-sm text-garage-text-muted">Displacement</p>
-                          <p className="text-garage-text font-medium">{vehicle.displacement_l} L</p>
+                          <p className="text-sm text-garage-text-muted">{t('detail.misc.displacement')}</p>
+                          <p className="text-garage-text font-medium">{t('detail.misc.displacementLiters', { value: vehicle.displacement_l })}</p>
                         </div>
                       )}
                       {vehicle.cylinders && (
                         <div>
-                          <p className="text-sm text-garage-text-muted">Cylinders</p>
+                          <p className="text-sm text-garage-text-muted">{t('edit.cylinders')}</p>
                           <p className="text-garage-text font-medium">{vehicle.cylinders}</p>
                         </div>
                       )}
                       {vehicle.fuel_type && (
                         <div>
-                          <p className="text-sm text-garage-text-muted">Fuel Type</p>
+                          <p className="text-sm text-garage-text-muted">{t('edit.fuelType')}</p>
                           <p className="text-garage-text font-medium">{vehicle.fuel_type}</p>
                         </div>
                       )}
@@ -1023,25 +1021,25 @@ export default function VehicleDetail() {
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         {vehicle.sticker_transmission_description && (
                           <div className="md:col-span-2">
-                            <p className="text-sm text-garage-text-muted">Transmission</p>
+                            <p className="text-sm text-garage-text-muted">{t('detail.misc.transmission')}</p>
                             <p className="text-garage-text font-medium">{vehicle.sticker_transmission_description}</p>
                           </div>
                         )}
                         {vehicle.transmission_type && (
                           <div>
-                            <p className="text-sm text-garage-text-muted">Type</p>
+                            <p className="text-sm text-garage-text-muted">{t('detail.misc.type')}</p>
                             <p className="text-garage-text font-medium">{vehicle.transmission_type}</p>
                           </div>
                         )}
                         {vehicle.transmission_speeds && (
                           <div>
-                            <p className="text-sm text-garage-text-muted">Speeds</p>
+                            <p className="text-sm text-garage-text-muted">{t('detail.misc.speeds')}</p>
                             <p className="text-garage-text font-medium">{vehicle.transmission_speeds}</p>
                           </div>
                         )}
                         {vehicle.sticker_drivetrain && (
                           <div>
-                            <p className="text-sm text-garage-text-muted">Drivetrain</p>
+                            <p className="text-sm text-garage-text-muted">{t('detail.misc.drivetrain')}</p>
                             <p className="text-garage-text font-medium">{vehicle.sticker_drivetrain}</p>
                           </div>
                         )}
@@ -1059,25 +1057,25 @@ export default function VehicleDetail() {
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   {vehicle.msrp_base && (
                     <div>
-                      <p className="text-sm text-garage-text-muted">Base Price</p>
+                      <p className="text-sm text-garage-text-muted">{t('detail.misc.basePrice')}</p>
                       <p className="text-garage-text font-medium">{formatCurrency(vehicle.msrp_base, { currencyCode, locale })}</p>
                     </div>
                   )}
                   {vehicle.msrp_options && (
                     <div>
-                      <p className="text-sm text-garage-text-muted">Options</p>
+                      <p className="text-sm text-garage-text-muted">{t('detail.misc.options')}</p>
                       <p className="text-garage-text font-medium">{formatCurrency(vehicle.msrp_options, { currencyCode, locale })}</p>
                     </div>
                   )}
                   {vehicle.destination_charge && (
                     <div>
-                      <p className="text-sm text-garage-text-muted">Destination</p>
+                      <p className="text-sm text-garage-text-muted">{t('detail.misc.destination')}</p>
                       <p className="text-garage-text font-medium">{formatCurrency(vehicle.destination_charge, { currencyCode, locale })}</p>
                     </div>
                   )}
                   {vehicle.msrp_total && (
                     <div>
-                      <p className="text-sm text-garage-text-muted">Total MSRP</p>
+                      <p className="text-sm text-garage-text-muted">{t('detail.misc.totalMsrp')}</p>
                       <p className="text-garage-text font-medium text-lg">{formatCurrency(vehicle.msrp_total, { currencyCode, locale })}</p>
                     </div>
                   )}
@@ -1092,19 +1090,19 @@ export default function VehicleDetail() {
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                   {vehicle.fuel_economy_city_l_per_100km && (
                     <div>
-                      <p className="text-sm text-garage-text-muted">City</p>
+                      <p className="text-sm text-garage-text-muted">{t('detail.misc.city')}</p>
                       <p className="text-garage-text font-medium">{UnitFormatter.formatFuelEconomy(parseFloat(vehicle.fuel_economy_city_l_per_100km), unitSystem)}</p>
                     </div>
                   )}
                   {vehicle.fuel_economy_highway_l_per_100km && (
                     <div>
-                      <p className="text-sm text-garage-text-muted">Highway</p>
+                      <p className="text-sm text-garage-text-muted">{t('detail.misc.highway')}</p>
                       <p className="text-garage-text font-medium">{UnitFormatter.formatFuelEconomy(parseFloat(vehicle.fuel_economy_highway_l_per_100km), unitSystem)}</p>
                     </div>
                   )}
                   {vehicle.fuel_economy_combined_l_per_100km && (
                     <div>
-                      <p className="text-sm text-garage-text-muted">Combined</p>
+                      <p className="text-sm text-garage-text-muted">{t('detail.misc.combined')}</p>
                       <p className="text-garage-text font-medium">{UnitFormatter.formatFuelEconomy(parseFloat(vehicle.fuel_economy_combined_l_per_100km), unitSystem)}</p>
                     </div>
                   )}
@@ -1119,13 +1117,13 @@ export default function VehicleDetail() {
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   {vehicle.warranty_basic && (
                     <div>
-                      <p className="text-sm text-garage-text-muted">Basic</p>
+                      <p className="text-sm text-garage-text-muted">{t('detail.misc.basic')}</p>
                       <p className="text-garage-text font-medium">{vehicle.warranty_basic}</p>
                     </div>
                   )}
                   {vehicle.warranty_powertrain && (
                     <div>
-                      <p className="text-sm text-garage-text-muted">Powertrain</p>
+                      <p className="text-sm text-garage-text-muted">{t('detail.powertrain')}</p>
                       <p className="text-garage-text font-medium">{vehicle.warranty_powertrain}</p>
                     </div>
                   )}
@@ -1140,13 +1138,13 @@ export default function VehicleDetail() {
                 <div className="grid grid-cols-2 gap-4">
                   {vehicle.environmental_rating_ghg && (
                     <div>
-                      <p className="text-sm text-garage-text-muted">GHG Rating</p>
+                      <p className="text-sm text-garage-text-muted">{t('detail.misc.ghgRating')}</p>
                       <p className="text-garage-text font-medium">{vehicle.environmental_rating_ghg}</p>
                     </div>
                   )}
                   {vehicle.environmental_rating_smog && (
                     <div>
-                      <p className="text-sm text-garage-text-muted">Smog Rating</p>
+                      <p className="text-sm text-garage-text-muted">{t('detail.misc.smogRating')}</p>
                       <p className="text-garage-text font-medium">{vehicle.environmental_rating_smog}</p>
                     </div>
                   )}
@@ -1159,7 +1157,7 @@ export default function VehicleDetail() {
               <div className="bg-garage-surface rounded-lg border border-garage-border p-6 break-inside-avoid">
                 <h2 className="text-xl font-semibold text-garage-text mb-4">{t('detail.manufacturing')}</h2>
                 <div>
-                  <p className="text-sm text-garage-text-muted">Assembly Location</p>
+                  <p className="text-sm text-garage-text-muted">{t('detail.misc.assemblyLocation')}</p>
                   <p className="text-garage-text font-medium">{vehicle.assembly_location}</p>
                 </div>
               </div>
@@ -1211,11 +1209,11 @@ export default function VehicleDetail() {
                       {Array.isArray(items) ? (
                         <ul className="space-y-1">
                           {(items as string[]).map((item, idx) => {
-                            const price = vehicle.window_sticker_options_detail?.[item] as string | undefined
+                            const price = formatStickerValue(vehicle.window_sticker_options_detail?.[item])
                             return (
                               <li key={idx} className="text-sm text-garage-text flex justify-between">
                                 <span>{item}</span>
-                                {price && <span className="text-garage-text-muted">${price}</span>}
+                                {price && <span className="text-garage-text-muted">{price}</span>}
                               </li>
                             )
                           })}
@@ -1234,12 +1232,12 @@ export default function VehicleDetail() {
               <div className="bg-garage-surface rounded-lg border border-garage-border p-6 break-inside-avoid">
                 <h2 className="text-xl font-semibold text-garage-text mb-4">{t('detail.packages')}</h2>
                 <div className="space-y-2">
-                  {Object.entries(vehicle.window_sticker_packages).map(([packageName, rawPrice]) => {
-                    const price = rawPrice as string | undefined
+                  {Object.entries(vehicle.window_sticker_packages).map(([packageName, rawValue]) => {
+                    const value = formatStickerValue(rawValue)
                     return (
                       <div key={packageName} className="flex justify-between items-center">
                         <span className="text-sm text-garage-text">{packageName}</span>
-                        {price && <span className="text-sm text-garage-text-muted">${price}</span>}
+                        {value && <span className="text-sm text-garage-text-muted">{value}</span>}
                       </div>
                     )
                   })}
@@ -1256,7 +1254,7 @@ export default function VehicleDetail() {
                     to={`/vehicles/${vin}/window-sticker-test`}
                     className="text-xs px-2 py-1 bg-garage-bg rounded text-garage-text-muted hover:text-primary transition-colors"
                   >
-                    Test OCR
+                    {t('detail.misc.testOcr')}
                   </Link>
                 </div>
                 {vehicle.window_sticker_file_path ? (
@@ -1276,14 +1274,16 @@ export default function VehicleDetail() {
                     {/* OCR Metadata */}
                     <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-garage-text-muted">
                       {vehicle.window_sticker_parser_used && (
-                        <span>Parser: {vehicle.window_sticker_parser_used}</span>
+                        <span>{t('detail.misc.parser', { parser: vehicle.window_sticker_parser_used })}</span>
                       )}
                       {vehicle.window_sticker_confidence_score && (
-                        <span>Confidence: {Number(vehicle.window_sticker_confidence_score).toFixed(0)}%</span>
+                        <span>{t('detail.misc.confidence', { score: Number(vehicle.window_sticker_confidence_score).toFixed(0) })}</span>
                       )}
                       {vehicle.window_sticker_extracted_vin && (
                         <span className={vehicle.window_sticker_extracted_vin === vehicle.vin ? 'text-success' : 'text-warning'}>
-                          VIN: {vehicle.window_sticker_extracted_vin === vehicle.vin ? '✓ Verified' : '⚠ Mismatch'}
+                          {vehicle.window_sticker_extracted_vin === vehicle.vin
+                            ? `✓ ${t('detail.misc.vinVerified')}`
+                            : `⚠ ${t('detail.misc.vinMismatch')}`}
                         </span>
                       )}
                     </div>

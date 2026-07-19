@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { render, screen, waitFor, fireEvent } from '@testing-library/react'
+import { render, screen, waitFor, fireEvent, within } from '@testing-library/react'
 import { MemoryRouter, Route, Routes } from 'react-router-dom'
 
 // Mock all tab components to avoid deep dependency trees
@@ -144,7 +144,7 @@ describe('VehicleDetail', () => {
 
     renderVehicleDetail()
 
-    expect(screen.getByRole('status', { name: /loading vehicle/i })).toBeInTheDocument()
+    expect(screen.getByRole('status', { name: 'detail.loading' })).toBeInTheDocument()
   })
 
   it('renders vehicle info after successful load', async () => {
@@ -282,8 +282,12 @@ describe('VehicleDetail', () => {
 
     // Sub-tab nav appears with Fuel selected as the default sub-tab
     await waitFor(() => {
-      expect(screen.getByTestId('sub-tab-nav')).toBeInTheDocument()
-      expect(screen.getByRole('tab', { name: /^fuel$/i })).toHaveAttribute('aria-selected', 'true')
+      const subNav = screen.getByTestId('sub-tab-nav')
+      expect(subNav).toBeInTheDocument()
+      expect(within(subNav).getByRole('tab', { name: 'detail.tabs.fuel' })).toHaveAttribute(
+        'aria-selected',
+        'true',
+      )
     })
   })
 
@@ -313,8 +317,10 @@ describe('VehicleDetail', () => {
     await waitFor(() => {
       expect(screen.getByTestId('sub-tab-nav')).toBeInTheDocument()
     })
-    // Fuel moved to its own primary tab; Maintenance keeps Service/Odometer/Recalls
-    expect(screen.queryByRole('tab', { name: /^fuel$/i })).not.toBeInTheDocument()
+    // Fuel moved to its own primary tab; Maintenance keeps Service/Odometer/Recalls.
+    // Scoped to the sub-tab nav: the Fuel PRIMARY tab legitimately still exists.
+    const subNav = screen.getByTestId('sub-tab-nav')
+    expect(within(subNav).queryByRole('tab', { name: 'detail.tabs.fuel' })).not.toBeInTheDocument()
   })
 
   // --- LiveLink Tab Visibility ---
@@ -369,6 +375,6 @@ describe('VehicleDetail', () => {
       expect(screen.getByText('Test Car')).toBeInTheDocument()
     })
 
-    expect(screen.getByTitle('Transfer vehicle ownership')).toBeInTheDocument()
+    expect(screen.getByTitle('detail.misc.transferTooltip')).toBeInTheDocument()
   })
 })

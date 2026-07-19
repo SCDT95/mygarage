@@ -220,7 +220,6 @@
   },
   "events": {
     "title": "Ereignis-Benachrichtigungen",
-    "enableServiceFirst": "Aktiviere mindestens einen Benachrichtigungsdienst",
     "defLow": {
       "group": "AdBlue-Füllstand",
       "label": "AdBlue-Füllstand niedrig",
@@ -258,11 +257,11 @@
     "createFullError": "Vollständiges Backup konnte nicht erstellt werden",
     "restoreOverwrite": "Wiederherstellen (überschreibt alle Daten)",
     "noFullBackups": "Noch keine vollständigen Backups vorhanden. Erstelle eines, um zu beginnen."
-    },
-    "timeFormat": {
-      "label": "Zeitformat",
-      "twelveHour": "12-Stunden-Format (2:30 PM)",
-      "twentyFourHour": "24-Stunden-Format (14:30)",
-      "description": "Wähle aus, wie Uhrzeiten in der App angezeigt werden."
+  },
+  "timeFormat": {
+    "label": "Zeitformat",
+    "twelveHour": "12-Stunden-Format (2:30 PM)",
+    "twentyFourHour": "24-Stunden-Format (14:30)",
+    "description": "Wähle aus, wie Uhrzeiten in der App angezeigt werden."
   }
 }

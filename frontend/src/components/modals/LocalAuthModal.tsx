@@ -61,12 +61,12 @@ export default function LocalAuthModal({
 
     // Validation
     if (!currentPassword || !newPassword || !confirmNewPassword) {
-      setPasswordChangeMessage({ type: 'error', text: 'All fields are required' })
+      setPasswordChangeMessage({ type: 'error', text: t('modal.localAuth.allFieldsRequired') })
       return
     }
 
     if (newPassword !== confirmNewPassword) {
-      setPasswordChangeMessage({ type: 'error', text: 'New passwords do not match' })
+      setPasswordChangeMessage({ type: 'error', text: t('modal.localAuth.passwordsDoNotMatch') })
       return
     }
 
@@ -76,10 +76,10 @@ export default function LocalAuthModal({
     } catch (err) {
       if (err instanceof Error) {
         const zodError = err as { errors?: Array<{ message: string }> }
-        const errorMessage = zodError.errors?.[0]?.message || 'Password does not meet requirements'
+        const errorMessage = zodError.errors?.[0]?.message || t('modal.localAuth.passwordRequirementsNotMet')
         setPasswordChangeMessage({ type: 'error', text: errorMessage })
       } else {
-        setPasswordChangeMessage({ type: 'error', text: 'Password does not meet requirements' })
+        setPasswordChangeMessage({ type: 'error', text: t('modal.localAuth.passwordRequirementsNotMet') })
       }
       return
     }
@@ -92,7 +92,7 @@ export default function LocalAuthModal({
         new_password: newPassword,
       })
 
-      setPasswordChangeMessage({ type: 'success', text: 'Password changed successfully!' })
+      setPasswordChangeMessage({ type: 'success', text: t('modal.localAuth.passwordChanged') })
 
       // Clear form
       setCurrentPassword('')
@@ -106,10 +106,10 @@ export default function LocalAuthModal({
         const apiError = error as { response?: { data?: { detail?: string } } }
         setPasswordChangeMessage({
           type: 'error',
-          text: apiError.response?.data?.detail || 'Failed to change password. Please try again.'
+          text: apiError.response?.data?.detail || t('modal.localAuth.changePasswordFailed')
         })
       } else {
-        setPasswordChangeMessage({ type: 'error', text: 'Failed to change password. Please try again.' })
+        setPasswordChangeMessage({ type: 'error', text: t('modal.localAuth.changePasswordFailed') })
       }
     } finally {
       setPasswordChangeLoading(false)
@@ -127,7 +127,7 @@ export default function LocalAuthModal({
 
   return (
     <FormModalWrapper
-      title={t('modal.localAuth')}
+      title={t('modal.localAuth.title')}
       onClose={handleClose}
       isOpen={isOpen}
       maxWidth="max-w-lg"
@@ -138,7 +138,7 @@ export default function LocalAuthModal({
             onClick={handleClose}
             className="px-4 py-2 text-sm font-medium text-garage-text bg-garage-bg border border-garage-border rounded-lg hover:bg-garage-muted transition-colors"
           >
-            Close
+            {t('modal.localAuth.close')}
           </button>
         </div>
       }
@@ -152,16 +152,16 @@ export default function LocalAuthModal({
                 <div className="flex-1">
                   <strong className="font-semibold text-garage-text">{t('modal.enableLocalAuth')}</strong>
                   <p className="mt-1 text-sm text-garage-text">
-                    Local authentication is currently not set up. Register the first user to enable authentication.
+                    {t('modal.localAuth.notSetUpDesc')}
                   </p>
                   <p className="mt-2 text-xs text-garage-text-muted">
-                    The first registered user will automatically become an administrator.
+                    {t('modal.localAuth.firstUserAdminNote')}
                   </p>
                   <a
                     href={withBase('/register')}
                     className="mt-3 inline-flex items-center gap-2 px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary/90 transition-colors text-sm font-medium"
                   >
-                    Register First User
+                    {t('modal.localAuth.registerFirstUser')}
                   </a>
                 </div>
               </div>
@@ -180,7 +180,7 @@ export default function LocalAuthModal({
                       <div>
                         <div className="text-sm font-medium text-garage-text">{t('modal.userManagement')}</div>
                         <div className="text-xs text-garage-text-muted mt-0.5">
-                          {userCount} registered users
+                          {t('modal.localAuth.registeredUsers', { count: userCount })}
                         </div>
                       </div>
                     </div>
@@ -191,7 +191,7 @@ export default function LocalAuthModal({
                       }}
                       className="px-3 py-1.5 text-sm bg-primary text-white rounded-lg hover:bg-primary/90 transition-colors"
                     >
-                      Manage Users
+                      {t('modal.localAuth.manageUsers')}
                     </button>
                   </div>
                 </div>
@@ -202,7 +202,7 @@ export default function LocalAuthModal({
                 <div className="p-4 bg-garage-bg border border-garage-border rounded-lg">
                   <div className="flex items-center justify-between mb-3">
                     <div className="text-sm font-medium text-garage-text">
-                      {userCount} {userCount === 1 ? 'User' : 'Users'}
+                      {t('modal.localAuth.userCount', { count: userCount })}
                     </div>
                     <button
                       onClick={() => {
@@ -211,7 +211,7 @@ export default function LocalAuthModal({
                       }}
                       className="px-3 py-1.5 text-sm bg-primary text-white rounded-lg hover:bg-primary/90 transition-colors"
                     >
-                      Add User
+                      {t('modal.addUser')}
                     </button>
                   </div>
 
@@ -222,13 +222,13 @@ export default function LocalAuthModal({
                         <div className="flex items-center gap-2">
                           <span className="text-garage-text">{user.username}</span>
                           {user.is_admin && (
-                            <span className="px-1.5 py-0.5 text-xs bg-primary/20 text-primary rounded">Admin</span>
+                            <span className="px-1.5 py-0.5 text-xs bg-primary/20 text-primary rounded">{t('modal.localAuth.adminBadge')}</span>
                           )}
                           {user.auth_method === 'oidc' && (
                             <span className="px-1.5 py-0.5 text-xs bg-warning/20 text-warning rounded">OIDC</span>
                           )}
                           {!user.is_active && (
-                            <span className="px-1.5 py-0.5 text-xs bg-danger/20 text-danger rounded">Inactive</span>
+                            <span className="px-1.5 py-0.5 text-xs bg-danger/20 text-danger rounded">{t('modal.inactive')}</span>
                           )}
                         </div>
                         <span className="text-garage-text-muted text-xs">{user.email}</span>
@@ -236,7 +236,7 @@ export default function LocalAuthModal({
                     ))}
                     {userCount > 3 && (
                       <div className="text-xs text-garage-text-muted text-center pt-2">
-                        + {userCount - 3} more users
+                        {t('modal.localAuth.moreUsers', { count: userCount - 3 })}
                       </div>
                     )}
                   </div>
@@ -270,7 +270,7 @@ export default function LocalAuthModal({
                       {/* Current Password */}
                       <div>
                         <label htmlFor="current-password-modal" className="block text-xs font-medium text-garage-text mb-1.5">
-                          Current Password
+                          {t('modal.localAuth.currentPassword')}
                         </label>
                         <div className="relative">
                           <input
@@ -279,7 +279,7 @@ export default function LocalAuthModal({
                             value={currentPassword}
                             onChange={(e) => setCurrentPassword(e.target.value)}
                             className="w-full px-3 py-2 pr-10 bg-garage-surface border border-garage-border rounded-lg text-sm text-garage-text placeholder-garage-text-muted focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
-                            placeholder="Enter current password"
+                            placeholder={t('modal.localAuth.enterCurrentPassword')}
                             autoComplete="current-password"
                             disabled={passwordChangeLoading}
                           />
@@ -287,7 +287,7 @@ export default function LocalAuthModal({
                             type="button"
                             onClick={() => setShowCurrentPassword(!showCurrentPassword)}
                             className="absolute right-2 top-1/2 -translate-y-1/2 p-1.5 text-garage-text-muted hover:text-garage-text transition-colors"
-                            aria-label={showCurrentPassword ? 'Hide password' : 'Show password'}
+                            aria-label={showCurrentPassword ? t('modal.localAuth.hidePassword') : t('modal.localAuth.showPassword')}
                             tabIndex={-1}
                           >
                             {showCurrentPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
@@ -298,7 +298,7 @@ export default function LocalAuthModal({
                       {/* New Password */}
                       <div>
                         <label htmlFor="new-password-modal" className="block text-xs font-medium text-garage-text mb-1.5">
-                          New Password
+                          {t('modal.localAuth.newPassword')}
                         </label>
                         <div className="relative">
                           <input
@@ -307,7 +307,7 @@ export default function LocalAuthModal({
                             value={newPassword}
                             onChange={(e) => setNewPassword(e.target.value)}
                             className="w-full px-3 py-2 pr-10 bg-garage-surface border border-garage-border rounded-lg text-sm text-garage-text placeholder-garage-text-muted focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
-                            placeholder="Enter new password"
+                            placeholder={t('modal.localAuth.enterNewPassword')}
                             autoComplete="new-password"
                             disabled={passwordChangeLoading}
                           />
@@ -315,7 +315,7 @@ export default function LocalAuthModal({
                             type="button"
                             onClick={() => setShowNewPassword(!showNewPassword)}
                             className="absolute right-2 top-1/2 -translate-y-1/2 p-1.5 text-garage-text-muted hover:text-garage-text transition-colors"
-                            aria-label={showNewPassword ? 'Hide password' : 'Show password'}
+                            aria-label={showNewPassword ? t('modal.localAuth.hidePassword') : t('modal.localAuth.showPassword')}
                             tabIndex={-1}
                           >
                             {showNewPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
@@ -339,7 +339,7 @@ export default function LocalAuthModal({
                               </span>
                             </div>
                             <p className="text-xs text-garage-text-muted">
-                              Must have: 8+ chars, uppercase, lowercase, number, special char (!@#$...)
+                              {t('modal.localAuth.passwordRequirements')}
                             </p>
                           </div>
                         )}
@@ -348,7 +348,7 @@ export default function LocalAuthModal({
                       {/* Confirm New Password */}
                       <div>
                         <label htmlFor="confirm-new-password-modal" className="block text-xs font-medium text-garage-text mb-1.5">
-                          Confirm New Password
+                          {t('modal.localAuth.confirmNewPassword')}
                         </label>
                         <div className="relative">
                           <input
@@ -357,7 +357,7 @@ export default function LocalAuthModal({
                             value={confirmNewPassword}
                             onChange={(e) => setConfirmNewPassword(e.target.value)}
                             className="w-full px-3 py-2 pr-10 bg-garage-surface border border-garage-border rounded-lg text-sm text-garage-text placeholder-garage-text-muted focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
-                            placeholder="Confirm new password"
+                            placeholder={t('modal.localAuth.confirmNewPasswordPlaceholder')}
                             autoComplete="new-password"
                             disabled={passwordChangeLoading}
                           />
@@ -365,7 +365,7 @@ export default function LocalAuthModal({
                             type="button"
                             onClick={() => setShowConfirmNewPassword(!showConfirmNewPassword)}
                             className="absolute right-2 top-1/2 -translate-y-1/2 p-1.5 text-garage-text-muted hover:text-garage-text transition-colors"
-                            aria-label={showConfirmNewPassword ? 'Hide password' : 'Show password'}
+                            aria-label={showConfirmNewPassword ? t('modal.localAuth.hidePassword') : t('modal.localAuth.showPassword')}
                             tabIndex={-1}
                           >
                             {showConfirmNewPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
@@ -387,7 +387,7 @@ export default function LocalAuthModal({
                         ) : (
                           <>
                             <Key className="w-4 h-4" />
-                            Change Password
+                            {t('modal.changePassword')}
                           </>
                         )}
                       </button>
@@ -405,9 +405,9 @@ export default function LocalAuthModal({
                 <div className="flex items-start gap-3">
                   <AlertCircle className="w-5 h-5 text-garage-text-muted flex-shrink-0 mt-0.5" />
                   <div className="text-sm text-garage-text-muted">
-                    <strong>Authentication Mode - Admin Function Only</strong>
+                    <strong>{t('modal.localAuth.adminOnlyLabel')}</strong>
                     <p className="mt-1">
-                      Changing authentication settings requires administrator privileges. Contact your administrator for account management or authentication changes.
+                      {t('modal.localAuth.adminOnlyDesc')}
                     </p>
                   </div>
                 </div>
@@ -440,7 +440,7 @@ export default function LocalAuthModal({
                       {/* Current Password */}
                       <div>
                         <label htmlFor="current-password-user-modal" className="block text-xs font-medium text-garage-text mb-1.5">
-                          Current Password
+                          {t('modal.localAuth.currentPassword')}
                         </label>
                         <div className="relative">
                           <input
@@ -449,7 +449,7 @@ export default function LocalAuthModal({
                             value={currentPassword}
                             onChange={(e) => setCurrentPassword(e.target.value)}
                             className="w-full px-3 py-2 pr-10 bg-garage-surface border border-garage-border rounded-lg text-sm text-garage-text placeholder-garage-text-muted focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
-                            placeholder="Enter current password"
+                            placeholder={t('modal.localAuth.enterCurrentPassword')}
                             autoComplete="current-password"
                             disabled={passwordChangeLoading}
                           />
@@ -457,7 +457,7 @@ export default function LocalAuthModal({
                             type="button"
                             onClick={() => setShowCurrentPassword(!showCurrentPassword)}
                             className="absolute right-2 top-1/2 -translate-y-1/2 p-1.5 text-garage-text-muted hover:text-garage-text transition-colors"
-                            aria-label={showCurrentPassword ? 'Hide password' : 'Show password'}
+                            aria-label={showCurrentPassword ? t('modal.localAuth.hidePassword') : t('modal.localAuth.showPassword')}
                             tabIndex={-1}
                           >
                             {showCurrentPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
@@ -468,7 +468,7 @@ export default function LocalAuthModal({
                       {/* New Password */}
                       <div>
                         <label htmlFor="new-password-user-modal" className="block text-xs font-medium text-garage-text mb-1.5">
-                          New Password
+                          {t('modal.localAuth.newPassword')}
                         </label>
                         <div className="relative">
                           <input
@@ -477,7 +477,7 @@ export default function LocalAuthModal({
                             value={newPassword}
                             onChange={(e) => setNewPassword(e.target.value)}
                             className="w-full px-3 py-2 pr-10 bg-garage-surface border border-garage-border rounded-lg text-sm text-garage-text placeholder-garage-text-muted focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
-                            placeholder="Enter new password"
+                            placeholder={t('modal.localAuth.enterNewPassword')}
                             autoComplete="new-password"
                             disabled={passwordChangeLoading}
                           />
@@ -485,7 +485,7 @@ export default function LocalAuthModal({
                             type="button"
                             onClick={() => setShowNewPassword(!showNewPassword)}
                             className="absolute right-2 top-1/2 -translate-y-1/2 p-1.5 text-garage-text-muted hover:text-garage-text transition-colors"
-                            aria-label={showNewPassword ? 'Hide password' : 'Show password'}
+                            aria-label={showNewPassword ? t('modal.localAuth.hidePassword') : t('modal.localAuth.showPassword')}
                             tabIndex={-1}
                           >
                             {showNewPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
@@ -509,7 +509,7 @@ export default function LocalAuthModal({
                               </span>
                             </div>
                             <p className="text-xs text-garage-text-muted">
-                              Must have: 8+ chars, uppercase, lowercase, number, special char (!@#$...)
+                              {t('modal.localAuth.passwordRequirements')}
                             </p>
                           </div>
                         )}
@@ -518,7 +518,7 @@ export default function LocalAuthModal({
                       {/* Confirm New Password */}
                       <div>
                         <label htmlFor="confirm-new-password-user-modal" className="block text-xs font-medium text-garage-text mb-1.5">
-                          Confirm New Password
+                          {t('modal.localAuth.confirmNewPassword')}
                         </label>
                         <div className="relative">
                           <input
@@ -527,7 +527,7 @@ export default function LocalAuthModal({
                             value={confirmNewPassword}
                             onChange={(e) => setConfirmNewPassword(e.target.value)}
                             className="w-full px-3 py-2 pr-10 bg-garage-surface border border-garage-border rounded-lg text-sm text-garage-text placeholder-garage-text-muted focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
-                            placeholder="Confirm new password"
+                            placeholder={t('modal.localAuth.confirmNewPasswordPlaceholder')}
                             autoComplete="new-password"
                             disabled={passwordChangeLoading}
                           />
@@ -535,7 +535,7 @@ export default function LocalAuthModal({
                             type="button"
                             onClick={() => setShowConfirmNewPassword(!showConfirmNewPassword)}
                             className="absolute right-2 top-1/2 -translate-y-1/2 p-1.5 text-garage-text-muted hover:text-garage-text transition-colors"
-                            aria-label={showConfirmNewPassword ? 'Hide password' : 'Show password'}
+                            aria-label={showConfirmNewPassword ? t('modal.localAuth.hidePassword') : t('modal.localAuth.showPassword')}
                             tabIndex={-1}
                           >
                             {showConfirmNewPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
@@ -557,7 +557,7 @@ export default function LocalAuthModal({
                         ) : (
                           <>
                             <Key className="w-4 h-4" />
-                            Change Password
+                            {t('modal.changePassword')}
                           </>
                         )}
                       </button>
@@ -576,13 +576,13 @@ export default function LocalAuthModal({
                 <div className="flex-1">
                   <strong className="font-semibold text-warning-500">{t('modal.authRequired')}</strong>
                   <p className="mt-1 text-sm text-garage-text">
-                    Local authentication is enabled. You must be logged in as an administrator to manage authentication settings.
+                    {t('modal.localAuth.loginRequiredDesc')}
                   </p>
                   <a
                     href={withBase('/login')}
                     className="mt-3 inline-flex items-center gap-2 px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary/90 transition-colors text-sm font-medium"
                   >
-                    Login
+                    {t('modal.localAuth.login')}
                   </a>
                 </div>
               </div>

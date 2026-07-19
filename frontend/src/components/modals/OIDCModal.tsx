@@ -5,6 +5,25 @@ import api from '@/services/api'
 import { withBase } from '@/utils/basePath'
 import FormModalWrapper from '../FormModalWrapper'
 
+/** Identity providers known to work with MyGarage. Brand names — never translated. */
+const SUPPORTED_PROVIDERS = [
+  'Authentik',
+  'Keycloak',
+  'Auth0',
+  'Okta',
+  'Azure AD / Entra ID',
+  'Google Workspace',
+]
+
+/** OIDC scope literals — protocol values, never translated. */
+const DEFAULT_SCOPES = 'openid profile email'
+
+/** Discovery path the backend appends to the issuer URL itself. */
+const DISCOVERY_PATH = '/.well-known/openid-configuration'
+
+/** Example issuer URL shown in the field placeholder and hint. */
+const EXAMPLE_ISSUER_URL = 'https://rauthy.example.com/auth/v1'
+
 interface OIDCFormData {
   oidc_provider_name: string
   oidc_issuer_url: string
@@ -69,7 +88,7 @@ export default function OIDCModal({
       setOidcTestResult({
         ok: false,
         error: 'request_failed',
-        detail: apiError.response?.data?.detail || 'Failed to call OIDC test endpoint',
+        detail: apiError.response?.data?.detail || t('modal.oidc.testEndpointError'),
       })
     } finally {
       setOidcTestLoading(false)
@@ -103,7 +122,7 @@ export default function OIDCModal({
             onClick={handleClose}
             className="px-4 py-2 text-sm font-medium text-garage-text bg-garage-bg border border-garage-border rounded-lg hover:bg-garage-muted transition-colors"
           >
-            Close
+            {t('modal.oidc.close')}
           </button>
         </div>
       }
@@ -114,18 +133,13 @@ export default function OIDCModal({
             <div className="flex items-start gap-3">
               <Info className="w-5 h-5 text-primary flex-shrink-0 mt-0.5" />
               <div className="flex-1">
-                <strong className="text-sm font-semibold text-garage-text">OpenID Connect (OIDC) Authentication</strong>
+                <strong className="text-sm font-semibold text-garage-text">{t('modal.oidc.infoTitle')}</strong>
                 <div className="text-sm text-garage-text space-y-2 mt-2">
-                  <p>
-                    Configure single sign-on with your identity provider. Supported providers include:
-                  </p>
+                  <p>{t('modal.oidc.infoDesc')}</p>
                   <ul className="list-disc list-inside ml-2 text-xs space-y-1 text-garage-text-muted">
-                    <li>Authentik</li>
-                    <li>Keycloak</li>
-                    <li>Auth0</li>
-                    <li>Okta</li>
-                    <li>Azure AD / Entra ID</li>
-                    <li>Google Workspace</li>
+                    {SUPPORTED_PROVIDERS.map((provider) => (
+                      <li key={provider}>{provider}</li>
+                    ))}
                   </ul>
                 </div>
               </div>
@@ -140,7 +154,7 @@ export default function OIDCModal({
               {/* Provider Name */}
               <div>
                 <label htmlFor="oidc-provider-name" className="block text-xs font-medium text-garage-text mb-1.5">
-                  Provider Name
+                  {t('modal.oidc.providerName')}
                 </label>
                 <input
                   id="oidc-provider-name"
@@ -148,7 +162,7 @@ export default function OIDCModal({
                   value={formData.oidc_provider_name}
                   onChange={(e) => onFormDataChange({ oidc_provider_name: e.target.value })}
                   className="w-full px-3 py-2 bg-garage-surface border border-garage-border rounded-lg text-sm text-garage-text placeholder-garage-text-muted focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
-                  placeholder="e.g., Authentik, Keycloak"
+                  placeholder={t('modal.oidc.providerNamePlaceholder')}
                 />
                 <p className="text-xs text-garage-text-muted mt-1">{t('modal.providerNameHint')}</p>
               </div>
@@ -156,7 +170,7 @@ export default function OIDCModal({
               {/* Issuer URL */}
               <div>
                 <label htmlFor="oidc-issuer-url" className="block text-xs font-medium text-garage-text mb-1.5">
-                  Issuer URL <span className="text-danger-500">*</span>
+                  {t('modal.oidc.issuerUrl')} <span className="text-danger-500">*</span>
                 </label>
                 <input
                   id="oidc-issuer-url"
@@ -164,17 +178,20 @@ export default function OIDCModal({
                   value={formData.oidc_issuer_url}
                   onChange={(e) => onFormDataChange({ oidc_issuer_url: e.target.value })}
                   className="w-full px-3 py-2 bg-garage-surface border border-garage-border rounded-lg text-sm text-garage-text placeholder-garage-text-muted focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
-                  placeholder="https://rauthy.example.com/auth/v1"
+                  placeholder={EXAMPLE_ISSUER_URL}
                 />
                 <p className="text-xs text-garage-text-muted mt-1">
-                  Base issuer URL — e.g. <code>https://rauthy.example.com/auth/v1</code>. The app appends <code>/.well-known/openid-configuration</code> itself; do not include it.
+                  {t('modal.oidc.issuerUrlHint', {
+                    example: EXAMPLE_ISSUER_URL,
+                    discovery: DISCOVERY_PATH,
+                  })}
                 </p>
               </div>
 
               {/* Client ID */}
               <div>
                 <label htmlFor="oidc-client-id" className="block text-xs font-medium text-garage-text mb-1.5">
-                  Client ID <span className="text-danger-500">*</span>
+                  {t('modal.oidc.clientId')} <span className="text-danger-500">*</span>
                 </label>
                 <input
                   id="oidc-client-id"
@@ -182,14 +199,14 @@ export default function OIDCModal({
                   value={formData.oidc_client_id}
                   onChange={(e) => onFormDataChange({ oidc_client_id: e.target.value })}
                   className="w-full px-3 py-2 bg-garage-surface border border-garage-border rounded-lg text-sm text-garage-text placeholder-garage-text-muted focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
-                  placeholder="client-id-from-provider"
+                  placeholder={t('modal.oidc.clientIdPlaceholder')}
                 />
               </div>
 
               {/* Client Secret */}
               <div>
                 <label htmlFor="oidc-client-secret" className="block text-xs font-medium text-garage-text mb-1.5">
-                  Client Secret <span className="text-danger-500">*</span>
+                  {t('modal.oidc.clientSecret')} <span className="text-danger-500">*</span>
                 </label>
                 <div className="relative">
                   <input
@@ -198,24 +215,24 @@ export default function OIDCModal({
                     value={formData.oidc_client_secret}
                     onChange={(e) => onFormDataChange({ oidc_client_secret: e.target.value })}
                     className="w-full px-3 py-2 pr-10 bg-garage-surface border border-garage-border rounded-lg text-sm text-garage-text placeholder-garage-text-muted focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
-                    placeholder="client-secret-from-provider"
+                    placeholder={t('modal.oidc.clientSecretPlaceholder')}
                   />
                   <button
                     type="button"
                     onClick={() => setShowClientSecret(!showClientSecret)}
                     className="absolute right-2 top-1/2 -translate-y-1/2 p-1.5 text-garage-text-muted hover:text-garage-text transition-colors"
-                    aria-label={showClientSecret ? 'Hide secret' : 'Show secret'}
+                    aria-label={showClientSecret ? t('modal.oidc.hideSecret') : t('modal.oidc.showSecret')}
                   >
                     {showClientSecret ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                   </button>
                 </div>
-                <p className="text-xs text-garage-text-muted mt-1">Leave blank to keep existing.</p>
+                <p className="text-xs text-garage-text-muted mt-1">{t('modal.oidc.clientSecretHint')}</p>
               </div>
 
               {/* Callback URL (Read-only, computed from window.location) */}
               <div>
                 <label htmlFor="oidc-redirect-uri" className="block text-xs font-medium text-garage-text mb-1.5">
-                  Callback URL
+                  {t('modal.oidc.callbackUrl')}
                 </label>
                 <div className="flex gap-2">
                   <input
@@ -230,24 +247,30 @@ export default function OIDCModal({
                     onClick={handleCopyCallback}
                     className="px-3 py-2 bg-garage-surface border border-garage-border text-garage-text text-xs rounded-lg hover:bg-garage-bg transition-colors"
                   >
-                    {copiedCallback ? 'Copied' : 'Copy'}
+                    {copiedCallback ? t('modal.oidc.copied') : t('modal.oidc.copy')}
                   </button>
                 </div>
                 <p className="text-xs text-garage-text-muted mt-1">
-                  Copy this into your IdP&apos;s redirect URI list.
+                  {t('modal.oidc.callbackUrlHint')}
                 </p>
               </div>
 
               {/* OIDC protocol constants */}
               <div className="grid grid-cols-2 gap-3 text-xs text-garage-text-muted bg-garage-surface/40 border border-garage-border rounded-lg p-3">
-                <div><span className="font-medium text-garage-text">Token algorithms:</span> EdDSA preferred; RS256 accepted.</div>
-                <div><span className="font-medium text-garage-text">PKCE:</span> Always enabled (S256).</div>
+                <div>
+                  <span className="font-medium text-garage-text">{t('modal.oidc.tokenAlgorithmsLabel')}:</span>{' '}
+                  {t('modal.oidc.tokenAlgorithmsDesc')}
+                </div>
+                <div>
+                  <span className="font-medium text-garage-text">{t('modal.oidc.pkceLabel')}:</span>{' '}
+                  {t('modal.oidc.pkceDesc')}
+                </div>
               </div>
 
               {/* Scopes */}
               <div>
                 <label htmlFor="oidc-scopes" className="block text-xs font-medium text-garage-text mb-1.5">
-                  Scopes
+                  {t('modal.oidc.scopes')}
                 </label>
                 <input
                   id="oidc-scopes"
@@ -255,7 +278,7 @@ export default function OIDCModal({
                   value={formData.oidc_scopes}
                   onChange={(e) => onFormDataChange({ oidc_scopes: e.target.value })}
                   className="w-full px-3 py-2 bg-garage-surface border border-garage-border rounded-lg text-sm text-garage-text placeholder-garage-text-muted focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
-                  placeholder="openid profile email"
+                  placeholder={DEFAULT_SCOPES}
                 />
                 <p className="text-xs text-garage-text-muted mt-1">{t('modal.scopesHint')}</p>
               </div>
@@ -271,10 +294,10 @@ export default function OIDCModal({
                 />
                 <div className="flex-1">
                   <label htmlFor="oidc-auto-create" className="text-xs font-medium text-garage-text cursor-pointer">
-                    Auto-create users on first login
+                    {t('modal.oidc.autoCreateUsers')}
                   </label>
                   <p className="text-xs text-garage-text-muted mt-0.5">
-                    Automatically create new users when they login via SSO for the first time
+                    {t('modal.oidc.autoCreateUsersDesc')}
                   </p>
                 </div>
               </div>
@@ -282,7 +305,7 @@ export default function OIDCModal({
               {/* Admin Group */}
               <div>
                 <label htmlFor="oidc-admin-group" className="block text-xs font-medium text-garage-text mb-1.5">
-                  Admin Group (Optional)
+                  {t('modal.oidc.adminGroup')}
                 </label>
                 <input
                   id="oidc-admin-group"
@@ -293,7 +316,7 @@ export default function OIDCModal({
                   placeholder="mygarage-admins"
                 />
                 <p className="text-xs text-garage-text-muted mt-1">
-                  Users in this group will be granted admin privileges
+                  {t('modal.oidc.adminGroupDesc')}
                 </p>
               </div>
 
@@ -304,7 +327,7 @@ export default function OIDCModal({
                 {/* Username Claim */}
                 <div>
                   <label htmlFor="oidc-username-claim" className="block text-xs font-medium text-garage-text mb-1.5">
-                    Username Claim
+                    {t('modal.oidc.usernameClaim')}
                   </label>
                   <select
                     id="oidc-username-claim"
@@ -321,7 +344,7 @@ export default function OIDCModal({
                 {/* Email Claim */}
                 <div>
                   <label htmlFor="oidc-email-claim" className="block text-xs font-medium text-garage-text mb-1.5">
-                    Email Claim
+                    {t('modal.oidc.emailClaim')}
                   </label>
                   <select
                     id="oidc-email-claim"
@@ -337,7 +360,7 @@ export default function OIDCModal({
                 {/* Full Name Claim */}
                 <div>
                   <label htmlFor="oidc-full-name-claim" className="block text-xs font-medium text-garage-text mb-1.5">
-                    Full Name Claim
+                    {t('modal.oidc.fullNameClaim')}
                   </label>
                   <select
                     id="oidc-full-name-claim"
@@ -367,11 +390,11 @@ export default function OIDCModal({
                     <div className="flex-1">
                       {oidcTestResult.ok ? (
                         <>
-                          <div className="font-medium text-success-500">Connection successful</div>
+                          <div className="font-medium text-success-500">{t('modal.oidc.connectionSuccessful')}</div>
                           <div className="mt-1 text-xs text-garage-text-muted">
-                            <div>Issuer: <span className="font-mono">{oidcTestResult.issuer}</span></div>
+                            <div>{t('modal.oidc.issuerLabel')}: <span className="font-mono">{oidcTestResult.issuer}</span></div>
                             {oidcTestResult.algorithms_supported && oidcTestResult.algorithms_supported.length > 0 && (
-                              <div>Algorithms: <span className="font-mono">{oidcTestResult.algorithms_supported.join(', ')}</span></div>
+                              <div>{t('modal.oidc.algorithmsLabel')}: <span className="font-mono">{oidcTestResult.algorithms_supported.join(', ')}</span></div>
                             )}
                           </div>
                         </>
@@ -379,7 +402,7 @@ export default function OIDCModal({
                         <>
                           <div className="font-medium text-danger-500 mb-1">{t('modal.connectionFailed')}</div>
                           <div className="text-xs text-danger-500">
-                            <div>Code: <span className="font-mono">{oidcTestResult.error}</span></div>
+                            <div>{t('modal.oidc.codeLabel')}: <span className="font-mono">{oidcTestResult.error}</span></div>
                             {oidcTestResult.detail && <div className="mt-0.5">{oidcTestResult.detail}</div>}
                           </div>
                         </>
@@ -404,7 +427,7 @@ export default function OIDCModal({
                 ) : (
                   <>
                     <CheckCircle className="w-4 h-4" />
-                    Test Connection
+                    {t('modal.oidc.testConnection')}
                   </>
                 )}
               </button>
@@ -418,13 +441,13 @@ export default function OIDCModal({
               <div className="flex-1">
                 <h4 className="text-sm font-semibold text-garage-text mb-2">{t('modal.authentikSetupGuide')}</h4>
                 <ol className="list-decimal list-inside space-y-1.5 text-xs text-garage-text-muted">
-                  <li>In Authentik, create a new OAuth2/OIDC Provider</li>
-                  <li>Set Client Type to "Confidential"</li>
-                  <li>Copy the Redirect URI shown above to the provider's configuration</li>
-                  <li>Configure Scopes: openid, profile, email</li>
-                  <li>Copy the Client ID and Client Secret to the fields above</li>
-                  <li>Click "Test Connection" to verify configuration</li>
-                  <li>Save the settings to enable OIDC authentication</li>
+                  <li>{t('modal.oidc.setupStep1')}</li>
+                  <li>{t('modal.oidc.setupStep2')}</li>
+                  <li>{t('modal.oidc.setupStep3')}</li>
+                  <li>{t('modal.oidc.setupStep4')}</li>
+                  <li>{t('modal.oidc.setupStep5')}</li>
+                  <li>{t('modal.oidc.setupStep6')}</li>
+                  <li>{t('modal.oidc.setupStep7')}</li>
                 </ol>
               </div>
             </div>

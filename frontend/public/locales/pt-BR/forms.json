@@ -221,7 +221,9 @@
     "liveLinkDescription": "Configure a integração de telemetria OBD2 do WiCAN",
     "liveLinkSettings": "Configurações do Live Link",
     "loadingUsers": "Carregando usuários...",
-    "localAuth": "Autenticação local",
+    "localAuth": {
+      "title": "Autenticação local"
+    },
     "managedByOidc": "Gerenciado via OIDC",
     "memberDataUnavailable": "Dados do membro indisponíveis",
     "members": "Membros",

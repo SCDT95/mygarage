@@ -221,7 +221,9 @@
     "liveLinkDescription": "Описание Live Link",
     "liveLinkSettings": "Настройки Live Link",
     "loadingUsers": "Загрузка пользователей...",
-    "localAuth": "Локальная аутентификация",
+    "localAuth": {
+      "title": "Локальная аутентификация"
+    },
     "managedByOidc": "Управляется через OIDC",
     "memberDataUnavailable": "Данные участника недоступны",
     "members": "Участники",

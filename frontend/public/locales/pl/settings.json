@@ -220,7 +220,6 @@
   },
   "events": {
     "title": "Powiadomienia o zdarzeniach",
-    "enableServiceFirst": "Włącz co najmniej jedną usługę powiadomień",
     "defLow": {
       "group": "Poziom DEF",
       "label": "Niski poziom DEF",

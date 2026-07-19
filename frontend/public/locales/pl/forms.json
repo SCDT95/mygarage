@@ -221,7 +221,9 @@
     "liveLinkDescription": "Opis Live Link",
     "liveLinkSettings": "Ustawienia Live Link",
     "loadingUsers": "Ładowanie użytkowników...",
-    "localAuth": "Uwierzytelnianie lokalne",
+    "localAuth": {
+      "title": "Uwierzytelnianie lokalne"
+    },
     "managedByOidc": "Zarządzane przez OIDC",
     "memberDataUnavailable": "Dane członka niedostępne",
     "members": "Członkowie",
