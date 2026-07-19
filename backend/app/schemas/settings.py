@@ -11,7 +11,13 @@ class SettingBase(BaseModel):
     value: str | None = Field(None, description="Setting value")
     category: str = Field("general", description="Setting category")
     description: str | None = Field(None, description="Setting description")
-    encrypted: bool = Field(False, description="Whether the value is encrypted")
+    encrypted: bool = Field(
+        False,
+        description=(
+            "Whether the value is sensitive and therefore masked as '********' in "
+            "API responses. Values are NOT encrypted at rest."
+        ),
+    )
 
 
 class SettingCreate(SettingBase):
@@ -26,7 +32,9 @@ class SettingUpdate(BaseModel):
     value: str | None = Field(None, description="Setting value")
     category: str | None = Field(None, description="Setting category")
     description: str | None = Field(None, description="Setting description")
-    encrypted: bool | None = Field(None, description="Whether the value is encrypted")
+    encrypted: bool | None = Field(
+        None, description="Whether the value is sensitive (masked in API responses)"
+    )
 
 
 class SettingResponse(SettingBase):

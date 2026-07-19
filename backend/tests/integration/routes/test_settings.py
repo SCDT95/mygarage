@@ -6,6 +6,26 @@ Tests settings CRUD operations, POI provider management, and system info.
 
 import pytest
 from httpx import AsyncClient
+from sqlalchemy import select
+
+from app.models.settings import Setting
+
+
+async def _set_setting(db_session, key: str, value: str) -> None:
+    """Upsert a single setting row."""
+    result = await db_session.execute(select(Setting).where(Setting.key == key))
+    existing = result.scalar_one_or_none()
+    if existing:
+        existing.value = value
+    else:
+        db_session.add(Setting(key=key, value=value))
+    await db_session.commit()
+
+
+async def _stored_value(db_session, key: str) -> str:
+    """Read a setting straight from the DB, bypassing response masking."""
+    result = await db_session.execute(select(Setting).where(Setting.key == key))
+    return result.scalar_one().value
 
 
 @pytest.mark.integration
@@ -310,3 +330,115 @@ class TestSettingsAdminRoutes:
         )
         # Regular users get 403, admin may get 200 or timeout error
         assert response.status_code in [200, 400, 403]
+
+
+@pytest.mark.integration
+@pytest.mark.asyncio
+class TestSensitiveSettingMasking:
+    """Sensitive settings are masked on read and preserved on write.
+
+    The stored value is plaintext; the protection is that it never leaves the
+    API in a response. Writes accept the mask placeholder as "keep what's
+    stored", so a form can round-trip a masked value without clobbering it.
+    """
+
+    async def test_list_masks_sensitive_values(self, client: AsyncClient, auth_headers, db_session):
+        """Sensitive keys are masked; ordinary keys are returned verbatim."""
+        await _set_setting(db_session, "oidc_client_secret", "real-oidc-secret")
+        await _set_setting(db_session, "tomtom_api_key", "real-tomtom-key")
+        await _set_setting(db_session, "app_name", "MyGarage")
+
+        response = await client.get("/api/settings", headers=auth_headers)
+        assert response.status_code == 200
+        values = {s["key"]: s["value"] for s in response.json()["settings"]}
+
+        assert values["oidc_client_secret"] == "********"
+        assert values["tomtom_api_key"] == "********"
+        assert values["app_name"] == "MyGarage"
+
+    async def test_unset_sensitive_value_stays_empty(
+        self, client: AsyncClient, auth_headers, db_session
+    ):
+        """An unset secret reads as '', not '********' — 'set' stays distinguishable."""
+        await _set_setting(db_session, "gotify_token", "")
+
+        response = await client.get("/api/settings", headers=auth_headers)
+        values = {s["key"]: s["value"] for s in response.json()["settings"]}
+        assert values["gotify_token"] == ""
+
+    async def test_batch_preserves_masked_value(
+        self, client: AsyncClient, auth_headers, db_session
+    ):
+        """Echoing the mask back keeps the stored secret."""
+        await _set_setting(db_session, "telegram_bot_token", "original-token")
+
+        response = await client.post(
+            "/api/settings/batch",
+            headers=auth_headers,
+            json={"settings": {"telegram_bot_token": "********"}},
+        )
+        assert response.status_code == 200
+        assert await _stored_value(db_session, "telegram_bot_token") == "original-token"
+
+    async def test_batch_writes_real_value(self, client: AsyncClient, auth_headers, db_session):
+        """A genuine new secret is written through."""
+        await _set_setting(db_session, "telegram_bot_token", "original-token")
+
+        response = await client.post(
+            "/api/settings/batch",
+            headers=auth_headers,
+            json={"settings": {"telegram_bot_token": "brand-new-token"}},
+        )
+        assert response.status_code == 200
+        assert await _stored_value(db_session, "telegram_bot_token") == "brand-new-token"
+
+    async def test_batch_can_clear_sensitive_value(
+        self, client: AsyncClient, auth_headers, db_session
+    ):
+        """Empty means clear — masking must not make a secret unremovable."""
+        await _set_setting(db_session, "telegram_bot_token", "original-token")
+
+        response = await client.post(
+            "/api/settings/batch",
+            headers=auth_headers,
+            json={"settings": {"telegram_bot_token": ""}},
+        )
+        assert response.status_code == 200
+        assert await _stored_value(db_session, "telegram_bot_token") == ""
+
+    async def test_batch_response_is_masked(self, client: AsyncClient, auth_headers, db_session):
+        """The write response must not echo the secret back either."""
+        response = await client.post(
+            "/api/settings/batch",
+            headers=auth_headers,
+            json={"settings": {"gotify_token": "written-secret"}},
+        )
+        assert response.status_code == 200
+        values = {s["key"]: s["value"] for s in response.json()["settings"]}
+        assert values["gotify_token"] == "********"
+        assert await _stored_value(db_session, "gotify_token") == "written-secret"
+
+    async def test_put_preserves_masked_value(self, client: AsyncClient, auth_headers, db_session):
+        """Single-key PUT honors the same preserve contract."""
+        await _set_setting(db_session, "email_smtp_password", "original-password")
+
+        response = await client.put(
+            "/api/settings/email_smtp_password",
+            headers=auth_headers,
+            json={"value": "********"},
+        )
+        assert response.status_code == 200
+        assert response.json()["value"] == "********"
+        assert await _stored_value(db_session, "email_smtp_password") == "original-password"
+
+    async def test_put_writes_real_value(self, client: AsyncClient, auth_headers, db_session):
+        """Single-key PUT still writes a genuine value."""
+        await _set_setting(db_session, "email_smtp_password", "original-password")
+
+        response = await client.put(
+            "/api/settings/email_smtp_password",
+            headers=auth_headers,
+            json={"value": "new-password"},
+        )
+        assert response.status_code == 200
+        assert await _stored_value(db_session, "email_smtp_password") == "new-password"

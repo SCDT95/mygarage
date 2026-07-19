@@ -9,6 +9,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 - Settings: switching auth mode away from "none" silently failed to save — the admin OIDC endpoints rejected the auth-disabled state, so enabling local or OIDC auth required already being authenticated.
+- Settings: changing an unrelated setting (timezone, debug) no longer rewrites the OIDC configuration, so a failure there can no longer discard the rest of the save.
+
+### Security
+- Settings: sensitive values (OIDC client secret, notification tokens, SMTP password, POI API keys) are masked as `********` in API responses; saving a masked value keeps the stored secret.
 
 ## [3.0.0-rc1] - 2026-07-17
 

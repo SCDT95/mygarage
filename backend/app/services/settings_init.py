@@ -524,6 +524,21 @@ DEFAULT_SETTINGS = {
 }
 
 
+# Settings whose values must never leave the API in a response body.
+#
+# Derived from DEFAULT_SETTINGS so this set and the seeded metadata cannot drift
+# apart. It is deliberately NOT read from the `settings.encrypted` column: that
+# column is only written when a row is first seeded, so rows created or updated
+# through other paths carry stale values (production has an `encrypted` column
+# holding 0, 1, and the string 'false'). Code is the source of truth.
+#
+# The stored value is plaintext — the protection here is response masking, not
+# encryption at rest.
+SENSITIVE_SETTING_KEYS: frozenset[str] = frozenset(
+    key for key, meta in DEFAULT_SETTINGS.items() if meta.get("encrypted")
+)
+
+
 async def initialize_default_settings(db: AsyncSession) -> None:
     """Initialize default settings if they don't exist.
 

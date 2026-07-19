@@ -25,6 +25,8 @@ from app.schemas.settings import (
     SystemInfoResponse,
 )
 from app.services.auth import get_current_admin_user
+from app.services.oidc import MASKED_SECRET_PLACEHOLDER, display_mask_secret
+from app.services.settings_init import SENSITIVE_SETTING_KEYS
 from app.services.settings_service import SettingsService
 from app.utils.logging_utils import sanitize_for_log
 
@@ -34,6 +36,34 @@ router = APIRouter(prefix="/api/settings", tags=["Settings"])
 
 # Track application start time for uptime calculation
 START_TIME = time.time()
+
+
+def _to_response(setting: Setting) -> SettingResponse:
+    """Serialize a Setting, masking the value if the key is sensitive.
+
+    Masking is driven by SENSITIVE_SETTING_KEYS (code), not the row's own
+    `encrypted` column, which drifts. `display_mask_secret` returns "" for an
+    unset value, so callers can still tell "configured" from "not configured".
+    """
+    response = SettingResponse.model_validate(setting)
+    if setting.key in SENSITIVE_SETTING_KEYS:
+        response.value = display_mask_secret(setting.value or "")
+        response.encrypted = True
+    return response
+
+
+def _resolve_write_value(key: str, new_value: str, stored_value: str | None) -> str:
+    """Resolve an incoming value, honoring the mask placeholder as "keep stored".
+
+    A client that read a masked value and saved the form unchanged sends the
+    placeholder back; writing it would replace the secret with literal asterisks.
+    Matching is exact — the placeholder is the only mask these endpoints emit, so
+    a genuine secret that merely starts with '*' is still written normally. An
+    empty string is a real clear, not a preserve.
+    """
+    if key in SENSITIVE_SETTING_KEYS and new_value == MASKED_SECRET_PLACEHOLDER:
+        return stored_value or ""
+    return new_value
 
 
 @router.get("/public", response_model=SettingsListResponse)
@@ -57,7 +87,7 @@ async def get_public_settings(db: AsyncSession = Depends(get_db)):
     settings = result.scalars().all()
 
     return SettingsListResponse(
-        settings=[SettingResponse.model_validate(s) for s in settings],
+        settings=[_to_response(s) for s in settings],
         total=len(settings),
     )
 
@@ -80,7 +110,7 @@ async def list_settings(
     settings = result.scalars().all()
 
     return SettingsListResponse(
-        settings=[SettingResponse.model_validate(s) for s in settings],
+        settings=[_to_response(s) for s in settings],
         total=len(settings),
     )
 
@@ -472,7 +502,7 @@ async def get_setting(
     if not setting:
         raise HTTPException(status_code=404, detail=f"Setting '{key}' not found")
 
-    return SettingResponse.model_validate(setting)
+    return _to_response(setting)
 
 
 @router.post("", response_model=SettingResponse, status_code=201)
@@ -502,7 +532,7 @@ async def create_setting(
     await db.refresh(db_setting)
 
     logger.info("Created setting: %s", sanitize_for_log(setting.key))
-    return SettingResponse.model_validate(db_setting)
+    return _to_response(db_setting)
 
 
 @router.put("/{key}", response_model=SettingResponse)
@@ -531,6 +561,9 @@ async def update_setting(
                 "This exposes your application to unauthorized access. Use with caution!"
             )
 
+    if "value" in update_data:
+        update_data["value"] = _resolve_write_value(key, update_data["value"], setting.value)
+
     for field, value in update_data.items():
         setattr(setting, field, value)
 
@@ -540,7 +573,7 @@ async def update_setting(
     await db.refresh(setting)
 
     logger.info("Updated setting: %s", sanitize_for_log(key))
-    return SettingResponse.model_validate(setting)
+    return _to_response(setting)
 
 
 @router.post("/batch", response_model=SettingsListResponse)
@@ -565,11 +598,15 @@ async def batch_update_settings(
 
         if setting:
             # Update existing
-            setting.value = value
+            setting.value = _resolve_write_value(key, value, setting.value)
             setting.updated_at = dt.datetime.now()
         else:
-            # Create new
-            setting = Setting(key=key, value=value, updated_at=dt.datetime.now())
+            # Create new; nothing stored yet, so a masked placeholder resolves to "".
+            setting = Setting(
+                key=key,
+                value=_resolve_write_value(key, value, None),
+                updated_at=dt.datetime.now(),
+            )
             db.add(setting)
 
         updated_settings.append(setting)
@@ -583,7 +620,7 @@ async def batch_update_settings(
     logger.info("Batch updated %s settings", len(updated_settings))
 
     return SettingsListResponse(
-        settings=[SettingResponse.model_validate(s) for s in updated_settings],
+        settings=[_to_response(s) for s in updated_settings],
         total=len(updated_settings),
     )
 

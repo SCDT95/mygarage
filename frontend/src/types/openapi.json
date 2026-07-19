@@ -11238,7 +11238,7 @@
           },
           "encrypted": {
             "default": false,
-            "description": "Whether the value is encrypted",
+            "description": "Whether the value is sensitive and therefore masked as '********' in API responses. Values are NOT encrypted at rest.",
             "title": "Encrypted",
             "type": "boolean"
           },
@@ -11296,7 +11296,7 @@
           },
           "encrypted": {
             "default": false,
-            "description": "Whether the value is encrypted",
+            "description": "Whether the value is sensitive and therefore masked as '********' in API responses. Values are NOT encrypted at rest.",
             "title": "Encrypted",
             "type": "boolean"
           },
@@ -11366,7 +11366,7 @@
                 "type": "null"
               }
             ],
-            "description": "Whether the value is encrypted",
+            "description": "Whether the value is sensitive (masked in API responses)",
             "title": "Encrypted"
           },
           "value": {

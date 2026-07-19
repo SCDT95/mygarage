@@ -10836,7 +10836,7 @@ export interface components {
             description?: string | null;
             /**
              * Encrypted
-             * @description Whether the value is encrypted
+             * @description Whether the value is sensitive and therefore masked as '********' in API responses. Values are NOT encrypted at rest.
              * @default false
              */
             encrypted: boolean;
@@ -10874,7 +10874,7 @@ export interface components {
             description?: string | null;
             /**
              * Encrypted
-             * @description Whether the value is encrypted
+             * @description Whether the value is sensitive and therefore masked as '********' in API responses. Values are NOT encrypted at rest.
              * @default false
              */
             encrypted: boolean;
@@ -10908,7 +10908,7 @@ export interface components {
             description?: string | null;
             /**
              * Encrypted
-             * @description Whether the value is encrypted
+             * @description Whether the value is sensitive (masked in API responses)
              */
             encrypted?: boolean | null;
             /**

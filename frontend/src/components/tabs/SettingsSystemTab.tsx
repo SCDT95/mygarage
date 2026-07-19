@@ -247,19 +247,34 @@ export default function SettingsSystemTab() {
       }
     }
 
-    await api.put('/auth/oidc/config/admin', {
-      enabled: formData.oidc_enabled === 'true',
-      provider_name: formData.oidc_provider_name,
-      issuer_url: formData.oidc_issuer_url,
-      client_id: formData.oidc_client_id,
-      client_secret: formData.oidc_client_secret,
-      scopes: formData.oidc_scopes,
-      auto_create_users: formData.oidc_auto_create_users === 'true',
-      admin_group: formData.oidc_admin_group,
-      username_claim: formData.oidc_username_claim,
-      email_claim: formData.oidc_email_claim,
-      full_name_claim: formData.oidc_full_name_claim,
-    })
+    // Only touch the OIDC admin endpoint when an OIDC field actually changed.
+    // Saving is auto-triggered by any edit on this tab, so without this guard an
+    // unrelated change (timezone, debug) is blocked whenever the OIDC PUT fails
+    // — and auth_mode rides in the batch below, so a failure there strands the
+    // mode. The PUT still goes FIRST when OIDC is dirty: the provider config
+    // must land before auth_mode flips to 'oidc', or the mode is enabled against
+    // config that never saved.
+    const oidcDirty =
+      loadedFormData === null ||
+      (Object.keys(formData) as Array<keyof typeof formData>).some(
+        (key) => key.startsWith('oidc_') && formData[key] !== loadedFormData[key],
+      )
+
+    if (oidcDirty) {
+      await api.put('/auth/oidc/config/admin', {
+        enabled: formData.oidc_enabled === 'true',
+        provider_name: formData.oidc_provider_name,
+        issuer_url: formData.oidc_issuer_url,
+        client_id: formData.oidc_client_id,
+        client_secret: formData.oidc_client_secret,
+        scopes: formData.oidc_scopes,
+        auto_create_users: formData.oidc_auto_create_users === 'true',
+        admin_group: formData.oidc_admin_group,
+        username_claim: formData.oidc_username_claim,
+        email_claim: formData.oidc_email_claim,
+        full_name_claim: formData.oidc_full_name_claim,
+      })
+    }
 
     await api.post('/settings/batch', { settings: nonOidcSettings })
 
@@ -271,7 +286,7 @@ export default function SettingsSystemTab() {
       })
       setTimeout(() => setMessage(null), 5000)
     }
-  }, [formData])
+  }, [formData, loadedFormData])
 
   // Handle unit preference change
   const handleUnitPreferenceChange = async (system: 'imperial' | 'metric') => {
