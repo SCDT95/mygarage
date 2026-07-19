@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
+import { useTranslation } from 'react-i18next'
 import { X, Download, Eye, FileText, Image as ImageIcon, AlertCircle } from 'lucide-react'
 import { formatDateForDisplay } from '../utils/dateUtils'
 import { toast } from 'sonner'
@@ -14,6 +15,7 @@ interface AttachmentQuickViewProps {
 }
 
 export default function AttachmentQuickView({ recordId, onClose, position }: AttachmentQuickViewProps) {
+  const { t } = useTranslation('vehicles')
   const [attachments, setAttachments] = useState<Attachment[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -27,11 +29,11 @@ export default function AttachmentQuickView({ recordId, onClose, position }: Att
       setAttachments(response.data.attachments)
       setError(null)
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'An error occurred')
+      setError(err instanceof Error ? err.message : t('attachmentQuickView.errorOccurred'))
     } finally {
       setLoading(false)
     }
-  }, [recordId])
+  }, [recordId, t])
 
   useEffect(() => {
     fetchAttachments()
@@ -76,7 +78,7 @@ export default function AttachmentQuickView({ recordId, onClose, position }: Att
       window.URL.revokeObjectURL(url)
       document.body.removeChild(a)
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : 'Failed to download attachment')
+      toast.error(err instanceof Error ? err.message : t('attachmentQuickView.downloadFailed'))
     }
   }
 
@@ -87,10 +89,10 @@ export default function AttachmentQuickView({ recordId, onClose, position }: Att
   }
 
   const formatFileSize = (bytes?: number | null): string => {
-    if (!bytes) return 'Unknown size'
-    if (bytes < 1024) return `${bytes} B`
-    if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`
-    return `${(bytes / 1024 / 1024).toFixed(1)} MB`
+    if (!bytes) return t('attachmentQuickView.unknownSize')
+    if (bytes < 1024) return t('attachmentQuickView.sizeBytes', { size: bytes })
+    if (bytes < 1024 * 1024) return t('attachmentQuickView.sizeKb', { size: (bytes / 1024).toFixed(1) })
+    return t('attachmentQuickView.sizeMb', { size: (bytes / 1024 / 1024).toFixed(1) })
   }
 
   const canPreview = (fileType?: string | null): boolean => {
@@ -118,11 +120,11 @@ export default function AttachmentQuickView({ recordId, onClose, position }: Att
       >
         {/* Header */}
         <div className="flex items-center justify-between p-4 border-b border-garage-border">
-          <h3 className="text-lg font-semibold text-garage-text">Attachments</h3>
+          <h3 className="text-lg font-semibold text-garage-text">{t('attachmentQuickView.title')}</h3>
           <button
             onClick={onClose}
             className="p-1 text-garage-text-muted hover:text-garage-text transition-colors"
-            aria-label="Close"
+            aria-label={t('common:close')}
           >
             <X className="w-5 h-5" />
           </button>
@@ -132,7 +134,7 @@ export default function AttachmentQuickView({ recordId, onClose, position }: Att
         <div className="p-4 overflow-y-auto" style={{ maxHeight: '320px' }}>
           {loading && (
             <div className="text-center py-8 text-garage-text-muted">
-              Loading attachments...
+              {t('attachmentQuickView.loading')}
             </div>
           )}
 
@@ -146,7 +148,7 @@ export default function AttachmentQuickView({ recordId, onClose, position }: Att
           {!loading && !error && attachments.length === 0 && (
             <div className="text-center py-8 text-garage-text-muted">
               <FileText className="w-12 h-12 mx-auto mb-2 opacity-50" />
-              <p>No attachments</p>
+              <p>{t('attachmentQuickView.empty')}</p>
             </div>
           )}
 
@@ -176,8 +178,8 @@ export default function AttachmentQuickView({ recordId, onClose, position }: Att
                       <button
                         onClick={() => setPreviewAttachment(attachment)}
                         className="p-2 text-primary hover:bg-primary/10 rounded transition-colors"
-                        aria-label="Preview"
-                        title="Preview"
+                        aria-label={t('attachmentQuickView.preview')}
+                        title={t('attachmentQuickView.preview')}
                       >
                         <Eye className="w-4 h-4" />
                       </button>
@@ -185,8 +187,8 @@ export default function AttachmentQuickView({ recordId, onClose, position }: Att
                     <button
                       onClick={() => handleDownload(attachment)}
                       className="p-2 text-primary hover:bg-primary/10 rounded transition-colors"
-                      aria-label="Download"
-                      title="Download"
+                      aria-label={t('attachmentQuickView.download')}
+                      title={t('attachmentQuickView.download')}
                     >
                       <Download className="w-4 h-4" />
                     </button>

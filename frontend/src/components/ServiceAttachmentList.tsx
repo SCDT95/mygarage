@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react'
+import { useTranslation } from 'react-i18next'
 import { Download, Trash2, FileText, Image, AlertCircle, Eye } from 'lucide-react'
 import { formatDateForDisplay } from '../utils/dateUtils'
 import { toast } from 'sonner'
@@ -13,6 +14,7 @@ interface ServiceAttachmentListProps {
 }
 
 export default function ServiceAttachmentList({ recordId, refreshTrigger }: ServiceAttachmentListProps) {
+  const { t } = useTranslation('vehicles')
   const [attachments, setAttachments] = useState<Attachment[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -25,9 +27,9 @@ export default function ServiceAttachmentList({ recordId, refreshTrigger }: Serv
       setAttachments(response.data.attachments)
       setError(null)
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'An error occurred')
+      setError(err instanceof Error ? err.message : t('serviceAttachments.errorOccurred'))
     }
-  }, [recordId])
+  }, [recordId, t])
 
   useEffect(() => {
     setLoading(true)
@@ -35,7 +37,7 @@ export default function ServiceAttachmentList({ recordId, refreshTrigger }: Serv
   }, [fetchAttachments, refreshTrigger])
 
   const handleDelete = async (attachmentId: number) => {
-    if (!confirm('Are you sure you want to delete this attachment?')) {
+    if (!confirm(t('serviceAttachments.confirmDelete'))) {
       return
     }
 
@@ -44,7 +46,7 @@ export default function ServiceAttachmentList({ recordId, refreshTrigger }: Serv
       await api.delete(`/attachments/${attachmentId}`)
       await fetchAttachments()
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : 'Failed to delete attachment')
+      toast.error(err instanceof Error ? err.message : t('serviceAttachments.deleteFailed'))
     } finally {
       setDeletingId(null)
     }
@@ -65,7 +67,7 @@ export default function ServiceAttachmentList({ recordId, refreshTrigger }: Serv
       window.URL.revokeObjectURL(url)
       document.body.removeChild(a)
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : 'Failed to download attachment')
+      toast.error(err instanceof Error ? err.message : t('serviceAttachments.downloadFailed'))
     }
   }
 
@@ -76,16 +78,16 @@ export default function ServiceAttachmentList({ recordId, refreshTrigger }: Serv
   }
 
   const formatFileSize = (bytes?: number | null): string => {
-    if (!bytes) return 'Unknown size'
-    if (bytes < 1024) return `${bytes} B`
-    if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`
-    return `${(bytes / 1024 / 1024).toFixed(1)} MB`
+    if (!bytes) return t('serviceAttachments.unknownSize')
+    if (bytes < 1024) return t('serviceAttachments.sizeBytes', { size: bytes })
+    if (bytes < 1024 * 1024) return t('serviceAttachments.sizeKb', { size: (bytes / 1024).toFixed(1) })
+    return t('serviceAttachments.sizeMb', { size: (bytes / 1024 / 1024).toFixed(1) })
   }
 
   if (loading) {
     return (
       <div className="text-center py-8 text-garage-text-muted">
-        Loading attachments...
+        {t('serviceAttachments.loading')}
       </div>
     )
   }
@@ -103,7 +105,7 @@ export default function ServiceAttachmentList({ recordId, refreshTrigger }: Serv
     return (
       <div className="text-center py-8 text-garage-text-muted">
         <FileText className="w-12 h-12 mx-auto mb-2 opacity-50" />
-        <p>No attachments yet</p>
+        <p>{t('serviceAttachments.empty')}</p>
       </div>
     )
   }
@@ -146,8 +148,8 @@ export default function ServiceAttachmentList({ recordId, refreshTrigger }: Serv
               <button
                 onClick={() => setPreviewAttachment(attachment)}
                 className="p-2 text-primary hover:bg-primary/10 rounded transition-colors"
-                aria-label="Preview"
-                title="Preview"
+                aria-label={t('serviceAttachments.preview')}
+                title={t('serviceAttachments.preview')}
               >
                 <Eye className="w-4 h-4" />
               </button>
@@ -155,8 +157,8 @@ export default function ServiceAttachmentList({ recordId, refreshTrigger }: Serv
             <button
               onClick={() => handleDownload(attachment)}
               className="p-2 text-primary hover:bg-primary/10 rounded transition-colors"
-              aria-label="Download"
-              title="Download"
+              aria-label={t('serviceAttachments.download')}
+              title={t('serviceAttachments.download')}
             >
               <Download className="w-4 h-4" />
             </button>
@@ -164,8 +166,8 @@ export default function ServiceAttachmentList({ recordId, refreshTrigger }: Serv
               onClick={() => handleDelete(attachment.id)}
               disabled={deletingId === attachment.id}
               className="p-2 text-danger hover:bg-danger/10 rounded transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-              aria-label="Delete"
-              title="Delete"
+              aria-label={t('common:delete')}
+              title={t('common:delete')}
             >
               <Trash2 className="w-4 h-4" />
             </button>

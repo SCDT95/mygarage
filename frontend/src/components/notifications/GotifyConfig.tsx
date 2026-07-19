@@ -45,10 +45,9 @@ export function GotifyConfig({
           <span className="ml-2 text-sm text-garage-text font-medium">{t('gotify.enable')}</span>
         </label>
 
-        {/* {t('gotify.serverUrl')} */}
-        <div>
+                <div>
           <label htmlFor="gotify_server" className="block text-sm font-medium text-garage-text mb-1">
-            Server URL
+            {t('gotify.serverUrl')}
           </label>
           <input
             type="url"

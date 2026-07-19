@@ -51,7 +51,6 @@ export function EmailConfig({
           <span className="ml-2 text-sm text-garage-text font-medium">{t('email.enable')}</span>
         </label>
 
-        {/* {t('email.smtpHost')} */}
         <div className="grid grid-cols-3 gap-3">
           <div className="col-span-2">
             <label htmlFor="email_smtp_host" className="block text-sm font-medium text-garage-text mb-1">
@@ -83,7 +82,6 @@ export function EmailConfig({
           </div>
         </div>
 
-        {/* {t('email.smtpUsername')} */}
         <div>
           <label htmlFor="email_smtp_user" className="block text-sm font-medium text-garage-text mb-1">
             {t('email.smtpUsername')}
@@ -99,7 +97,6 @@ export function EmailConfig({
           />
         </div>
 
-        {/* {t('email.smtpPassword')} */}
         <div>
           <label htmlFor="email_smtp_password" className="block text-sm font-medium text-garage-text mb-1">
             {t('email.misc.smtpPasswordLabel')}
@@ -130,7 +127,6 @@ export function EmailConfig({
           <span className="ml-2 text-sm text-garage-text">{t('email.misc.useStartTls')}</span>
         </label>
 
-        {/* {t('email.fromAddress')} */}
         <div>
           <label htmlFor="email_from" className="block text-sm font-medium text-garage-text mb-1">
             {t('email.fromAddress')}
@@ -146,7 +142,6 @@ export function EmailConfig({
           />
         </div>
 
-        {/* {t('email.toAddress')} */}
         <div>
           <label htmlFor="email_to" className="block text-sm font-medium text-garage-text mb-1">
             {t('email.toAddress')}

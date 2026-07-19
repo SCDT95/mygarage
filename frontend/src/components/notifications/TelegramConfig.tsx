@@ -45,7 +45,6 @@ export function TelegramConfig({
           <span className="ml-2 text-sm text-garage-text font-medium">{t('telegram.enable')}</span>
         </label>
 
-        {/* {t('telegram.botToken')} */}
         <div>
           <label htmlFor="telegram_bot_token" className="block text-sm font-medium text-garage-text mb-1">
             {t('telegram.botToken')}

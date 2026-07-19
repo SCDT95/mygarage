@@ -310,11 +310,10 @@ export default function SpotRentalList({ vin }: SpotRentalListProps) {
                         </div>
                       </div>
 
-                      {/* {t('spotRentalList.lastBilling')} Entry */}
-                      {lastBilling && (
+                                            {lastBilling && (
                         <div className="border-t border-garage-border pt-2">
                           <p className="text-xs text-garage-text-muted mb-2">
-                            Last Billing ({formatDateForDisplay(lastBilling.billing_date)})
+                            {t('spotRentalList.lastBilling')} ({formatDateForDisplay(lastBilling.billing_date)})
                           </p>
                           <div className="grid grid-cols-4 gap-2">
                             <div>

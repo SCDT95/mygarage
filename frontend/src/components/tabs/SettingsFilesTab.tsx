@@ -175,10 +175,9 @@ export default function SettingsFilesTab() {
             </p>
           </div>
 
-          {/* {t('files.allowedPhotoTypes')} */}
-          <div>
+                    <div>
             <label className="block text-sm font-medium text-garage-text mb-2">
-              Allowed Photo Types
+              {t('files.allowedPhotoTypes')}
             </label>
             <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
               {['jpg', 'jpeg', 'png', 'webp', 'gif', 'bmp'].map((type) => (
@@ -201,10 +200,9 @@ export default function SettingsFilesTab() {
             </p>
           </div>
 
-          {/* {t('files.allowedAttachmentTypes')} */}
-          <div>
+                    <div>
             <label className="block text-sm font-medium text-garage-text mb-2">
-              Allowed Attachment Types
+              {t('files.allowedAttachmentTypes')}
             </label>
             <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
               {['pdf', 'jpg', 'jpeg', 'png', 'doc', 'docx', 'xls', 'xlsx', 'txt'].map((type) => (

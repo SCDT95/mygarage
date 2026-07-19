@@ -13,8 +13,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - i18n: the vehicle wizard, transfer and remove modals, window-sticker upload, reports panel, and calendar are now translatable (~165 strings).
 - i18n: family relationship labels (Spouse/Partner, Child, Parent, …) are now translatable wherever they appear — sharing, transfers, user management, and the family member card.
 - i18n: the photo gallery, document upload, line-item editor (including all 82 service autocomplete suggestions), shop finder, widget-key modal, and the Telegram/email notification setup are now translatable (~209 strings).
+- i18n: the attachment lists and quick view, window-sticker test page, family member card, widget-keys panel, and the Slack/Discord notification setup are now translatable (~124 strings).
 
 ### Fixed
+- Dates: most dates rendered in US English regardless of language — the shared date formatter defaulted to `en-US` and the majority of callers relied on that default. Dates, and the "created/last used X ago" timestamps on API keys, now follow the selected language.
+- Notification and file settings: several field labels (Server URL, User Key, Allowed Photo/Attachment Types, Last Billing) rendered in English even though their translations already existed — the translation call had been commented out beside the hardcoded text.
 - Numbers: thousands separators followed the browser's locale rather than the language selected in the app, so a German user could still see `12,345` instead of `12.345`. All unit and telemetry formatting now follows the selected language.
 - Shop finder: distances and the search-radius options were always in miles regardless of the unit preference. Metric users now get kilometres, and the radius sent to the API matches what they picked.
 - Calendar: the month grid and weekday headers rendered in English for every language — the calendar had no locale set. Dates, month names and number separators now follow the selected language, and update on a live language switch.

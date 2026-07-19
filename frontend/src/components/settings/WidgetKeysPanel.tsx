@@ -1,6 +1,8 @@
 import { useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { Key, Plus, Trash2, AlertCircle } from 'lucide-react'
 import { formatDistanceToNow } from 'date-fns'
+import { getDateFnsLocale } from '@/utils/dateUtils'
 import {
   isAuthDisabledError,
   useRevokeWidgetKey,
@@ -13,22 +15,9 @@ import type { WidgetKeySummary } from '@/types/widgetKey'
 const STALE_THRESHOLD_DAYS = 90
 const STALE_THRESHOLD_MS = STALE_THRESHOLD_DAYS * 24 * 60 * 60 * 1000
 
-function formatRelative(value: string | null | undefined): string {
-  const d = parseAPITimestamp(value)
-  return d ? formatDistanceToNow(d, { addSuffix: true }) : 'never'
-}
-
 function isStale(lastUsedAt: string | null | undefined): boolean {
   const d = parseAPITimestamp(lastUsedAt)
   return d != null && Date.now() - d.getTime() > STALE_THRESHOLD_MS
-}
-
-function scopeLabel(key: WidgetKeySummary): string {
-  if (key.scope === 'selected_vins') {
-    const count = key.allowed_vins?.length ?? 0
-    return `${count} vehicle${count === 1 ? '' : 's'}`
-  }
-  return 'All vehicles'
 }
 
 /**
@@ -36,12 +25,25 @@ function scopeLabel(key: WidgetKeySummary): string {
  * Integrations tab; a key here IS the integration with external dashboards.
  */
 export default function WidgetKeysPanel(): React.ReactElement {
+  const { t } = useTranslation('settings')
   const [modalOpen, setModalOpen] = useState(false)
   const [pendingRevokeId, setPendingRevokeId] = useState<number | null>(null)
   const keysQuery = useWidgetKeys()
   const revokeMutation = useRevokeWidgetKey()
 
   const disabledByAuthMode = isAuthDisabledError(keysQuery.error)
+
+  function formatRelative(value: string | null | undefined): string {
+    const d = parseAPITimestamp(value)
+    return d ? formatDistanceToNow(d, { addSuffix: true, locale: getDateFnsLocale() }) : t('widgetKeys.panel.never')
+  }
+
+  function scopeLabel(key: WidgetKeySummary): string {
+    if (key.scope === 'selected_vins') {
+      return t('widgetKeys.panel.vehicleCount', { count: key.allowed_vins?.length ?? 0 })
+    }
+    return t('widgetKeys.panel.scopeAll')
+  }
 
   async function handleRevoke(id: number): Promise<void> {
     setPendingRevokeId(id)
@@ -58,10 +60,11 @@ export default function WidgetKeysPanel(): React.ReactElement {
         <div className="flex items-start gap-3">
           <Key className="mt-0.5 h-5 w-5 text-garage-text-muted" />
           <div>
-            <h3 className="text-base font-semibold text-garage-text">API Keys</h3>
+            <h3 className="text-base font-semibold text-garage-text">
+              {t('widgetKeys.panel.title')}
+            </h3>
             <p className="mt-0.5 text-sm text-garage-text-muted">
-              Read-only API keys for external integrations. Each key grants access to the
-              vehicles you select.
+              {t('widgetKeys.panel.description')}
             </p>
           </div>
         </div>
@@ -72,7 +75,7 @@ export default function WidgetKeysPanel(): React.ReactElement {
           className="btn btn-primary inline-flex items-center gap-1 rounded-lg px-3 py-2 text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed"
         >
           <Plus className="h-4 w-4" />
-          New Key
+          {t('widgetKeys.panel.newKey')}
         </button>
       </header>
 
@@ -80,17 +83,16 @@ export default function WidgetKeysPanel(): React.ReactElement {
         <div className="flex items-start gap-3 rounded-lg border border-warning-500/40 bg-warning-500/10 p-4 text-sm text-warning-500">
           <AlertCircle className="h-5 w-5 flex-shrink-0" />
           <div>
-            <p className="font-medium">API keys require authenticated users.</p>
+            <p className="font-medium">{t('widgetKeys.panel.authRequiredLabel')}</p>
             <p className="mt-1">
-              Switch auth mode to <code>local</code> or <code>oidc</code> in the system
-              settings to enable.
+              {t('widgetKeys.panel.authRequiredDesc', { localMode: 'local', oidcMode: 'oidc' })}
             </p>
           </div>
         </div>
       ) : keysQuery.isLoading ? (
-        <p className="text-sm text-garage-text-muted">Loading keys…</p>
+        <p className="text-sm text-garage-text-muted">{t('widgetKeys.panel.loadingKeys')}</p>
       ) : keysQuery.isError ? (
-        <p className="text-sm text-danger-500">Couldn&apos;t load keys. Try refreshing.</p>
+        <p className="text-sm text-danger-500">{t('widgetKeys.panel.loadError')}</p>
       ) : keysQuery.data && keysQuery.data.keys.length > 0 ? (
         <ul className="divide-y divide-garage-border overflow-hidden rounded-lg border border-garage-border">
           {keysQuery.data.keys.map((k) => {
@@ -106,17 +108,29 @@ export default function WidgetKeysPanel(): React.ReactElement {
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2">
                     <span className="font-medium text-garage-text">{k.name}</span>
-                    {revoked && <span className="badge badge-neutral">revoked</span>}
-                    {stale && <span className="badge badge-warning">stale</span>}
+                    {revoked && (
+                      <span className="badge badge-neutral">
+                        {t('widgetKeys.panel.revokedBadge')}
+                      </span>
+                    )}
+                    {stale && (
+                      <span className="badge badge-warning">
+                        {t('widgetKeys.panel.staleBadge')}
+                      </span>
+                    )}
                   </div>
                   <div className="mt-1 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-garage-text-muted">
                     <code>{k.key_prefix}…</code>
                     <span>{scopeLabel(k)}</span>
-                    <span>created {formatRelative(k.created_at)}</span>
+                    <span>
+                      {t('widgetKeys.panel.createdAgo', { when: formatRelative(k.created_at) })}
+                    </span>
                     <span>
                       {k.last_used_at
-                        ? `last used ${formatRelative(k.last_used_at)}`
-                        : 'never used'}
+                        ? t('widgetKeys.panel.lastUsedAgo', {
+                            when: formatRelative(k.last_used_at),
+                          })
+                        : t('widgetKeys.panel.neverUsed')}
                     </span>
                   </div>
                 </div>
@@ -128,7 +142,9 @@ export default function WidgetKeysPanel(): React.ReactElement {
                     className="inline-flex items-center gap-1 rounded-lg border border-danger-500/40 bg-danger-500/10 px-2.5 py-1.5 text-xs font-medium text-danger-500 hover:bg-danger-500/20 disabled:opacity-50"
                   >
                     <Trash2 className="h-3.5 w-3.5" />
-                    {pendingRevokeId === k.id ? 'Revoking…' : 'Revoke'}
+                    {pendingRevokeId === k.id
+                      ? t('widgetKeys.panel.revoking')
+                      : t('widgetKeys.panel.revoke')}
                   </button>
                 )}
               </li>
@@ -136,9 +152,7 @@ export default function WidgetKeysPanel(): React.ReactElement {
           })}
         </ul>
       ) : (
-        <p className="text-sm text-garage-text-muted">
-          No API keys yet. Create one to start polling your garage from a dashboard.
-        </p>
+        <p className="text-sm text-garage-text-muted">{t('widgetKeys.panel.noKeysYet')}</p>
       )}
 
       <CreateWidgetKeyModal isOpen={modalOpen} onClose={() => setModalOpen(false)} />

@@ -80,56 +80,6 @@
   "text": "Close preview"
  },
  {
-  "file": "src/components/AttachmentQuickView.tsx",
-  "kind": "field:message",
-  "text": "An error occurred"
- },
- {
-  "file": "src/components/AttachmentQuickView.tsx",
-  "kind": "field:message",
-  "text": "Failed to download attachment"
- },
- {
-  "file": "src/components/AttachmentQuickView.tsx",
-  "kind": "jsx-text",
-  "text": "Attachments"
- },
- {
-  "file": "src/components/AttachmentQuickView.tsx",
-  "kind": "jsx-text",
-  "text": "Loading attachments..."
- },
- {
-  "file": "src/components/AttachmentQuickView.tsx",
-  "kind": "jsx-text",
-  "text": "No attachments"
- },
- {
-  "file": "src/components/AttachmentQuickView.tsx",
-  "kind": "prop:aria-label",
-  "text": "Close"
- },
- {
-  "file": "src/components/AttachmentQuickView.tsx",
-  "kind": "prop:aria-label",
-  "text": "Download"
- },
- {
-  "file": "src/components/AttachmentQuickView.tsx",
-  "kind": "prop:aria-label",
-  "text": "Preview"
- },
- {
-  "file": "src/components/AttachmentQuickView.tsx",
-  "kind": "prop:title",
-  "text": "Download"
- },
- {
-  "file": "src/components/AttachmentQuickView.tsx",
-  "kind": "prop:title",
-  "text": "Preview"
- },
- {
   "file": "src/components/AuthPageLayout.tsx",
   "kind": "jsx-text",
   "text": "Garage"
@@ -233,71 +183,6 @@
   "file": "src/components/ExportMenu.tsx",
   "kind": "jsx-text",
   "text": "Export"
- },
- {
-  "file": "src/components/FamilyMemberCard.tsx",
-  "kind": "jsx-text",
-  "text": "Admin"
- },
- {
-  "file": "src/components/FamilyMemberCard.tsx",
-  "kind": "jsx-text",
-  "text": "Inactive"
- },
- {
-  "file": "src/components/FamilyMemberCard.tsx",
-  "kind": "jsx-text",
-  "text": "Last Service"
- },
- {
-  "file": "src/components/FamilyMemberCard.tsx",
-  "kind": "jsx-text",
-  "text": "Next Maintenance"
- },
- {
-  "file": "src/components/FamilyMemberCard.tsx",
-  "kind": "jsx-text",
-  "text": "No maintenance scheduled"
- },
- {
-  "file": "src/components/FamilyMemberCard.tsx",
-  "kind": "jsx-text",
-  "text": "No service records"
- },
- {
-  "file": "src/components/FamilyMemberCard.tsx",
-  "kind": "jsx-text",
-  "text": "No vehicles"
- },
- {
-  "file": "src/components/FamilyMemberCard.tsx",
-  "kind": "jsx-text",
-  "text": "Vehicle"
- },
- {
-  "file": "src/components/FamilyMemberCard.tsx",
-  "kind": "prop:title",
-  "text": "Delete user"
- },
- {
-  "file": "src/components/FamilyMemberCard.tsx",
-  "kind": "prop:title",
-  "text": "Edit user"
- },
- {
-  "file": "src/components/FamilyMemberCard.tsx",
-  "kind": "prop:title",
-  "text": "Move down"
- },
- {
-  "file": "src/components/FamilyMemberCard.tsx",
-  "kind": "prop:title",
-  "text": "Move up"
- },
- {
-  "file": "src/components/FamilyMemberCard.tsx",
-  "kind": "prop:title",
-  "text": "Reset password"
  },
  {
   "file": "src/components/FuelRecordForm.tsx",
@@ -560,56 +445,6 @@
   "text": "e.g., Took road trip to the mountains"
  },
  {
-  "file": "src/components/notifications/DiscordConfig.tsx",
-  "kind": "jsx-text",
-  "text": "Click \"Create Webhook\""
- },
- {
-  "file": "src/components/notifications/DiscordConfig.tsx",
-  "kind": "jsx-text",
-  "text": "Copy the webhook URL"
- },
- {
-  "file": "src/components/notifications/DiscordConfig.tsx",
-  "kind": "jsx-text",
-  "text": "Create a webhook in your Discord channel settings"
- },
- {
-  "file": "src/components/notifications/DiscordConfig.tsx",
-  "kind": "jsx-text",
-  "text": "Discord Configuration"
- },
- {
-  "file": "src/components/notifications/DiscordConfig.tsx",
-  "kind": "jsx-text",
-  "text": "Discord Webhooks Guide"
- },
- {
-  "file": "src/components/notifications/DiscordConfig.tsx",
-  "kind": "jsx-text",
-  "text": "Right-click on the channel you want notifications in"
- },
- {
-  "file": "src/components/notifications/DiscordConfig.tsx",
-  "kind": "jsx-text",
-  "text": "Select \"Edit Channel\" &gt; \"Integrations\""
- },
- {
-  "file": "src/components/notifications/DiscordConfig.tsx",
-  "kind": "jsx-text",
-  "text": "Send notifications to a Discord channel"
- },
- {
-  "file": "src/components/notifications/DiscordConfig.tsx",
-  "kind": "jsx-text",
-  "text": "To create a Discord webhook:"
- },
- {
-  "file": "src/components/notifications/DiscordConfig.tsx",
-  "kind": "jsx-text",
-  "text": "Webhook URL"
- },
- {
   "file": "src/components/notifications/GotifyConfig.tsx",
   "kind": "jsx-text",
   "text": "Create an application in Gotify and copy the token"
@@ -628,11 +463,6 @@
   "file": "src/components/notifications/GotifyConfig.tsx",
   "kind": "jsx-text",
   "text": "Self-hosted push notification server"
- },
- {
-  "file": "src/components/notifications/GotifyConfig.tsx",
-  "kind": "jsx-text",
-  "text": "Server URL"
  },
  {
   "file": "src/components/notifications/NotificationSubTabs.tsx",
@@ -687,11 +517,6 @@
  {
   "file": "src/components/notifications/NtfyConfig.tsx",
   "kind": "jsx-text",
-  "text": "Server URL"
- },
- {
-  "file": "src/components/notifications/NtfyConfig.tsx",
-  "kind": "jsx-text",
   "text": "Subscribe to this topic in your ntfy app to receive notifications"
  },
  {
@@ -733,61 +558,6 @@
   "file": "src/components/notifications/PushoverConfig.tsx",
   "kind": "jsx-text",
   "text": "Pushover requires a one-time $5 purchase per platform (iOS, Android, Desktop). Visit pushover.net to set up your account and create an application."
- },
- {
-  "file": "src/components/notifications/PushoverConfig.tsx",
-  "kind": "jsx-text",
-  "text": "User Key"
- },
- {
-  "file": "src/components/notifications/SlackConfig.tsx",
-  "kind": "jsx-text",
-  "text": "Copy the webhook URL"
- },
- {
-  "file": "src/components/notifications/SlackConfig.tsx",
-  "kind": "jsx-text",
-  "text": "Create a new webhook and select a channel"
- },
- {
-  "file": "src/components/notifications/SlackConfig.tsx",
-  "kind": "jsx-text",
-  "text": "Create an Incoming Webhook in your Slack workspace"
- },
- {
-  "file": "src/components/notifications/SlackConfig.tsx",
-  "kind": "jsx-text",
-  "text": "Go to your Slack workspace settings"
- },
- {
-  "file": "src/components/notifications/SlackConfig.tsx",
-  "kind": "jsx-text",
-  "text": "Navigate to Apps &gt; Incoming Webhooks"
- },
- {
-  "file": "src/components/notifications/SlackConfig.tsx",
-  "kind": "jsx-text",
-  "text": "Send notifications to a Slack channel"
- },
- {
-  "file": "src/components/notifications/SlackConfig.tsx",
-  "kind": "jsx-text",
-  "text": "Slack Configuration"
- },
- {
-  "file": "src/components/notifications/SlackConfig.tsx",
-  "kind": "jsx-text",
-  "text": "Slack Webhooks Documentation"
- },
- {
-  "file": "src/components/notifications/SlackConfig.tsx",
-  "kind": "jsx-text",
-  "text": "To create a Slack webhook:"
- },
- {
-  "file": "src/components/notifications/SlackConfig.tsx",
-  "kind": "jsx-text",
-  "text": "Webhook URL"
  },
  {
   "file": "src/components/OdometerRecordForm.tsx",
@@ -970,116 +740,6 @@
   "text": "Pending"
  },
  {
-  "file": "src/components/ServiceAttachmentList.tsx",
-  "kind": "dialog",
-  "text": "Are you sure you want to delete this attachment?"
- },
- {
-  "file": "src/components/ServiceAttachmentList.tsx",
-  "kind": "field:message",
-  "text": "An error occurred"
- },
- {
-  "file": "src/components/ServiceAttachmentList.tsx",
-  "kind": "field:message",
-  "text": "Failed to delete attachment"
- },
- {
-  "file": "src/components/ServiceAttachmentList.tsx",
-  "kind": "field:message",
-  "text": "Failed to download attachment"
- },
- {
-  "file": "src/components/ServiceAttachmentList.tsx",
-  "kind": "jsx-text",
-  "text": "Loading attachments..."
- },
- {
-  "file": "src/components/ServiceAttachmentList.tsx",
-  "kind": "jsx-text",
-  "text": "No attachments yet"
- },
- {
-  "file": "src/components/ServiceAttachmentList.tsx",
-  "kind": "prop:aria-label",
-  "text": "Delete"
- },
- {
-  "file": "src/components/ServiceAttachmentList.tsx",
-  "kind": "prop:aria-label",
-  "text": "Download"
- },
- {
-  "file": "src/components/ServiceAttachmentList.tsx",
-  "kind": "prop:aria-label",
-  "text": "Preview"
- },
- {
-  "file": "src/components/ServiceAttachmentList.tsx",
-  "kind": "prop:title",
-  "text": "Delete"
- },
- {
-  "file": "src/components/ServiceAttachmentList.tsx",
-  "kind": "prop:title",
-  "text": "Download"
- },
- {
-  "file": "src/components/ServiceAttachmentList.tsx",
-  "kind": "prop:title",
-  "text": "Preview"
- },
- {
-  "file": "src/components/ServiceVisitAttachmentList.tsx",
-  "kind": "dialog",
-  "text": "Are you sure you want to delete this attachment?"
- },
- {
-  "file": "src/components/ServiceVisitAttachmentList.tsx",
-  "kind": "field:message",
-  "text": "An error occurred"
- },
- {
-  "file": "src/components/ServiceVisitAttachmentList.tsx",
-  "kind": "field:message",
-  "text": "Failed to delete attachment"
- },
- {
-  "file": "src/components/ServiceVisitAttachmentList.tsx",
-  "kind": "field:message",
-  "text": "Failed to download attachment"
- },
- {
-  "file": "src/components/ServiceVisitAttachmentList.tsx",
-  "kind": "jsx-text",
-  "text": "Loading attachments..."
- },
- {
-  "file": "src/components/ServiceVisitAttachmentList.tsx",
-  "kind": "jsx-text",
-  "text": "No attachments"
- },
- {
-  "file": "src/components/ServiceVisitAttachmentList.tsx",
-  "kind": "prop:aria-label",
-  "text": "Delete"
- },
- {
-  "file": "src/components/ServiceVisitAttachmentList.tsx",
-  "kind": "prop:aria-label",
-  "text": "Download"
- },
- {
-  "file": "src/components/ServiceVisitAttachmentList.tsx",
-  "kind": "prop:title",
-  "text": "Delete"
- },
- {
-  "file": "src/components/ServiceVisitAttachmentList.tsx",
-  "kind": "prop:title",
-  "text": "Download"
- },
- {
   "file": "src/components/ServiceVisitAttachmentUpload.tsx",
   "kind": "field:message",
   "text": "Failed to upload file"
@@ -1088,51 +748,6 @@
   "file": "src/components/ServiceVisitAttachmentUpload.tsx",
   "kind": "prop:aria-label",
   "text": "Cancel"
- },
- {
-  "file": "src/components/settings/WidgetKeysPanel.tsx",
-  "kind": "jsx-text",
-  "text": "API Keys"
- },
- {
-  "file": "src/components/settings/WidgetKeysPanel.tsx",
-  "kind": "jsx-text",
-  "text": "API keys require authenticated users."
- },
- {
-  "file": "src/components/settings/WidgetKeysPanel.tsx",
-  "kind": "jsx-text",
-  "text": "Couldn&apos;t load keys. Try refreshing."
- },
- {
-  "file": "src/components/settings/WidgetKeysPanel.tsx",
-  "kind": "jsx-text",
-  "text": "in the system settings to enable."
- },
- {
-  "file": "src/components/settings/WidgetKeysPanel.tsx",
-  "kind": "jsx-text",
-  "text": "Loading keys…"
- },
- {
-  "file": "src/components/settings/WidgetKeysPanel.tsx",
-  "kind": "jsx-text",
-  "text": "New Key"
- },
- {
-  "file": "src/components/settings/WidgetKeysPanel.tsx",
-  "kind": "jsx-text",
-  "text": "No API keys yet. Create one to start polling your garage from a dashboard."
- },
- {
-  "file": "src/components/settings/WidgetKeysPanel.tsx",
-  "kind": "jsx-text",
-  "text": "Read-only API keys for external integrations. Each key grants access to the vehicles you select."
- },
- {
-  "file": "src/components/settings/WidgetKeysPanel.tsx",
-  "kind": "jsx-text",
-  "text": "Switch auth mode to"
  },
  {
   "file": "src/components/SpotRentalForm.tsx",
@@ -1213,16 +828,6 @@
   "file": "src/components/tabs/SettingsBackupTab.tsx",
   "kind": "jsx-text",
   "text": "Safety"
- },
- {
-  "file": "src/components/tabs/SettingsFilesTab.tsx",
-  "kind": "jsx-text",
-  "text": "Allowed Attachment Types"
- },
- {
-  "file": "src/components/tabs/SettingsFilesTab.tsx",
-  "kind": "jsx-text",
-  "text": "Allowed Photo Types"
  },
  {
   "file": "src/components/tabs/SettingsFilesTab.tsx",
@@ -1608,86 +1213,6 @@
   "file": "src/pages/VehicleEdit.tsx",
   "kind": "prop:placeholder",
   "text": "Toyota"
- },
- {
-  "file": "src/pages/WindowStickerTest.tsx",
-  "kind": "jsx-text",
-  "text": "Auto-detect"
- },
- {
-  "file": "src/pages/WindowStickerTest.tsx",
-  "kind": "jsx-text",
-  "text": "Base MSRP:"
- },
- {
-  "file": "src/pages/WindowStickerTest.tsx",
-  "kind": "jsx-text",
-  "text": "Environmental Ratings"
- },
- {
-  "file": "src/pages/WindowStickerTest.tsx",
-  "kind": "jsx-text",
-  "text": "Extracted VIN:"
- },
- {
-  "file": "src/pages/WindowStickerTest.tsx",
-  "kind": "jsx-text",
-  "text": "GHG Rating"
- },
- {
-  "file": "src/pages/WindowStickerTest.tsx",
-  "kind": "jsx-text",
-  "text": "Individual Options"
- },
- {
-  "file": "src/pages/WindowStickerTest.tsx",
-  "kind": "jsx-text",
-  "text": "Pricing"
- },
- {
-  "file": "src/pages/WindowStickerTest.tsx",
-  "kind": "jsx-text",
-  "text": "Raw Extracted Text"
- },
- {
-  "file": "src/pages/WindowStickerTest.tsx",
-  "kind": "jsx-text",
-  "text": "Smog Rating"
- },
- {
-  "file": "src/pages/WindowStickerTest.tsx",
-  "kind": "jsx-text",
-  "text": "Total MSRP:"
- },
- {
-  "file": "src/pages/WindowStickerTest.tsx",
-  "kind": "jsx-text",
-  "text": "Validation Warnings"
- },
- {
-  "file": "src/pages/WindowStickerTest.tsx",
-  "kind": "jsx-text",
-  "text": "Vehicle Details"
- },
- {
-  "file": "src/pages/WindowStickerTest.tsx",
-  "kind": "jsx-text",
-  "text": "Warranty"
- },
- {
-  "file": "src/pages/WindowStickerTest.tsx",
-  "kind": "prop:title",
-  "text": "Copy to clipboard"
- },
- {
-  "file": "src/pages/WindowStickerTest.tsx",
-  "kind": "toast",
-  "text": "Copied to clipboard"
- },
- {
-  "file": "src/pages/WindowStickerTest.tsx",
-  "kind": "toast",
-  "text": "Extraction completed successfully"
  },
  {
   "file": "src/schemas/auth.ts",

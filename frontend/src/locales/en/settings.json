@@ -200,11 +200,37 @@
   },
   "slack": {
     "enable": "Enable Slack notifications",
-    "webhookUrl": "Webhook URL"
+    "webhookUrl": "Webhook URL",
+    "misc": {
+      "title": "Slack Configuration",
+      "subtitle": "Send notifications to a Slack channel",
+      "webhookUrlHint": "Create an Incoming Webhook in your Slack workspace",
+      "sending": "Sending...",
+      "testConnection": "Test Connection",
+      "setupTitle": "To create a Slack webhook:",
+      "step1": "Go to your Slack workspace settings",
+      "step2": "Navigate to Apps > Incoming Webhooks",
+      "step3": "Create a new webhook and select a channel",
+      "step4": "Copy the webhook URL",
+      "docsLink": "Slack Webhooks Documentation"
+    }
   },
   "discord": {
     "enable": "Enable Discord notifications",
-    "webhookUrl": "Webhook URL"
+    "webhookUrl": "Webhook URL",
+    "misc": {
+      "title": "Discord Configuration",
+      "subtitle": "Send notifications to a Discord channel",
+      "webhookUrlHint": "Create a webhook in your Discord channel settings",
+      "sending": "Sending...",
+      "testConnection": "Test Connection",
+      "setupTitle": "To create a Discord webhook:",
+      "step1": "Right-click on the channel you want notifications in",
+      "step2": "Select \"Edit Channel\" > \"Integrations\"",
+      "step3": "Click \"Create Webhook\"",
+      "step4": "Copy the webhook URL",
+      "docsLink": "Discord Webhooks Guide"
+    }
   },
   "telegram": {
     "botToken": "Bot Token",
@@ -348,6 +374,26 @@
     "loadingVehicles": "Loading vehicles…",
     "noVehicles": "You don't own any vehicles yet.",
     "creating": "Creating…",
-    "submit": "Create Key"
+    "submit": "Create Key",
+    "panel": {
+      "title": "API Keys",
+      "description": "Read-only API keys for external integrations. Each key grants access to the vehicles you select.",
+      "newKey": "New Key",
+      "authRequiredLabel": "API keys require authenticated users.",
+      "authRequiredDesc": "Switch auth mode to {{localMode}} or {{oidcMode}} in the system settings to enable.",
+      "loadingKeys": "Loading keys…",
+      "loadError": "Couldn't load keys. Try refreshing.",
+      "noKeysYet": "No API keys yet. Create one to start polling your garage from a dashboard.",
+      "revokedBadge": "revoked",
+      "staleBadge": "stale",
+      "scopeAll": "All vehicles",
+      "vehicleCount": "{{count}} vehicle(s)",
+      "createdAgo": "created {{when}}",
+      "lastUsedAgo": "last used {{when}}",
+      "neverUsed": "never used",
+      "never": "never",
+      "revoke": "Revoke",
+      "revoking": "Revoking…"
+    }
   }
 }

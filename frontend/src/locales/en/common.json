@@ -314,5 +314,22 @@
     "inLaw": "In-Law",
     "friend": "Friend",
     "other": "Other"
+  },
+  "familyCard": {
+    "columnLastService": "Last Service",
+    "columnNextMaintenance": "Next Maintenance",
+    "columnVehicle": "Vehicle",
+    "deleteUser": "Delete user",
+    "disableUser": "Disable user",
+    "editUser": "Edit user",
+    "enableUser": "Enable user",
+    "hideFromDashboard": "Hide from dashboard",
+    "moveDown": "Move down",
+    "moveUp": "Move up",
+    "noMaintenanceScheduled": "No maintenance scheduled",
+    "noServiceRecords": "No service records",
+    "noVehicles": "No vehicles",
+    "resetPassword": "Reset password",
+    "showOnDashboard": "Show on dashboard"
   }
 }

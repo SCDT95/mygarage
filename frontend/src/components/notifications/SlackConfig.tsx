@@ -27,8 +27,8 @@ export function SlackConfig({
       <div className="flex items-center gap-3 mb-6">
         <Hash className="w-6 h-6 text-primary" />
         <div>
-          <h2 className="text-lg font-semibold text-garage-text">Slack Configuration</h2>
-          <p className="text-sm text-garage-text-muted">Send notifications to a Slack channel</p>
+          <h2 className="text-lg font-semibold text-garage-text">{t('slack.misc.title')}</h2>
+          <p className="text-sm text-garage-text-muted">{t('slack.misc.subtitle')}</p>
         </div>
       </div>
 
@@ -45,10 +45,10 @@ export function SlackConfig({
           <span className="ml-2 text-sm text-garage-text font-medium">{t('slack.enable')}</span>
         </label>
 
-        {/* {t('slack.webhookUrl')} */}
+        {/* Webhook URL */}
         <div>
           <label htmlFor="slack_webhook_url" className="block text-sm font-medium text-garage-text mb-1">
-            Webhook URL
+            {t('slack.webhookUrl')}
           </label>
           <input
             type="password"
@@ -60,7 +60,7 @@ export function SlackConfig({
             className="w-full px-3 py-2 bg-garage-bg border border-garage-border rounded-lg text-garage-text placeholder-garage-text-muted focus:outline-none focus:ring-2 focus:ring-primary disabled:opacity-50"
           />
           <p className="mt-1 text-xs text-garage-text-muted">
-            Create an Incoming Webhook in your Slack workspace
+            {t('slack.misc.webhookUrlHint')}
           </p>
         </div>
 
@@ -72,7 +72,7 @@ export function SlackConfig({
             className="flex items-center gap-2 px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
           >
             <Send size={16} />
-            {testing ? 'Sending...' : 'Test Connection'}
+            {testing ? t('slack.misc.sending') : t('slack.misc.testConnection')}
           </button>
         </div>
 
@@ -81,12 +81,12 @@ export function SlackConfig({
           <div className="flex items-start gap-2">
             <Info className="w-4 h-4 text-garage-text-muted mt-0.5" />
             <div className="text-xs text-garage-text-muted space-y-2">
-              <p>To create a Slack webhook:</p>
+              <p>{t('slack.misc.setupTitle')}</p>
               <ol className="list-decimal list-inside space-y-1">
-                <li>Go to your Slack workspace settings</li>
-                <li>Navigate to Apps &gt; Incoming Webhooks</li>
-                <li>Create a new webhook and select a channel</li>
-                <li>Copy the webhook URL</li>
+                <li>{t('slack.misc.step1')}</li>
+                <li>{t('slack.misc.step2')}</li>
+                <li>{t('slack.misc.step3')}</li>
+                <li>{t('slack.misc.step4')}</li>
               </ol>
               <a
                 href="https://api.slack.com/messaging/webhooks"
@@ -94,7 +94,7 @@ export function SlackConfig({
                 rel="noopener noreferrer"
                 className="inline-flex items-center gap-1 text-primary hover:underline"
               >
-                Slack Webhooks Documentation <ExternalLink className="w-3 h-3" />
+                {t('slack.misc.docsLink')} <ExternalLink className="w-3 h-3" />
               </a>
             </div>
           </div>

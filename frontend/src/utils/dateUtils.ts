@@ -2,12 +2,39 @@
  * Date utility functions to handle date formatting without timezone issues
  */
 
+import { enUS, de, pl, ru, uk, ptBR } from 'date-fns/locale'
+import type { Locale } from 'date-fns'
+import { getActiveLocale } from '@/constants/i18n'
+
+/**
+ * date-fns locale for the active language.
+ *
+ * date-fns takes a locale OBJECT, not the Intl locale string that
+ * useDateLocale()/getActiveLocale() return, so relative-time output
+ * ("3 months ago") stayed English in every language until this existed.
+ */
+const DATE_FNS_LOCALES: Record<string, Locale> = {
+  'en-US': enUS,
+  'de-DE': de,
+  'pl-PL': pl,
+  'ru-RU': ru,
+  'uk-UA': uk,
+  'pt-BR': ptBR,
+}
+
+export function getDateFnsLocale(): Locale {
+  return DATE_FNS_LOCALES[getActiveLocale()] ?? enUS
+}
+
 /**
  * Format a date string for display without timezone conversion.
  * Appends T00:00:00 to force local timezone interpretation.
  *
  * @param dateString - ISO date string (YYYY-MM-DD)
  * @param options - Intl.DateTimeFormatOptions for formatting
+ * @param locale - Intl locale; defaults to the language selected in the app.
+ *   It used to default to 'en-US', and 26 of the 34 call sites omit it — so
+ *   most dates in the UI rendered US-English no matter the chosen language.
  * @returns Formatted date string
  */
 export function formatDateForDisplay(
@@ -17,7 +44,7 @@ export function formatDateForDisplay(
     month: 'short',
     day: 'numeric',
   },
-  locale: string = 'en-US'
+  locale: string = getActiveLocale()
 ): string {
   // Parse date without timezone conversion by appending T00:00:00
   const date = new Date(dateString + 'T00:00:00')

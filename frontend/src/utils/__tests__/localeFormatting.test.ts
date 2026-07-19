@@ -1,6 +1,7 @@
 import { describe, it, expect, afterEach } from 'vitest'
 import { getActiveLocale, setActiveLocale } from '@/constants/i18n'
 import { UnitFormatter } from '@/utils/units'
+import { formatDateForDisplay, getDateFnsLocale } from '@/utils/dateUtils'
 
 /**
  * Number formatting must follow the language the user picked in the app.
@@ -45,5 +46,31 @@ describe('locale-aware number formatting', () => {
     setActiveLocale('de')
     const de = UnitFormatter.formatWeight(1500, 'metric')
     expect(en).not.toBe(de)
+  })
+
+  it('formats dates in the active language by default', () => {
+    // The default used to be a hardcoded 'en-US', and 26 of 34 call sites omit
+    // the argument — so most dates in the UI ignored the chosen language.
+    setActiveLocale('en')
+    const en = formatDateForDisplay('2026-08-14')
+    setActiveLocale('de')
+    const de = formatDateForDisplay('2026-08-14')
+
+    expect(en).toContain('Aug')
+    expect(en).not.toBe(de)
+  })
+
+  it('still honours an explicitly passed locale', () => {
+    setActiveLocale('de')
+    expect(formatDateForDisplay('2026-08-14', undefined, 'en-US')).toContain('Aug')
+  })
+
+  it('maps the active language to a date-fns locale object', () => {
+    // date-fns needs a locale OBJECT, not the Intl string, which is why
+    // relative times ("3 months ago") stayed English everywhere.
+    setActiveLocale('de')
+    expect(getDateFnsLocale().code).toBe('de')
+    setActiveLocale('en')
+    expect(getDateFnsLocale().code).toBe('en-US')
   })
 })

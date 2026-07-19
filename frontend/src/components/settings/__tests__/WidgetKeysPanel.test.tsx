@@ -60,7 +60,9 @@ describe('WidgetKeysPanel', () => {
       error: null,
     })
     render(<WidgetKeysPanel />)
-    expect(screen.getByRole('heading', { name: 'API Keys' })).toBeInTheDocument()
+    expect(
+      screen.getByRole('heading', { name: 'widgetKeys.panel.title' })
+    ).toBeInTheDocument()
     expect(screen.queryByText(/Homepage \/ Widget/i)).not.toBeInTheDocument()
   })
 
@@ -84,7 +86,7 @@ describe('WidgetKeysPanel', () => {
       error: null,
     })
     render(<WidgetKeysPanel />)
-    expect(screen.getByText('never used')).toBeInTheDocument()
+    expect(screen.getByText('widgetKeys.panel.neverUsed')).toBeInTheDocument()
   })
 
   it('renders a relative timestamp for last_used_at when set', () => {
@@ -103,7 +105,10 @@ describe('WidgetKeysPanel', () => {
       error: null,
     })
     render(<WidgetKeysPanel />)
-    expect(screen.getByText(/last used .*30 minutes ago/i)).toBeInTheDocument()
+    // The shared i18n mock returns the key, so assert the "last used" branch is
+    // taken rather than the formatted distance itself.
+    expect(screen.getByText('widgetKeys.panel.lastUsedAgo')).toBeInTheDocument()
+    expect(screen.queryByText('widgetKeys.panel.neverUsed')).not.toBeInTheDocument()
   })
 
   it('shows the stale badge for keys last used >90 days ago', () => {
@@ -118,7 +123,7 @@ describe('WidgetKeysPanel', () => {
       error: null,
     })
     render(<WidgetKeysPanel />)
-    expect(screen.getByText('stale')).toBeInTheDocument()
+    expect(screen.getByText('widgetKeys.panel.staleBadge')).toBeInTheDocument()
   })
 
   it('does not show the stale badge for revoked keys', () => {
@@ -138,8 +143,8 @@ describe('WidgetKeysPanel', () => {
       error: null,
     })
     render(<WidgetKeysPanel />)
-    expect(screen.getByText('revoked')).toBeInTheDocument()
-    expect(screen.queryByText('stale')).not.toBeInTheDocument()
+    expect(screen.getByText('widgetKeys.panel.revokedBadge')).toBeInTheDocument()
+    expect(screen.queryByText('widgetKeys.panel.staleBadge')).not.toBeInTheDocument()
   })
 
   it('renders the auth-disabled banner when the hook signals that', () => {
@@ -150,6 +155,6 @@ describe('WidgetKeysPanel', () => {
       error: { __authDisabled: true },
     })
     render(<WidgetKeysPanel />)
-    expect(screen.getByText(/API keys require authenticated users/i)).toBeInTheDocument()
+    expect(screen.getByText('widgetKeys.panel.authRequiredLabel')).toBeInTheDocument()
   })
 })

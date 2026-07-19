@@ -27,8 +27,8 @@ export function DiscordConfig({
       <div className="flex items-center gap-3 mb-6">
         <MessageSquare className="w-6 h-6 text-primary" />
         <div>
-          <h2 className="text-lg font-semibold text-garage-text">Discord Configuration</h2>
-          <p className="text-sm text-garage-text-muted">Send notifications to a Discord channel</p>
+          <h2 className="text-lg font-semibold text-garage-text">{t('discord.misc.title')}</h2>
+          <p className="text-sm text-garage-text-muted">{t('discord.misc.subtitle')}</p>
         </div>
       </div>
 
@@ -45,10 +45,10 @@ export function DiscordConfig({
           <span className="ml-2 text-sm text-garage-text font-medium">{t('discord.enable')}</span>
         </label>
 
-        {/* {t('discord.webhookUrl')} */}
+        {/* Webhook URL */}
         <div>
           <label htmlFor="discord_webhook_url" className="block text-sm font-medium text-garage-text mb-1">
-            Webhook URL
+            {t('discord.webhookUrl')}
           </label>
           <input
             type="password"
@@ -60,7 +60,7 @@ export function DiscordConfig({
             className="w-full px-3 py-2 bg-garage-bg border border-garage-border rounded-lg text-garage-text placeholder-garage-text-muted focus:outline-none focus:ring-2 focus:ring-primary disabled:opacity-50"
           />
           <p className="mt-1 text-xs text-garage-text-muted">
-            Create a webhook in your Discord channel settings
+            {t('discord.misc.webhookUrlHint')}
           </p>
         </div>
 
@@ -72,7 +72,7 @@ export function DiscordConfig({
             className="flex items-center gap-2 px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
           >
             <Send size={16} />
-            {testing ? 'Sending...' : 'Test Connection'}
+            {testing ? t('discord.misc.sending') : t('discord.misc.testConnection')}
           </button>
         </div>
 
@@ -81,12 +81,12 @@ export function DiscordConfig({
           <div className="flex items-start gap-2">
             <Info className="w-4 h-4 text-garage-text-muted mt-0.5" />
             <div className="text-xs text-garage-text-muted space-y-2">
-              <p>To create a Discord webhook:</p>
+              <p>{t('discord.misc.setupTitle')}</p>
               <ol className="list-decimal list-inside space-y-1">
-                <li>Right-click on the channel you want notifications in</li>
-                <li>Select "Edit Channel" &gt; "Integrations"</li>
-                <li>Click "Create Webhook"</li>
-                <li>Copy the webhook URL</li>
+                <li>{t('discord.misc.step1')}</li>
+                <li>{t('discord.misc.step2')}</li>
+                <li>{t('discord.misc.step3')}</li>
+                <li>{t('discord.misc.step4')}</li>
               </ol>
               <a
                 href="https://support.discord.com/hc/en-us/articles/228383668-Intro-to-Webhooks"
@@ -94,7 +94,7 @@ export function DiscordConfig({
                 rel="noopener noreferrer"
                 className="inline-flex items-center gap-1 text-primary hover:underline"
               >
-                Discord Webhooks Guide <ExternalLink className="w-3 h-3" />
+                {t('discord.misc.docsLink')} <ExternalLink className="w-3 h-3" />
               </a>
             </div>
           </div>

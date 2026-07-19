@@ -9,12 +9,16 @@ import {
   ChevronDown, ChevronRight, ChevronUp, Car, AlertTriangle, Bell, User,
   Eye, EyeOff, Edit, Key, Power, PowerOff, Trash2,
 } from 'lucide-react'
-import type { FamilyMemberData, FamilyVehicleSummary } from '@/types/family'
+import type { FamilyMemberData, FamilyVehicleSummary, TranslateFn } from '@/types/family'
 import type { User as UserType } from '@/types/user'
 import { useTranslation } from 'react-i18next'
 import { formatRelationship } from '@/types/family'
 import { formatDateForDisplay } from '@/utils/dateUtils'
+import { useDateLocale } from '@/hooks/useDateLocale'
 import { withBase } from '@/utils/basePath'
+
+/** Matches a bare ISO calendar date (YYYY-MM-DD). */
+const ISO_DATE_RE = /^\d{4}-\d{2}-\d{2}$/
 
 interface FamilyMemberCardProps {
   member: FamilyMemberData
@@ -37,10 +41,17 @@ interface FamilyMemberCardProps {
   canMoveDown?: boolean
 }
 
-function VehicleSummaryRow({ vehicle }: { vehicle: FamilyVehicleSummary }) {
+function VehicleSummaryRow({ vehicle, t }: { vehicle: FamilyVehicleSummary; t: TranslateFn }) {
+  const dateLocale = useDateLocale()
   const vehicleTitle = vehicle.year && vehicle.make && vehicle.model
     ? `${vehicle.year} ${vehicle.make} ${vehicle.model}`
     : vehicle.nickname
+
+  // Backend sends an ISO date here, but the schema allows a free-form value
+  // (e.g. a mileage string) — only date-shaped values get locale formatting.
+  const nextMaintenanceDue = vehicle.next_maintenance_due && ISO_DATE_RE.test(vehicle.next_maintenance_due)
+    ? formatDateForDisplay(vehicle.next_maintenance_due, undefined, dateLocale)
+    : vehicle.next_maintenance_due
 
   return (
     <Link
@@ -74,11 +85,11 @@ function VehicleSummaryRow({ vehicle }: { vehicle: FamilyVehicleSummary }) {
           <>
             <p className="text-sm text-garage-text truncate">{vehicle.last_service_description}</p>
             <p className="text-xs text-garage-text-muted">
-              {formatDateForDisplay(vehicle.last_service_date)}
+              {formatDateForDisplay(vehicle.last_service_date, undefined, dateLocale)}
             </p>
           </>
         ) : (
-          <p className="text-sm text-garage-text-muted">No service records</p>
+          <p className="text-sm text-garage-text-muted">{t('familyCard.noServiceRecords')}</p>
         )}
       </div>
 
@@ -87,10 +98,10 @@ function VehicleSummaryRow({ vehicle }: { vehicle: FamilyVehicleSummary }) {
         {vehicle.next_maintenance_description ? (
           <>
             <p className="text-sm text-garage-text truncate">{vehicle.next_maintenance_description}</p>
-            <p className="text-xs text-garage-text-muted">{vehicle.next_maintenance_due}</p>
+            <p className="text-xs text-garage-text-muted">{nextMaintenanceDue}</p>
           </>
         ) : (
-          <p className="text-sm text-garage-text-muted">No maintenance scheduled</p>
+          <p className="text-sm text-garage-text-muted">{t('familyCard.noMaintenanceScheduled')}</p>
         )}
       </div>
 
@@ -185,7 +196,7 @@ export default function FamilyMemberCard({
             )}
             {showActions && user?.is_admin && (
               <span className="px-2 py-0.5 text-xs bg-primary/20 text-primary rounded">
-                Admin
+                {t('admin')}
               </span>
             )}
             {showActions && isOidc && (
@@ -195,7 +206,7 @@ export default function FamilyMemberCard({
             )}
             {showActions && isInactive && (
               <span className="px-2 py-0.5 text-xs bg-danger/20 text-danger rounded">
-                Inactive
+                {t('inactive')}
               </span>
             )}
           </div>
@@ -236,7 +247,7 @@ export default function FamilyMemberCard({
                     ? 'bg-success/20 hover:bg-success/30'
                     : 'hover:bg-garage-border'
                 }`}
-                title={member.show_on_family_dashboard ? 'Hide from dashboard' : 'Show on dashboard'}
+                title={member.show_on_family_dashboard ? t('familyCard.hideFromDashboard') : t('familyCard.showOnDashboard')}
               >
                 {member.show_on_family_dashboard ? (
                   <Eye className="w-4 h-4 text-success" />
@@ -253,7 +264,7 @@ export default function FamilyMemberCard({
                 onClick={() => onEdit!()}
                 disabled={isUpdating}
                 className="p-1.5 hover:bg-garage-border rounded transition-colors disabled:opacity-50"
-                title="Edit user"
+                title={t('familyCard.editUser')}
               >
                 <Edit className="w-4 h-4 text-garage-text-muted" />
               </button>
@@ -266,7 +277,7 @@ export default function FamilyMemberCard({
                 onClick={() => onResetPassword!()}
                 disabled={isUpdating}
                 className="p-1.5 hover:bg-garage-border rounded transition-colors disabled:opacity-50"
-                title="Reset password"
+                title={t('familyCard.resetPassword')}
               >
                 <Key className="w-4 h-4 text-garage-text-muted" />
               </button>
@@ -279,7 +290,7 @@ export default function FamilyMemberCard({
                 onClick={() => onToggleActive!()}
                 disabled={isUpdating}
                 className="p-1.5 hover:bg-garage-border rounded transition-colors disabled:opacity-50"
-                title={isInactive ? 'Enable user' : 'Disable user'}
+                title={isInactive ? t('familyCard.enableUser') : t('familyCard.disableUser')}
               >
                 {isInactive ? (
                   <Power className="w-4 h-4 text-garage-text-muted" />
@@ -296,7 +307,7 @@ export default function FamilyMemberCard({
                 onClick={() => onDelete!()}
                 disabled={isUpdating}
                 className="p-1.5 hover:bg-danger/20 rounded transition-colors disabled:opacity-50"
-                title="Delete user"
+                title={t('familyCard.deleteUser')}
               >
                 <Trash2 className="w-4 h-4 text-danger" />
               </button>
@@ -312,7 +323,7 @@ export default function FamilyMemberCard({
               onClick={() => onMoveUp?.()}
               disabled={!canMoveUp || isUpdating}
               className="p-1 hover:bg-garage-border rounded transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
-              title="Move up"
+              title={t('familyCard.moveUp')}
             >
               <ChevronUp className="w-4 h-4 text-garage-text-muted" />
             </button>
@@ -321,7 +332,7 @@ export default function FamilyMemberCard({
               onClick={() => onMoveDown?.()}
               disabled={!canMoveDown || isUpdating}
               className="p-1 hover:bg-garage-border rounded transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
-              title="Move down"
+              title={t('familyCard.moveDown')}
             >
               <ChevronDown className="w-4 h-4 text-garage-text-muted" />
             </button>
@@ -335,21 +346,21 @@ export default function FamilyMemberCard({
           {!member.vehicles || member.vehicles.length === 0 ? (
             <div className="p-6 text-center text-garage-text-muted">
               <Car className="w-8 h-8 mx-auto mb-2 opacity-50" />
-              <p>No vehicles</p>
+              <p>{t('familyCard.noVehicles')}</p>
             </div>
           ) : (
             <div className="divide-y divide-garage-border">
               {/* Table Header (desktop only) */}
               <div className="hidden md:grid grid-cols-[1fr_auto_auto_auto] gap-4 px-4 py-2 text-xs font-medium text-garage-text-muted uppercase bg-garage-bg">
-                <span>Vehicle</span>
-                <span className="text-right min-w-32">Last Service</span>
-                <span className="hidden lg:block text-right min-w-32">Next Maintenance</span>
+                <span>{t('familyCard.columnVehicle')}</span>
+                <span className="text-right min-w-32">{t('familyCard.columnLastService')}</span>
+                <span className="hidden lg:block text-right min-w-32">{t('familyCard.columnNextMaintenance')}</span>
                 <span className="w-16"></span>
               </div>
 
               {/* Vehicle Rows */}
               {member.vehicles.map((vehicle) => (
-                <VehicleSummaryRow key={vehicle.vin} vehicle={vehicle} />
+                <VehicleSummaryRow key={vehicle.vin} vehicle={vehicle} t={t} />
               ))}
             </div>
           )}

@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react'
+import { useTranslation } from 'react-i18next'
 import { Download, Trash2, FileText, Image, AlertCircle } from 'lucide-react'
 import { formatDateForDisplay } from '../utils/dateUtils'
 import { toast } from 'sonner'
@@ -15,6 +16,7 @@ export default function ServiceVisitAttachmentList({
   visitId,
   refreshTrigger,
 }: ServiceVisitAttachmentListProps) {
+  const { t } = useTranslation('vehicles')
   const [attachments, setAttachments] = useState<Attachment[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -26,9 +28,9 @@ export default function ServiceVisitAttachmentList({
       setAttachments(response.data.attachments)
       setError(null)
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'An error occurred')
+      setError(err instanceof Error ? err.message : t('serviceVisitAttachments.errorOccurred'))
     }
-  }, [visitId])
+  }, [visitId, t])
 
   useEffect(() => {
     setLoading(true)
@@ -36,7 +38,7 @@ export default function ServiceVisitAttachmentList({
   }, [fetchAttachments, refreshTrigger])
 
   const handleDelete = async (attachmentId: number) => {
-    if (!confirm('Are you sure you want to delete this attachment?')) {
+    if (!confirm(t('serviceVisitAttachments.confirmDelete'))) {
       return
     }
 
@@ -45,7 +47,7 @@ export default function ServiceVisitAttachmentList({
       await api.delete(`/attachments/${attachmentId}`)
       await fetchAttachments()
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : 'Failed to delete attachment')
+      toast.error(err instanceof Error ? err.message : t('serviceVisitAttachments.deleteFailed'))
     } finally {
       setDeletingId(null)
     }
@@ -66,7 +68,7 @@ export default function ServiceVisitAttachmentList({
       window.URL.revokeObjectURL(url)
       document.body.removeChild(a)
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : 'Failed to download attachment')
+      toast.error(err instanceof Error ? err.message : t('serviceVisitAttachments.downloadFailed'))
     }
   }
 
@@ -77,14 +79,18 @@ export default function ServiceVisitAttachmentList({
   }
 
   const formatFileSize = (bytes?: number | null): string => {
-    if (!bytes) return 'Unknown size'
-    if (bytes < 1024) return `${bytes} B`
-    if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`
-    return `${(bytes / 1024 / 1024).toFixed(1)} MB`
+    if (!bytes) return t('serviceVisitAttachments.unknownSize')
+    if (bytes < 1024) return t('serviceVisitAttachments.sizeBytes', { size: bytes })
+    if (bytes < 1024 * 1024) return t('serviceVisitAttachments.sizeKb', { size: (bytes / 1024).toFixed(1) })
+    return t('serviceVisitAttachments.sizeMb', { size: (bytes / 1024 / 1024).toFixed(1) })
   }
 
   if (loading) {
-    return <div className="text-center py-4 text-garage-text-muted text-sm">Loading attachments...</div>
+    return (
+      <div className="text-center py-4 text-garage-text-muted text-sm">
+        {t('serviceVisitAttachments.loading')}
+      </div>
+    )
   }
 
   if (error) {
@@ -100,7 +106,7 @@ export default function ServiceVisitAttachmentList({
     return (
       <div className="text-center py-4 text-garage-text-muted text-sm">
         <FileText className="w-8 h-8 mx-auto mb-2 opacity-50" />
-        <p>No attachments</p>
+        <p>{t('serviceVisitAttachments.empty')}</p>
       </div>
     )
   }
@@ -127,8 +133,8 @@ export default function ServiceVisitAttachmentList({
               <button
                 onClick={() => handleDownload(attachment)}
                 className="p-2 text-primary hover:bg-primary/10 rounded transition-colors"
-                aria-label="Download"
-                title="Download"
+                aria-label={t('serviceVisitAttachments.download')}
+                title={t('serviceVisitAttachments.download')}
               >
                 <Download className="w-4 h-4" />
               </button>
@@ -136,8 +142,8 @@ export default function ServiceVisitAttachmentList({
                 onClick={() => handleDelete(attachment.id)}
                 disabled={deletingId === attachment.id}
                 className="p-2 text-danger hover:bg-danger/10 rounded transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                aria-label="Delete"
-                title="Delete"
+                aria-label={t('common:delete')}
+                title={t('common:delete')}
               >
                 <Trash2 className="w-4 h-4" />
               </button>

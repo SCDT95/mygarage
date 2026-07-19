@@ -45,10 +45,9 @@ export function NtfyConfig({
           <span className="ml-2 text-sm text-garage-text font-medium">{t('ntfy.enable')}</span>
         </label>
 
-        {/* {t('ntfy.serverUrl')} */}
-        <div>
+                <div>
           <label htmlFor="ntfy_server" className="block text-sm font-medium text-garage-text mb-1">
-            Server URL
+            {t('ntfy.serverUrl')}
           </label>
           <input
             type="url"

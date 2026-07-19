@@ -22,6 +22,18 @@ import {
 import api from '../services/api'
 import { formatCurrency } from '../utils/formatUtils'
 import { useCurrencyPreference } from '../hooks/useCurrencyPreference'
+import { getActiveLocale } from '@/constants/i18n'
+
+/**
+ * Format a number with a fixed number of fraction digits in the active app
+ * locale (not the browser's — those diverge once the user picks a language).
+ */
+function formatDecimal(value: number, digits: number): string {
+  return new Intl.NumberFormat(getActiveLocale(), {
+    minimumFractionDigits: digits,
+    maximumFractionDigits: digits,
+  }).format(value)
+}
 
 interface ExtractedData {
   msrp_base: string | null
@@ -123,13 +135,13 @@ export default function WindowStickerTest() {
       setResult(response.data)
 
       if (response.data.success) {
-        toast.success('Extraction completed successfully')
+        toast.success(t('windowSticker.test.extractionCompleted'))
       } else {
-        toast.error(response.data.error || 'Extraction failed')
+        toast.error(response.data.error || t('windowSticker.extractionFailed'))
       }
     } catch (error: unknown) {
       const err = error as { response?: { data?: { detail?: string } } }
-      toast.error(err.response?.data?.detail || 'Failed to test extraction')
+      toast.error(err.response?.data?.detail || t('windowSticker.test.testFailed'))
     } finally {
       setLoading(false)
     }
@@ -137,7 +149,7 @@ export default function WindowStickerTest() {
 
   const copyToClipboard = (text: string) => {
     navigator.clipboard.writeText(text)
-    toast.success('Copied to clipboard')
+    toast.success(t('windowSticker.test.copiedToClipboard'))
   }
 
   return (
@@ -156,7 +168,7 @@ export default function WindowStickerTest() {
               {t('windowSticker.ocrTestTitle')}
             </h1>
             <p className="text-garage-text-muted text-sm">
-              VIN: {vin}
+              {t('windowSticker.test.vinLabel')}: {vin}
             </p>
           </div>
         </div>
@@ -183,7 +195,7 @@ export default function WindowStickerTest() {
                   <FileText className="w-12 h-12 text-garage-accent" />
                   <p className="text-garage-text font-medium">{file.name}</p>
                   <p className="text-garage-text-muted text-sm">
-                    {(file.size / 1024 / 1024).toFixed(2)} MB
+                    {t('windowSticker.test.fileSizeMb', { size: formatDecimal(file.size / 1024 / 1024, 2) })}
                   </p>
                   <button
                     onClick={() => setFile(null)}
@@ -214,17 +226,17 @@ export default function WindowStickerTest() {
             {/* Parser Selection */}
             <div className="mt-4">
               <label className="block text-sm text-garage-text-muted mb-2">
-                Parser (optional - auto-detected from VIN)
+                {t('windowSticker.test.parserSelectLabel')}
               </label>
               <select
                 value={selectedParser}
                 onChange={(e) => setSelectedParser(e.target.value)}
                 className="w-full px-3 py-2 bg-garage-bg border border-garage-border rounded-lg text-garage-text focus:outline-none focus:ring-2 focus:ring-garage-accent"
               >
-                <option value="">Auto-detect</option>
+                <option value="">{t('windowSticker.test.autoDetect')}</option>
                 {parsers.map((p) => (
                   <option key={p.manufacturer} value={p.manufacturer}>
-                    {p.parser_class} ({p.supported_makes.join(', ') || 'Generic'})
+                    {p.parser_class} ({p.supported_makes.join(', ') || t('windowSticker.test.genericParser')})
                   </option>
                 ))}
               </select>
@@ -283,18 +295,20 @@ export default function WindowStickerTest() {
                 {/* Parser Info */}
                 <div className="grid grid-cols-2 gap-4 text-sm">
                   <div>
-                    <span className="text-garage-text-muted">Parser:</span>
+                    <span className="text-garage-text-muted">{t('windowSticker.test.parser')}:</span>
                     <span className="ml-2 text-garage-text">{result.parser_name || '-'}</span>
                   </div>
                   <div>
-                    <span className="text-garage-text-muted">Manufacturer:</span>
-                    <span className="ml-2 text-garage-text">{result.manufacturer_detected || 'Unknown'}</span>
+                    <span className="text-garage-text-muted">{t('windowSticker.test.manufacturer')}:</span>
+                    <span className="ml-2 text-garage-text">{result.manufacturer_detected || t('windowSticker.test.unknown')}</span>
                   </div>
                   {result.extracted_data && (
                     <div className="col-span-2">
-                      <span className="text-garage-text-muted">Confidence:</span>
+                      <span className="text-garage-text-muted">{t('windowSticker.test.confidence')}:</span>
                       <span className="ml-2 text-garage-text">
-                        {result.extracted_data.confidence_score?.toFixed(1)}%
+                        {t('windowSticker.test.percentValue', {
+                          percent: formatDecimal(result.extracted_data.confidence_score ?? 0, 1),
+                        })}
                       </span>
                     </div>
                   )}
@@ -305,7 +319,7 @@ export default function WindowStickerTest() {
                   <div className="space-y-2">
                     <h3 className="text-sm font-medium text-yellow-500 flex items-center gap-2">
                       <AlertTriangle className="w-4 h-4" />
-                      Validation Warnings
+                      {t('windowSticker.test.validationWarnings')}
                     </h3>
                     {result.validation_warnings.map((warning, i) => (
                       <div key={i} className="text-sm text-yellow-500/80 bg-yellow-500/10 p-2 rounded">
@@ -320,22 +334,22 @@ export default function WindowStickerTest() {
                   <div className="space-y-4">
                     {/* Pricing */}
                     <div>
-                      <h3 className="text-sm font-medium text-garage-text mb-2">Pricing</h3>
+                      <h3 className="text-sm font-medium text-garage-text mb-2">{t('windowSticker.test.pricing')}</h3>
                       <div className="grid grid-cols-2 gap-2 text-sm">
                         <div className="flex justify-between p-2 bg-garage-bg rounded">
-                          <span className="text-garage-text-muted">Base MSRP:</span>
+                          <span className="text-garage-text-muted">{t('windowSticker.test.baseMsrp')}:</span>
                           <span className="text-garage-text">{formatCurrency(result.extracted_data.msrp_base, { currencyCode, locale })}</span>
                         </div>
                         <div className="flex justify-between p-2 bg-garage-bg rounded">
-                          <span className="text-garage-text-muted">Total MSRP:</span>
+                          <span className="text-garage-text-muted">{t('windowSticker.test.totalMsrp')}:</span>
                           <span className="text-garage-text font-semibold">{formatCurrency(result.extracted_data.msrp_total, { currencyCode, locale })}</span>
                         </div>
                         <div className="flex justify-between p-2 bg-garage-bg rounded">
-                          <span className="text-garage-text-muted">Options:</span>
+                          <span className="text-garage-text-muted">{t('windowSticker.test.options')}:</span>
                           <span className="text-garage-text">{formatCurrency(result.extracted_data.msrp_options, { currencyCode, locale })}</span>
                         </div>
                         <div className="flex justify-between p-2 bg-garage-bg rounded">
-                          <span className="text-garage-text-muted">Destination:</span>
+                          <span className="text-garage-text-muted">{t('windowSticker.test.destination')}:</span>
                           <span className="text-garage-text">{formatCurrency(result.extracted_data.destination_charge, { currencyCode, locale })}</span>
                         </div>
                       </div>
@@ -344,7 +358,7 @@ export default function WindowStickerTest() {
                     {/* Options Detail */}
                     {Object.keys(result.extracted_data.options_detail || {}).length > 0 && (
                       <div>
-                        <h3 className="text-sm font-medium text-garage-text mb-2">Individual Options</h3>
+                        <h3 className="text-sm font-medium text-garage-text mb-2">{t('windowSticker.test.individualOptions')}</h3>
                         <div className="space-y-1 max-h-40 overflow-y-auto">
                           {Object.entries(result.extracted_data.options_detail).map(([name, price]) => (
                             <div key={name} className="flex justify-between text-sm p-2 bg-garage-bg rounded">
@@ -358,44 +372,44 @@ export default function WindowStickerTest() {
 
                     {/* Colors & Specs */}
                     <div>
-                      <h3 className="text-sm font-medium text-garage-text mb-2">Vehicle Details</h3>
+                      <h3 className="text-sm font-medium text-garage-text mb-2">{t('windowSticker.test.vehicleDetails')}</h3>
                       <div className="grid grid-cols-1 gap-2 text-sm">
                         {result.extracted_data.exterior_color && (
                           <div className="flex justify-between p-2 bg-garage-bg rounded">
-                            <span className="text-garage-text-muted">Exterior:</span>
+                            <span className="text-garage-text-muted">{t('windowSticker.test.exterior')}:</span>
                             <span className="text-garage-text">{result.extracted_data.exterior_color}</span>
                           </div>
                         )}
                         {result.extracted_data.interior_color && (
                           <div className="flex justify-between p-2 bg-garage-bg rounded">
-                            <span className="text-garage-text-muted">Interior:</span>
+                            <span className="text-garage-text-muted">{t('windowSticker.test.interior')}:</span>
                             <span className="text-garage-text">{result.extracted_data.interior_color}</span>
                           </div>
                         )}
                         {result.extracted_data.engine_description && (
                           <div className="flex justify-between p-2 bg-garage-bg rounded">
-                            <span className="text-garage-text-muted">Engine:</span>
+                            <span className="text-garage-text-muted">{t('windowSticker.test.engine')}:</span>
                             <span className="text-garage-text text-right">{result.extracted_data.engine_description}</span>
                           </div>
                         )}
                         {result.extracted_data.transmission_description && (
                           <div className="flex justify-between p-2 bg-garage-bg rounded">
-                            <span className="text-garage-text-muted">Transmission:</span>
+                            <span className="text-garage-text-muted">{t('windowSticker.test.transmission')}:</span>
                             <span className="text-garage-text text-right">{result.extracted_data.transmission_description}</span>
                           </div>
                         )}
                         {result.extracted_data.assembly_location && (
                           <div className="flex justify-between p-2 bg-garage-bg rounded">
-                            <span className="text-garage-text-muted">Assembly:</span>
+                            <span className="text-garage-text-muted">{t('windowSticker.test.assembly')}:</span>
                             <span className="text-garage-text">{result.extracted_data.assembly_location}</span>
                           </div>
                         )}
                         {result.extracted_data.extracted_vin && (
                           <div className="flex justify-between p-2 bg-garage-bg rounded">
-                            <span className="text-garage-text-muted">Extracted VIN:</span>
+                            <span className="text-garage-text-muted">{t('windowSticker.misc.extractedVin')}:</span>
                             <span className={`text-garage-text ${result.extracted_data.extracted_vin === vin ? 'text-green-500' : 'text-yellow-500'}`}>
                               {result.extracted_data.extracted_vin}
-                              {result.extracted_data.extracted_vin !== vin && ' (mismatch!)'}
+                              {result.extracted_data.extracted_vin !== vin && ` ${t('windowSticker.test.vinMismatch')}`}
                             </span>
                           </div>
                         )}
@@ -405,7 +419,7 @@ export default function WindowStickerTest() {
                     {/* Warranty */}
                     {(result.extracted_data.warranty_powertrain || result.extracted_data.warranty_basic) && (
                       <div>
-                        <h3 className="text-sm font-medium text-garage-text mb-2">Warranty</h3>
+                        <h3 className="text-sm font-medium text-garage-text mb-2">{t('windowSticker.test.warranty')}</h3>
                         <div className="space-y-1 text-sm">
                           {result.extracted_data.warranty_powertrain && (
                             <div className="p-2 bg-garage-bg rounded text-garage-text">
@@ -424,17 +438,17 @@ export default function WindowStickerTest() {
                     {/* Environmental Ratings */}
                     {(result.extracted_data.environmental_rating_ghg || result.extracted_data.environmental_rating_smog) && (
                       <div>
-                        <h3 className="text-sm font-medium text-garage-text mb-2">Environmental Ratings</h3>
+                        <h3 className="text-sm font-medium text-garage-text mb-2">{t('windowSticker.test.environmentalRatings')}</h3>
                         <div className="grid grid-cols-2 gap-2 text-sm">
                           {result.extracted_data.environmental_rating_ghg && (
                             <div className="p-2 bg-garage-bg rounded text-center">
-                              <div className="text-garage-text-muted">GHG Rating</div>
+                              <div className="text-garage-text-muted">{t('windowSticker.test.ghgRating')}</div>
                               <div className="text-2xl font-bold text-garage-text">{result.extracted_data.environmental_rating_ghg}</div>
                             </div>
                           )}
                           {result.extracted_data.environmental_rating_smog && (
                             <div className="p-2 bg-garage-bg rounded text-center">
-                              <div className="text-garage-text-muted">Smog Rating</div>
+                              <div className="text-garage-text-muted">{t('windowSticker.test.smogRating')}</div>
                               <div className="text-2xl font-bold text-garage-text">{result.extracted_data.environmental_rating_smog}</div>
                             </div>
                           )}
@@ -450,13 +464,17 @@ export default function WindowStickerTest() {
                           className="flex items-center gap-2 text-sm font-medium text-garage-text hover:text-garage-accent"
                         >
                           {showEquipment ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
-                          Equipment Lists ({(result.extracted_data.standard_equipment?.length || 0) + (result.extracted_data.optional_equipment?.length || 0)} items)
+                          {t('windowSticker.test.equipmentLists', {
+                            count:
+                              (result.extracted_data.standard_equipment?.length || 0) +
+                              (result.extracted_data.optional_equipment?.length || 0),
+                          })}
                         </button>
                         {showEquipment && (
                           <div className="mt-2 space-y-4">
                             {result.extracted_data.standard_equipment?.length > 0 && (
                               <div>
-                                <h4 className="text-xs font-medium text-garage-text-muted mb-1">Standard Equipment ({result.extracted_data.standard_equipment.length})</h4>
+                                <h4 className="text-xs font-medium text-garage-text-muted mb-1">{t('windowSticker.misc.standardEquipmentCount', { count: result.extracted_data.standard_equipment.length })}</h4>
                                 <div className="max-h-32 overflow-y-auto space-y-1">
                                   {result.extracted_data.standard_equipment.map((item, i) => (
                                     <div key={i} className="text-xs p-1 bg-garage-bg rounded text-garage-text">{item}</div>
@@ -466,7 +484,7 @@ export default function WindowStickerTest() {
                             )}
                             {result.extracted_data.optional_equipment?.length > 0 && (
                               <div>
-                                <h4 className="text-xs font-medium text-garage-text-muted mb-1">Optional Equipment ({result.extracted_data.optional_equipment.length})</h4>
+                                <h4 className="text-xs font-medium text-garage-text-muted mb-1">{t('windowSticker.test.optionalEquipmentCount', { count: result.extracted_data.optional_equipment.length })}</h4>
                                 <div className="max-h-32 overflow-y-auto space-y-1">
                                   {result.extracted_data.optional_equipment.map((item, i) => (
                                     <div key={i} className="text-xs p-1 bg-garage-bg rounded text-garage-text">{item}</div>
@@ -489,14 +507,14 @@ export default function WindowStickerTest() {
                       className="flex items-center gap-2 text-sm font-medium text-garage-text hover:text-garage-accent"
                     >
                       {showRawText ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
-                      Raw Extracted Text
+                      {t('windowSticker.test.rawExtractedText')}
                     </button>
                     {showRawText && (
                       <div className="mt-2 relative">
                         <button
                           onClick={() => copyToClipboard(result.raw_text!)}
                           className="absolute top-2 right-2 p-1 bg-garage-card rounded hover:bg-garage-card-hover"
-                          title="Copy to clipboard"
+                          title={t('windowSticker.test.copyToClipboard')}
                         >
                           <Copy className="w-4 h-4 text-garage-text-muted" />
                         </button>

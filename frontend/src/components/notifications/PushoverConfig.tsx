@@ -45,10 +45,9 @@ export function PushoverConfig({
           <span className="ml-2 text-sm text-garage-text font-medium">{t('pushover.enable')}</span>
         </label>
 
-        {/* {t('pushover.userKey')} */}
-        <div>
+                <div>
           <label htmlFor="pushover_user_key" className="block text-sm font-medium text-garage-text mb-1">
-            User Key
+            {t('pushover.userKey')}
           </label>
           <input
             type="password"
