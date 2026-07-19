@@ -62,7 +62,7 @@ export default function VehicleRemoveModal({ isOpen, onClose, vehicle, onConfirm
         visible,
       })
 
-      toast.success(`${vehicle.nickname} archived successfully!`)
+      toast.success(t('modal.remove.archivedSuccess', { name: vehicle.nickname }))
       onConfirm()
       onClose()
       resetForm()
@@ -84,7 +84,7 @@ export default function VehicleRemoveModal({ isOpen, onClose, vehicle, onConfirm
     setLoading(true)
     try {
       await api.delete(`/vehicles/${vehicle.vin}`)
-      toast.success(`${vehicle.nickname} permanently deleted`)
+      toast.success(t('modal.remove.deletedSuccess', { name: vehicle.nickname }))
       onConfirm()
       onClose()
       resetForm()
@@ -132,13 +132,13 @@ export default function VehicleRemoveModal({ isOpen, onClose, vehicle, onConfirm
               {/* Vehicle Info */}
               <div className="p-4 bg-garage-bg border border-garage-border rounded-lg">
                 <p className="text-sm text-garage-text">
-                  <strong>Nickname:</strong> {vehicle.nickname}
+                  <strong>{t('modal.remove.nickname')}:</strong> {vehicle.nickname}
                 </p>
                 <p className="text-sm text-garage-text">
-                  <strong>Vehicle:</strong> {vehicle.year} {vehicle.make} {vehicle.model}
+                  <strong>{t('modal.vehicle')}:</strong> {vehicle.year} {vehicle.make} {vehicle.model}
                 </p>
                 <p className="text-sm text-garage-text-muted font-mono text-xs mt-1">
-                  <strong>VIN:</strong> {vehicle.vin}
+                  <strong>{t('modal.remove.vin')}:</strong> {vehicle.vin}
                 </p>
               </div>
 
@@ -173,7 +173,7 @@ export default function VehicleRemoveModal({ isOpen, onClose, vehicle, onConfirm
                     <div className="flex-1">
                       <div className="flex items-center gap-2">
                         <span className="font-semibold text-garage-text">{t('modal.deletePermanently')}</span>
-                        <span className="px-2 py-0.5 text-xs bg-danger/20 text-danger rounded">⚠️ Irreversible</span>
+                        <span className="px-2 py-0.5 text-xs bg-danger/20 text-danger rounded">⚠️ {t('modal.remove.irreversible')}</span>
                       </div>
                       <p className="text-sm text-garage-text-muted mt-1">
                         {t('modal.deleteDescription')}
@@ -218,11 +218,11 @@ export default function VehicleRemoveModal({ isOpen, onClose, vehicle, onConfirm
                   onChange={(e) => setArchiveReason(e.target.value as ArchiveReason)}
                   className="w-full px-3 py-2 bg-garage-bg border border-garage-border rounded-lg text-garage-text focus:outline-none focus:ring-2 focus:ring-primary"
                 >
-                  <option value="Sold">Sold</option>
-                  <option value="Totaled">Totaled</option>
-                  <option value="Gifted">Gifted</option>
-                  <option value="Trade-in">Trade-in</option>
-                  <option value="Other">Other</option>
+                  <option value="Sold">{t('modal.remove.reasonSold')}</option>
+                  <option value="Totaled">{t('modal.remove.reasonTotaled')}</option>
+                  <option value="Gifted">{t('modal.remove.reasonGifted')}</option>
+                  <option value="Trade-in">{t('modal.remove.reasonTradeIn')}</option>
+                  <option value="Other">{t('modal.remove.reasonOther')}</option>
                 </select>
               </div>
 
@@ -271,7 +271,7 @@ export default function VehicleRemoveModal({ isOpen, onClose, vehicle, onConfirm
                   className="w-full px-3 py-2 bg-garage-bg border border-garage-border rounded-lg text-garage-text focus:outline-none focus:ring-2 focus:ring-primary resize-none"
                 />
                 <p className="text-xs text-garage-text-muted mt-1">
-                  {notes.length}/1000 characters
+                  {notes.length}/1000 {t('common:characters')}
                 </p>
               </div>
 
@@ -297,8 +297,8 @@ export default function VehicleRemoveModal({ isOpen, onClose, vehicle, onConfirm
                 </label>
                 <p className="text-xs text-garage-text-muted mt-2 ml-7">
                   {visible
-                    ? 'Vehicle will appear in main list with an "ARCHIVED" watermark'
-                    : 'Vehicle will be hidden from main list (only visible in Settings → Archived Vehicles)'
+                    ? t('modal.remove.visibleHint')
+                    : t('modal.remove.hiddenHint')
                   }
                 </p>
               </div>
@@ -310,7 +310,7 @@ export default function VehicleRemoveModal({ isOpen, onClose, vehicle, onConfirm
                   disabled={loading}
                   className="flex-1 px-4 py-2 bg-garage-bg border border-garage-border text-garage-text rounded-lg hover:bg-garage-surface transition-colors disabled:opacity-50"
                 >
-                  Back
+                  {t('common:back')}
                 </button>
                 <button
                   onClick={handleArchive}
@@ -322,7 +322,7 @@ export default function VehicleRemoveModal({ isOpen, onClose, vehicle, onConfirm
                   ) : (
                     <>
                       <Archive className="w-4 h-4" />
-                      Archive Vehicle
+                      {t('modal.archiveVehicle')}
                     </>
                   )}
                 </button>
@@ -338,37 +338,36 @@ export default function VehicleRemoveModal({ isOpen, onClose, vehicle, onConfirm
                   <Trash2 className="w-6 h-6 text-danger" />
                 </div>
                 <div>
-                  <h2 className="text-xl font-bold text-garage-text">Delete Permanently</h2>
+                  <h2 className="text-xl font-bold text-garage-text">{t('modal.deletePermanently')}</h2>
                   <p className="text-sm text-garage-text-muted">{t('modal.cannotBeUndone')}</p>
                 </div>
               </div>
 
               {/* Impact Warning */}
               <div className="p-4 bg-danger/10 border border-danger/30 rounded-lg">
-                <p className="text-sm text-danger font-semibold mb-2">⚠️ Data Impact:</p>
+                <p className="text-sm text-danger font-semibold mb-2">⚠️ {t('modal.dataImpact')}:</p>
                 <ul className="text-sm text-garage-text space-y-1">
-                  <li>• Vehicle will be permanently deleted</li>
-                  <li>• All fuel records will be deleted</li>
-                  <li>• All service records will be deleted</li>
-                  <li>• All odometer records will be deleted</li>
-                  <li>• All photos and documents will be deleted</li>
-                  <li>• Vehicle will be removed from analytics</li>
-                  <li>• This action cannot be reversed</li>
+                  <li>• {t('modal.remove.impactVehicle')}</li>
+                  <li>• {t('modal.remove.impactFuel')}</li>
+                  <li>• {t('modal.remove.impactService')}</li>
+                  <li>• {t('modal.remove.impactOdometer')}</li>
+                  <li>• {t('modal.remove.impactPhotos')}</li>
+                  <li>• {t('modal.remove.impactAnalytics')}</li>
+                  <li>• {t('modal.deleteImpact.irreversible')}</li>
                 </ul>
               </div>
 
               {/* Recommendation */}
               <div className="p-4 bg-primary/10 border border-primary/30 rounded-lg">
                 <p className="text-sm text-garage-text">
-                  <strong>💡 Recommendation:</strong> Consider archiving instead of deleting.
-                  Archived vehicles preserve your history and analytics while keeping your main list clean.
+                  <strong>💡 {t('modal.remove.recommendationLabel')}:</strong> {t('modal.remove.recommendationDesc')}
                 </p>
               </div>
 
               {/* Confirmation Input */}
               <div>
                 <label className="block text-sm font-medium text-garage-text mb-2">
-                  Type <code className="px-1.5 py-0.5 bg-garage-bg border border-danger rounded text-danger font-mono">DELETE</code> to confirm:
+                  {t('modal.remove.confirmPrefix')} <code className="px-1.5 py-0.5 bg-garage-bg border border-danger rounded text-danger font-mono">DELETE</code> {t('modal.remove.confirmSuffix')}
                 </label>
                 <input
                   type="text"
@@ -387,7 +386,7 @@ export default function VehicleRemoveModal({ isOpen, onClose, vehicle, onConfirm
                   disabled={loading}
                   className="flex-1 px-4 py-2 bg-garage-bg border border-garage-border text-garage-text rounded-lg hover:bg-garage-surface transition-colors disabled:opacity-50"
                 >
-                  Back
+                  {t('common:back')}
                 </button>
                 <button
                   onClick={handleDelete}
@@ -399,7 +398,7 @@ export default function VehicleRemoveModal({ isOpen, onClose, vehicle, onConfirm
                   ) : (
                     <>
                       <Trash2 className="w-4 h-4" />
-                      Delete Forever
+                      {t('modal.remove.deleteForever')}
                     </>
                   )}
                 </button>

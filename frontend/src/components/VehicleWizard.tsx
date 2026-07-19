@@ -19,6 +19,7 @@ import type { VehicleCreate } from '../types/vehicle'
 import { FUEL_TYPE_VALUES, FUEL_TYPE_LABELS, type FuelType } from '../constants/fuel'
 import vehicleService from '../services/vehicleService'
 import { vehicleEditSchema, VEHICLE_TYPES, type VehicleEditFormData } from '../schemas/vehicle'
+import { useCurrencyPreference } from '../hooks/useCurrencyPreference'
 
 interface VehicleWizardProps {
   onClose: () => void
@@ -27,6 +28,7 @@ interface VehicleWizardProps {
 
 export default function VehicleWizard({ onClose, onSuccess }: VehicleWizardProps) {
   const { t } = useTranslation('vehicles')
+  const { formatCurrency } = useCurrencyPreference()
   const navigate = useNavigate()
   const [currentStep, setCurrentStep] = useState(1)
   const [loading, setLoading] = useState(false)
@@ -56,11 +58,12 @@ export default function VehicleWizard({ onClose, onSuccess }: VehicleWizardProps
   // Watch form values for display
   const formData = watch()
 
+  // Defined inside the component so `t` is in scope — module-scope arrays can't translate.
   const steps = [
-    { number: 1, title: 'VIN', description: 'Enter VIN' },
-    { number: 2, title: 'Details', description: 'Basic info' },
-    { number: 3, title: 'Photos', description: 'Add photos' },
-    { number: 4, title: 'Review', description: 'Confirm' },
+    { number: 1, title: t('wizard.vin'), description: t('vinDemo.enterVIN') },
+    { number: 2, title: t('wizard.misc.stepDetailsTitle'), description: t('wizard.misc.stepDetailsDesc') },
+    { number: 3, title: t('detail.misc.photos'), description: t('wizard.misc.stepPhotosDesc') },
+    { number: 4, title: t('wizard.misc.stepReviewTitle'), description: t('wizard.misc.stepReviewDesc') },
   ]
 
   // Handle VIN decode - populate form with setValue
@@ -187,9 +190,9 @@ export default function VehicleWizard({ onClose, onSuccess }: VehicleWizardProps
     } catch (err: unknown) {
       if (err && typeof err === 'object' && 'response' in err) {
         const response = (err as { response?: { data?: { detail?: string } } }).response
-        setError(response?.data?.detail || 'Failed to create vehicle')
+        setError(response?.data?.detail || t('wizard.misc.createFailed'))
       } else {
-        setError('Failed to create vehicle')
+        setError(t('wizard.misc.createFailed'))
       }
       setLoading(false)
     }
@@ -207,7 +210,11 @@ export default function VehicleWizard({ onClose, onSuccess }: VehicleWizardProps
           <div>
             <h2 className="text-2xl font-bold text-garage-text">{t('wizard.title')}</h2>
             <p className="text-garage-text-muted mt-1">
-              Step {currentStep} of {steps.length}: {steps[currentStep - 1].description}
+              {t('wizard.misc.stepProgress', {
+                current: currentStep,
+                total: steps.length,
+                description: steps[currentStep - 1].description,
+              })}
             </p>
           </div>
           <button
@@ -258,7 +265,7 @@ export default function VehicleWizard({ onClose, onSuccess }: VehicleWizardProps
             <div className="space-y-6">
               <div>
                 <h3 className="text-lg font-semibold text-garage-text mb-4">
-                  Enter Vehicle Identification Number
+                  {t('wizard.misc.enterVinHeading')}
                 </h3>
                 <VINInput
                   value={vin}
@@ -274,17 +281,17 @@ export default function VehicleWizard({ onClose, onSuccess }: VehicleWizardProps
           {/* Step 2: Basic Info */}
           {currentStep === 2 && (
             <div className="space-y-6">
-              <h3 className="text-lg font-semibold text-garage-text mb-4">Vehicle Details</h3>
+              <h3 className="text-lg font-semibold text-garage-text mb-4">{t('edit.vehicleDetails')}</h3>
 
               <div>
                 <label className="block text-sm font-medium text-garage-text mb-2">
-                  Nickname <span className="text-danger">*</span>
+                  {t('wizard.nickname')} <span className="text-danger">*</span>
                 </label>
                 <input
                   type="text"
                   {...register('nickname')}
                   className="w-full bg-garage-bg border border-garage-border rounded-lg px-4 py-2 text-garage-text focus:outline-none focus:border-primary"
-                  placeholder="My Red Mirage"
+                  placeholder={t('wizard.misc.nicknamePlaceholder')}
                 />
                 <FormError error={errors.nickname} />
               </div>
@@ -292,7 +299,7 @@ export default function VehicleWizard({ onClose, onSuccess }: VehicleWizardProps
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-garage-text mb-2">
-                    Vehicle Type <span className="text-danger">*</span>
+                    {t('edit.vehicleType')} <span className="text-danger">*</span>
                   </label>
                   <select
                     {...register('vehicle_type')}
@@ -337,7 +344,7 @@ export default function VehicleWizard({ onClose, onSuccess }: VehicleWizardProps
                     type="text"
                     {...register('model')}
                     className="w-full bg-garage-bg border border-garage-border rounded-lg px-4 py-2 text-garage-text focus:outline-none focus:border-primary"
-                    placeholder="Mirage"
+                    placeholder={t('wizard.misc.modelPlaceholder')}
                   />
                   <FormError error={errors.model} />
                 </div>
@@ -350,20 +357,20 @@ export default function VehicleWizard({ onClose, onSuccess }: VehicleWizardProps
                     type="text"
                     {...register('color')}
                     className="w-full bg-garage-bg border border-garage-border rounded-lg px-4 py-2 text-garage-text focus:outline-none focus:border-primary"
-                    placeholder="Red"
+                    placeholder={t('wizard.misc.colorPlaceholder')}
                   />
                   <FormError error={errors.color} />
                 </div>
 
                 <div>
                   <label className="block text-sm font-medium text-garage-text mb-2">
-                    License Plate
+                    {t('edit.licensePlate')}
                   </label>
                   <input
                     type="text"
                     {...register('license_plate')}
                     className="w-full bg-garage-bg border border-garage-border rounded-lg px-4 py-2 text-garage-text focus:outline-none focus:border-primary"
-                    placeholder="ABC-1234"
+                    placeholder={t('wizard.misc.licensePlatePlaceholder')}
                   />
                   <FormError error={errors.license_plate} />
                 </div>
@@ -372,7 +379,7 @@ export default function VehicleWizard({ onClose, onSuccess }: VehicleWizardProps
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-garage-text mb-2">
-                    Purchase Date
+                    {t('edit.purchaseDate')}
                   </label>
                   <input
                     type="date"
@@ -384,7 +391,7 @@ export default function VehicleWizard({ onClose, onSuccess }: VehicleWizardProps
 
                 <div>
                   <label className="block text-sm font-medium text-garage-text mb-2">
-                    Purchase Price
+                    {t('edit.purchasePrice')}
                   </label>
                   <input
                     type="number"
@@ -397,7 +404,7 @@ export default function VehicleWizard({ onClose, onSuccess }: VehicleWizardProps
                 </div>
               </div>
 
-              <h3 className="text-lg font-semibold text-garage-text mt-6 mb-4">VIN Decoded Information (Optional)</h3>
+              <h3 className="text-lg font-semibold text-garage-text mt-6 mb-4">{t('wizard.misc.vinDecodedInfoOptional')}</h3>
 
               <div className="grid grid-cols-2 gap-4">
                 <div>
@@ -406,18 +413,18 @@ export default function VehicleWizard({ onClose, onSuccess }: VehicleWizardProps
                     type="text"
                     {...register('trim')}
                     className="w-full bg-garage-bg border border-garage-border rounded-lg px-4 py-2 text-garage-text focus:outline-none focus:border-primary"
-                    placeholder="EX, Limited, etc."
+                    placeholder={t('wizard.misc.trimPlaceholder')}
                   />
                   <FormError error={errors.trim} />
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-garage-text mb-2">Body Class</label>
+                  <label className="block text-sm font-medium text-garage-text mb-2">{t('edit.bodyClass')}</label>
                   <input
                     type="text"
                     {...register('body_class')}
                     className="w-full bg-garage-bg border border-garage-border rounded-lg px-4 py-2 text-garage-text focus:outline-none focus:border-primary"
-                    placeholder="Sedan, Coupe, etc."
+                    placeholder={t('wizard.misc.bodyClassPlaceholder')}
                   />
                   <FormError error={errors.body_class} />
                 </div>
@@ -425,18 +432,18 @@ export default function VehicleWizard({ onClose, onSuccess }: VehicleWizardProps
 
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-garage-text mb-2">Drive Type</label>
+                  <label className="block text-sm font-medium text-garage-text mb-2">{t('edit.driveType')}</label>
                   <input
                     type="text"
                     {...register('drive_type')}
                     className="w-full bg-garage-bg border border-garage-border rounded-lg px-4 py-2 text-garage-text focus:outline-none focus:border-primary"
-                    placeholder="FWD, RWD, AWD, 4WD"
+                    placeholder={t('wizard.misc.driveTypePlaceholder')}
                   />
                   <FormError error={errors.drive_type} />
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-garage-text mb-2">Doors</label>
+                  <label className="block text-sm font-medium text-garage-text mb-2">{t('edit.doors')}</label>
                   <input
                     type="number"
                     {...register('doors', { valueAsNumber: true })}
@@ -447,11 +454,11 @@ export default function VehicleWizard({ onClose, onSuccess }: VehicleWizardProps
                 </div>
               </div>
 
-              <h3 className="text-lg font-semibold text-garage-text mt-6 mb-4">Engine & Transmission (Optional)</h3>
+              <h3 className="text-lg font-semibold text-garage-text mt-6 mb-4">{t('wizard.misc.engineTransmissionOptional')}</h3>
 
               <div className="grid grid-cols-3 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-garage-text mb-2">Displacement (L)</label>
+                  <label className="block text-sm font-medium text-garage-text mb-2">{t('edit.displacement')}</label>
                   <input
                     type="text"
                     {...register('displacement_l')}
@@ -462,7 +469,7 @@ export default function VehicleWizard({ onClose, onSuccess }: VehicleWizardProps
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-garage-text mb-2">Cylinders</label>
+                  <label className="block text-sm font-medium text-garage-text mb-2">{t('edit.cylinders')}</label>
                   <input
                     type="number"
                     {...register('cylinders', { valueAsNumber: true })}
@@ -498,23 +505,23 @@ export default function VehicleWizard({ onClose, onSuccess }: VehicleWizardProps
 
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-garage-text mb-2">Transmission Type</label>
+                  <label className="block text-sm font-medium text-garage-text mb-2">{t('edit.transmissionType')}</label>
                   <input
                     type="text"
                     {...register('transmission_type')}
                     className="w-full bg-garage-bg border border-garage-border rounded-lg px-4 py-2 text-garage-text focus:outline-none focus:border-primary"
-                    placeholder="Automatic, Manual, CVT"
+                    placeholder={t('wizard.misc.transmissionTypePlaceholder')}
                   />
                   <FormError error={errors.transmission_type} />
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-garage-text mb-2">Transmission Speeds</label>
+                  <label className="block text-sm font-medium text-garage-text mb-2">{t('edit.transmissionSpeeds')}</label>
                   <input
                     type="text"
                     {...register('transmission_speeds')}
                     className="w-full bg-garage-bg border border-garage-border rounded-lg px-4 py-2 text-garage-text focus:outline-none focus:border-primary"
-                    placeholder="6-Speed, 8-Speed, etc."
+                    placeholder={t('wizard.misc.transmissionSpeedsPlaceholder')}
                   />
                   <FormError error={errors.transmission_speeds} />
                 </div>
@@ -526,12 +533,12 @@ export default function VehicleWizard({ onClose, onSuccess }: VehicleWizardProps
           {currentStep === 3 && (
             <div className="space-y-6">
               <h3 className="text-lg font-semibold text-garage-text mb-4">
-                Add Photos (Optional)
+                {t('wizard.misc.addPhotosOptional')}
               </h3>
 
               <div>
                 <label className="block text-sm font-medium text-garage-text mb-2">
-                  Upload Photos
+                  {t('wizard.misc.uploadPhotos')}
                 </label>
                 <input
                   type="file"
@@ -541,19 +548,22 @@ export default function VehicleWizard({ onClose, onSuccess }: VehicleWizardProps
                   className="w-full bg-garage-bg border border-garage-border rounded-lg px-4 py-2 text-garage-text focus:outline-none focus:border-primary file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:bg-primary file:text-white file:cursor-pointer"
                 />
                 <p className="text-sm text-garage-text-muted mt-2">
-                  You can upload photos now or add them later. Supported formats: JPG, PNG, WEBP
+                  {t('wizard.misc.photoUploadHelp')}
                 </p>
               </div>
 
               {photoFiles.length > 0 && (
                 <div>
                   <p className="text-sm font-medium text-garage-text mb-2">
-                    Selected: {photoFiles.length} photo(s)
+                    {t('wizard.misc.selectedPhotos', { count: photoFiles.length })}
                   </p>
                   <ul className="space-y-1">
                     {photoFiles.map((file, index) => (
                       <li key={index} className="text-sm text-garage-text-muted">
-                        {file.name} ({(file.size / 1024 / 1024).toFixed(2)} MB)
+                        {t('wizard.misc.photoFileEntry', {
+                          name: file.name,
+                          size: (file.size / 1024 / 1024).toFixed(2),
+                        })}
                       </li>
                     ))}
                   </ul>
@@ -565,7 +575,7 @@ export default function VehicleWizard({ onClose, onSuccess }: VehicleWizardProps
           {/* Step 4: Review */}
           {currentStep === 4 && (
             <div className="space-y-6">
-              <h3 className="text-lg font-semibold text-garage-text mb-4">Review & Confirm</h3>
+              <h3 className="text-lg font-semibold text-garage-text mb-4">{t('wizard.misc.reviewConfirm')}</h3>
 
               <div className="bg-garage-bg rounded-lg p-6 space-y-4">
                 <div className="grid grid-cols-2 gap-4">
@@ -578,47 +588,51 @@ export default function VehicleWizard({ onClose, onSuccess }: VehicleWizardProps
                     <p className="text-garage-text">{formData.nickname}</p>
                   </div>
                   <div>
-                    <p className="text-sm text-garage-text-muted">Type</p>
+                    <p className="text-sm text-garage-text-muted">{t('detail.misc.type')}</p>
                     <p className="text-garage-text">{formData.vehicle_type}</p>
                   </div>
                   <div>
-                    <p className="text-sm text-garage-text-muted">Year</p>
-                    <p className="text-garage-text">{formData.year || 'Not specified'}</p>
+                    <p className="text-sm text-garage-text-muted">{t('wizard.year')}</p>
+                    <p className="text-garage-text">{formData.year || t('detail.notSpecified')}</p>
                   </div>
                   <div>
-                    <p className="text-sm text-garage-text-muted">Make</p>
-                    <p className="text-garage-text">{formData.make || 'Not specified'}</p>
+                    <p className="text-sm text-garage-text-muted">{t('wizard.make')}</p>
+                    <p className="text-garage-text">{formData.make || t('detail.notSpecified')}</p>
                   </div>
                   <div>
-                    <p className="text-sm text-garage-text-muted">Model</p>
-                    <p className="text-garage-text">{formData.model || 'Not specified'}</p>
+                    <p className="text-sm text-garage-text-muted">{t('wizard.model')}</p>
+                    <p className="text-garage-text">{formData.model || t('detail.notSpecified')}</p>
                   </div>
                   <div>
-                    <p className="text-sm text-garage-text-muted">Color</p>
-                    <p className="text-garage-text">{formData.color || 'Not specified'}</p>
+                    <p className="text-sm text-garage-text-muted">{t('wizard.color')}</p>
+                    <p className="text-garage-text">{formData.color || t('detail.notSpecified')}</p>
                   </div>
                   <div>
-                    <p className="text-sm text-garage-text-muted">License Plate</p>
-                    <p className="text-garage-text">{formData.license_plate || 'Not specified'}</p>
+                    <p className="text-sm text-garage-text-muted">{t('edit.licensePlate')}</p>
+                    <p className="text-garage-text">{formData.license_plate || t('detail.notSpecified')}</p>
                   </div>
                   {formData.purchase_date && (
                     <div>
-                      <p className="text-sm text-garage-text-muted">Purchase Date</p>
+                      <p className="text-sm text-garage-text-muted">{t('edit.purchaseDate')}</p>
                       <p className="text-garage-text">{formData.purchase_date}</p>
                     </div>
                   )}
                   {formData.purchase_price && (
                     <div>
-                      <p className="text-sm text-garage-text-muted">Purchase Price</p>
-                      <p className="text-garage-text">${Number(formData.purchase_price).toFixed(2)}</p>
+                      <p className="text-sm text-garage-text-muted">{t('edit.purchasePrice')}</p>
+                      <p className="text-garage-text">
+                        {formatCurrency(formData.purchase_price, {
+                          fallback: t('detail.notSpecified'),
+                        })}
+                      </p>
                     </div>
                   )}
                 </div>
 
                 {photoFiles.length > 0 && (
                   <div>
-                    <p className="text-sm text-garage-text-muted mb-2">Photos to Upload</p>
-                    <p className="text-garage-text">{photoFiles.length} photo(s)</p>
+                    <p className="text-sm text-garage-text-muted mb-2">{t('wizard.misc.photosToUpload')}</p>
+                    <p className="text-garage-text">{t('wizard.misc.photoCount', { count: photoFiles.length })}</p>
                   </div>
                 )}
               </div>
@@ -634,7 +648,7 @@ export default function VehicleWizard({ onClose, onSuccess }: VehicleWizardProps
             className="flex items-center space-x-2 px-4 py-2 text-garage-text-muted hover:text-garage-text disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
           >
             <ChevronLeft className="w-4 h-4" />
-            <span>Previous</span>
+            <span>{t('wizard.misc.previous')}</span>
           </button>
 
           <div className="flex space-x-3">
@@ -642,7 +656,7 @@ export default function VehicleWizard({ onClose, onSuccess }: VehicleWizardProps
               onClick={onClose}
               className="btn btn-secondary rounded-lg transition-colors"
             >
-              Cancel
+              {t('wizard.misc.cancel')}
             </button>
 
             {currentStep < 4 ? (
@@ -663,12 +677,12 @@ export default function VehicleWizard({ onClose, onSuccess }: VehicleWizardProps
                 {loading ? (
                   <>
                     <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                    <span>Creating...</span>
+                    <span>{t('wizard.misc.creating')}</span>
                   </>
                 ) : (
                   <>
                     <Check className="w-4 h-4" />
-                    <span>Create Vehicle</span>
+                    <span>{t('wizard.misc.createVehicle')}</span>
                   </>
                 )}
               </button>

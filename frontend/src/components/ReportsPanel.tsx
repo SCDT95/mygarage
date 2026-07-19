@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { FileText, Download, Calendar, FileSpreadsheet } from 'lucide-react'
 import { toast } from 'sonner'
 import api from '../services/api'
@@ -9,6 +10,7 @@ interface ReportsPanelProps {
 }
 
 export default function ReportsPanel({ vin }: ReportsPanelProps) {
+  const { t } = useTranslation('analytics')
   const [startDate, setStartDate] = useState('')
   const [endDate, setEndDate] = useState('')
   const [selectedYear, setSelectedYear] = useState(new Date().getFullYear())
@@ -45,7 +47,7 @@ export default function ReportsPanel({ vin }: ReportsPanelProps) {
       window.URL.revokeObjectURL(downloadUrl)
     } catch (error) {
       console.error('PDF generation error:', error)
-      const message = error instanceof Error ? error.message : 'Failed to generate report'
+      const message = error instanceof Error ? error.message : t('reports.pdfError')
       toast.error(message)
     } finally {
       setIsGenerating(false)
@@ -77,7 +79,7 @@ export default function ReportsPanel({ vin }: ReportsPanelProps) {
       window.URL.revokeObjectURL(downloadUrl)
     } catch (error) {
       console.error('CSV export error:', error)
-      const message = error instanceof Error ? error.message : 'Failed to export data'
+      const message = error instanceof Error ? error.message : t('reports.csvError')
       toast.error(message)
     } finally {
       setIsGenerating(false)
@@ -87,19 +89,19 @@ export default function ReportsPanel({ vin }: ReportsPanelProps) {
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <h2 className="text-2xl font-bold text-garage-text">Reports & Export</h2>
+        <h2 className="text-2xl font-bold text-garage-text">{t('reports.title')}</h2>
       </div>
 
       {/* Date Range Selector */}
       <div className="bg-garage-surface border border-garage-border rounded-lg p-6">
         <h3 className="text-lg font-semibold text-garage-text mb-4 flex items-center gap-2">
           <Calendar className="w-5 h-5 text-primary-500" />
-          Date Range Selection
+          {t('reports.dateRangeTitle')}
         </h3>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>
             <label className="block text-sm font-medium text-garage-text mb-2">
-              Start Date
+              {t('reports.startDate')}
             </label>
             <input
               type="date"
@@ -110,7 +112,7 @@ export default function ReportsPanel({ vin }: ReportsPanelProps) {
           </div>
           <div>
             <label className="block text-sm font-medium text-garage-text mb-2">
-              End Date
+              {t('reports.endDate')}
             </label>
             <input
               type="date"
@@ -126,39 +128,41 @@ export default function ReportsPanel({ vin }: ReportsPanelProps) {
       <div className="bg-garage-surface border border-garage-border rounded-lg p-6">
         <h3 className="text-lg font-semibold text-garage-text mb-4 flex items-center gap-2">
           <FileText className="w-5 h-5 text-danger-500" />
-          PDF Reports
+          {t('reports.pdfReports')}
         </h3>
         <div className="space-y-4">
           {/* Service History Report */}
           <div className="flex items-center justify-between p-4 bg-garage-bg border border-garage-border rounded-lg hover:border-primary-500 transition-colors">
             <div className="flex-1">
-              <h4 className="font-medium text-garage-text">Service History Report</h4>
+              <h4 className="font-medium text-garage-text">{t('reports.serviceHistoryTitle')}</h4>
               <p className="text-sm text-garage-text-muted mt-1">
-                Complete service and maintenance history
-                {startDate || endDate ? ' (custom date range)' : ' (all records)'}
+                {t('reports.serviceHistoryDesc')}{' '}
+                {startDate || endDate ? t('reports.rangeCustom') : t('reports.rangeAll')}
               </p>
             </div>
             <button
               onClick={() => handleDownloadPDF('service-history')}
               disabled={isGenerating}
+              aria-label={t('reports.downloadPdf')}
               className="ml-4 flex items-center gap-2 px-4 py-2 btn btn-primary rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             >
               <Download className="w-4 h-4" />
-              <span className="hidden sm:inline">Download PDF</span>
+              <span className="hidden sm:inline">{t('reports.downloadPdf')}</span>
             </button>
           </div>
 
           {/* Annual Cost Summary */}
           <div className="flex items-center justify-between p-4 bg-garage-bg border border-garage-border rounded-lg hover:border-primary-500 transition-colors">
             <div className="flex-1">
-              <h4 className="font-medium text-garage-text">Annual Cost Summary</h4>
+              <h4 className="font-medium text-garage-text">{t('reports.annualCostTitle')}</h4>
               <p className="text-sm text-garage-text-muted mt-1">
-                Breakdown of all expenses by category
+                {t('reports.annualCostDesc')}
               </p>
               <div className="mt-2">
                 <select
                   value={selectedYear}
                   onChange={(e) => setSelectedYear(Number(e.target.value))}
+                  aria-label={t('reports.selectYear')}
                   className="px-3 py-1 bg-garage-surface border border-garage-border rounded text-garage-text text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
                 >
                   {years.map(year => (
@@ -170,24 +174,26 @@ export default function ReportsPanel({ vin }: ReportsPanelProps) {
             <button
               onClick={() => handleDownloadPDF('cost-summary')}
               disabled={isGenerating}
+              aria-label={t('reports.downloadPdf')}
               className="ml-4 flex items-center gap-2 px-4 py-2 btn btn-primary rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             >
               <Download className="w-4 h-4" />
-              <span className="hidden sm:inline">Download PDF</span>
+              <span className="hidden sm:inline">{t('reports.downloadPdf')}</span>
             </button>
           </div>
 
           {/* Tax Deduction Report */}
           <div className="flex items-center justify-between p-4 bg-garage-bg border border-garage-border rounded-lg hover:border-primary-500 transition-colors">
             <div className="flex-1">
-              <h4 className="font-medium text-garage-text">Tax Deduction Report</h4>
+              <h4 className="font-medium text-garage-text">{t('reports.taxDeductionTitle')}</h4>
               <p className="text-sm text-garage-text-muted mt-1">
-                Potentially deductible expenses (consult tax professional)
+                {t('reports.taxDeductionDesc')}
               </p>
               <div className="mt-2">
                 <select
                   value={selectedYear}
                   onChange={(e) => setSelectedYear(Number(e.target.value))}
+                  aria-label={t('reports.selectYear')}
                   className="px-3 py-1 bg-garage-surface border border-garage-border rounded text-garage-text text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
                 >
                   {years.map(year => (
@@ -199,10 +205,11 @@ export default function ReportsPanel({ vin }: ReportsPanelProps) {
             <button
               onClick={() => handleDownloadPDF('tax-deduction')}
               disabled={isGenerating}
+              aria-label={t('reports.downloadPdf')}
               className="ml-4 flex items-center gap-2 px-4 py-2 btn btn-primary rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             >
               <Download className="w-4 h-4" />
-              <span className="hidden sm:inline">Download PDF</span>
+              <span className="hidden sm:inline">{t('reports.downloadPdf')}</span>
             </button>
           </div>
         </div>
@@ -212,42 +219,44 @@ export default function ReportsPanel({ vin }: ReportsPanelProps) {
       <div className="bg-garage-surface border border-garage-border rounded-lg p-6">
         <h3 className="text-lg font-semibold text-garage-text mb-4 flex items-center gap-2">
           <FileSpreadsheet className="w-5 h-5 text-success-500" />
-          CSV Exports
+          {t('reports.csvExports')}
         </h3>
         <div className="space-y-4">
           {/* Service History CSV */}
           <div className="flex items-center justify-between p-4 bg-garage-bg border border-garage-border rounded-lg hover:border-primary-500 transition-colors">
             <div className="flex-1">
-              <h4 className="font-medium text-garage-text">Service History (CSV)</h4>
+              <h4 className="font-medium text-garage-text">{t('reports.serviceHistoryCsvTitle')}</h4>
               <p className="text-sm text-garage-text-muted mt-1">
-                Export service records to spreadsheet
-                {startDate || endDate ? ' (custom date range)' : ' (all records)'}
+                {t('reports.serviceHistoryCsvDesc')}{' '}
+                {startDate || endDate ? t('reports.rangeCustom') : t('reports.rangeAll')}
               </p>
             </div>
             <button
               onClick={() => handleDownloadCSV('service-history')}
               disabled={isGenerating}
+              aria-label={t('reports.exportCsv')}
               className="ml-4 flex items-center gap-2 px-4 py-2 btn btn-primary rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             >
               <Download className="w-4 h-4" />
-              <span className="hidden sm:inline">Export CSV</span>
+              <span className="hidden sm:inline">{t('reports.exportCsv')}</span>
             </button>
           </div>
 
           {/* All Records CSV */}
           <div className="flex items-center justify-between p-4 bg-garage-bg border border-garage-border rounded-lg hover:border-primary-500 transition-colors">
             <div className="flex-1">
-              <h4 className="font-medium text-garage-text">All Records (CSV)</h4>
+              <h4 className="font-medium text-garage-text">{t('reports.allRecordsCsvTitle')}</h4>
               <p className="text-sm text-garage-text-muted mt-1">
-                Export all maintenance records (service, fuel, collisions, upgrades)
+                {t('reports.allRecordsCsvDesc')}
               </p>
               <div className="mt-2">
                 <select
                   value={selectedYear}
                   onChange={(e) => setSelectedYear(Number(e.target.value))}
+                  aria-label={t('reports.selectYear')}
                   className="px-3 py-1 bg-garage-surface border border-garage-border rounded text-garage-text text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
                 >
-                  <option value="">All Years</option>
+                  <option value="">{t('reports.allYears')}</option>
                   {years.map(year => (
                     <option key={year} value={year}>{year}</option>
                   ))}
@@ -257,10 +266,11 @@ export default function ReportsPanel({ vin }: ReportsPanelProps) {
             <button
               onClick={() => handleDownloadCSV('all-records')}
               disabled={isGenerating}
+              aria-label={t('reports.exportCsv')}
               className="ml-4 flex items-center gap-2 px-4 py-2 btn btn-primary rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             >
               <Download className="w-4 h-4" />
-              <span className="hidden sm:inline">Export CSV</span>
+              <span className="hidden sm:inline">{t('reports.exportCsv')}</span>
             </button>
           </div>
         </div>
@@ -271,7 +281,7 @@ export default function ReportsPanel({ vin }: ReportsPanelProps) {
           <div className="bg-garage-surface rounded-lg p-6 max-w-sm">
             <div className="flex items-center gap-3">
               <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-500"></div>
-              <p className="text-garage-text">Generating report...</p>
+              <p className="text-garage-text">{t('reports.generating')}</p>
             </div>
           </div>
         </div>

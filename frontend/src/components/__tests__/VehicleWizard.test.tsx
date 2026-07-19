@@ -14,6 +14,13 @@ vi.mock('@/services/vinService', () => ({
   },
 }))
 
+// The wizard's review step formats the purchase price via useCurrencyPreference(),
+// which reads the signed-in user through useAuth(). The shared test render has no
+// AuthProvider, so stub the context module out.
+vi.mock('../../contexts/AuthContext', () => ({
+  useAuth: () => ({ user: null }),
+}))
+
 // Not exercised by these tests (only hit on final submit), but the module is
 // imported at the top of VehicleWizard.tsx.
 vi.mock('../../services/vehicleService', () => ({

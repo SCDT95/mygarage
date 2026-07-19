@@ -407,5 +407,32 @@
       "trackMonths": "Track at least 3-6 months of data for meaningful trends",
       "reviewAnomalies": "Review anomalies to understand unusual expenses"
     }
+  },
+  "reports": {
+    "title": "Reports & Export",
+    "dateRangeTitle": "Date Range Selection",
+    "startDate": "Start Date",
+    "endDate": "End Date",
+    "pdfReports": "PDF Reports",
+    "csvExports": "CSV Exports",
+    "serviceHistoryTitle": "Service History Report",
+    "serviceHistoryDesc": "Complete service and maintenance history",
+    "annualCostTitle": "Annual Cost Summary",
+    "annualCostDesc": "Breakdown of all expenses by category",
+    "taxDeductionTitle": "Tax Deduction Report",
+    "taxDeductionDesc": "Potentially deductible expenses (consult tax professional)",
+    "serviceHistoryCsvTitle": "Service History (CSV)",
+    "serviceHistoryCsvDesc": "Export service records to spreadsheet",
+    "allRecordsCsvTitle": "All Records (CSV)",
+    "allRecordsCsvDesc": "Export all maintenance records (service, fuel, collisions, upgrades)",
+    "rangeCustom": "(custom date range)",
+    "rangeAll": "(all records)",
+    "allYears": "All Years",
+    "selectYear": "Select year",
+    "downloadPdf": "Download PDF",
+    "exportCsv": "Export CSV",
+    "generating": "Generating report...",
+    "pdfError": "Failed to generate report",
+    "csvError": "Failed to export data"
   }
 }

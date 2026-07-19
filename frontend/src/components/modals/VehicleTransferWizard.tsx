@@ -21,14 +21,25 @@ interface VehicleTransferWizardProps {
   onTransferComplete: (transfer: VehicleTransferResponse) => void
 }
 
+/** Sentinel the user must type to unlock the transfer. Not user-facing copy — do not translate. */
+const CONFIRM_KEYWORD = 'TRANSFER'
+
 const DATA_CATEGORIES = [
-  { key: 'service_records', label: 'Service Records', description: 'Maintenance and repair history' },
-  { key: 'fuel_logs', label: 'Fuel Logs', description: 'Fuel fill-up records' },
-  { key: 'documents', label: 'Documents', description: 'Uploaded documents and files' },
-  { key: 'maintenance', label: 'Maintenance Schedule', description: 'Scheduled maintenance items' },
-  { key: 'notes', label: 'Notes', description: 'Vehicle notes and annotations' },
-  { key: 'expenses', label: 'Expenses', description: 'Cost tracking records' },
-  { key: 'photos', label: 'Photos', description: 'Vehicle photo gallery' },
+  {
+    key: 'service_records',
+    labelKey: 'modal.transfer.dataServiceRecords',
+    descKey: 'modal.transfer.dataServiceRecordsDesc',
+  },
+  { key: 'fuel_logs', labelKey: 'modal.transfer.dataFuelLogs', descKey: 'modal.transfer.dataFuelLogsDesc' },
+  { key: 'documents', labelKey: 'modal.transfer.dataDocuments', descKey: 'modal.transfer.dataDocumentsDesc' },
+  {
+    key: 'maintenance',
+    labelKey: 'modal.transfer.dataMaintenance',
+    descKey: 'modal.transfer.dataMaintenanceDesc',
+  },
+  { key: 'notes', labelKey: 'modal.transfer.dataNotes', descKey: 'modal.transfer.dataNotesDesc' },
+  { key: 'expenses', labelKey: 'modal.transfer.dataExpenses', descKey: 'modal.transfer.dataExpensesDesc' },
+  { key: 'photos', labelKey: 'modal.transfer.dataPhotos', descKey: 'modal.transfer.dataPhotosDesc' },
 ] as const
 
 export default function VehicleTransferWizard({
@@ -106,9 +117,9 @@ export default function VehicleTransferWizard({
   }, [isOpen])
 
   const steps = [
-    { number: 1, title: 'Recipient', description: 'Select new owner' },
-    { number: 2, title: 'Data', description: 'Select included data' },
-    { number: 3, title: 'Confirm', description: 'Review & confirm' },
+    { number: 1, title: t('modal.transfer.stepRecipient'), description: t('modal.transfer.stepRecipientDesc') },
+    { number: 2, title: t('modal.transfer.stepData'), description: t('modal.transfer.stepDataDesc') },
+    { number: 3, title: t('modal.transfer.stepConfirm'), description: t('modal.transfer.stepConfirmDesc') },
   ]
 
   // Filter recipients by search
@@ -135,7 +146,7 @@ export default function VehicleTransferWizard({
   const canProceed = () => {
     if (currentStep === 1) return selectedRecipient !== null
     if (currentStep === 2) return true // Data selection is optional for audit
-    if (currentStep === 3) return confirmText.toUpperCase() === 'TRANSFER'
+    if (currentStep === 3) return confirmText.toUpperCase() === CONFIRM_KEYWORD
     return false
   }
 
@@ -169,7 +180,11 @@ export default function VehicleTransferWizard({
         data_included: dataIncluded,
       })
 
-      toast.success(`Vehicle transferred to ${selectedRecipient.full_name || selectedRecipient.username}`)
+      toast.success(
+        t('modal.transfer.transferSuccess', {
+          name: selectedRecipient.full_name || selectedRecipient.username,
+        })
+      )
       onTransferComplete(result)
       onClose()
     } catch (err) {
@@ -301,8 +316,8 @@ export default function VehicleTransferWizard({
             <div className="space-y-4">
               <div className="p-3 bg-info/10 border border-info/30 rounded-lg">
                 <p className="text-sm text-garage-text">
-                  <strong>Note:</strong> All vehicle data stays with the vehicle regardless of these
-                  selections. This is for audit purposes to document what data exists at transfer time.
+                  <strong>{t('modal.transfer.auditNoteLabel')}</strong>{' '}
+                  {t('modal.transfer.auditNoteDesc')}
                 </p>
               </div>
 
@@ -337,8 +352,8 @@ export default function VehicleTransferWizard({
                       className="w-4 h-4 text-primary bg-garage-bg border-garage-border rounded focus:ring-primary focus:ring-2"
                     />
                     <div className="flex-1">
-                      <p className="font-medium text-garage-text">{category.label}</p>
-                      <p className="text-sm text-garage-text-muted">{category.description}</p>
+                      <p className="font-medium text-garage-text">{t(category.labelKey)}</p>
+                      <p className="text-sm text-garage-text-muted">{t(category.descKey)}</p>
                     </div>
                   </label>
                 ))}
@@ -354,9 +369,10 @@ export default function VehicleTransferWizard({
                 <div>
                   <p className="font-medium text-garage-text">{t('modal.confirmTransfer')}</p>
                   <p className="text-sm text-garage-text-muted mt-1">
-                    This action will transfer ownership of <strong>{vehicleNickname}</strong> to{' '}
-                    <strong>{selectedRecipient?.full_name || selectedRecipient?.username}</strong>.
-                    This action cannot be undone.
+                    {t('modal.transfer.confirmOwnershipWarning', {
+                      vehicle: vehicleNickname,
+                      recipient: selectedRecipient?.full_name || selectedRecipient?.username || '',
+                    })}
                   </p>
                 </div>
               </div>
@@ -368,7 +384,7 @@ export default function VehicleTransferWizard({
                   <span className="font-medium text-garage-text">{vehicleNickname}</span>
                 </div>
                 <div className="flex justify-between py-2 border-b border-garage-border">
-                  <span className="text-garage-text-muted">VIN</span>
+                  <span className="text-garage-text-muted">{t('modal.transfer.vin')}</span>
                   <span className="font-mono text-garage-text">{vin}</span>
                 </div>
                 <div className="flex justify-between py-2 border-b border-garage-border">
@@ -380,8 +396,10 @@ export default function VehicleTransferWizard({
                 <div className="flex justify-between py-2 border-b border-garage-border">
                   <span className="text-garage-text-muted">{t('modal.dataIncluded')}</span>
                   <span className="text-garage-text">
-                    {Object.values(dataIncluded).filter(Boolean).length} of {DATA_CATEGORIES.length}{' '}
-                    categories
+                    {t('modal.transfer.categoriesCount', {
+                      selected: Object.values(dataIncluded).filter(Boolean).length,
+                      total: DATA_CATEGORIES.length,
+                    })}
                   </span>
                 </div>
               </div>
@@ -404,13 +422,13 @@ export default function VehicleTransferWizard({
               {/* Confirmation Input */}
               <div>
                 <label className="block text-sm font-medium text-garage-text mb-1.5">
-                  Type <span className="font-mono bg-garage-bg px-1 rounded">TRANSFER</span> to confirm
+                  {t('modal.transfer.typeToConfirm', { word: CONFIRM_KEYWORD })}
                 </label>
                 <input
                   type="text"
                   value={confirmText}
                   onChange={(e) => setConfirmText(e.target.value)}
-                  placeholder="TRANSFER"
+                  placeholder={CONFIRM_KEYWORD}
                   className="w-full px-3 py-2 bg-garage-bg border border-garage-border rounded-lg text-garage-text focus:outline-none focus:ring-2 focus:ring-primary font-mono"
                 />
               </div>
@@ -440,7 +458,7 @@ export default function VehicleTransferWizard({
               disabled={!canProceed()}
               className="flex items-center gap-2 px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
             >
-              Next
+              {t('common:next')}
               <ChevronRight className="w-4 h-4" />
             </button>
           ) : (
@@ -457,7 +475,7 @@ export default function VehicleTransferWizard({
               ) : (
                 <>
                   <Check className="w-4 h-4" />
-                  Transfer Vehicle
+                  {t('modal.transferVehicle')}
                 </>
               )}
             </button>

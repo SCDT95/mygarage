@@ -2,6 +2,7 @@ import { useState, useRef, type SyntheticEvent } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Upload, X, FileText, DollarSign, Fuel, Edit2, Save, Palette, Shield, Leaf, Cog, Car } from 'lucide-react'
 import api from '../services/api'
+import { useCurrencySymbol } from '../hooks/useCurrencySymbol'
 
 interface WindowStickerUploadProps {
   vin: string
@@ -47,6 +48,7 @@ interface ExtractedData {
 
 export default function WindowStickerUpload({ vin, onSuccess, onClose }: WindowStickerUploadProps) {
   const { t } = useTranslation('vehicles')
+  const currencySymbol = useCurrencySymbol()
   const [uploading, setUploading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [success, setSuccess] = useState<string | null>(null)
@@ -86,13 +88,13 @@ export default function WindowStickerUpload({ vin, onSuccess, onClose }: WindowS
     // Validate file type
     const validTypes = ['application/pdf', 'image/jpeg', 'image/jpg', 'image/png']
     if (!validTypes.includes(selectedFile.type)) {
-      setError('Please select a valid file (PDF, JPG, or PNG)')
+      setError(t('windowSticker.misc.invalidFileType'))
       return
     }
 
     // Validate file size (10MB)
     if (selectedFile.size > 10 * 1024 * 1024) {
-      setError('File size must be less than 10MB')
+      setError(t('windowSticker.misc.fileTooLarge'))
       return
     }
 
@@ -117,10 +119,10 @@ export default function WindowStickerUpload({ vin, onSuccess, onClose }: WindowS
       })
 
       setExtractedData(response.data)
-      setSuccess('Window sticker uploaded successfully! Review the extracted data below.')
+      setSuccess(t('windowSticker.misc.uploadSuccess'))
       setEditMode(true)
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'An error occurred')
+      setError(err instanceof Error ? err.message : t('windowSticker.misc.errorOccurred'))
     } finally {
       setUploading(false)
     }
@@ -135,13 +137,13 @@ export default function WindowStickerUpload({ vin, onSuccess, onClose }: WindowS
     try {
       await api.patch(`/vehicles/${vin}/window-sticker/data`, extractedData)
 
-      setSuccess('Window sticker data saved successfully!')
+      setSuccess(t('windowSticker.misc.saveSuccess'))
       setTimeout(() => {
         onSuccess()
         onClose()
       }, 1000)
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'An error occurred')
+      setError(err instanceof Error ? err.message : t('windowSticker.misc.errorOccurred'))
     } finally {
       setUploading(false)
     }
@@ -198,10 +200,10 @@ export default function WindowStickerUpload({ vin, onSuccess, onClose }: WindowS
               >
                 <FileText className="w-12 h-12 text-garage-text-muted mx-auto mb-4" />
                 <p className="text-garage-text mb-2">
-                  Drag and drop your window sticker here, or click to select
+                  {t('windowSticker.misc.dragDropPrompt')}
                 </p>
                 <p className="text-sm text-garage-text-muted mb-4">
-                  PDF, JPG, or PNG (max 10MB)
+                  {t('windowSticker.fileTypes')}
                 </p>
                 <input
                   ref={fileInputRef}
@@ -215,7 +217,7 @@ export default function WindowStickerUpload({ vin, onSuccess, onClose }: WindowS
                   onClick={() => fileInputRef.current?.click()}
                   className="px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary/90 transition-colors"
                 >
-                  Select File
+                  {t('windowSticker.misc.selectFile')}
                 </button>
               </div>
 
@@ -239,7 +241,7 @@ export default function WindowStickerUpload({ vin, onSuccess, onClose }: WindowS
                   onClick={onClose}
                   className="px-4 py-2 bg-garage-bg border border-garage-border text-garage-text rounded-lg hover:bg-garage-border/50 transition-colors"
                 >
-                  Cancel
+                  {t('windowSticker.misc.cancel')}
                 </button>
                 <button
                   type="submit"
@@ -261,10 +263,12 @@ export default function WindowStickerUpload({ vin, onSuccess, onClose }: WindowS
                     <h3 className="text-lg font-semibold text-garage-text">{t('windowSticker.extractedData')}</h3>
                     {extractedData.window_sticker_parser_used && (
                       <p className="text-xs text-garage-text-muted">
-                        Parser: {extractedData.window_sticker_parser_used}
+                        {t('detail.misc.parser', { parser: extractedData.window_sticker_parser_used })}
                         {extractedData.window_sticker_confidence_score && (
                           <span className="ml-2">
-                            ({Math.round(Number(extractedData.window_sticker_confidence_score))}% confidence)
+                            {t('windowSticker.misc.confidence', {
+                              percent: Math.round(Number(extractedData.window_sticker_confidence_score)),
+                            })}
                           </span>
                         )}
                       </p>
@@ -290,7 +294,7 @@ export default function WindowStickerUpload({ vin, onSuccess, onClose }: WindowS
 
                     <div className="grid grid-cols-2 md:grid-cols-4 gap-3 ml-7">
                       <div>
-                        <label className="block text-xs text-garage-text-muted mb-1">Base Price</label>
+                        <label className="block text-xs text-garage-text-muted mb-1">{t('detail.misc.basePrice')}</label>
                         <input
                           type="text"
                           value={formatCurrency(extractedData.msrp_base)}
@@ -304,7 +308,7 @@ export default function WindowStickerUpload({ vin, onSuccess, onClose }: WindowS
                         />
                       </div>
                       <div>
-                        <label className="block text-xs text-garage-text-muted mb-1">Options</label>
+                        <label className="block text-xs text-garage-text-muted mb-1">{t('detail.misc.options')}</label>
                         <input
                           type="text"
                           value={formatCurrency(extractedData.msrp_options)}
@@ -318,7 +322,7 @@ export default function WindowStickerUpload({ vin, onSuccess, onClose }: WindowS
                         />
                       </div>
                       <div>
-                        <label className="block text-xs text-garage-text-muted mb-1">Destination</label>
+                        <label className="block text-xs text-garage-text-muted mb-1">{t('detail.misc.destination')}</label>
                         <input
                           type="text"
                           value={formatCurrency(extractedData.destination_charge)}
@@ -332,7 +336,7 @@ export default function WindowStickerUpload({ vin, onSuccess, onClose }: WindowS
                         />
                       </div>
                       <div>
-                        <label className="block text-xs text-garage-text-muted mb-1">Total MSRP</label>
+                        <label className="block text-xs text-garage-text-muted mb-1">{t('detail.misc.totalMsrp')}</label>
                         <input
                           type="text"
                           value={formatCurrency(extractedData.msrp_total)}
@@ -352,12 +356,12 @@ export default function WindowStickerUpload({ vin, onSuccess, onClose }: WindowS
                   <div className="space-y-3">
                     <div className="flex items-center gap-2 text-garage-text font-medium">
                       <Palette className="w-5 h-5 text-primary" />
-                      <span>Colors</span>
+                      <span>{t('windowSticker.misc.colors')}</span>
                     </div>
 
                     <div className="grid grid-cols-2 gap-3 ml-7">
                       <div>
-                        <label className="block text-xs text-garage-text-muted mb-1">Exterior Color</label>
+                        <label className="block text-xs text-garage-text-muted mb-1">{t('detail.misc.exteriorColor')}</label>
                         <input
                           type="text"
                           value={extractedData.exterior_color || ''}
@@ -366,12 +370,12 @@ export default function WindowStickerUpload({ vin, onSuccess, onClose }: WindowS
                             exterior_color: e.target.value || undefined
                           })}
                           disabled={!editMode}
-                          placeholder="Diamond Black Crystal Pearl"
+                          placeholder={t('windowSticker.misc.exteriorColorPlaceholder')}
                           className="w-full px-3 py-2 bg-garage-surface border border-garage-border rounded text-garage-text text-sm disabled:opacity-60"
                         />
                       </div>
                       <div>
-                        <label className="block text-xs text-garage-text-muted mb-1">Interior Color</label>
+                        <label className="block text-xs text-garage-text-muted mb-1">{t('detail.misc.interiorColor')}</label>
                         <input
                           type="text"
                           value={extractedData.interior_color || ''}
@@ -380,7 +384,7 @@ export default function WindowStickerUpload({ vin, onSuccess, onClose }: WindowS
                             interior_color: e.target.value || undefined
                           })}
                           disabled={!editMode}
-                          placeholder="Black"
+                          placeholder={t('windowSticker.misc.interiorColorPlaceholder')}
                           className="w-full px-3 py-2 bg-garage-surface border border-garage-border rounded text-garage-text text-sm disabled:opacity-60"
                         />
                       </div>
@@ -391,12 +395,12 @@ export default function WindowStickerUpload({ vin, onSuccess, onClose }: WindowS
                   <div className="space-y-3">
                     <div className="flex items-center gap-2 text-garage-text font-medium">
                       <Cog className="w-5 h-5 text-primary" />
-                      <span>Vehicle Specifications</span>
+                      <span>{t('windowSticker.misc.vehicleSpecs')}</span>
                     </div>
 
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-3 ml-7">
                       <div>
-                        <label className="block text-xs text-garage-text-muted mb-1">Engine</label>
+                        <label className="block text-xs text-garage-text-muted mb-1">{t('detail.misc.engine')}</label>
                         <input
                           type="text"
                           value={extractedData.sticker_engine_description || ''}
@@ -405,12 +409,12 @@ export default function WindowStickerUpload({ vin, onSuccess, onClose }: WindowS
                             sticker_engine_description: e.target.value || undefined
                           })}
                           disabled={!editMode}
-                          placeholder="6.7L I6 Cummins HO Turbo Diesel"
+                          placeholder={t('windowSticker.misc.enginePlaceholder')}
                           className="w-full px-3 py-2 bg-garage-surface border border-garage-border rounded text-garage-text text-sm disabled:opacity-60"
                         />
                       </div>
                       <div>
-                        <label className="block text-xs text-garage-text-muted mb-1">Transmission</label>
+                        <label className="block text-xs text-garage-text-muted mb-1">{t('detail.misc.transmission')}</label>
                         <input
                           type="text"
                           value={extractedData.sticker_transmission_description || ''}
@@ -419,12 +423,12 @@ export default function WindowStickerUpload({ vin, onSuccess, onClose }: WindowS
                             sticker_transmission_description: e.target.value || undefined
                           })}
                           disabled={!editMode}
-                          placeholder="8-Speed Automatic"
+                          placeholder={t('windowSticker.misc.transmissionPlaceholder')}
                           className="w-full px-3 py-2 bg-garage-surface border border-garage-border rounded text-garage-text text-sm disabled:opacity-60"
                         />
                       </div>
                       <div>
-                        <label className="block text-xs text-garage-text-muted mb-1">Wheels</label>
+                        <label className="block text-xs text-garage-text-muted mb-1">{t('detail.misc.wheels')}</label>
                         <input
                           type="text"
                           value={extractedData.wheel_specs || ''}
@@ -433,12 +437,12 @@ export default function WindowStickerUpload({ vin, onSuccess, onClose }: WindowS
                             wheel_specs: e.target.value || undefined
                           })}
                           disabled={!editMode}
-                          placeholder='20" x 8.0" Aluminum'
+                          placeholder={t('windowSticker.misc.wheelsPlaceholder')}
                           className="w-full px-3 py-2 bg-garage-surface border border-garage-border rounded text-garage-text text-sm disabled:opacity-60"
                         />
                       </div>
                       <div>
-                        <label className="block text-xs text-garage-text-muted mb-1">Tires</label>
+                        <label className="block text-xs text-garage-text-muted mb-1">{t('detail.misc.tires')}</label>
                         <input
                           type="text"
                           value={extractedData.tire_specs || ''}
@@ -459,12 +463,12 @@ export default function WindowStickerUpload({ vin, onSuccess, onClose }: WindowS
                     <div className="space-y-3">
                       <div className="flex items-center gap-2 text-garage-text font-medium">
                         <Fuel className="w-5 h-5 text-primary" />
-                        <span>Fuel Economy (MPG)</span>
+                        <span>{t('windowSticker.misc.fuelEconomyMpg')}</span>
                       </div>
 
                       <div className="grid grid-cols-3 gap-3 ml-7">
                         <div>
-                          <label className="block text-xs text-garage-text-muted mb-1">City</label>
+                          <label className="block text-xs text-garage-text-muted mb-1">{t('detail.misc.city')}</label>
                           <input
                             type="number"
                             value={extractedData.fuel_economy_city || ''}
@@ -478,7 +482,7 @@ export default function WindowStickerUpload({ vin, onSuccess, onClose }: WindowS
                           />
                         </div>
                         <div>
-                          <label className="block text-xs text-garage-text-muted mb-1">Highway</label>
+                          <label className="block text-xs text-garage-text-muted mb-1">{t('detail.misc.highway')}</label>
                           <input
                             type="number"
                             value={extractedData.fuel_economy_highway || ''}
@@ -492,7 +496,7 @@ export default function WindowStickerUpload({ vin, onSuccess, onClose }: WindowS
                           />
                         </div>
                         <div>
-                          <label className="block text-xs text-garage-text-muted mb-1">Combined</label>
+                          <label className="block text-xs text-garage-text-muted mb-1">{t('detail.misc.combined')}</label>
                           <input
                             type="number"
                             value={extractedData.fuel_economy_combined || ''}
@@ -513,12 +517,12 @@ export default function WindowStickerUpload({ vin, onSuccess, onClose }: WindowS
                   <div className="space-y-3">
                     <div className="flex items-center gap-2 text-garage-text font-medium">
                       <Shield className="w-5 h-5 text-primary" />
-                      <span>Warranty</span>
+                      <span>{t('detail.warranty')}</span>
                     </div>
 
                     <div className="grid grid-cols-2 gap-3 ml-7">
                       <div>
-                        <label className="block text-xs text-garage-text-muted mb-1">Powertrain</label>
+                        <label className="block text-xs text-garage-text-muted mb-1">{t('detail.powertrain')}</label>
                         <input
                           type="text"
                           value={extractedData.warranty_powertrain || ''}
@@ -527,12 +531,12 @@ export default function WindowStickerUpload({ vin, onSuccess, onClose }: WindowS
                             warranty_powertrain: e.target.value || undefined
                           })}
                           disabled={!editMode}
-                          placeholder="5-year or 100,000-mile"
+                          placeholder={t('windowSticker.misc.warrantyPowertrainPlaceholder')}
                           className="w-full px-3 py-2 bg-garage-surface border border-garage-border rounded text-garage-text text-sm disabled:opacity-60"
                         />
                       </div>
                       <div>
-                        <label className="block text-xs text-garage-text-muted mb-1">Basic</label>
+                        <label className="block text-xs text-garage-text-muted mb-1">{t('detail.misc.basic')}</label>
                         <input
                           type="text"
                           value={extractedData.warranty_basic || ''}
@@ -541,7 +545,7 @@ export default function WindowStickerUpload({ vin, onSuccess, onClose }: WindowS
                             warranty_basic: e.target.value || undefined
                           })}
                           disabled={!editMode}
-                          placeholder="3-year or 36,000-mile"
+                          placeholder={t('windowSticker.misc.warrantyBasicPlaceholder')}
                           className="w-full px-3 py-2 bg-garage-surface border border-garage-border rounded text-garage-text text-sm disabled:opacity-60"
                         />
                       </div>
@@ -553,12 +557,12 @@ export default function WindowStickerUpload({ vin, onSuccess, onClose }: WindowS
                     <div className="space-y-3">
                       <div className="flex items-center gap-2 text-garage-text font-medium">
                         <Leaf className="w-5 h-5 text-primary" />
-                        <span>Environmental Ratings (CA ARB)</span>
+                        <span>{t('windowSticker.misc.environmentalRatings')}</span>
                       </div>
 
                       <div className="grid grid-cols-2 gap-3 ml-7">
                         <div>
-                          <label className="block text-xs text-garage-text-muted mb-1">Greenhouse Gas (GHG)</label>
+                          <label className="block text-xs text-garage-text-muted mb-1">{t('windowSticker.misc.greenhouseGas')}</label>
                           <input
                             type="text"
                             value={extractedData.environmental_rating_ghg || ''}
@@ -572,7 +576,7 @@ export default function WindowStickerUpload({ vin, onSuccess, onClose }: WindowS
                           />
                         </div>
                         <div>
-                          <label className="block text-xs text-garage-text-muted mb-1">Smog Rating</label>
+                          <label className="block text-xs text-garage-text-muted mb-1">{t('detail.misc.smogRating')}</label>
                           <input
                             type="text"
                             value={extractedData.environmental_rating_smog || ''}
@@ -593,12 +597,12 @@ export default function WindowStickerUpload({ vin, onSuccess, onClose }: WindowS
                   <div className="space-y-3">
                     <div className="flex items-center gap-2 text-garage-text font-medium">
                       <Car className="w-5 h-5 text-primary" />
-                      <span>Assembly & VIN</span>
+                      <span>{t('windowSticker.misc.assemblyAndVin')}</span>
                     </div>
 
                     <div className="grid grid-cols-2 gap-3 ml-7">
                       <div>
-                        <label className="block text-xs text-garage-text-muted mb-1">Assembly Location</label>
+                        <label className="block text-xs text-garage-text-muted mb-1">{t('detail.misc.assemblyLocation')}</label>
                         <input
                           type="text"
                           value={extractedData.assembly_location || ''}
@@ -607,13 +611,13 @@ export default function WindowStickerUpload({ vin, onSuccess, onClose }: WindowS
                             assembly_location: e.target.value || undefined
                           })}
                           disabled={!editMode}
-                          placeholder="e.g., Warren, MI, USA"
+                          placeholder={t('windowSticker.misc.assemblyLocationPlaceholder')}
                           className="w-full px-3 py-2 bg-garage-surface border border-garage-border rounded text-garage-text text-sm disabled:opacity-60"
                         />
                       </div>
                       {extractedData.window_sticker_extracted_vin && (
                         <div>
-                          <label className="block text-xs text-garage-text-muted mb-1">Extracted VIN</label>
+                          <label className="block text-xs text-garage-text-muted mb-1">{t('windowSticker.misc.extractedVin')}</label>
                           <input
                             type="text"
                             value={extractedData.window_sticker_extracted_vin || ''}
@@ -630,14 +634,14 @@ export default function WindowStickerUpload({ vin, onSuccess, onClose }: WindowS
                     <div className="space-y-3">
                       <div className="flex items-center gap-2 text-garage-text font-medium">
                         <DollarSign className="w-5 h-5 text-primary" />
-                        <span>Options Detail</span>
+                        <span>{t('windowSticker.misc.optionsDetail')}</span>
                       </div>
                       <div className="ml-7 bg-garage-surface rounded p-3 border border-garage-border">
                         <div className="space-y-1 text-sm">
                           {Object.entries(extractedData.window_sticker_options_detail).map(([name, price]) => (
                             <div key={name} className="flex justify-between">
                               <span className="text-garage-text-muted">{name}</span>
-                              <span className="text-garage-text">${price}</span>
+                              <span className="text-garage-text">{currencySymbol}{price}</span>
                             </div>
                           ))}
                         </div>
@@ -650,7 +654,11 @@ export default function WindowStickerUpload({ vin, onSuccess, onClose }: WindowS
                     <div className="space-y-3">
                       <div className="flex items-center gap-2 text-garage-text font-medium">
                         <FileText className="w-5 h-5 text-primary" />
-                        <span>Standard Equipment ({extractedData.standard_equipment.items.length} items)</span>
+                        <span>
+                          {t('windowSticker.misc.standardEquipmentCount', {
+                            count: extractedData.standard_equipment.items.length,
+                          })}
+                        </span>
                       </div>
                       <div className="ml-7 bg-garage-surface rounded p-3 border border-garage-border max-h-40 overflow-y-auto">
                         <ul className="text-sm text-garage-text-muted space-y-1">
@@ -658,7 +666,11 @@ export default function WindowStickerUpload({ vin, onSuccess, onClose }: WindowS
                             <li key={i} className="truncate">{item}</li>
                           ))}
                           {extractedData.standard_equipment.items.length > 20 && (
-                            <li className="text-primary">...and {extractedData.standard_equipment.items.length - 20} more</li>
+                            <li className="text-primary">
+                              {t('windowSticker.misc.andMore', {
+                                count: extractedData.standard_equipment.items.length - 20,
+                              })}
+                            </li>
                           )}
                         </ul>
                       </div>
@@ -673,7 +685,7 @@ export default function WindowStickerUpload({ vin, onSuccess, onClose }: WindowS
                   onClick={onClose}
                   className="px-4 py-2 bg-garage-bg border border-garage-border text-garage-text rounded-lg hover:bg-garage-border/50 transition-colors"
                 >
-                  Cancel
+                  {t('windowSticker.misc.cancel')}
                 </button>
                 <button
                   type="button"
@@ -682,7 +694,7 @@ export default function WindowStickerUpload({ vin, onSuccess, onClose }: WindowS
                   className="flex items-center gap-2 px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary/90 transition-colors disabled:opacity-50"
                 >
                   <Save className="w-4 h-4" />
-                  {uploading ? 'Saving...' : 'Save Data'}
+                  {uploading ? t('windowSticker.misc.saving') : t('windowSticker.misc.saveData')}
                 </button>
               </div>
             </>

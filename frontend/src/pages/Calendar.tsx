@@ -15,7 +15,9 @@ import type { Vehicle } from '../types/vehicle'
 import api from '../services/api'
 import { useUnitPreference } from '../hooks/useUnitPreference'
 import { useTimeFormat } from '../hooks/useTimeFormat'
+import { useDateLocale } from '../hooks/useDateLocale'
 import { UnitFormatter, UnitConverter } from '../utils/units'
+import { formatDateForDisplay } from '../utils/dateUtils'
 import { withBase } from '../utils/basePath'
 
 // Map event type -> Schedule-X calendarId for per-type coloring
@@ -47,6 +49,7 @@ export default function CalendarPage() {
   const navigate = useNavigate()
   const { system } = useUnitPreference()
   const { timeFormat } = useTimeFormat()
+  const dateLocale = useDateLocale()
   const [events, setEvents] = useState<CalendarEvent[]>([])
   const [summary, setSummary] = useState({ total: 0, overdue: 0, upcoming_7_days: 0, upcoming_30_days: 0 })
   const [vehicles, setVehicles] = useState<Vehicle[]>([])
@@ -71,6 +74,8 @@ export default function CalendarPage() {
       timeAxisFormatOptions: { hour: 'numeric', hour12: timeFormat === '12h' },
     },
     selectedDate: Temporal.PlainDate.from(format(new Date(), 'yyyy-MM-dd')),
+    // Month/weekday names come from Intl via the user's locale — never hand-translated.
+    locale: dateLocale,
     isDark,
     calendars: EVENT_CALENDARS,
     callbacks: {
@@ -196,6 +201,11 @@ export default function CalendarPage() {
     loadEvents()
   }, [loadEvents])
 
+  // Keep the Schedule-X grid's month/weekday names in sync with a live language switch
+  useEffect(() => {
+    calendarControls.setLocale(dateLocale)
+  }, [calendarControls, dateLocale])
+
   // Phase 3: Filter events by search query
   const filteredEvents = useMemo(() => {
     if (!searchQuery.trim()) return events
@@ -315,7 +325,7 @@ export default function CalendarPage() {
         } catch (err: unknown) {
           failed++
           const error = err as { response?: { data?: { detail?: string } }; message?: string }
-          const errorMessage = error.response?.data?.detail || error.message || 'Network error'
+          const errorMessage = error.response?.data?.detail || error.message || t('calendar.misc.networkError')
           errors.push(`${event.title}: ${errorMessage}`)
         }
       }
@@ -327,13 +337,13 @@ export default function CalendarPage() {
 
       // Show appropriate toast message
       if (completed > 0 && failed === 0) {
-        toast.success(`Completed ${completed} item(s)`)
+        toast.success(t('calendar.misc.completedItems', { count: completed }))
       } else if (completed > 0 && failed > 0) {
-        toast.warning(`Completed ${completed} item(s), failed ${failed}`, {
+        toast.warning(t('calendar.misc.completedWithFailures', { count: completed, failed }), {
           description: errors.slice(0, 3).join(', ')
         })
       } else {
-        toast.error(`Failed to complete ${failed} item(s)`, {
+        toast.error(t('calendar.misc.completeFailed', { count: failed }), {
           description: errors.slice(0, 3).join(', ')
         })
       }
@@ -367,18 +377,22 @@ export default function CalendarPage() {
     )
   }
 
-  // Format date for display
-  const formatDate = (dateStr: string) => {
-    return format(new Date(dateStr), 'MMM d, yyyy')
+  // Format date for display — month names come from Intl in the user's locale
+  const formatDate = (dateStr: string): string => {
+    return formatDateForDisplay(
+      dateStr.split('T')[0],
+      { year: 'numeric', month: 'short', day: 'numeric' },
+      dateLocale
+    )
   }
 
   // Get days until/since event
-  const getDaysUntil = (dateStr: string) => {
+  const getDaysUntil = (dateStr: string): string => {
     const days = differenceInDays(new Date(dateStr), new Date())
-    if (days < 0) return `${Math.abs(days)} days ago`
-    if (days === 0) return 'Today'
-    if (days === 1) return 'Tomorrow'
-    return `in ${days} days`
+    if (days < 0) return t('calendar.misc.daysAgo', { count: Math.abs(days) })
+    if (days === 0) return t('calendar.misc.today')
+    if (days === 1) return t('calendar.misc.tomorrow')
+    return t('calendar.misc.inDays', { count: days })
   }
 
   return (
@@ -483,7 +497,7 @@ export default function CalendarPage() {
             </div>
             {searchQuery && (
               <p className="text-sm text-garage-text-muted mt-2">
-                Found {filteredEvents.length} event(s) matching "{searchQuery}"
+                {t('calendar.misc.searchResults', { count: filteredEvents.length, query: searchQuery })}
               </p>
             )}
           </div>
@@ -493,7 +507,7 @@ export default function CalendarPage() {
             <div className="mb-4 p-3 bg-primary/10 border border-primary rounded-lg">
               <div className="flex items-center justify-between">
                 <span className="text-sm text-garage-text">
-                  {selectedEvents.length} event(s) selected
+                  {t('calendar.misc.eventsSelected', { count: selectedEvents.length })}
                 </span>
                 <div className="flex items-center gap-2">
                   <button
@@ -507,7 +521,7 @@ export default function CalendarPage() {
                     onClick={() => setSelectedEvents([])}
                     className="px-3 py-1 rounded-lg text-sm bg-garage-bg text-garage-text-muted border border-garage-border hover:border-danger transition-colors"
                   >
-                    Clear
+                    {t('calendar.misc.clear')}
                   </button>
                 </div>
               </div>
@@ -550,7 +564,7 @@ export default function CalendarPage() {
                       : 'bg-garage-bg text-garage-text-muted border border-garage-border'
                   }`}
                 >
-                  Maintenance
+                  {t('detail.tabs.maintenance')}
                 </button>
                 <button
                   onClick={() => toggleEventType('insurance')}
@@ -560,7 +574,7 @@ export default function CalendarPage() {
                       : 'bg-garage-bg text-garage-text-muted border border-garage-border'
                   }`}
                 >
-                  Insurance
+                  {t('detail.misc.insurance')}
                 </button>
                 <button
                   onClick={() => toggleEventType('warranty')}
@@ -570,7 +584,7 @@ export default function CalendarPage() {
                       : 'bg-garage-bg text-garage-text-muted border border-garage-border'
                   }`}
                 >
-                  Warranties
+                  {t('warrantyList.title')}
                 </button>
                 <button
                   onClick={() => setShowHistory(!showHistory)}
@@ -581,7 +595,7 @@ export default function CalendarPage() {
                   }`}
                 >
                   <Wrench className="w-4 h-4 inline mr-1" />
-                  Service History
+                  {t('serviceList.title')}
                 </button>
               </div>
             </div>
@@ -596,7 +610,7 @@ export default function CalendarPage() {
             </div>
             {loading && (
               <div className="absolute inset-0 bg-garage-bg/50 backdrop-blur-xs flex items-center justify-center rounded-lg">
-                <div className="text-garage-text-muted">Loading...</div>
+                <div className="text-garage-text-muted">{t('calendar.misc.loading')}</div>
               </div>
             )}
           </div>
@@ -650,7 +664,7 @@ export default function CalendarPage() {
                           {event.is_estimated && (
                             <span className="flex items-center gap-1 px-2 py-0.5 rounded text-xs bg-amber-500/20 text-amber-500">
                               <Gauge className="w-3 h-3" />
-                              EST
+                              {t('calendar.misc.estBadge')}
                             </span>
                           )}
                           {/* Phase 3: Mileage badge */}
@@ -683,9 +697,9 @@ export default function CalendarPage() {
                                 event.status === 'never_performed' ? 'bg-purple-500/20 text-purple-400' :
                                 'bg-success/20 text-success'
                               }`}>
-                                {event.status === 'due_soon' ? 'Due Soon' :
-                                 event.status === 'never_performed' ? 'Never Done' :
-                                 event.status === 'overdue' ? 'Overdue' : 'On Track'}
+                                {event.status === 'due_soon' ? t('calendar.misc.statusDueSoon') :
+                                 event.status === 'never_performed' ? t('calendar.misc.statusNeverDone') :
+                                 event.status === 'overdue' ? t('calendar.overdue') : t('calendar.misc.statusOnTrack')}
                               </span>
                             )}
                             {(() => {
@@ -703,8 +717,8 @@ export default function CalendarPage() {
                                   'bg-garage-bg text-garage-text-muted'
                                 }`}>
                                   {displayValue <= 0
-                                    ? `${Math.abs(displayValue).toLocaleString()} ${distanceUnit} over`
-                                    : `${displayValue.toLocaleString()} ${distanceUnit} left`}
+                                    ? t('calendar.misc.distanceOver', { distance: `${Math.abs(displayValue).toLocaleString(dateLocale)} ${distanceUnit}` })
+                                    : t('calendar.misc.distanceLeft', { distance: `${displayValue.toLocaleString(dateLocale)} ${distanceUnit}` })}
                                 </span>
                               )
                             })()}
@@ -719,7 +733,7 @@ export default function CalendarPage() {
                             <button
                               onClick={(e) => handleShowNotes(event, e)}
                               className="p-1 hover:bg-primary/20 rounded transition-colors"
-                              title="View notes"
+                              title={t('calendar.misc.viewNotes')}
                             >
                               <MessageCircle className="w-4 h-4 text-primary" />
                             </button>
@@ -729,7 +743,7 @@ export default function CalendarPage() {
                             <button
                               onClick={(e) => handleQuickComplete(event.id, e)}
                               className="p-1 hover:bg-success/20 rounded transition-colors"
-                              title="Mark complete"
+                              title={t('calendar.misc.markComplete')}
                             >
                               <CheckCircle className="w-5 h-5 text-success" />
                             </button>
@@ -750,35 +764,35 @@ export default function CalendarPage() {
           <div className="flex flex-wrap gap-4">
             <div className="flex items-center gap-2">
               <div className="w-4 h-4 bg-blue-600 rounded"></div>
-              <span className="text-sm text-garage-text">Maintenance Schedule</span>
+              <span className="text-sm text-garage-text">{t('calendar.misc.legendMaintenance')}</span>
             </div>
             <div className="flex items-center gap-2">
               <div className="w-4 h-4 bg-red-600 rounded"></div>
-              <span className="text-sm text-garage-text">Insurance Renewals</span>
+              <span className="text-sm text-garage-text">{t('calendar.misc.legendInsurance')}</span>
             </div>
             <div className="flex items-center gap-2">
               <div className="w-4 h-4 bg-amber-600 rounded"></div>
-              <span className="text-sm text-garage-text">Warranty Expirations</span>
+              <span className="text-sm text-garage-text">{t('calendar.misc.legendWarranty')}</span>
             </div>
             <div className="flex items-center gap-2">
               <div className="w-4 h-4 bg-gray-600 rounded opacity-60"></div>
-              <span className="text-sm text-garage-text">Service History</span>
+              <span className="text-sm text-garage-text">{t('serviceList.title')}</span>
             </div>
             <div className="flex items-center gap-2">
               <RotateCw className="w-4 h-4 text-primary" />
-              <span className="text-sm text-garage-text">Recurring Event</span>
+              <span className="text-sm text-garage-text">{t('calendar.misc.legendRecurring')}</span>
             </div>
             {/* Phase 3: New legend items */}
             <div className="flex items-center gap-2">
               <span className="flex items-center gap-1 px-2 py-0.5 rounded text-xs bg-amber-500/20 text-amber-500">
                 <Gauge className="w-3 h-3" />
-                EST
+                {t('calendar.misc.estBadge')}
               </span>
-              <span className="text-sm text-garage-text">Estimated from Mileage</span>
+              <span className="text-sm text-garage-text">{t('calendar.misc.legendEstimated')}</span>
             </div>
             <div className="flex items-center gap-2">
               <MessageCircle className="w-4 h-4 text-primary" />
-              <span className="text-sm text-garage-text">Has Notes</span>
+              <span className="text-sm text-garage-text">{t('calendar.misc.legendHasNotes')}</span>
             </div>
           </div>
         </div>
@@ -802,7 +816,7 @@ export default function CalendarPage() {
               <div className="space-y-4">
                 {/* Event details */}
                 <div>
-                  <h4 className="text-sm font-medium text-garage-text-muted mb-2">Event</h4>
+                  <h4 className="text-sm font-medium text-garage-text-muted mb-2">{t('calendar.misc.eventLabel')}</h4>
                   <div className="bg-garage-bg border border-garage-border rounded-lg p-3">
                     <div className="flex items-center gap-2 mb-2">
                       <span className={`text-xs font-medium px-2 py-1 rounded ${
@@ -818,7 +832,7 @@ export default function CalendarPage() {
                       {selectedEventForNotes.is_estimated && (
                         <span className="flex items-center gap-1 px-2 py-0.5 rounded text-xs bg-amber-500/20 text-amber-500">
                           <Gauge className="w-3 h-3" />
-                          EST
+                          {t('calendar.misc.estBadge')}
                         </span>
                       )}
                     </div>
@@ -830,7 +844,9 @@ export default function CalendarPage() {
                     </p>
                     {selectedEventForNotes.due_mileage_km && (
                       <p className="text-sm text-garage-text-muted mt-2">
-                        Due at: {UnitFormatter.formatDistance(parseFloat(selectedEventForNotes.due_mileage_km), system)}
+                        {t('calendar.misc.dueAt', {
+                          distance: UnitFormatter.formatDistance(parseFloat(selectedEventForNotes.due_mileage_km), system),
+                        })}
                       </p>
                     )}
                   </div>
@@ -838,17 +854,17 @@ export default function CalendarPage() {
 
                 {/* Notes content */}
                 <div>
-                  <h4 className="text-sm font-medium text-garage-text-muted mb-2">Notes</h4>
+                  <h4 className="text-sm font-medium text-garage-text-muted mb-2">{t('noteList.title')}</h4>
                   <div className="bg-garage-bg border border-garage-border rounded-lg p-4">
                     <p className="text-garage-text whitespace-pre-wrap">
-                      {selectedEventForNotes.notes || 'No notes available'}
+                      {selectedEventForNotes.notes || t('calendar.misc.noNotes')}
                     </p>
                   </div>
                 </div>
 
                 {selectedEventForNotes.description && (
                   <div>
-                    <h4 className="text-sm font-medium text-garage-text-muted mb-2">Description</h4>
+                    <h4 className="text-sm font-medium text-garage-text-muted mb-2">{t('documentList.descriptionLabel')}</h4>
                     <div className="bg-garage-bg border border-garage-border rounded-lg p-4">
                       <p className="text-garage-text whitespace-pre-wrap">
                         {selectedEventForNotes.description}
@@ -863,7 +879,7 @@ export default function CalendarPage() {
                   onClick={() => setShowNotesModal(false)}
                   className="px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary-dark transition-colors"
                 >
-                  Close
+                  {t('calendar.misc.close')}
                 </button>
               </div>
             </div>
