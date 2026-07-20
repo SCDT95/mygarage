@@ -1,5 +1,12 @@
 import { describe, it, expect } from 'vitest'
-import { tollTagSchema, TOLL_SYSTEMS } from '../tollTag'
+import type { TFunction } from 'i18next'
+import { makeTollTagSchema, TOLL_SYSTEMS, TOLL_SYSTEM_OPTIONS } from '../tollTag'
+
+// Same shape as the global react-i18next mock in src/__tests__/setup.ts:
+// messages come back as their i18n key, which is all these tests need.
+const t = ((key: string) => key) as unknown as TFunction
+
+const tollTagSchema = makeTollTagSchema(t)
 
 describe('Toll Tag Schema', () => {
   const validTag = {
@@ -50,5 +57,15 @@ describe('Toll Tag Schema', () => {
       status: 'suspended',
     })
     expect(result.success).toBe(false)
+  })
+
+  // The dropdown renders TOLL_SYSTEM_OPTIONS, the schema validates
+  // TOLL_SYSTEMS. If they drift, a user picks an option the schema rejects (or
+  // a valid system is unpickable) — with no other signal.
+  it('exposes exactly one labelled option per accepted toll system', () => {
+    expect(TOLL_SYSTEM_OPTIONS.map((o) => o.value)).toEqual([...TOLL_SYSTEMS])
+    for (const option of TOLL_SYSTEM_OPTIONS) {
+      expect(option.labelKey).toMatch(/^forms:tollSystems\./)
+    }
   })
 })

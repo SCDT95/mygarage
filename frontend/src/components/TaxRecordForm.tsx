@@ -106,8 +106,8 @@ export default function TaxRecordForm({ vin, record, onClose, onSuccess }: TaxRe
                 disabled={isSubmitting}
               >
                 <option value="" className="bg-garage-bg text-garage-text">{t('tax.selectType')}</option>
-                {TAX_TYPES.map((type) => (
-                  <option key={type} value={type} className="bg-garage-bg text-garage-text">{type}</option>
+                {TAX_TYPES.map((option) => (
+                  <option key={option.value} value={option.value} className="bg-garage-bg text-garage-text">{t(option.labelKey)}</option>
                 ))}
               </select>
               <FormError error={errors.tax_type} />

@@ -118,11 +118,9 @@ export default function AddressBook() {
                 ? 'bg-primary text-white border-primary'
                 : 'bg-garage-surface text-garage-text border-garage-border hover:border-primary'
             }`}
-            title={t('addressBook.gasStationsFilterHint', {
-              defaultValue: 'Show only gas stations created from fuel records',
-            })}
+            title={t('addressBook.gasStationsFilterHint')}
           >
-            {t('addressBook.gasStations', { defaultValue: 'Gas Stations' })}
+            {t('addressBook.gasStations')}
           </button>
 
           <button
@@ -406,7 +404,7 @@ export function AddressBookForm({ entry, onClose, onSuccess }: AddressBookFormPr
             >
               <option value="">{t('addressBook.selectCategory')}</option>
               {ADDRESS_BOOK_CATEGORIES.map((cat) => (
-                <option key={cat} value={cat}>{cat}</option>
+                <option key={cat.value} value={cat.value}>{t(cat.labelKey)}</option>
               ))}
             </select>
             <FormError error={errors.category} />
@@ -423,7 +421,7 @@ export function AddressBookForm({ entry, onClose, onSuccess }: AddressBookFormPr
                 disabled={isSubmitting}
               />
               <label htmlFor="poi_gas_station" className="ml-2 block text-sm text-garage-text">
-                {t('addressBook.gasStationFlag', { defaultValue: 'Gas station' })}
+                {t('addressBook.gasStationFlag')}
               </label>
             </div>
           )}
@@ -524,7 +522,7 @@ export function AddressBookForm({ entry, onClose, onSuccess }: AddressBookFormPr
                 type="text"
                 id="state"
                 {...register('state')}
-                placeholder={t('addressBook.statePlaceholder', { defaultValue: 'State / region' })}
+                placeholder={t('addressBook.statePlaceholder')}
                 className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-primary bg-garage-bg text-garage-text ${
                   errors.state ? 'border-red-500' : 'border-garage-border'
                 }`}

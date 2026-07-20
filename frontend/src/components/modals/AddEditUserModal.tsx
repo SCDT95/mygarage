@@ -1,9 +1,9 @@
 import { useTranslation } from 'react-i18next'
-import { useState, useEffect, type SyntheticEvent } from 'react'
+import { useState, useEffect, useMemo, type SyntheticEvent } from 'react'
 import { X, Eye, EyeOff } from 'lucide-react'
 import { toast } from 'sonner'
 import api from '@/services/api'
-import { passwordSchema } from '@/schemas/auth'
+import { makePasswordSchema } from '@/schemas/auth'
 import { RELATIONSHIP_PRESETS } from '@/types/family'
 import type { User } from '@/types/user'
 
@@ -35,6 +35,12 @@ export default function AddEditUserModal({ isOpen, onClose, user, onSave, curren
   const [loading, setLoading] = useState(false)
   const [showPassword, setShowPassword] = useState(false)
   const [showConfirmPassword, setShowConfirmPassword] = useState(false)
+
+  // Zod bakes its messages in at construction, so the schema is rebuilt when
+  // the language changes. It is only read inside the submit handler — it is
+  // deliberately NOT a dependency of the reset effect below, which would wipe
+  // the form on a language switch.
+  const passwordSchema = useMemo(() => makePasswordSchema(t), [t])
 
   useEffect(() => {
     if (user) {
@@ -77,11 +83,12 @@ export default function AddEditUserModal({ isOpen, onClose, user, onSave, curren
         passwordSchema.parse(formData.password)
       } catch (err) {
         const error = err as { errors?: Array<{ message: string }> }
-        validationErrors.password = error.errors?.[0]?.message || 'Invalid password'
+        validationErrors.password =
+          error.errors?.[0]?.message || t('common:validation.password.invalid')
       }
 
       if (formData.password !== formData.confirmPassword) {
-        validationErrors.confirmPassword = 'Passwords do not match'
+        validationErrors.confirmPassword = t('common:validation.password.mismatch')
       }
     }
 

@@ -53,9 +53,21 @@ interface Finding {
 
 /** JSX props whose values are rendered or read aloud to a user. */
 const USER_FACING_PROPS = /\b(placeholder|title|aria-label|alt|label|tooltip)\s*=\s*"([^"]{3,})"/g
-/** Object-literal fields used to build user-visible option lists. */
+/**
+ * Object-literal fields used to build user-visible option lists.
+ *
+ * `defaultValue` is here because it is the one field that LOOKS translated and
+ * is not. `t('a.b', { defaultValue: 'Gas Stations' })` satisfies
+ * validate-i18n-usage.ts whether or not `a.b` exists in English — when it does
+ * not, i18next silently renders the defaultValue, so the English lives in the
+ * component, ships as the final string, and never reaches a translator. ~47 of
+ * them accumulated invisibly to both other scripts. Promote the English to a
+ * real key instead. The genuine fail-safe use (ErrorBoundary, which must render
+ * before the locale bundles can be trusted) passes a variable, not a literal,
+ * so it does not match.
+ */
 const OBJECT_FIELDS =
-  /\b(label|description|title|placeholder|message|heading|text)\s*:\s*'([A-Z][^']{2,})'/g
+  /\b(label|description|title|placeholder|message|heading|text|defaultValue)\s*:\s*'([A-Z][^']{2,})'/g
 const TOAST_CALL = /toast\.(?:success|error|info|warning|message)\(\s*['"]([^'"]{3,})['"]/g
 const BROWSER_DIALOG = /\b(?:alert|confirm)\(\s*['"]([^'"]{3,})['"]/g
 const JSX_TEXT = />([^<>{}\n]{3,})</g

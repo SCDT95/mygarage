@@ -1,9 +1,9 @@
 import { useTranslation } from 'react-i18next'
-import { useState, type SyntheticEvent } from 'react'
+import { useMemo, useState, type SyntheticEvent } from 'react'
 import { Shield, Info, AlertTriangle, Users, Key, CheckCircle, AlertCircle, Eye, EyeOff, Loader } from 'lucide-react'
 import { useAuth } from '@/contexts/AuthContext'
 import api from '@/services/api'
-import { passwordSchema, getPasswordStrength } from '@/schemas/auth'
+import { makePasswordSchema, getPasswordStrength } from '@/schemas/auth'
 import { withBase } from '@/utils/basePath'
 import FormModalWrapper from '../FormModalWrapper'
 
@@ -54,14 +54,19 @@ export default function LocalAuthModal({
   const [passwordChangeLoading, setPasswordChangeLoading] = useState(false)
   const [passwordChangeMessage, setPasswordChangeMessage] = useState<{ type: 'success' | 'error', text: string } | null>(null)
 
+  // Zod bakes its messages in at construction, so the schema is rebuilt when
+  // the language changes. Nothing else depends on it — no fetch, no reset() —
+  // so a rebuild can't discard what the user typed.
+  const passwordSchema = useMemo(() => makePasswordSchema(t), [t])
+
   // Strength of the new password. getPasswordStrength returns a stable
-  // identifier ('Weak' | 'Medium' | 'Strong') — branch on that, never on the
+  // identifier ('weak' | 'medium' | 'strong') — branch on that, never on the
   // translated text.
   const newPasswordStrength = getPasswordStrength(newPassword)
   const newPasswordStrengthLabel =
-    newPasswordStrength.label === 'Strong'
+    newPasswordStrength.level === 'strong'
       ? t('localAuthModalExtra.strength.strong')
-      : newPasswordStrength.label === 'Medium'
+      : newPasswordStrength.level === 'medium'
         ? t('localAuthModalExtra.strength.medium')
         : t('localAuthModalExtra.strength.weak')
 

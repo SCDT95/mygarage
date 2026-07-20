@@ -128,7 +128,10 @@
     "zipCode": "ZIP Code",
     "notes": "Notes",
     "notesPlaceholder": "Additional notes about this contact...",
-    "gasStationFlag": "Gas station"
+    "gasStationFlag": "Gas station",
+    "gasStations": "Gas Stations",
+    "gasStationsFilterHint": "Show only gas stations created from fuel records",
+    "categoryRvPark": "RV Park"
   },
   "supplies": {
     "title": "Supplies",
@@ -452,5 +455,87 @@
   },
   "leafletMap": {
     "yourLocation": "Your location"
+  },
+  "validation": {
+    "username": {
+      "required": "Username is required",
+      "minLength": "Username must be at least 3 characters",
+      "maxLength": "Username must be less than 100 characters",
+      "pattern": "Username can only contain letters, numbers, underscores, and hyphens"
+    },
+    "password": {
+      "required": "Password is required",
+      "minLength": "Password must be at least 8 characters long",
+      "maxLength": "Password must be less than 100 characters",
+      "uppercase": "Password must contain at least one uppercase letter",
+      "lowercase": "Password must contain at least one lowercase letter",
+      "digit": "Password must contain at least one digit",
+      "specialChar": "Password must contain at least one special character",
+      "confirmRequired": "Please confirm your password",
+      "mismatch": "Passwords do not match",
+      "invalid": "Invalid password"
+    },
+    "email": {
+      "required": "Email is required",
+      "invalid": "Invalid email address",
+      "maxLength": "Email must be less than 255 characters"
+    },
+    "serviceVisit": {
+      "descriptionRequired": "Description is required",
+      "descriptionTooLong": "Description too long (max 200 characters)",
+      "lineItemNotesTooLong": "Notes too long (max 1000 characters)",
+      "inspectionResultInvalid": "Invalid inspection result",
+      "inspectionSeverityInvalid": "Invalid inspection severity",
+      "notesTooLong": "Notes too long (max 5000 characters)",
+      "insuranceClaimNumberTooLong": "Insurance claim number too long (max 50 characters)",
+      "lineItemsRequired": "At least one line item is required",
+      "inspectionResultRequired": "Inspection result is required for inspection items"
+    },
+    "supply": {
+      "nameRequired": "Name is required",
+      "nameTooLong": "Name too long",
+      "unitTypeRequired": "Unit type is required",
+      "partNumberTooLong": "Part number too long",
+      "categoryTooLong": "Category too long",
+      "notesTooLong": "Notes too long"
+    },
+    "tollTag": {
+      "systemRequired": "Toll system is required",
+      "tagNumberRequired": "Tag number is required",
+      "tagNumberTooLong": "Tag number too long (max 50 characters)"
+    }
+  },
+  "httpError": {
+    "status": {
+      "badRequest": "Invalid request. Please check your input.",
+      "unauthorized": "Session expired. Please log in again.",
+      "forbidden": "You do not have permission to perform this action.",
+      "notFound": "The requested resource was not found.",
+      "conflict": "This action conflicts with existing data.",
+      "unprocessable": "The submitted data could not be processed.",
+      "serverError": "An unexpected server error occurred.",
+      "badGateway": "Server is temporarily unavailable. Please try again.",
+      "serviceUnavailable": "Service temporarily unavailable. Please try again shortly.",
+      "gatewayTimeout": "Request timed out. Please try again."
+    },
+    "database": {
+      "conflict": "A record with this data already exists.",
+      "unavailable": "Database temporarily unavailable. Please try again."
+    },
+    "file": {
+      "forbidden": "Permission denied. Cannot access file.",
+      "notFound": "File not found.",
+      "serverError": "Error accessing file."
+    },
+    "externalApi": {
+      "unavailable": "External service unavailable. Please try again later.",
+      "timeout": "External service timed out. Please try again."
+    },
+    "network": "Network error. Please check your connection.",
+    "generic": "An error occurred.",
+    "unexpected": "An unexpected error occurred.",
+    "formSubmitFallback": "An error occurred",
+    "actionFailed": "Failed to {{action}}. {{message}}",
+    "actionFailedCheckInput": "Failed to {{action}}. Please check your input."
   }
 }

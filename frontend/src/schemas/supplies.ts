@@ -1,16 +1,29 @@
 import { z } from 'zod'
+import type { TFunction } from 'i18next'
 
 import { vinSchema } from './shared'
 
+/**
+ * Supply validation schema.
+ *
+ * Factory, not a constant — see the header of schemas/auth.ts for why.
+ */
+
 export const SUPPLY_UNIT_TYPES = ['volume', 'count'] as const
 
-export const supplySchema = z.object({
-  name: z.string().min(1, 'Name is required').max(120, 'Name too long'),
-  unit_type: z.enum(SUPPLY_UNIT_TYPES, { message: 'Unit type is required' }),
-  part_number: z.string().max(60, 'Part number too long').optional(),
-  category: z.string().max(40, 'Category too long').optional(),
-  notes: z.string().max(5000, 'Notes too long').optional(),
-  vin: vinSchema.or(z.literal('')).optional(),
-})
+export const makeSupplySchema = (t: TFunction) =>
+  z.object({
+    name: z
+      .string()
+      .min(1, t('common:validation.supply.nameRequired'))
+      .max(120, t('common:validation.supply.nameTooLong')),
+    unit_type: z.enum(SUPPLY_UNIT_TYPES, {
+      message: t('common:validation.supply.unitTypeRequired'),
+    }),
+    part_number: z.string().max(60, t('common:validation.supply.partNumberTooLong')).optional(),
+    category: z.string().max(40, t('common:validation.supply.categoryTooLong')).optional(),
+    notes: z.string().max(5000, t('common:validation.supply.notesTooLong')).optional(),
+    vin: vinSchema.or(z.literal('')).optional(),
+  })
 
-export type SupplyFormData = z.infer<typeof supplySchema>
+export type SupplyFormData = z.infer<ReturnType<typeof makeSupplySchema>>

@@ -385,7 +385,10 @@
     "title": "Fuel History",
     "totalCost": "Total Cost",
     "totalSpent": "Total Spent",
-    "towing": "Towing"
+    "towing": "Towing",
+    "paginatedCount": "{{shown}} of {{total}}",
+    "pageRange": "Showing {{start}}–{{end}} of {{total}}",
+    "pageOf": "Page {{page}} of {{total}}"
   },
   "insuranceList": {
     "addFirstPolicy": "Add Your First Insurance Policy",
@@ -917,7 +920,8 @@
     "title": "Toll Tags"
   },
   "transferHistory": {
-    "title": "Transfer History"
+    "title": "Transfer History",
+    "byUser": "by {{name}}"
   },
   "vehicleCard": {
     "sold": "Sold"
@@ -1157,9 +1161,9 @@
   },
   "insurancePdfUpload": {
     "chooseFile": "Choose File",
-    "confidenceHigh": "high",
-    "confidenceLow": "low",
-    "confidenceMedium": "medium",
+    "confidenceHigh": "High",
+    "confidenceLow": "Low",
+    "confidenceMedium": "Medium",
     "dragDrop": "Drag and drop your insurance PDF here",
     "errorInvalidType": "Please upload a PDF file",
     "errorParseFailed": "Failed to parse PDF",
@@ -1215,7 +1219,8 @@
     "resultFailed": "Failed",
     "severityMinor": "Minor",
     "severityModerate": "Moderate",
-    "severitySevere": "Severe"
+    "severitySevere": "Severe",
+    "resultUnknown": "Unknown"
   },
   "archivedVehiclesList": {
     "deleteSelected": "Delete Selected",
@@ -1235,5 +1240,39 @@
     "statusParked": "Parked",
     "statusOffline": "Offline",
     "coolant": "Coolant"
+  },
+  "eventTypes": {
+    "maintenance": "Maintenance",
+    "insurance": "Insurance",
+    "warranty": "Warranty",
+    "service": "Service",
+    "unknown": "Other"
+  },
+  "transferCategories": {
+    "serviceRecords": "Service Records",
+    "fuelLogs": "Fuel Logs",
+    "documents": "Documents",
+    "maintenance": "Maintenance",
+    "notes": "Notes",
+    "expenses": "Expenses",
+    "photos": "Photos",
+    "other": "Other Data"
+  },
+  "tollStatuses": {
+    "active": "Active",
+    "inactive": "Inactive",
+    "unknown": "Unknown"
+  },
+  "insuranceFields": {
+    "provider": "Provider",
+    "policyNumber": "Policy Number",
+    "policyType": "Policy Type",
+    "startDate": "Start Date",
+    "endDate": "End Date",
+    "premiumAmount": "Premium Amount",
+    "premiumFrequency": "Premium Frequency",
+    "deductible": "Deductible",
+    "coverageLimits": "Coverage Limits",
+    "notes": "Notes"
   }
 }

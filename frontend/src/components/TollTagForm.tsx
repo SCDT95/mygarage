@@ -1,11 +1,16 @@
 import { useTranslation } from 'react-i18next'
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { Save } from 'lucide-react'
 import FormModalWrapper from './FormModalWrapper'
 import type { TollTag, TollTagCreate, TollTagUpdate } from '../types/toll'
-import { tollTagSchema, type TollTagFormData, TOLL_SYSTEMS } from '../schemas/tollTag'
+import {
+  makeTollTagSchema,
+  type TollTagFormData,
+  type TollSystemValue,
+  TOLL_SYSTEM_OPTIONS,
+} from '../schemas/tollTag'
 import { FormError } from './FormError'
 import { useCreateTollTag, useUpdateTollTag } from '../hooks/queries/useTollRecords'
 
@@ -23,14 +28,19 @@ export default function TollTagForm({ vin, tag, onClose, onSuccess }: TollTagFor
   const createMutation = useCreateTollTag(vin)
   const updateMutation = useUpdateTollTag(vin)
 
+  // Zod bakes its messages in at construction, so the schema is rebuilt when
+  // the language changes. Only the resolver depends on it — no fetch, no
+  // reset() — so a rebuild can't discard what the user typed.
+  const schema = useMemo(() => makeTollTagSchema(t), [t])
+
   const {
     register,
     handleSubmit,
     formState: { errors, isSubmitting },
   } = useForm<TollTagFormData>({
-    resolver: zodResolver(tollTagSchema),
+    resolver: zodResolver(schema),
     defaultValues: {
-      toll_system: (tag?.toll_system as (typeof TOLL_SYSTEMS)[number]) ?? 'EZ TAG',
+      toll_system: (tag?.toll_system as TollSystemValue) ?? 'EZ TAG',
       tag_number: tag?.tag_number || '',
       status: (tag?.status as 'active' | 'inactive') || 'active',
       notes: tag?.notes || '',
@@ -88,8 +98,8 @@ export default function TollTagForm({ vin, tag, onClose, onSuccess }: TollTagFor
                 disabled={isSubmitting}
               >
                 <option value="">{t('toll.selectTollSystem')}</option>
-                {TOLL_SYSTEMS.map((system) => (
-                  <option key={system} value={system}>{system}</option>
+                {TOLL_SYSTEM_OPTIONS.map((system) => (
+                  <option key={system.value} value={system.value}>{t(system.labelKey)}</option>
                 ))}
               </select>
               <FormError error={errors.toll_system} />

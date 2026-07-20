@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { taxRecordSchema, TAX_TYPES } from '../tax'
+import { taxRecordSchema, TAX_TYPES, TAX_TYPE_VALUES } from '../tax'
 
 describe('Tax Record Schema', () => {
   const validTax = {
@@ -47,10 +47,14 @@ describe('Tax Record Schema', () => {
   })
 
   it('accepts all valid tax types', () => {
-    for (const taxType of TAX_TYPES) {
+    for (const taxType of TAX_TYPE_VALUES) {
       const result = taxRecordSchema.safeParse({ ...validTax, tax_type: taxType })
       expect(result.success).toBe(true)
     }
+  })
+
+  it('keeps the TAX_TYPES option list aligned with the persisted values', () => {
+    expect(TAX_TYPES.map((option) => option.value)).toEqual([...TAX_TYPE_VALUES])
   })
 
   it('rejects invalid tax type', () => {

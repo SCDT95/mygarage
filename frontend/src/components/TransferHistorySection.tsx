@@ -10,6 +10,27 @@ import type { VehicleTransferResponse } from '@/types/family'
 import { formatRelationship } from '@/types/family'
 import { formatAPITimestamp } from '@/utils/parseAPITimestamp'
 
+/**
+ * Transferred data category -> translation key.
+ *
+ * Domain verified against `VehicleTransferRequest.data_included` in
+ * backend/app/schemas/family.py (service_records, fuel_logs, documents,
+ * maintenance, notes, expenses, photos) — the same set the transfer wizard
+ * submits. Keys are explicit literals, never built by interpolation, so
+ * scripts/validate-i18n-usage.ts can resolve them statically. Unmapped values
+ * fall back to TRANSFER_CATEGORY_FALLBACK_KEY rather than rendering blank.
+ */
+const TRANSFER_CATEGORY_KEYS: Record<string, string> = {
+  service_records: 'transferCategories.serviceRecords',
+  fuel_logs: 'transferCategories.fuelLogs',
+  documents: 'transferCategories.documents',
+  maintenance: 'transferCategories.maintenance',
+  notes: 'transferCategories.notes',
+  expenses: 'transferCategories.expenses',
+  photos: 'transferCategories.photos',
+}
+const TRANSFER_CATEGORY_FALLBACK_KEY = 'transferCategories.other'
+
 interface TransferHistorySectionProps {
   vin: string
 }
@@ -141,7 +162,13 @@ export default function TransferHistorySection({ vin }: TransferHistorySectionPr
                         <span>{formatDate(transfer.transferred_at)}</span>
                       </div>
                       <span className="text-garage-border">•</span>
-                      <span>by {getDisplayName(transfer.transferred_by)}</span>
+                      {/* One interpolated sentence, not "by" + name: word order
+                          around an actor differs by language. */}
+                      <span>
+                        {t('transferHistory.byUser', {
+                          name: getDisplayName(transfer.transferred_by),
+                        })}
+                      </span>
                     </div>
 
                     {/* Notes */}
@@ -161,7 +188,7 @@ export default function TransferHistorySection({ vin }: TransferHistorySectionPr
                               key={category}
                               className="text-xs px-1.5 py-0.5 bg-success/10 text-success rounded"
                             >
-                              {category.replace(/_/g, ' ')}
+                              {t(TRANSFER_CATEGORY_KEYS[category] ?? TRANSFER_CATEGORY_FALLBACK_KEY)}
                             </span>
                           ))}
                       </div>

@@ -107,7 +107,9 @@
     "displaySaved": "Display preference saved!",
     "displayError": "Failed to save display preference",
     "mobileSaved": "Mobile preference saved!",
-    "mobileError": "Failed to save mobile preference"
+    "mobileError": "Failed to save mobile preference",
+    "timeSaved": "Time format saved",
+    "timeError": "Failed to save time format"
   },
   "files": {
     "title": "File Management",
@@ -481,5 +483,13 @@
     "supportedFormatsValue": "PDF, JPG, PNG (up to 10MB)",
     "noteLabel": "Note:",
     "windowStickerVehicleNote": "Window stickers are only available for passenger cars and trucks, not RVs, trailers, or fifth wheels."
+  },
+  "fuel": {
+    "title": "Fuel Tracking Defaults",
+    "description": "Pre-fill these fields when adding a new fuel record. Leave blank to start every entry empty.",
+    "defaultPaymentMethod": "Default payment method",
+    "defaultTripType": "Default trip type",
+    "defaultsSaved": "Fuel defaults saved",
+    "defaultsError": "Failed to save fuel defaults"
   }
 }

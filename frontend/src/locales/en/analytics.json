@@ -434,5 +434,11 @@
     "generating": "Generating report...",
     "pdfError": "Failed to generate report",
     "csvError": "Failed to export data"
+  },
+  "confidenceLevels": {
+    "high": "High",
+    "medium": "Medium",
+    "low": "Low",
+    "unknown": "Unknown"
   }
 }

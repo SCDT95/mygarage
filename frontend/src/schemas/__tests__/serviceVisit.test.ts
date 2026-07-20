@@ -1,10 +1,19 @@
 import { describe, it, expect } from 'vitest'
+import type { TFunction } from 'i18next'
 import {
-  serviceVisitSchema,
-  serviceVisitSchemaRefined,
-  serviceLineItemSchema,
+  makeServiceVisitSchema,
+  makeServiceVisitSchemaRefined,
+  makeServiceLineItemSchema,
   SERVICE_CATEGORIES,
 } from '../serviceVisit'
+
+// Same shape as the global react-i18next mock in src/__tests__/setup.ts:
+// messages come back as their i18n key, which is all these tests need.
+const t = ((key: string) => key) as unknown as TFunction
+
+const serviceLineItemSchema = makeServiceLineItemSchema(t)
+const serviceVisitSchema = makeServiceVisitSchema(t)
+const serviceVisitSchemaRefined = makeServiceVisitSchemaRefined(t)
 
 describe('Service Line Item Schema', () => {
   const validLineItem = {

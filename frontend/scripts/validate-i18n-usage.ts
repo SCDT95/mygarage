@@ -11,7 +11,15 @@
  *     either. `t('installPrompt.title')` shipped through both blind spots and
  *     rendered raw to users.
  *
- *  2. Every directory in public/locales must be a language the app can load.
+ *  2. Every `labelKey` / `descriptionKey` on an option-list constant must
+ *     resolve too. Those are read back as t(option.labelKey) at the render
+ *     site, so check 1's literal scan cannot see them — an unmerged or
+ *     mistyped key ships a raw "forms:taxTypes.tolls" straight into a
+ *     <select> with nothing to catch it. Such constants usually live in schema
+ *     modules that never call useTranslation, so their keys must be written
+ *     namespace-qualified; a bare one is reported.
+ *
+ *  3. Every directory in public/locales must be a language the app can load.
  *     Languages are DISCOVERED from disk, so an orphan directory is reported and
  *     translated forever while being unreachable. public/locales/pt was exactly
  *     that: ~1400 keys, absent from supportedLngs and both allowlists, never
@@ -77,37 +85,83 @@ interface Violation {
   line: number
   key: string
   searched: string[]
+  /** How the key is written in source — a labelKey never appears as t('...'). */
+  via: 'call' | 'field'
 }
 
 const violations: Violation[] = []
 
+/** Resolve one key literal against the namespaces available to its file. */
+function record(
+  file: string,
+  text: string,
+  index: number,
+  rawKey: string,
+  bound: string[],
+  via: 'call' | 'field',
+): void {
+  let key = rawKey
+  let searched = bound
+  if (rawKey.includes(':')) {
+    const [ns, ...rest] = rawKey.split(':')
+    key = rest.join(':')
+    searched = [ns]
+  }
+
+  if (searched.some(ns => englishKeys.get(ns)?.has(key))) return
+
+  violations.push({
+    file: relative(ROOT, file),
+    line: text.slice(0, index).split('\n').length,
+    key: rawKey,
+    searched,
+    via,
+  })
+}
+
 for (const file of walk(SRC)) {
   const text = readFileSync(file, 'utf-8')
   const bound = namespacesFor(text)
-  if (bound.length === 0) continue
 
   // Literal t('key') / t('key', { ... }) only. Template literals are dynamic and
   // every one in the codebase carries a defaultValue, so they can't render raw.
-  for (const m of text.matchAll(/\bt\(\s*'([^']+)'\s*(,\s*\{[^}]*\})?\s*\)/g)) {
-    const [, rawKey, opts = ''] = m
-    if (opts.includes('defaultValue')) continue
+  if (bound.length > 0) {
+    for (const m of text.matchAll(/\bt\(\s*'([^']+)'\s*(,\s*\{[^}]*\})?\s*\)/g)) {
+      const [, rawKey, opts = ''] = m
+      if (opts.includes('defaultValue')) continue
 
-    let key = rawKey
-    let searched = bound
-    if (rawKey.includes(':')) {
-      const [ns, ...rest] = rawKey.split(':')
-      key = rest.join(':')
-      searched = [ns]
+      // i18next takes the namespace two ways: the 'ns:key' prefix, and an
+      // { ns: 'forms' } option. Only honouring the prefix made every
+      // { ns } call a false positive once its defaultValue was removed —
+      // the key exists, just not in the namespace this file binds.
+      const nsOpt = opts.match(/\bns:\s*'([^']+)'/)
+      const scope = nsOpt && !rawKey.includes(':') ? [nsOpt[1]] : bound
+
+      record(file, text, m.index ?? 0, rawKey, scope, 'call')
     }
+  }
 
-    if (searched.some(ns => englishKeys.get(ns)?.has(key))) continue
-
-    violations.push({
-      file: relative(ROOT, file),
-      line: text.slice(0, m.index).split('\n').length,
-      key: rawKey,
-      searched,
-    })
+  // `labelKey` / `descriptionKey` fields on option-list constants, resolved at
+  // the render site as t(option.labelKey). That indirection is invisible to the
+  // t('literal') scan above, so a typo or an unmerged key ships a raw
+  // "forms:taxTypes.tolls" into a <select> with nothing to catch it.
+  //
+  // These constants often live in schema modules that never call
+  // useTranslation, so a bare key there has no namespace to resolve against and
+  // is reported — such a key MUST be written namespace-qualified.
+  for (const m of text.matchAll(/\b(?:labelKey|descriptionKey):\s*'([^']+)'/g)) {
+    const rawKey = m[1]
+    if (bound.length === 0 && !rawKey.includes(':')) {
+      violations.push({
+        file: relative(ROOT, file),
+        line: text.slice(0, m.index ?? 0).split('\n').length,
+        key: rawKey,
+        searched: ['<no useTranslation in this file — qualify the key as "ns:key">'],
+        via: 'field',
+      })
+      continue
+    }
+    record(file, text, m.index ?? 0, rawKey, bound, 'field')
   }
 }
 
@@ -123,7 +177,8 @@ if (violations.length > 0) {
   console.log(`✗ ${violations.length} translation key(s) used in code but missing from English:\n`)
   for (const v of violations) {
     console.log(`  ${v.file}:${v.line}`)
-    console.log(`    t('${v.key}') — not in ${v.searched.map(n => `${n}.json`).join(' or ')}`)
+    const shown = v.via === 'call' ? `t('${v.key}')` : `labelKey: '${v.key}'`
+    console.log(`    ${shown} — not in ${v.searched.map(n => `${n}.json`).join(' or ')}`)
   }
   console.log('\nThese render as the raw key to users — English has no fallback.')
   console.log(`Add them to ${relative(ROOT, EN_DIR)}/<namespace>.json.`)

@@ -194,7 +194,6 @@ export default function FuelRecordList({ vin, onAddClick, onEditClick }: FuelRec
               ? t('fuelList.paginatedCount', {
                   shown: records.length,
                   total: totalRecords,
-                  defaultValue: `${records.length} of ${totalRecords}`,
                 })
               : t('fuelList.recordCount', { count: records.length })}
             )
@@ -485,7 +484,6 @@ export default function FuelRecordList({ vin, onAddClick, onEditClick }: FuelRec
               start: page * PAGE_SIZE + 1,
               end: Math.min(totalRecords, (page + 1) * PAGE_SIZE),
               total: totalRecords,
-              defaultValue: `Showing ${page * PAGE_SIZE + 1}–${Math.min(totalRecords, (page + 1) * PAGE_SIZE)} of ${totalRecords}`,
             })}
           </span>
           <div className="flex items-center gap-2">
@@ -493,7 +491,7 @@ export default function FuelRecordList({ vin, onAddClick, onEditClick }: FuelRec
               type="button"
               onClick={() => setPage((p) => Math.max(0, p - 1))}
               disabled={!canPrev}
-              aria-label={t('common:previous', { defaultValue: 'Previous' })}
+              aria-label={t('common:previous')}
               className="px-3 py-1 border border-garage-border rounded hover:bg-garage-bg disabled:opacity-40 disabled:cursor-not-allowed"
             >
               ‹
@@ -502,14 +500,13 @@ export default function FuelRecordList({ vin, onAddClick, onEditClick }: FuelRec
               {t('fuelList.pageOf', {
                 page: page + 1,
                 total: totalPages,
-                defaultValue: `Page ${page + 1} of ${totalPages}`,
               })}
             </span>
             <button
               type="button"
               onClick={() => setPage((p) => p + 1)}
               disabled={!canNext}
-              aria-label={t('common:next', { defaultValue: 'Next' })}
+              aria-label={t('common:next')}
               className="px-3 py-1 border border-garage-border rounded hover:bg-garage-bg disabled:opacity-40 disabled:cursor-not-allowed"
             >
               ›

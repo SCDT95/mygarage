@@ -367,11 +367,11 @@ export default function SettingsSystemTab() {
         localStorage.setItem('time_format', format)
       }
 
-      toast.success(t('preferences.timeSaved', { defaultValue: 'Time format saved' }))
+      toast.success(t('preferences.timeSaved'))
       // Force a re-render of displays subscribed to the storage event.
       window.dispatchEvent(new Event('storage'))
     } catch {
-      toast.error(t('preferences.timeError', { defaultValue: 'Failed to save time format' }))
+      toast.error(t('preferences.timeError'))
       // Revert on error
       if (isAuthenticated) {
         setTimeFormat((currentUser?.time_format as '12h' | '24h') || '12h')
@@ -682,7 +682,7 @@ export default function SettingsSystemTab() {
           <label className="block text-sm font-medium text-garage-text mb-3">
             <div className="flex items-center gap-2">
               <Clock className="w-4 h-4" />
-              {t('timeFormat.label', { defaultValue: 'Time Format' })}
+              {t('timeFormat.label')}
             </div>
           </label>
           <div className="flex gap-3">
@@ -696,7 +696,7 @@ export default function SettingsSystemTab() {
               } ${timeFormatSaving ? 'opacity-50 cursor-not-allowed' : ''}`}
             >
               <Clock className="w-5 h-5" />
-              <span className="font-medium">{t('timeFormat.twelveHour', { defaultValue: '12-hour (2:30 PM)' })}</span>
+              <span className="font-medium">{t('timeFormat.twelveHour')}</span>
             </button>
             <button
               onClick={() => handleTimeFormatChange('24h')}
@@ -708,11 +708,11 @@ export default function SettingsSystemTab() {
               } ${timeFormatSaving ? 'opacity-50 cursor-not-allowed' : ''}`}
             >
               <Clock className="w-5 h-5" />
-              <span className="font-medium">{t('timeFormat.twentyFourHour', { defaultValue: '24-hour (14:30)' })}</span>
+              <span className="font-medium">{t('timeFormat.twentyFourHour')}</span>
             </button>
           </div>
           <p className="mt-2 text-sm text-garage-text-muted">
-            {t('timeFormat.description', { defaultValue: 'Choose how times are displayed throughout the app.' })}
+            {t('timeFormat.description')}
           </p>
         </div>
 
@@ -868,13 +868,10 @@ export default function SettingsSystemTab() {
             <Fuel className="w-6 h-6 text-primary mt-1" />
             <div className="flex-1">
               <h2 className="text-xl font-semibold text-garage-text mb-1">
-                {t('fuel.title', { defaultValue: 'Fuel Tracking Defaults' })}
+                {t('fuel.title')}
               </h2>
               <p className="text-sm text-garage-text-muted">
-                {t('fuel.description', {
-                  defaultValue:
-                    'Pre-fill these fields when adding a new fuel record. Leave blank to start every entry empty.',
-                })}
+                {t('fuel.description')}
               </p>
             </div>
           </div>
@@ -882,7 +879,7 @@ export default function SettingsSystemTab() {
           <div className="grid grid-cols-2 gap-4">
             <div>
               <label htmlFor="default_payment_method" className="block text-sm font-medium text-garage-text mb-1">
-                {t('fuel.defaultPaymentMethod', { defaultValue: 'Default payment method' })}
+                {t('fuel.defaultPaymentMethod')}
               </label>
               <select
                 id="default_payment_method"
@@ -896,9 +893,9 @@ export default function SettingsSystemTab() {
                       default_payment_method: value === '' ? null : value,
                     })
                     await refreshUser()
-                    toast.success(t('preferences.unitSaved', { defaultValue: 'Saved' }))
+                    toast.success(t('fuel.defaultsSaved'))
                   } catch {
-                    toast.error(t('preferences.unitError', { defaultValue: 'Save failed' }))
+                    toast.error(t('fuel.defaultsError'))
                     setDefaultPaymentMethod(currentUser?.default_payment_method ?? '')
                   } finally {
                     setFuelDefaultsSaving(false)
@@ -908,18 +905,18 @@ export default function SettingsSystemTab() {
                 className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-primary bg-garage-bg text-garage-text border-garage-border"
               >
                 <option value="">—</option>
-                <option value="cash">{t('fuel.paymentMethods.cash', { defaultValue: 'Cash', ns: 'forms' })}</option>
-                <option value="credit">{t('fuel.paymentMethods.credit', { defaultValue: 'Credit card', ns: 'forms' })}</option>
-                <option value="debit">{t('fuel.paymentMethods.debit', { defaultValue: 'Debit card', ns: 'forms' })}</option>
-                <option value="fleet_card">{t('fuel.paymentMethods.fleet_card', { defaultValue: 'Fleet card', ns: 'forms' })}</option>
-                <option value="app">{t('fuel.paymentMethods.app', { defaultValue: 'Mobile pay / app', ns: 'forms' })}</option>
-                <option value="other">{t('fuel.paymentMethods.other', { defaultValue: 'Other', ns: 'forms' })}</option>
+                <option value="cash">{t('forms:fuel.paymentMethods.cash')}</option>
+                <option value="credit">{t('forms:fuel.paymentMethods.credit')}</option>
+                <option value="debit">{t('forms:fuel.paymentMethods.debit')}</option>
+                <option value="fleet_card">{t('forms:fuel.paymentMethods.fleet_card')}</option>
+                <option value="app">{t('forms:fuel.paymentMethods.app')}</option>
+                <option value="other">{t('forms:fuel.paymentMethods.other')}</option>
               </select>
             </div>
 
             <div>
               <label htmlFor="default_trip_type" className="block text-sm font-medium text-garage-text mb-1">
-                {t('fuel.defaultTripType', { defaultValue: 'Default trip type' })}
+                {t('fuel.defaultTripType')}
               </label>
               <select
                 id="default_trip_type"
@@ -933,9 +930,9 @@ export default function SettingsSystemTab() {
                       default_trip_type: value === '' ? null : value,
                     })
                     await refreshUser()
-                    toast.success(t('preferences.unitSaved', { defaultValue: 'Saved' }))
+                    toast.success(t('fuel.defaultsSaved'))
                   } catch {
-                    toast.error(t('preferences.unitError', { defaultValue: 'Save failed' }))
+                    toast.error(t('fuel.defaultsError'))
                     setDefaultTripType(currentUser?.default_trip_type ?? '')
                   } finally {
                     setFuelDefaultsSaving(false)
@@ -945,10 +942,10 @@ export default function SettingsSystemTab() {
                 className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-primary bg-garage-bg text-garage-text border-garage-border"
               >
                 <option value="">—</option>
-                <option value="private">{t('fuel.tripTypes.private', { defaultValue: 'Private', ns: 'forms' })}</option>
-                <option value="business">{t('fuel.tripTypes.business', { defaultValue: 'Business', ns: 'forms' })}</option>
-                <option value="commute">{t('fuel.tripTypes.commute', { defaultValue: 'Commute', ns: 'forms' })}</option>
-                <option value="other">{t('fuel.tripTypes.other', { defaultValue: 'Other', ns: 'forms' })}</option>
+                <option value="private">{t('forms:fuel.tripTypes.private')}</option>
+                <option value="business">{t('forms:fuel.tripTypes.business')}</option>
+                <option value="commute">{t('forms:fuel.tripTypes.commute')}</option>
+                <option value="other">{t('forms:fuel.tripTypes.other')}</option>
               </select>
             </div>
           </div>

@@ -98,7 +98,13 @@
       "cng": "CNG",
       "hydrogen": "Hydrogen",
       "other": "Other"
-    }
+    },
+    "priceBasis": "Price basis",
+    "priceBasisPerVolume": "Per volume ({{unit}})",
+    "priceBasisPerWeight": "Per weight ({{unit}})",
+    "priceBasisPerKwh": "Per kWh",
+    "priceBasisPerTank": "Per tank",
+    "filledAtTimeOnlyHint": "Optional. Uses the date above; needed for auto-fill from your last drive."
   },
   "insurance": {
     "coverageLimits": "Coverage Limits",
@@ -794,5 +800,44 @@
   },
   "vinDecoderModal": {
     "close": "Close"
+  },
+  "policyTypes": {
+    "liability": "Liability",
+    "comprehensive": "Comprehensive",
+    "collision": "Collision",
+    "fullCoverage": "Full Coverage",
+    "minimum": "Minimum",
+    "other": "Other"
+  },
+  "premiumFrequencies": {
+    "monthly": "Monthly",
+    "quarterly": "Quarterly",
+    "semiAnnual": "Semi-Annual",
+    "annual": "Annual"
+  },
+  "warrantyTypes": {
+    "manufacturer": "Manufacturer",
+    "powertrain": "Powertrain",
+    "extended": "Extended",
+    "bumperToBumper": "Bumper-to-Bumper",
+    "emissions": "Emissions",
+    "corrosion": "Corrosion",
+    "other": "Other"
+  },
+  "taxTypes": {
+    "registration": "Registration",
+    "inspection": "Inspection",
+    "propertyTax": "Property Tax",
+    "tolls": "Tolls"
+  },
+  "tollSystems": {
+    "ezTag": "EZ TAG",
+    "txTag": "TxTag",
+    "ezPass": "E-ZPass",
+    "sunPass": "SunPass",
+    "nttaTollTag": "NTTA TollTag",
+    "fasTrak": "FasTrak",
+    "iPass": "I-PASS",
+    "other": "Other"
   }
 }

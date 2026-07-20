@@ -4,6 +4,36 @@ import api from '../services/api'
 import { InsurancePDFParseResponse, InsurancePolicyCreate } from '../types/insurance'
 import { CloudUpload, X, AlertTriangle, CheckCircle } from 'lucide-react'
 
+/**
+ * Parsed-policy field name -> translation key.
+ *
+ * Domain verified against the `data` block built by parse_insurance_pdf in
+ * backend/app/routes/insurance.py (provider, policy_number, policy_type,
+ * start_date, end_date, premium_amount, premium_frequency, deductible,
+ * coverage_limits, notes), which matches InsurancePDFParseResponse. Keys are
+ * explicit literals, never built by interpolation, so
+ * scripts/validate-i18n-usage.ts can resolve them statically. A field the
+ * backend adds later falls through to humanizeFieldName below so it still
+ * renders something readable.
+ */
+const INSURANCE_FIELD_KEYS: Record<string, string> = {
+  provider: 'insuranceFields.provider',
+  policy_number: 'insuranceFields.policyNumber',
+  policy_type: 'insuranceFields.policyType',
+  start_date: 'insuranceFields.startDate',
+  end_date: 'insuranceFields.endDate',
+  premium_amount: 'insuranceFields.premiumAmount',
+  premium_frequency: 'insuranceFields.premiumFrequency',
+  deductible: 'insuranceFields.deductible',
+  coverage_limits: 'insuranceFields.coverageLimits',
+  notes: 'insuranceFields.notes',
+}
+
+/** Last-resort label for an unmapped backend field: "policy_number" -> "Policy Number". */
+function humanizeFieldName(key: string): string {
+  return key.replace(/_/g, ' ').replace(/\b\w/g, (l) => l.toUpperCase())
+}
+
 interface InsurancePDFUploadProps {
   vin: string
   onDataExtracted: (data: Partial<InsurancePolicyCreate>) => void
@@ -248,7 +278,8 @@ export default function InsurancePDFUpload({ vin, onDataExtracted, onClose }: In
                   <div className="space-y-2 text-sm">
                     {Object.entries(parseResult.data).map(([key, value]) => {
                       if (!value) return null
-                      const label = key.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())
+                      const labelKey = INSURANCE_FIELD_KEYS[key]
+                      const label = labelKey ? t(labelKey) : humanizeFieldName(key)
                       return (
                         <div key={key} className="flex justify-between items-start py-2 border-b border-garage-border last:border-0">
                           <span className="text-garage-text-muted font-medium">

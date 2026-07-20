@@ -1,13 +1,19 @@
 import { z } from 'zod'
 
+/**
+ * Warranty type options.
+ *
+ * `value` is the persisted/API value — it must never be translated or changed.
+ * `labelKey` is the i18n key for the human-readable label, resolved at render.
+ */
 export const WARRANTY_TYPES = [
-  'Manufacturer',
-  'Powertrain',
-  'Extended',
-  'Bumper-to-Bumper',
-  'Emissions',
-  'Corrosion',
-  'Other',
+  { value: 'Manufacturer', labelKey: 'forms:warrantyTypes.manufacturer' },
+  { value: 'Powertrain', labelKey: 'forms:warrantyTypes.powertrain' },
+  { value: 'Extended', labelKey: 'forms:warrantyTypes.extended' },
+  { value: 'Bumper-to-Bumper', labelKey: 'forms:warrantyTypes.bumperToBumper' },
+  { value: 'Emissions', labelKey: 'forms:warrantyTypes.emissions' },
+  { value: 'Corrosion', labelKey: 'forms:warrantyTypes.corrosion' },
+  { value: 'Other', labelKey: 'forms:warrantyTypes.other' },
 ] as const
 
 const mileageLimitSchema = z

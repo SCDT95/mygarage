@@ -97,8 +97,8 @@ export default function WarrantyForm({ vin, record, onClose, onSuccess }: Warran
                 disabled={isSubmitting}
               >
                 <option value="">{t('common:selectType')}</option>
-                {WARRANTY_TYPES.map((type) => (
-                  <option key={type} value={type}>{type}</option>
+                {WARRANTY_TYPES.map((option) => (
+                  <option key={option.value} value={option.value}>{t(option.labelKey)}</option>
                 ))}
               </select>
               <FormError error={errors.warranty_type} />

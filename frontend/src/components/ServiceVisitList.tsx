@@ -29,6 +29,27 @@ import { useUnitPreference } from '../hooks/useUnitPreference'
 import { UnitFormatter } from '../utils/units'
 import { useServiceVisits, useDeleteServiceVisit } from '../hooks/queries/useServiceVisits'
 
+/**
+ * Backend inspection result -> translation key.
+ *
+ * Domain verified against the `check_inspection_result` CHECK constraint in
+ * backend/app/models/service_line_item.py ('passed' | 'failed' |
+ * 'needs_attention'). Keys are explicit literals, never built by
+ * interpolation, so scripts/validate-i18n-usage.ts can resolve them
+ * statically. Unmapped values fall back to INSPECTION_RESULT_FALLBACK_KEY
+ * rather than rendering blank.
+ *
+ * Deliberately reuses the same keys as the InspectionResult picker rather than
+ * minting a parallel set: it is the same vocabulary for the same field, and
+ * separate keys would let the picker and this badge drift apart per language.
+ */
+const INSPECTION_RESULT_KEYS: Record<string, string> = {
+  passed: 'inspectionResult.resultPassed',
+  failed: 'inspectionResult.resultFailed',
+  needs_attention: 'inspectionResult.resultNeedsAttention',
+}
+const INSPECTION_RESULT_FALLBACK_KEY = 'inspectionResult.resultUnknown'
+
 interface ServiceVisitListProps {
   vin: string
   onAddClick: () => void
@@ -208,9 +229,9 @@ export default function ServiceVisitList({
               <span className="flex items-center gap-1">
                 {getInspectionResultIcon(item.inspection_result)}
                 <span
-                  className={`text-xs capitalize ${getInspectionSeverityColor(item.inspection_severity)}`}
+                  className={`text-xs ${getInspectionSeverityColor(item.inspection_severity)}`}
                 >
-                  {item.inspection_result.replace('_', ' ')}
+                  {t(INSPECTION_RESULT_KEYS[item.inspection_result] ?? INSPECTION_RESULT_FALLBACK_KEY)}
                 </span>
               </span>
             )}

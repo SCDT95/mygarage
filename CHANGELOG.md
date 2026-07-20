@@ -15,13 +15,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - i18n: the photo gallery, document upload, line-item editor (including all 82 service autocomplete suggestions), shop finder, widget-key modal, and the Telegram/email notification setup are now translatable (~209 strings).
 - i18n: the attachment lists and quick view, window-sticker test page, family member card, widget-keys panel, and the Slack/Discord notification setup are now translatable (~124 strings).
 
-- i18n: the notification setup panels, settings tabs, uploads and document lists, auth pages, POI and address-book screens, record forms, and the vehicle edit/archive screens are now translatable (~400 strings). No user-facing English remains outside validation messages.
+- i18n: the notification setup panels, settings tabs, uploads and document lists, auth pages, POI and address-book screens, record forms, and the vehicle edit/archive screens are now translatable (~400 strings).
+- i18n: form validation messages, dropdown options (policy, warranty, tax, toll and address-book types), and status values supplied by the server (calendar event type, inspection result, prediction confidence, toll status) are now translatable. The shared field validators (date, odometer, VIN, notes) are still English and are the last remaining set.
 
 ### Removed
 - Dropped the unused shop-discovery modal, orphaned when the legacy service-record form it fed was removed; the shop finder page replaces it.
 - Dropped 12 more unreachable components and types (~1360 lines) left behind by earlier refactors, along with the translation keys only they used.
 
 ### Fixed
+- Theme: the `primary` colour token was never defined, so roughly 560 uses of `bg-primary` / `text-primary` / `border-primary` — icons, spinners and accents throughout the app — generated no CSS at all and rendered uncoloured.
+- Fuel defaults: saving a default payment method or trip type reported "Unit preference saved!".
+- Several settings and fuel labels shipped different text than the code appeared to specify, because a stale inline fallback sat next to a translation key that had since diverged.
 - Vehicle edit: switching language while editing silently discarded everything typed — the form refetched and reset itself whenever the translation function changed identity.
 - Family management: enabling or disabling multi-user mode showed the literal text `{t('modal.multiUserMode')} enabled` in the confirmation toast.
 - Nearby places: distances always displayed in miles regardless of the unit preference, and fell back to metres below a mile — metric users saw miles, imperial users saw metres. The shop finder likewise offered to search "within 25 miles" while actually searching 25 km.

@@ -3,44 +3,89 @@
  *
  * Maps HTTP status codes to user-friendly error messages.
  * Complements backend error handling standardization (v2.11.0).
+ *
+ * These functions run outside React (interceptors, service helpers, catch
+ * blocks) so there is no component to call useTranslation from. They read the
+ * i18next singleton defensively via `tSafe`, mirroring the pattern in
+ * components/ErrorBoundary.tsx: a hard English default plus a try/catch, so an
+ * error path can never itself throw or render a raw key.
+ *
+ * Backend-supplied `detail` text is passed through verbatim — only the generic
+ * fallbacks below are translated.
  */
 
 import { AxiosError } from 'axios'
+import i18next from 'i18next'
+
+/**
+ * Translate an error string without ever risking a throw.
+ *
+ * Error handling has to keep working when i18n is the thing that broke (not
+ * initialised yet, namespace failed to load). An English message beats an
+ * exception inside a catch block.
+ */
+function tSafe(key: string, fallback: string, values?: Record<string, unknown>): string {
+  try {
+    const value = i18next.t(key, { ns: 'common', defaultValue: fallback, ...values })
+    return typeof value === 'string' && value.length > 0 ? value : fallback
+  } catch {
+    return fallback
+  }
+}
+
+/** A translation key paired with its hard English fallback. */
+type Message = readonly [key: string, fallback: string]
 
 /**
  * HTTP status code to user-friendly message mapping
  */
-const STATUS_MESSAGES: Record<number, string> = {
-  400: 'Invalid request. Please check your input.',
-  401: 'Session expired. Please log in again.',
-  403: 'You do not have permission to perform this action.',
-  404: 'The requested resource was not found.',
-  409: 'This action conflicts with existing data.',
-  422: 'The submitted data could not be processed.',
-  500: 'An unexpected server error occurred.',
-  502: 'Server is temporarily unavailable. Please try again.',
-  503: 'Service temporarily unavailable. Please try again shortly.',
-  504: 'Request timed out. Please try again.',
+const STATUS_MESSAGES: Record<number, Message> = {
+  400: ['httpError.status.badRequest', 'Invalid request. Please check your input.'],
+  401: ['httpError.status.unauthorized', 'Session expired. Please log in again.'],
+  403: ['httpError.status.forbidden', 'You do not have permission to perform this action.'],
+  404: ['httpError.status.notFound', 'The requested resource was not found.'],
+  409: ['httpError.status.conflict', 'This action conflicts with existing data.'],
+  422: ['httpError.status.unprocessable', 'The submitted data could not be processed.'],
+  500: ['httpError.status.serverError', 'An unexpected server error occurred.'],
+  502: ['httpError.status.badGateway', 'Server is temporarily unavailable. Please try again.'],
+  503: [
+    'httpError.status.serviceUnavailable',
+    'Service temporarily unavailable. Please try again shortly.',
+  ],
+  504: ['httpError.status.gatewayTimeout', 'Request timed out. Please try again.'],
 }
 
 /**
  * Context-specific error messages for common operations
  */
-const CONTEXT_MESSAGES: Record<string, Record<number, string>> = {
+const CONTEXT_MESSAGES: Record<string, Record<number, Message>> = {
   database: {
-    409: 'A record with this data already exists.',
-    503: 'Database temporarily unavailable. Please try again.',
+    409: ['httpError.database.conflict', 'A record with this data already exists.'],
+    503: ['httpError.database.unavailable', 'Database temporarily unavailable. Please try again.'],
   },
   file: {
-    403: 'Permission denied. Cannot access file.',
-    404: 'File not found.',
-    500: 'Error accessing file.',
+    403: ['httpError.file.forbidden', 'Permission denied. Cannot access file.'],
+    404: ['httpError.file.notFound', 'File not found.'],
+    500: ['httpError.file.serverError', 'Error accessing file.'],
   },
   external_api: {
-    503: 'External service unavailable. Please try again later.',
-    504: 'External service timed out. Please try again.',
+    503: [
+      'httpError.externalApi.unavailable',
+      'External service unavailable. Please try again later.',
+    ],
+    504: ['httpError.externalApi.timeout', 'External service timed out. Please try again.'],
   },
 }
+
+const NETWORK_ERROR: Message = [
+  'httpError.network',
+  'Network error. Please check your connection.',
+]
+const GENERIC_ERROR: Message = ['httpError.generic', 'An error occurred.']
+const UNEXPECTED_ERROR: Message = ['httpError.unexpected', 'An unexpected error occurred.']
+
+/** Resolve a (key, English) pair through i18next. */
+const translate = ([key, fallback]: Message): string => tSafe(key, fallback)
 
 export interface ParsedApiError {
   /** HTTP status code (0 for network errors) */
@@ -74,7 +119,7 @@ export function parseApiError(error: unknown, context?: string): ParsedApiError 
     if (!error.response) {
       return {
         status: 0,
-        message: 'Network error. Please check your connection.',
+        message: translate(NETWORK_ERROR),
         detail: error.message,
         isNetworkError: true,
         isTimeout: error.code === 'ECONNABORTED',
@@ -82,13 +127,9 @@ export function parseApiError(error: unknown, context?: string): ParsedApiError 
       }
     }
 
-    // Get context-specific message if available
-    let message = CONTEXT_MESSAGES[context || '']?.[status]
-
-    // Fall back to general status message
-    if (!message) {
-      message = STATUS_MESSAGES[status] || 'An error occurred.'
-    }
+    // Context-specific message if available, else the general status message
+    const entry = CONTEXT_MESSAGES[context || '']?.[status] ?? STATUS_MESSAGES[status]
+    let message = entry ? translate(entry) : translate(GENERIC_ERROR)
 
     // For 409 conflicts, use the API detail if it's more specific
     if (status === 409 && detail && !detail.includes('Exception')) {
@@ -109,7 +150,7 @@ export function parseApiError(error: unknown, context?: string): ParsedApiError 
   if (error instanceof Error) {
     return {
       status: 0,
-      message: error.message || 'An error occurred.',
+      message: error.message || translate(GENERIC_ERROR),
       detail: error.message,
       isNetworkError: false,
       isTimeout: false,
@@ -120,7 +161,7 @@ export function parseApiError(error: unknown, context?: string): ParsedApiError 
   // Handle unknown errors
   return {
     status: 0,
-    message: 'An unexpected error occurred.',
+    message: translate(UNEXPECTED_ERROR),
     detail: String(error),
     isNetworkError: false,
     isTimeout: false,
@@ -133,12 +174,12 @@ export function parseApiError(error: unknown, context?: string): ParsedApiError 
  * Convenience function for simple error display.
  *
  * @param error - The error from an API call
- * @param fallbackMessage - Optional fallback message
+ * @param fallbackMessage - Optional fallback message (already user-ready text)
  * @returns User-friendly error message
  */
-export function getErrorMessage(error: unknown, fallbackMessage = 'An error occurred'): string {
+export function getErrorMessage(error: unknown, fallbackMessage?: string): string {
   const parsed = parseApiError(error)
-  return parsed.message || fallbackMessage
+  return parsed.message || fallbackMessage || translate(GENERIC_ERROR)
 }
 
 /**
@@ -150,15 +191,25 @@ export function getErrorMessage(error: unknown, fallbackMessage = 'An error occu
  */
 export function getActionErrorMessage(error: unknown, action: string): string {
   const parsed = parseApiError(error)
+  const failed = (): string =>
+    tSafe('httpError.actionFailed', 'Failed to {{action}}. {{message}}', {
+      action,
+      message: parsed.message,
+    })
 
   // For timeouts and service unavailable, add retry suggestion
   if (parsed.shouldRetry) {
-    return `Failed to ${action}. ${parsed.message}`
+    return failed()
   }
 
-  // For validation errors, show the detail
+  // For validation errors, show the backend detail verbatim when there is one
   if (parsed.status === 400 || parsed.status === 422) {
-    return parsed.detail || `Failed to ${action}. Please check your input.`
+    return (
+      parsed.detail ||
+      tSafe('httpError.actionFailedCheckInput', 'Failed to {{action}}. Please check your input.', {
+        action,
+      })
+    )
   }
 
   // For conflicts, the message is usually descriptive enough
@@ -166,7 +217,7 @@ export function getActionErrorMessage(error: unknown, action: string): string {
     return parsed.message
   }
 
-  return `Failed to ${action}. ${parsed.message}`
+  return failed()
 }
 
 /**

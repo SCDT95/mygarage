@@ -1,24 +1,28 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { UserPlus, AlertCircle, CheckCircle, Loader, Crown, Eye, EyeOff } from 'lucide-react'
 import { useAuth } from '../contexts/AuthContext'
-import { registerSchema, type RegisterFormData, getPasswordStrength } from '../schemas/auth'
+import { makeRegisterSchema, type RegisterFormData, getPasswordStrength } from '../schemas/auth'
 import { FormError } from '../components/FormError'
 import AuthPageLayout from '../components/AuthPageLayout'
 import api from '../services/api'
 
 export default function Register() {
   const { t } = useTranslation('common')
+  // Zod bakes its messages in at construction, so the schema is rebuilt when
+  // the language changes. Only the resolver depends on it — no fetch, no
+  // reset() — so a rebuild can't discard what the user typed.
+  const schema = useMemo(() => makeRegisterSchema(t), [t])
   const {
     register: registerField,
     handleSubmit,
     watch,
     formState: { errors, isSubmitting },
   } = useForm<RegisterFormData>({
-    resolver: zodResolver(registerSchema),
+    resolver: zodResolver(schema),
     mode: 'onBlur', // Validate on blur for better UX
   })
   const [error, setError] = useState('')
@@ -39,14 +43,14 @@ export default function Register() {
       .catch(() => setIsFirstUser(false))
   }, [])
 
-  // Calculate password strength using helper from schema. The label returned by
-  // getPasswordStrength is a stable identifier ('Weak' | 'Medium' | 'Strong') —
+  // Calculate password strength using helper from schema. The level returned by
+  // getPasswordStrength is a stable identifier ('weak' | 'medium' | 'strong') —
   // branch on it, never on the translated text.
   const passwordStrength = getPasswordStrength(password)
   const passwordStrengthLabel =
-    passwordStrength.label === 'Strong'
+    passwordStrength.level === 'strong'
       ? t('registerPage.strength.strong')
-      : passwordStrength.label === 'Medium'
+      : passwordStrength.level === 'medium'
         ? t('registerPage.strength.medium')
         : t('registerPage.strength.weak')
 

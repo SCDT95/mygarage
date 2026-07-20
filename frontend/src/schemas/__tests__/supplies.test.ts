@@ -1,6 +1,13 @@
 import { describe, expect, it } from 'vitest'
+import type { TFunction } from 'i18next'
 
-import { supplySchema } from '../supplies'
+import { makeSupplySchema } from '../supplies'
+
+// Same shape as the global react-i18next mock in src/__tests__/setup.ts:
+// messages come back as their i18n key, which is all these tests need.
+const t = ((key: string) => key) as unknown as TFunction
+
+const supplySchema = makeSupplySchema(t)
 
 describe('Supply Schema', () => {
   const validEntry = {

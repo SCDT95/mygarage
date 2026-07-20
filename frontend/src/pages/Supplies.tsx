@@ -15,7 +15,7 @@ import { vehicleLabel } from '@/utils/vehicleLabel'
 import { useUnitPreference } from '@/hooks/useUnitPreference'
 import { useCurrencyPreference } from '@/hooks/useCurrencyPreference'
 import { canonicalToDisplay, supplyUnitLabel } from '@/utils/supplyUnits'
-import { supplySchema, SUPPLY_UNIT_TYPES, type SupplyFormData } from '@/schemas/supplies'
+import { makeSupplySchema, SUPPLY_UNIT_TYPES, type SupplyFormData } from '@/schemas/supplies'
 import { FormError } from '@/components/FormError'
 import FormModalWrapper from '@/components/FormModalWrapper'
 import SupplyHistoryModal from '@/components/SupplyHistoryModal'
@@ -246,12 +246,17 @@ export function SupplyForm({ supply, onClose, onSuccess }: SupplyFormProps) {
   const updateMutation = useUpdateSupply()
   const { data: vehicles = [] } = useQuickEntryVehicles()
 
+  // Zod bakes its messages in at construction, so the schema is rebuilt when
+  // the language changes. Only the resolver depends on it — no fetch, no
+  // reset() — so a rebuild can't discard what the user typed.
+  const schema = useMemo(() => makeSupplySchema(t), [t])
+
   const {
     register,
     handleSubmit,
     formState: { errors, isSubmitting },
   } = useForm<SupplyFormData>({
-    resolver: zodResolver(supplySchema),
+    resolver: zodResolver(schema),
     defaultValues: {
       name: supply?.name || '',
       unit_type: supply?.unit_type || 'volume',

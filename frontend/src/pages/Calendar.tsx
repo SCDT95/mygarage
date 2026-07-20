@@ -44,6 +44,24 @@ const EVENT_CALENDARS = {
   },
 } as const
 
+/**
+ * Backend event type -> translation key.
+ *
+ * Domain verified against the `CalendarEvent.type` enum in the OpenAPI schema
+ * (maintenance | insurance | warranty | service), emitted by
+ * backend/app/routes/calendar.py. Keys are explicit literals, never built by
+ * interpolation, so scripts/validate-i18n-usage.ts can resolve them statically.
+ * Unmapped values (a new backend type) fall back to EVENT_TYPE_FALLBACK_KEY
+ * rather than rendering blank.
+ */
+const EVENT_TYPE_KEYS: Record<string, string> = {
+  maintenance: 'eventTypes.maintenance',
+  insurance: 'eventTypes.insurance',
+  warranty: 'eventTypes.warranty',
+  service: 'eventTypes.service',
+}
+const EVENT_TYPE_FALLBACK_KEY = 'eventTypes.unknown'
+
 export default function CalendarPage() {
   const { t } = useTranslation('vehicles')
   const navigate = useNavigate()
@@ -674,12 +692,12 @@ export default function CalendarPage() {
                               {UnitFormatter.formatDistance(parseFloat(event.due_mileage_km), system)}
                             </span>
                           )}
-                          <span className={`text-xs font-medium ${
+                          <span className={`text-xs font-medium uppercase ${
                             event.type === 'insurance' ? 'text-red-500' :
                             event.type === 'warranty' ? 'text-amber-500' :
                             'text-blue-500'
                           }`}>
-                            {event.type.toUpperCase()}
+                            {t(EVENT_TYPE_KEYS[event.type] ?? EVENT_TYPE_FALLBACK_KEY)}
                           </span>
                         </div>
                         <p className="text-sm font-medium text-garage-text mb-1">{event.title}</p>
@@ -819,12 +837,12 @@ export default function CalendarPage() {
                   <h4 className="text-sm font-medium text-garage-text-muted mb-2">{t('calendar.misc.eventLabel')}</h4>
                   <div className="bg-garage-bg border border-garage-border rounded-lg p-3">
                     <div className="flex items-center gap-2 mb-2">
-                      <span className={`text-xs font-medium px-2 py-1 rounded ${
+                      <span className={`text-xs font-medium uppercase px-2 py-1 rounded ${
                         selectedEventForNotes.type === 'insurance' ? 'bg-red-500/20 text-red-500' :
                         selectedEventForNotes.type === 'warranty' ? 'bg-amber-500/20 text-amber-500' :
                         'bg-blue-500/20 text-blue-500'
                       }`}>
-                        {selectedEventForNotes.type.toUpperCase()}
+                        {t(EVENT_TYPE_KEYS[selectedEventForNotes.type] ?? EVENT_TYPE_FALLBACK_KEY)}
                       </span>
                       {selectedEventForNotes.is_recurring && (
                         <RotateCw className="w-3 h-3 text-primary" />

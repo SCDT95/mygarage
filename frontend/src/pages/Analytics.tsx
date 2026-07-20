@@ -63,6 +63,22 @@ import { useCurrencyPreference } from '../hooks/useCurrencyPreference'
 import { useCurrencySymbol } from '../hooks/useCurrencySymbol'
 import { useDateLocale } from '../hooks/useDateLocale'
 
+/**
+ * Backend prediction confidence -> translation key.
+ *
+ * Domain verified against `MaintenancePrediction.confidence` in
+ * backend/app/schemas/analytics.py ("high" | "medium" | "low"). Keys are
+ * explicit literals, never built by interpolation, so
+ * scripts/validate-i18n-usage.ts can resolve them statically. Unmapped values
+ * fall back to CONFIDENCE_FALLBACK_KEY rather than rendering blank.
+ */
+const CONFIDENCE_LEVEL_KEYS: Record<string, string> = {
+  high: 'confidenceLevels.high',
+  medium: 'confidenceLevels.medium',
+  low: 'confidenceLevels.low',
+}
+const CONFIDENCE_FALLBACK_KEY = 'confidenceLevels.unknown'
+
 export default function Analytics() {
   const { t } = useTranslation('analytics')
   const { vin } = useParams<{ vin: string }>()
@@ -334,8 +350,8 @@ export default function Analytics() {
       low: 'badge-neutral border-gray-300',
     }
     return (
-      <span className={`px-2 py-1 text-xs font-medium rounded border ${colors[confidence as keyof typeof colors] || colors.low}`}>
-        {confidence.toUpperCase()}
+      <span className={`px-2 py-1 text-xs font-medium uppercase rounded border ${colors[confidence as keyof typeof colors] || colors.low}`}>
+        {t(CONFIDENCE_LEVEL_KEYS[confidence] ?? CONFIDENCE_FALLBACK_KEY)}
       </span>
     )
   }

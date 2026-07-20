@@ -164,8 +164,8 @@ export default function InsuranceForm({ vin, record, onClose, onSuccess }: Insur
               className="input w-full"
             >
               <option value="">{t('common:selectType')}</option>
-              {POLICY_TYPES.map((type) => (
-                <option key={type} value={type}>{type}</option>
+              {POLICY_TYPES.map((option) => (
+                <option key={option.value} value={option.value}>{t(option.labelKey)}</option>
               ))}
             </select>
             <FormError error={errors.policy_type} />
@@ -228,8 +228,8 @@ export default function InsuranceForm({ vin, record, onClose, onSuccess }: Insur
                 className="input w-full"
               >
                 <option value="">{t('insurance.selectFrequency')}</option>
-                {PREMIUM_FREQUENCIES.map((freq) => (
-                  <option key={freq} value={freq}>{freq}</option>
+                {PREMIUM_FREQUENCIES.map((option) => (
+                  <option key={option.value} value={option.value}>{t(option.labelKey)}</option>
                 ))}
               </select>
               <FormError error={errors.premium_frequency} />

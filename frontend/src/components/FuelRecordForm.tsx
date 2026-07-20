@@ -362,7 +362,7 @@ export default function FuelRecordForm({ vin, record, onClose, onSuccess }: Fuel
     // A non-empty but INVALID/incomplete time must NOT be silently dropped to
     // null — block instead (Codex R1-H1). Empty is fine (means "no timestamp").
     if (rawTime !== '' && normTime === '') {
-      setError(t('fuel.invalidFilledTime', { defaultValue: 'Enter a valid time, or clear it.' }))
+      setError(t('fuel.invalidFilledTime'))
       return
     }
     // filled_at = record date + entered time. Edit-safety (review R1-H2): if
@@ -604,7 +604,7 @@ export default function FuelRecordForm({ vin, record, onClose, onSuccess }: Fuel
 
           <div>
             <label htmlFor="price_basis" className="block text-sm font-medium text-garage-text mb-1">
-              {t('fuel.priceBasis', { defaultValue: 'Price basis' })}
+              {t('fuel.priceBasis')}
             </label>
             <select
               id="price_basis"
@@ -618,18 +618,16 @@ export default function FuelRecordForm({ vin, record, onClose, onSuccess }: Fuel
                   per issue #69. */}
               <option value="per_volume">
                 {t('fuel.priceBasisPerVolume', {
-                  defaultValue: `Per volume (${system === 'imperial' ? 'gal' : 'L'})`,
                   unit: system === 'imperial' ? 'gal' : 'L',
                 })}
               </option>
               <option value="per_weight">
                 {t('fuel.priceBasisPerWeight', {
-                  defaultValue: `Per weight (${system === 'imperial' ? 'lb' : 'kg'})`,
                   unit: system === 'imperial' ? 'lb' : 'kg',
                 })}
               </option>
-              <option value="per_kwh">{t('fuel.priceBasisPerKwh', { defaultValue: 'Per kWh' })}</option>
-              <option value="per_tank">{t('fuel.priceBasisPerTank', { defaultValue: 'Per tank' })}</option>
+              <option value="per_kwh">{t('fuel.priceBasisPerKwh')}</option>
+              <option value="per_tank">{t('fuel.priceBasisPerTank')}</option>
             </select>
             <FormError error={errors.price_basis} />
           </div>
@@ -637,7 +635,7 @@ export default function FuelRecordForm({ vin, record, onClose, onSuccess }: Fuel
           <div className="grid grid-cols-2 gap-4">
             <div>
               <label htmlFor="rebate" className="block text-sm font-medium text-garage-text mb-1">
-                {t('fuel.rebate', { defaultValue: 'Rebate' })}
+                {t('fuel.rebate')}
               </label>
               <div className="relative">
                 <CurrencyInputPrefix />
@@ -656,7 +654,7 @@ export default function FuelRecordForm({ vin, record, onClose, onSuccess }: Fuel
               </div>
               <FormError error={errors.rebate} />
               <p className="text-xs text-garage-text-muted mt-1">
-                {t('fuel.rebateHint', { defaultValue: 'Points, discounts, or cash back — deducted from Total Cost' })}
+                {t('fuel.rebateHint')}
               </p>
             </div>
 
@@ -844,7 +842,7 @@ export default function FuelRecordForm({ vin, record, onClose, onSuccess }: Fuel
                 <option value="">{t('common:select') || '—'}</option>
                 {FUEL_TYPE_VALUES.map((value) => (
                   <option key={value} value={value}>
-                    {t(`fuel.fuelTypes.${value}`, { defaultValue: value })}
+                    {t(`fuel.fuelTypes.${value}`)}
                   </option>
                 ))}
               </select>
@@ -877,16 +875,14 @@ export default function FuelRecordForm({ vin, record, onClose, onSuccess }: Fuel
                   </legend>
                   <TimeInput24
                     id="filled_at_time"
-                    ariaLabel={t('fuel.filledAtTimeLabel', { defaultValue: 'Fill-up time' })}
+                    ariaLabel={t('fuel.filledAtTimeLabel')}
                     value={filledTime}
                     onChange={setFilledTime}
                     timeFormat={timeFormat}
                     disabled={isSubmitting}
                   />
                   <p className="text-xs text-garage-text-muted mt-1">
-                    {t('fuel.filledAtTimeOnlyHint', {
-                      defaultValue: 'Optional. Uses the date above; needed for auto-fill from your last drive.',
-                    })}
+                    {t('fuel.filledAtTimeOnlyHint')}
                   </p>
                 </fieldset>
 
@@ -965,7 +961,7 @@ export default function FuelRecordForm({ vin, record, onClose, onSuccess }: Fuel
                       <option value="">{t('fuel.paymentMethodPlaceholder')}</option>
                       {PAYMENT_METHOD_VALUES.map((value) => (
                         <option key={value} value={value}>
-                          {t(`fuel.paymentMethods.${value}`, { defaultValue: value })}
+                          {t(`fuel.paymentMethods.${value}`)}
                         </option>
                       ))}
                     </select>
@@ -985,7 +981,7 @@ export default function FuelRecordForm({ vin, record, onClose, onSuccess }: Fuel
                       <option value="">{t('fuel.tripTypePlaceholder')}</option>
                       {TRIP_TYPE_VALUES.map((value) => (
                         <option key={value} value={value}>
-                          {t(`fuel.tripTypes.${value}`, { defaultValue: value })}
+                          {t(`fuel.tripTypes.${value}`)}
                         </option>
                       ))}
                     </select>

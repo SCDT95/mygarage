@@ -5,6 +5,21 @@ import { toast } from 'sonner'
 import type { TollTag } from '../types/toll'
 import { useTollTags, useDeleteTollTag } from '../hooks/queries/useTollRecords'
 
+/**
+ * Toll tag status -> translation key.
+ *
+ * Domain verified against `TollTag.status` in backend/app/models/toll.py
+ * ('active' | 'inactive', default 'active'). Keys are explicit literals, never
+ * built by interpolation, so scripts/validate-i18n-usage.ts can resolve them
+ * statically. Unmapped values fall back to TOLL_STATUS_FALLBACK_KEY rather
+ * than rendering blank.
+ */
+const TOLL_STATUS_KEYS: Record<string, string> = {
+  active: 'tollStatuses.active',
+  inactive: 'tollStatuses.inactive',
+}
+const TOLL_STATUS_FALLBACK_KEY = 'tollStatuses.unknown'
+
 interface TollTagListProps {
   vin: string
   onAddClick: () => void
@@ -121,7 +136,7 @@ export default function TollTagList({ vin, onAddClick, onEditClick }: TollTagLis
                       <XCircle size={14} className="text-danger-500" />
                     )}
                     <span className="text-sm text-garage-text">
-                      {tag.status.charAt(0).toUpperCase() + tag.status.slice(1)}
+                      {t(TOLL_STATUS_KEYS[tag.status] ?? TOLL_STATUS_FALLBACK_KEY)}
                     </span>
                   </span>
                 </div>

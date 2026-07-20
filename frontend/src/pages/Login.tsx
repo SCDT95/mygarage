@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { resolvePostLoginRoute } from '../utils/postLoginRedirect'
@@ -6,19 +6,23 @@ import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { LogIn, AlertCircle, Loader, Eye, EyeOff, Shield } from 'lucide-react'
 import { useAuth } from '../contexts/AuthContext'
-import { loginSchema, type LoginFormData } from '../schemas/auth'
+import { makeLoginSchema, type LoginFormData } from '../schemas/auth'
 import { FormError } from '../components/FormError'
 import AuthPageLayout from '../components/AuthPageLayout'
 import { withBase } from '../utils/basePath'
 
 export default function Login() {
   const { t } = useTranslation('common')
+  // Zod bakes its messages in at construction, so the schema is rebuilt when
+  // the language changes. Only the resolver depends on it — no fetch, no
+  // reset() — so a rebuild can't discard what the user typed.
+  const schema = useMemo(() => makeLoginSchema(t), [t])
   const {
     register: registerField,
     handleSubmit,
     formState: { errors, isSubmitting },
   } = useForm<LoginFormData>({
-    resolver: zodResolver(loginSchema),
+    resolver: zodResolver(schema),
   })
   const [error, setError] = useState('')
   const [showPassword, setShowPassword] = useState(false)
