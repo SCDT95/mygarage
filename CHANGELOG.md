@@ -15,6 +15,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - i18n: the photo gallery, document upload, line-item editor (including all 82 service autocomplete suggestions), shop finder, widget-key modal, and the Telegram/email notification setup are now translatable (~209 strings).
 - i18n: the attachment lists and quick view, window-sticker test page, family member card, widget-keys panel, and the Slack/Discord notification setup are now translatable (~124 strings).
 
+### Removed
+- Dropped the unused shop-discovery modal, orphaned when the legacy service-record form it fed was removed; the shop finder page replaces it.
+
 ### Fixed
 - Dates: most dates rendered in US English regardless of language — the shared date formatter defaulted to `en-US` and the majority of callers relied on that default. Dates, and the "created/last used X ago" timestamps on API keys, now follow the selected language.
 - Notification and file settings: several field labels (Server URL, User Key, Allowed Photo/Attachment Types, Last Billing) rendered in English even though their translations already existed — the translation call had been commented out beside the hardcoded text.
