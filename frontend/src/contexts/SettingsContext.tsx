@@ -1,4 +1,5 @@
 import { createContext, useContext, useState, useCallback, useRef, useEffect, ReactNode } from 'react'
+import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
 
 interface SettingsContextType {
@@ -12,6 +13,7 @@ interface SettingsContextType {
 const SettingsContext = createContext<SettingsContextType | undefined>(undefined)
 
 export function SettingsProvider({ children }: { children: ReactNode }) {
+  const { t } = useTranslation('settings')
   const [currentTabId, setCurrentTabId] = useState<string | null>(null)
   const saveHandlers = useRef<Map<string, () => Promise<void>>>(new Map())
   const saveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -32,17 +34,17 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
     if (!handler) return
 
     isSavingRef.current = true
-    const toastId = toast.loading('Saving settings...')
+    const toastId = toast.loading(t('settingsContext.saving'))
 
     try {
       await handler()
-      toast.success('Settings saved successfully', { id: toastId })
+      toast.success(t('settingsContext.saveSuccess'), { id: toastId })
     } catch {
-      toast.error('Failed to save settings', { id: toastId })
+      toast.error(t('settingsContext.saveError'), { id: toastId })
     } finally {
       isSavingRef.current = false
     }
-  }, [currentTabId])
+  }, [currentTabId, t])
 
   const triggerSave = useCallback(() => {
     // Clear any existing timeout

@@ -132,7 +132,7 @@ export default function Login() {
                 className={`w-full px-4 py-3 bg-garage-bg border rounded-lg text-garage-text placeholder-garage-text-muted focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent ${
                   errors.username ? 'border-red-500' : 'border-garage-border'
                 }`}
-                placeholder="Enter your username or email"
+                placeholder={t('loginPage.usernamePlaceholder')}
                 autoComplete="username"
                 disabled={isSubmitting}
               />
@@ -152,7 +152,7 @@ export default function Login() {
                   className={`w-full px-4 py-3 pr-12 bg-garage-bg border rounded-lg text-garage-text placeholder-garage-text-muted focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent ${
                     errors.password ? 'border-red-500' : 'border-garage-border'
                   }`}
-                  placeholder="Enter your password"
+                  placeholder={t('loginPage.passwordPlaceholder')}
                   autoComplete="current-password"
                   disabled={isSubmitting}
                 />
@@ -160,7 +160,7 @@ export default function Login() {
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
                   className="absolute right-3 top-1/2 -translate-y-1/2 p-2 text-garage-text-muted hover:text-garage-text transition-colors"
-                  aria-label={showPassword ? 'Hide password' : 'Show password'}
+                  aria-label={showPassword ? t('loginPage.hidePassword') : t('loginPage.showPassword')}
                   tabIndex={-1}
                 >
                   {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
@@ -178,7 +178,7 @@ export default function Login() {
               {isSubmitting ? (
                 <>
                   <Loader className="w-5 h-5 animate-spin" />
-                  Signing in...
+                  {t('loginPage.submitting')}
                 </>
               ) : (
                 <>

@@ -15,10 +15,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - i18n: the photo gallery, document upload, line-item editor (including all 82 service autocomplete suggestions), shop finder, widget-key modal, and the Telegram/email notification setup are now translatable (~209 strings).
 - i18n: the attachment lists and quick view, window-sticker test page, family member card, widget-keys panel, and the Slack/Discord notification setup are now translatable (~124 strings).
 
+- i18n: the notification setup panels, settings tabs, uploads and document lists, auth pages, POI and address-book screens, record forms, and the vehicle edit/archive screens are now translatable (~400 strings). No user-facing English remains outside validation messages.
+
 ### Removed
 - Dropped the unused shop-discovery modal, orphaned when the legacy service-record form it fed was removed; the shop finder page replaces it.
+- Dropped 12 more unreachable components and types (~1360 lines) left behind by earlier refactors, along with the translation keys only they used.
 
 ### Fixed
+- Vehicle edit: switching language while editing silently discarded everything typed — the form refetched and reset itself whenever the translation function changed identity.
+- Family management: enabling or disabling multi-user mode showed the literal text `{t('modal.multiUserMode')} enabled` in the confirmation toast.
+- Nearby places: distances always displayed in miles regardless of the unit preference, and fell back to metres below a mile — metric users saw miles, imperial users saw metres. The shop finder likewise offered to search "within 25 miles" while actually searching 25 km.
+- Toll transactions: the vendor-name lookup shadowed the translation function, so translating that list would have crashed it.
+- Pushover setup: the API token field lost the "/ App Token" half of its label.
 - Dates: most dates rendered in US English regardless of language — the shared date formatter defaulted to `en-US` and the majority of callers relied on that default. Dates, and the "created/last used X ago" timestamps on API keys, now follow the selected language.
 - Notification and file settings: several field labels (Server URL, User Key, Allowed Photo/Attachment Types, Last Billing) rendered in English even though their translations already existed — the translation call had been commented out beside the hardcoded text.
 - Numbers: thousands separators followed the browser's locale rather than the language selected in the app, so a German user could still see `12,345` instead of `12.345`. All unit and telemetry formatting now follows the selected language.

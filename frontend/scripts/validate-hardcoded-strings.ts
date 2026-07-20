@@ -131,9 +131,26 @@ function stripImports(source: string): string {
     .replace(/import\s+['"][^'"]*['"]/g, blankOut)
 }
 
+/**
+ * Blank out comments, preserving line numbering.
+ *
+ * The line scanner already skips comment lines, but the multiline scanner works
+ * on raw source, so any comment containing an angle bracket — `<Trans>`, a
+ * generic, an arrow — reads as a JSX text node. That produced findings whose
+ * "user-facing string" was a fragment of a code comment.
+ *
+ * Only block comments and whole-line `//` comments are removed. A trailing `//`
+ * is left alone on purpose: stripping it would also eat the `//` inside string
+ * literals like 'https://example.com' and corrupt the surrounding segment.
+ */
+function stripComments(source: string): string {
+  const blankOut = (m: string) => m.replace(/[^\n]/g, ' ')
+  return source.replace(/\/\*[\s\S]*?\*\//g, blankOut).replace(/^[ \t]*\/\/.*$/gm, blankOut)
+}
+
 function scanMultilineJsx(rawSource: string, rel: string): Finding[] {
   const findings: Finding[] = []
-  const source = stripImports(rawSource)
+  const source = stripComments(stripImports(rawSource))
   for (const m of source.matchAll(JSX_TEXT_MULTILINE)) {
     const raw = m[1]
     // `=> Promise<void>`: the arrow's own `>` is not a JSX delimiter.

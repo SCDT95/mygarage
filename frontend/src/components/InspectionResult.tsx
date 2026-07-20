@@ -1,4 +1,5 @@
 import { CheckCircle, XCircle, AlertTriangle } from 'lucide-react'
+import { useTranslation } from 'react-i18next'
 import type { InspectionResult as InspectionResultType, InspectionSeverity } from '../types/serviceVisit'
 
 interface InspectionResultProps {
@@ -9,16 +10,18 @@ interface InspectionResultProps {
   disabled?: boolean
 }
 
-const RESULT_OPTIONS: { value: InspectionResultType; label: string; icon: typeof CheckCircle; color: string }[] = [
-  { value: 'passed', label: 'Passed', icon: CheckCircle, color: 'text-success' },
-  { value: 'needs_attention', label: 'Needs Attention', icon: AlertTriangle, color: 'text-warning' },
-  { value: 'failed', label: 'Failed', icon: XCircle, color: 'text-danger' },
+// Labels are i18n keys resolved at render time — these module-scope constants
+// are evaluated once, before any language is selected.
+const RESULT_OPTIONS: { value: InspectionResultType; labelKey: string; icon: typeof CheckCircle; color: string }[] = [
+  { value: 'passed', labelKey: 'inspectionResult.resultPassed', icon: CheckCircle, color: 'text-success' },
+  { value: 'needs_attention', labelKey: 'inspectionResult.resultNeedsAttention', icon: AlertTriangle, color: 'text-warning' },
+  { value: 'failed', labelKey: 'inspectionResult.resultFailed', icon: XCircle, color: 'text-danger' },
 ]
 
-const SEVERITY_OPTIONS: { value: InspectionSeverity; label: string; bgClass: string }[] = [
-  { value: 'green', label: 'Minor', bgClass: 'bg-success/20 border-success text-success' },
-  { value: 'yellow', label: 'Moderate', bgClass: 'bg-warning/20 border-warning text-warning' },
-  { value: 'red', label: 'Severe', bgClass: 'bg-danger/20 border-danger text-danger' },
+const SEVERITY_OPTIONS: { value: InspectionSeverity; labelKey: string; bgClass: string }[] = [
+  { value: 'green', labelKey: 'inspectionResult.severityMinor', bgClass: 'bg-success/20 border-success text-success' },
+  { value: 'yellow', labelKey: 'inspectionResult.severityModerate', bgClass: 'bg-warning/20 border-warning text-warning' },
+  { value: 'red', labelKey: 'inspectionResult.severitySevere', bgClass: 'bg-danger/20 border-danger text-danger' },
 ]
 
 export default function InspectionResult({
@@ -28,6 +31,7 @@ export default function InspectionResult({
   onSeverityChange,
   disabled = false,
 }: InspectionResultProps) {
+  const { t } = useTranslation('vehicles')
   const showSeverity = result === 'failed' || result === 'needs_attention'
 
   return (
@@ -35,7 +39,7 @@ export default function InspectionResult({
       {/* Result selection */}
       <div>
         <label className="block text-xs font-medium text-garage-text-muted mb-2">
-          Inspection Result
+          {t('inspectionResult.title')}
         </label>
         <div className="flex gap-2">
           {RESULT_OPTIONS.map((option) => {
@@ -60,7 +64,7 @@ export default function InspectionResult({
                 } disabled:opacity-50 disabled:cursor-not-allowed`}
               >
                 <Icon className="w-4 h-4" />
-                <span>{option.label}</span>
+                <span>{t(option.labelKey)}</span>
               </button>
             )
           })}
@@ -71,7 +75,7 @@ export default function InspectionResult({
       {showSeverity && (
         <div>
           <label className="block text-xs font-medium text-garage-text-muted mb-2">
-            Severity Level
+            {t('inspectionResult.severityLevel')}
           </label>
           <div className="flex gap-2">
             {SEVERITY_OPTIONS.map((option) => {
@@ -88,7 +92,7 @@ export default function InspectionResult({
                       : 'border-garage-border text-garage-text-muted hover:border-garage-text hover:text-garage-text'
                   } disabled:opacity-50 disabled:cursor-not-allowed`}
                 >
-                  {option.label}
+                  {t(option.labelKey)}
                 </button>
               )
             })}

@@ -29,12 +29,12 @@ export default function LinkAccount() {
     setError('')
 
     if (!token) {
-      setError('Link token is missing. Please restart the login process.')
+      setError(t('linkAccountPage.missingToken'))
       return
     }
 
     if (!password) {
-      setError('Password is required')
+      setError(t('linkAccountPage.passwordRequired'))
       return
     }
 
@@ -67,7 +67,7 @@ export default function LinkAccount() {
     } catch (err) {
       // Display backend error message directly (contains specific errors)
       const error = err as { response?: { data?: { detail?: string } } }
-      const errorMessage = error.response?.data?.detail || 'Failed to link account. Please try again.'
+      const errorMessage = error.response?.data?.detail || t('linkAccountPage.failed')
       setError(errorMessage)
     } finally {
       setIsLoading(false)
@@ -124,7 +124,7 @@ export default function LinkAccount() {
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   className="w-full pl-10 pr-4 py-3 bg-garage-bg border border-garage-border rounded-lg text-garage-text placeholder-garage-text-muted focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
-                  placeholder="Enter your password"
+                  placeholder={t('linkAccountPage.passwordPlaceholder')}
                   autoComplete="current-password"
                   autoFocus
                   disabled={isLoading}
@@ -141,7 +141,7 @@ export default function LinkAccount() {
                 className="flex-1 px-4 py-3 bg-garage-bg border border-garage-border text-garage-text font-medium rounded-lg hover:bg-garage-surface transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                 disabled={isLoading}
               >
-                Cancel
+                {t('linkAccountPage.cancel')}
               </button>
               <button
                 type="submit"
@@ -151,7 +151,7 @@ export default function LinkAccount() {
                 {isLoading ? (
                   <>
                     <Loader className="w-5 h-5 animate-spin" />
-                    Linking...
+                    {t('linkAccountPage.linking')}
                   </>
                 ) : (
                   t('oidc.linkAccount')
@@ -162,12 +162,12 @@ export default function LinkAccount() {
             {/* Help Text */}
             <div className="text-center text-sm text-garage-text-muted">
               <p>
-                Forgot your password?{' '}
+                {t('linkAccountPage.forgotPassword')}{' '}
                 <a
                   href={withBase('/login')}
                   className="text-primary hover:underline"
                 >
-                  Return to login
+                  {t('linkAccountPage.returnToLogin')}
                 </a>
               </p>
             </div>

@@ -92,15 +92,15 @@ export default function TollTransactionList({ vin, onAddClick, onEditClick }: To
   }
 
   const getTollTagName = (tagId?: number | null): string => {
-    if (!tagId) return 'N/A'
-    const tag = tollTags.find(t => t.id === tagId)
-    return tag ? `${tag.toll_system} (${tag.tag_number})` : 'Unknown Tag'
+    if (!tagId) return t('tollTransactionList.noTag')
+    const tag = tollTags.find(tollTag => tollTag.id === tagId)
+    return tag ? `${tag.toll_system} (${tag.tag_number})` : t('tollTransactionList.unknownTag')
   }
 
   if (loading) {
     return (
       <div className="flex justify-center items-center min-h-[200px]">
-        <div className="text-garage-text-muted">Loading toll transactions...</div>
+        <div className="text-garage-text-muted">{t('tollTransactionList.loading')}</div>
       </div>
     )
   }
@@ -137,7 +137,7 @@ export default function TollTransactionList({ vin, onAddClick, onEditClick }: To
             onClick={handleExportCSV}
             disabled={exporting || transactions.length === 0}
             className="flex items-center gap-2 px-4 py-2 bg-gray-700 border border-gray-600 text-white rounded-lg hover:bg-gray-800 transition-colors disabled:opacity-50"
-            title="Export to CSV"
+            title={t('tollTransactionList.exportToCSV')}
           >
             <Download className="w-4 h-4" />
             <span>{exporting ? t('tollList.exporting') : t('tollList.export')}</span>
@@ -147,7 +147,7 @@ export default function TollTransactionList({ vin, onAddClick, onEditClick }: To
             className="flex items-center gap-2 px-4 py-2 bg-gray-700 border border-gray-600 text-white rounded-lg hover:bg-gray-800 transition-colors"
           >
             <Plus size={20} />
-            Add Transaction
+            {t('tollTransactionList.addTransaction')}
           </button>
         </div>
       </div>

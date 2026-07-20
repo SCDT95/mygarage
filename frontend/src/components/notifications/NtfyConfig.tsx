@@ -27,8 +27,8 @@ export function NtfyConfig({
       <div className="flex items-center gap-3 mb-6">
         <Bell className="w-6 h-6 text-primary" />
         <div>
-          <h2 className="text-lg font-semibold text-garage-text">ntfy Configuration</h2>
-          <p className="text-sm text-garage-text-muted">Self-hosted or ntfy.sh push notifications</p>
+          <h2 className="text-lg font-semibold text-garage-text">{t('ntfy.misc.title')}</h2>
+          <p className="text-sm text-garage-text-muted">{t('ntfy.misc.subtitle')}</p>
         </div>
       </div>
 
@@ -58,15 +58,13 @@ export function NtfyConfig({
             disabled={saving || !isEnabled}
             className="w-full px-3 py-2 bg-garage-bg border border-garage-border rounded-lg text-garage-text placeholder-garage-text-muted focus:outline-none focus:ring-2 focus:ring-primary disabled:opacity-50"
           />
-          <p className="mt-1 text-xs text-garage-text-muted">
-            URL of your ntfy server (e.g., https://ntfy.sh or self-hosted)
-          </p>
+          <p className="mt-1 text-xs text-garage-text-muted">{t('ntfy.misc.serverUrlHint')}</p>
         </div>
 
         {/* Topic */}
         <div>
           <label htmlFor="ntfy_topic" className="block text-sm font-medium text-garage-text mb-1">
-            Topic Name
+            {t('ntfy.misc.topicLabel')}
           </label>
           <input
             type="text"
@@ -77,15 +75,14 @@ export function NtfyConfig({
             disabled={saving || !isEnabled}
             className="w-full px-3 py-2 bg-garage-bg border border-garage-border rounded-lg text-garage-text placeholder-garage-text-muted focus:outline-none focus:ring-2 focus:ring-primary disabled:opacity-50"
           />
-          <p className="mt-1 text-xs text-garage-text-muted">
-            Subscribe to this topic in your ntfy app to receive notifications
-          </p>
+          <p className="mt-1 text-xs text-garage-text-muted">{t('ntfy.misc.topicHint')}</p>
         </div>
 
         {/* API Token (optional) */}
         <div>
           <label htmlFor="ntfy_token" className="block text-sm font-medium text-garage-text mb-1">
-            API Token <span className="text-garage-text-muted">(optional)</span>
+            {t('ntfy.misc.apiTokenLabel')}{' '}
+            <span className="text-garage-text-muted">{t('ntfy.misc.apiTokenOptional')}</span>
           </label>
           <input
             type="password"
@@ -96,9 +93,7 @@ export function NtfyConfig({
             disabled={saving || !isEnabled}
             className="w-full px-3 py-2 bg-garage-bg border border-garage-border rounded-lg text-garage-text placeholder-garage-text-muted focus:outline-none focus:ring-2 focus:ring-primary disabled:opacity-50"
           />
-          <p className="mt-1 text-xs text-garage-text-muted">
-            Required for authenticated topics or self-hosted servers with auth
-          </p>
+          <p className="mt-1 text-xs text-garage-text-muted">{t('ntfy.misc.apiTokenHint')}</p>
         </div>
 
         {/* Test Button */}
@@ -109,7 +104,7 @@ export function NtfyConfig({
             className="flex items-center gap-2 px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
           >
             <Send size={16} />
-            {testing ? 'Sending...' : 'Test Connection'}
+            {testing ? t('ntfy.misc.sending') : t('ntfy.misc.testConnection')}
           </button>
         </div>
 
@@ -118,8 +113,8 @@ export function NtfyConfig({
           <div className="flex items-start gap-2">
             <Info className="w-4 h-4 text-garage-text-muted mt-0.5" />
             <div className="text-xs text-garage-text-muted">
-              <p className="font-medium mb-1">Security tip:</p>
-              <p>Use unique, hard-to-guess topic names for private notifications. ntfy.sh topics are public by default unless you enable authentication.</p>
+              <p className="font-medium mb-1">{t('ntfy.misc.securityTipTitle')}</p>
+              <p>{t('ntfy.misc.securityTipBody')}</p>
             </div>
           </div>
         </div>

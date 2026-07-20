@@ -103,7 +103,7 @@ export default function RecallList({ vin, onAddClick, onEditClick, onRefresh }: 
   }
 
   const formatDate = (dateString?: string): string => {
-    if (!dateString) return 'N/A'
+    if (!dateString) return t('recallList.notAvailable')
     return formatDateForDisplay(dateString, {
       year: 'numeric',
       month: 'short',
@@ -150,7 +150,7 @@ export default function RecallList({ vin, onAddClick, onEditClick, onRefresh }: 
             onClick={handleCheckNHTSA}
             disabled={nhtsaMutation.isPending}
             className="flex items-center gap-2 btn btn-primary rounded-lg transition-colors disabled:opacity-50"
-            title="Check NHTSA for recalls"
+            title={t('recallList.checkNHTSATitle')}
           >
             <RefreshCw size={16} className={nhtsaMutation.isPending ? 'animate-spin' : ''} />
             {nhtsaMutation.isPending ? t('recallList.checking') : t('recallList.checkNHTSA')}

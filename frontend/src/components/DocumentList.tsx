@@ -84,8 +84,9 @@ export default function DocumentList({ vin, onAddClick }: DocumentListProps) {
   }
 
   const formatFileSize = (bytes: number): string => {
-    if (bytes === 0) return '0 Bytes'
+    if (bytes === 0) return '0 Bytes' // i18n-exempt - size unit
     const k = 1024
+    // i18n-exempt - size units are not translatable
     const sizes = ['Bytes', 'KB', 'MB']
     const i = Math.floor(Math.log(bytes) / Math.log(k))
     return Math.round(bytes / Math.pow(k, i) * 100) / 100 + ' ' + sizes[i]
@@ -182,12 +183,12 @@ export default function DocumentList({ vin, onAddClick }: DocumentListProps) {
                       className="w-full px-3 py-2 border border-garage-border rounded-md focus:outline-none focus:ring-2 focus:ring-primary bg-garage-bg text-garage-text"
                     >
                       <option value="" className="bg-garage-bg text-garage-text">{t('documentList.selectType')}</option>
-                      <option value="Insurance" className="bg-garage-bg text-garage-text">Insurance</option>
-                      <option value="Registration" className="bg-garage-bg text-garage-text">Registration</option>
-                      <option value="Manual" className="bg-garage-bg text-garage-text">Manual</option>
-                      <option value="Receipt" className="bg-garage-bg text-garage-text">Receipt</option>
-                      <option value="Inspection" className="bg-garage-bg text-garage-text">Inspection</option>
-                      <option value="Other" className="bg-garage-bg text-garage-text">Other</option>
+                      <option value="Insurance" className="bg-garage-bg text-garage-text">{t('documentList.typeInsurance')}</option>
+                      <option value="Registration" className="bg-garage-bg text-garage-text">{t('documentList.typeRegistration')}</option>
+                      <option value="Manual" className="bg-garage-bg text-garage-text">{t('documentList.typeManual')}</option>
+                      <option value="Receipt" className="bg-garage-bg text-garage-text">{t('documentList.typeReceipt')}</option>
+                      <option value="Inspection" className="bg-garage-bg text-garage-text">{t('documentList.typeInspection')}</option>
+                      <option value="Other" className="bg-garage-bg text-garage-text">{t('documentList.typeOther')}</option>
                     </select>
                   </div>
                   <div>
@@ -205,14 +206,14 @@ export default function DocumentList({ vin, onAddClick }: DocumentListProps) {
                       className="flex items-center gap-1 px-3 py-1 bg-primary text-white rounded-md hover:bg-primary-dark text-sm"
                     >
                       <Save className="w-3 h-3" />
-                      Save
+                      {t('documentList.save')}
                     </button>
                     <button
                       onClick={cancelEdit}
                       className="flex items-center gap-1 px-3 py-1 bg-gray-700 border border-gray-600 text-white rounded-md hover:bg-gray-800 text-sm"
                     >
                       <X className="w-3 h-3" />
-                      Cancel
+                      {t('documentList.cancel')}
                     </button>
                   </div>
                 </div>

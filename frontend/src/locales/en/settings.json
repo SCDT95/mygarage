@@ -186,17 +186,48 @@
   },
   "ntfy": {
     "enable": "Enable ntfy notifications",
-    "serverUrl": "Server URL"
+    "serverUrl": "Server URL",
+    "misc": {
+      "title": "ntfy Configuration",
+      "subtitle": "Self-hosted or ntfy.sh push notifications",
+      "serverUrlHint": "URL of your ntfy server (e.g., https://ntfy.sh or self-hosted)",
+      "topicLabel": "Topic Name",
+      "topicHint": "Subscribe to this topic in your ntfy app to receive notifications",
+      "apiTokenLabel": "API Token",
+      "apiTokenOptional": "(optional)",
+      "apiTokenHint": "Required for authenticated topics or self-hosted servers with auth",
+      "sending": "Sending...",
+      "testConnection": "Test Connection",
+      "securityTipTitle": "Security tip:",
+      "securityTipBody": "Use unique, hard-to-guess topic names for private notifications. ntfy.sh topics are public by default unless you enable authentication."
+    }
   },
   "gotify": {
     "enable": "Enable Gotify notifications",
     "appToken": "Application Token",
-    "serverUrl": "Server URL"
+    "serverUrl": "Server URL",
+    "misc": {
+      "title": "Gotify Configuration",
+      "subtitle": "Self-hosted push notification server",
+      "appTokenHint": "Create an application in Gotify and copy the token",
+      "sending": "Sending...",
+      "testConnection": "Test Connection",
+      "setupNote": "Gotify is a self-hosted notification server. Create an application in your Gotify dashboard to get a token."
+    }
   },
   "pushover": {
-    "apiToken": "API Token",
     "enable": "Enable Pushover notifications",
-    "userKey": "User Key"
+    "userKey": "User Key",
+    "misc": {
+      "title": "Pushover Configuration",
+      "subtitle": "Cross-platform push notifications",
+      "userKeyHint": "Found on your Pushover dashboard",
+      "apiTokenHint": "Create an application at pushover.net to get a token",
+      "sending": "Sending...",
+      "testConnection": "Test Connection",
+      "setupNote": "Pushover requires a one-time $5 purchase per platform (iOS, Android, Desktop). Visit pushover.net to set up your account and create an application.",
+      "apiTokenLabel": "API Token / App Token"
+    }
   },
   "slack": {
     "enable": "Enable Slack notifications",
@@ -259,7 +290,6 @@
     "enable": "Enable Email notifications",
     "fromAddress": "From Address",
     "smtpHost": "SMTP Host",
-    "smtpPassword": "SMTP Password",
     "smtpUsername": "SMTP Username",
     "toAddress": "To Address",
     "misc": {
@@ -395,5 +425,61 @@
       "revoke": "Revoke",
       "revoking": "Revoking…"
     }
+  },
+  "notificationSubTabs": {
+    "email": "Email"
+  },
+  "settingsContext": {
+    "saving": "Saving settings...",
+    "saveSuccess": "Settings saved successfully",
+    "saveError": "Failed to save settings"
+  },
+  "integrationsTab": {
+    "recallCheckInterval": "Recall Check Interval",
+    "nhtsaRecallsApiUrl": "NHTSA Recalls API URL",
+    "aboutCarComplaintsBody": "CarComplaints.com provides a database of consumer complaints, common problems, and issue trends for vehicles. This integration adds convenient links to research known issues for your specific vehicle make, model, and year.",
+    "noteLabel": "Note:",
+    "carComplaintsVehicleNote": "This integration is only available for cars and trucks, not RVs, trailers, or fifth wheels.",
+    "providerDefault": "{{name}} (Default)",
+    "unlimited": "Unlimited",
+    "edit": "Edit",
+    "remove": "Remove",
+    "confirmRemoveProvider": "Remove {{name}} provider?",
+    "noDataDevicesOffline": "No data (devices offline)",
+    "devicesLinked": "{{count}} devices linked",
+    "devicesLinked_one": "{{count}} device linked",
+    "devicesLinked_other": "{{count}} devices linked",
+    "devicesOnlineSuffix": ", {{count}} online",
+    "aboutLiveLinkBody": "LiveLink connects WiCAN PRO OBD2 devices to MyGarage for real-time vehicle telemetry. Track engine parameters, detect drive sessions, and receive diagnostic trouble code alerts.",
+    "requiresLabel": "Requires:",
+    "livelinkFirmwareRequirement": "WiCAN PRO with firmware v4.40 or newer"
+  },
+  "backupTab": {
+    "createSettingsSuccess": "Settings backup created successfully!",
+    "createFullSuccess": "Full backup created successfully!",
+    "confirmRestoreFull": "WARNING: This will overwrite your entire database and all uploaded files! A safety backup will be created first. Are you absolutely sure?",
+    "confirmRestoreSettings": "This will restore all settings from the backup. A safety backup will be created first. Continue?",
+    "fullRestoreComplete": "Full backup restored! Please refresh the page or restart the application for changes to take effect.",
+    "restoreFailed": "Restore failed",
+    "confirmDelete": "Are you sure you want to delete {{filename}}?",
+    "deleteSuccess": "Backup {{filename}} deleted successfully",
+    "deleteError": "Failed to delete backup",
+    "uploadSuccess": "Backup uploaded successfully!",
+    "uploadFailed": "Upload failed",
+    "safetyBadge": "Safety",
+    "totalSize": "{{size}} total",
+    "dataIncludedList": "Database, Photos, Documents, Attachments",
+    "infoIncludesEverything": "Full backups include your entire database and all uploaded files",
+    "infoSizeDepends": "Backup size depends on the amount of photos and documents you have uploaded",
+    "infoRestoreOverwrites": "Restoring a full backup will OVERWRITE all current data and files",
+    "infoSafetyBackup": "A safety backup is automatically created before any restore operation",
+    "infoRestartRequired": "Application restart may be required after restoring a full backup"
+  },
+  "filesTab": {
+    "aboutWindowStickersBody": "Window stickers (Monroney labels) are federally mandated labels on new vehicles showing MSRP, fuel economy, standard equipment, and optional features. Upload your vehicle's window sticker to automatically populate pricing and specification data.",
+    "supportedFormatsLabel": "Supported formats:",
+    "supportedFormatsValue": "PDF, JPG, PNG (up to 10MB)",
+    "noteLabel": "Note:",
+    "windowStickerVehicleNote": "Window stickers are only available for passenger cars and trucks, not RVs, trailers, or fifth wheels."
   }
 }

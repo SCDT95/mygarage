@@ -283,7 +283,7 @@ export default function SpotRentalList({ vin }: SpotRentalListProps) {
                         onClick={() => handleAddBilling(rental.id)}
                         className="px-2 py-1 text-xs bg-primary/10 text-primary hover:bg-primary/20 rounded transition-colors"
                       >
-                        Add Billing
+                        {t('spotRentalList.addBilling')}
                       </button>
                     </div>
 

@@ -194,7 +194,6 @@
     "serverUrl": "Adres URL serwera"
   },
   "pushover": {
-    "apiToken": "Token API",
     "enable": "Włącz powiadomienia Pushover",
     "userKey": "Klucz użytkownika"
   },
@@ -214,7 +213,6 @@
     "enable": "Włącz powiadomienia e-mail",
     "fromAddress": "Adres nadawcy",
     "smtpHost": "Serwer SMTP",
-    "smtpPassword": "Hasło SMTP",
     "smtpUsername": "Nazwa użytkownika SMTP",
     "toAddress": "Adres odbiorcy"
   },

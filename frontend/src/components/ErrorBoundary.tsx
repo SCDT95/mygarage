@@ -1,6 +1,27 @@
 import { Component, ErrorInfo, ReactNode } from 'react'
 import { AlertTriangle } from 'lucide-react'
+import i18next from 'i18next'
 import { withBase } from '../utils/basePath'
+
+/**
+ * Translate a crash-screen string without ever risking a throw.
+ *
+ * This is the app's outermost error boundary, so its fallback UI has to render
+ * even when the thing that broke IS i18n (singleton not initialised yet, a
+ * namespace that failed to load, a bad locale bundle). A class component can't
+ * call useTranslation, and wrapping it in withTranslation() would make the
+ * crash screen depend on the very runtime that may be dead. So: read the
+ * i18next singleton defensively and fall back to the English literal on
+ * anything unexpected. An English crash screen beats a crashing one.
+ */
+function tSafe(key: string, fallback: string): string {
+  try {
+    const value = i18next.t(key, { ns: 'common', defaultValue: fallback })
+    return typeof value === 'string' && value.length > 0 ? value : fallback
+  } catch {
+    return fallback
+  }
+}
 
 interface Props {
   children: ReactNode
@@ -56,15 +77,21 @@ export class ErrorBoundary extends Component<Props, State> {
           <div className="bg-garage-surface border border-garage-border rounded-lg p-8 max-w-lg w-full">
             <div className="flex items-center space-x-3 mb-4">
               <AlertTriangle className="w-8 h-8 text-danger-500" />
-              <h1 className="text-2xl font-bold text-garage-text">Something went wrong</h1>
+              <h1 className="text-2xl font-bold text-garage-text">
+                {tSafe('errorBoundary.title', 'Something went wrong')}
+              </h1>
             </div>
 
             <p className="text-garage-text-muted mb-6">
-              An unexpected error occurred. Please try refreshing the page or contact support if the problem persists.
+              {tSafe(
+                'errorBoundary.description',
+                'An unexpected error occurred. Please try refreshing the page or contact support if the problem persists.',
+              )}
             </p>
 
             {import.meta.env.DEV && this.state.error && (
               <details className="mb-6 p-4 bg-garage-bg border border-garage-border rounded">
+                {/* i18n-exempt — developer-only debug output, DEV builds only */}
                 <summary className="cursor-pointer font-semibold text-garage-text mb-2">
                   Error Details (Development Only)
                 </summary>
@@ -74,6 +101,7 @@ export class ErrorBoundary extends Component<Props, State> {
                   </div>
                   {this.state.errorInfo && (
                     <div>
+                      {/* i18n-exempt — developer-only debug output, DEV builds only */}
                       <strong>Component Stack:</strong>
                       <pre className="mt-2 overflow-auto text-xs bg-garage-surface p-2 rounded">
                         {this.state.errorInfo.componentStack}
@@ -89,13 +117,13 @@ export class ErrorBoundary extends Component<Props, State> {
                 onClick={this.handleReset}
                 className="btn btn-secondary flex-1"
               >
-                Try Again
+                {tSafe('errorBoundary.tryAgain', 'Try Again')}
               </button>
               <button
                 onClick={() => window.location.href = withBase('/')}
                 className="btn btn-primary flex-1"
               >
-                Go to Dashboard
+                {tSafe('errorBoundary.goToDashboard', 'Go to Dashboard')}
               </button>
             </div>
           </div>

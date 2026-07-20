@@ -28,8 +28,9 @@ describe('VINInput', () => {
     const onChangeMock = vi.fn()
     render(<VINInput value="SHORT" onChange={onChangeMock} />)
 
-    // Component displays character counter showing short length
-    expect(screen.getByText(/5\/17 characters/i)).toBeInTheDocument()
+    // Component displays character counter. The i18n mock renders the key, so
+    // assert on the key rather than the interpolated English.
+    expect(screen.getByText('vinInput.characterCount')).toBeInTheDocument()
   })
 
   it('rejects invalid characters I, O, Q', () => {

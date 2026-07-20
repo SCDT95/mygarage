@@ -31,13 +31,7 @@ interface LiveLinkChartsTabProps {
 
 type TimeRange = '1h' | '6h' | '24h' | '7d' | '30d'
 
-const TIME_RANGES: { value: TimeRange; label: string }[] = [
-  { value: '1h', label: '1 Hour' },
-  { value: '6h', label: '6 Hours' },
-  { value: '24h', label: '24 Hours' },
-  { value: '7d', label: '7 Days' },
-  { value: '30d', label: '30 Days' },
-]
+const TIME_RANGES: TimeRange[] = ['1h', '6h', '24h', '7d', '30d']
 
 // Chart colors
 const CHART_COLORS = [
@@ -61,6 +55,14 @@ export default function LiveLinkChartsTab({ vin }: LiveLinkChartsTabProps) {
   // Unit conversion can be added here if needed
   // const { system: unitSystem } = useUnitPreference()
   const { timeFormat } = useTimeFormat()
+
+  const timeRangeLabels: Record<TimeRange, string> = {
+    '1h': t('livelinkCharts.range1h'),
+    '6h': t('livelinkCharts.range6h'),
+    '24h': t('livelinkCharts.range24h'),
+    '7d': t('livelinkCharts.range7d'),
+    '30d': t('livelinkCharts.range30d'),
+  }
 
   // Fetch available parameters
   useEffect(() => {
@@ -220,15 +222,15 @@ export default function LiveLinkChartsTab({ vin }: LiveLinkChartsTabProps) {
           <div className="flex flex-wrap gap-1">
             {TIME_RANGES.map((range) => (
               <button
-                key={range.value}
-                onClick={() => setTimeRange(range.value)}
+                key={range}
+                onClick={() => setTimeRange(range)}
                 className={`px-2 sm:px-3 py-1.5 rounded text-sm font-medium transition-colors ${
-                  timeRange === range.value
+                  timeRange === range
                     ? 'bg-primary text-white'
                     : 'bg-garage-surface text-garage-text-muted hover:text-garage-text border border-garage-border'
                 }`}
               >
-                {range.label}
+                {timeRangeLabels[range]}
               </button>
             ))}
           </div>
@@ -241,7 +243,7 @@ export default function LiveLinkChartsTab({ vin }: LiveLinkChartsTabProps) {
           className="flex items-center gap-2 px-4 py-2 bg-garage-surface border border-garage-border rounded-lg text-garage-text hover:bg-garage-bg disabled:opacity-50"
         >
           <Download className="w-4 h-4" />
-          Export CSV
+          {t('livelinkCharts.exportCsv')}
         </button>
       </div>
 
@@ -299,7 +301,8 @@ export default function LiveLinkChartsTab({ vin }: LiveLinkChartsTabProps) {
                 labelFormatter={(value) => formatDateTime(value, timeFormat, { seconds: true })}
                 formatter={(value, name) => {
                   const param = parameters.find((p) => p.param_key === name)
-                  const displayValue = typeof value === 'number' ? value.toFixed(2) : 'N/A'
+                  const displayValue =
+                    typeof value === 'number' ? value.toFixed(2) : t('livelinkCharts.notAvailable')
                   return [`${displayValue} ${param?.unit || ''}`, param?.display_name || name || '']
                 }}
               />

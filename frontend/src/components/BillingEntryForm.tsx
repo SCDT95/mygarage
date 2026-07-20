@@ -172,7 +172,7 @@ export default function BillingEntryForm({
             {/* Electric */}
             <div>
               <label htmlFor="electric" className="block text-sm font-medium text-garage-text mb-1">
-                Electric
+                {t('billingEntryForm.electric')}
               </label>
               <div className="relative">
                 <CurrencyInputPrefix />
@@ -195,7 +195,7 @@ export default function BillingEntryForm({
             {/* Water */}
             <div>
               <label htmlFor="water" className="block text-sm font-medium text-garage-text mb-1">
-                Water
+                {t('billingEntryForm.water')}
               </label>
               <div className="relative">
                 <CurrencyInputPrefix />
@@ -218,7 +218,7 @@ export default function BillingEntryForm({
             {/* Waste */}
             <div>
               <label htmlFor="waste" className="block text-sm font-medium text-garage-text mb-1">
-                Waste
+                {t('billingEntryForm.waste')}
               </label>
               <div className="relative">
                 <CurrencyInputPrefix />
@@ -251,7 +251,7 @@ export default function BillingEntryForm({
                 id="total"
                 step="0.01"
                 {...register('total', { valueAsNumber: true })}
-                placeholder="Auto-calculated"
+                placeholder={t('billingEntryForm.autoCalculatedPlaceholder')}
                 className="w-full pl-7 pr-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-primary bg-garage-bg/50 text-garage-text border-garage-border"
                 readOnly
               />

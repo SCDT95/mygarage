@@ -113,7 +113,7 @@ export default function InsuranceForm({ vin, record, onClose, onSuccess }: Insur
                 className="btn btn-secondary w-full flex items-center justify-center gap-2"
               >
                 <FileUp size={18} />
-                Import from PDF
+                {t('insuranceForm.importFromPdf')}
               </button>
               <p className="text-xs text-garage-text-muted mt-2 text-center">
                 {t('insurance.pdfUploadHint')}
@@ -132,7 +132,7 @@ export default function InsuranceForm({ vin, record, onClose, onSuccess }: Insur
                 {...register('provider')}
                 disabled={isSubmitting}
                 className={`input w-full ${autoFilledFields.has('provider') ? 'bg-blue-50 dark:bg-blue-900/20 border-blue-300 dark:border-blue-700' : ''}`}
-                placeholder="e.g., State Farm, GEICO"
+                placeholder={t('insuranceForm.providerPlaceholder')}
               />
               <FormError error={errors.provider} />
             </div>
@@ -147,7 +147,7 @@ export default function InsuranceForm({ vin, record, onClose, onSuccess }: Insur
                 {...register('policy_number')}
                 disabled={isSubmitting}
                 className="input w-full"
-                placeholder="e.g., INS-12345"
+                placeholder={t('insuranceForm.policyNumberPlaceholder')}
               />
               <FormError error={errors.policy_number} />
             </div>
@@ -212,7 +212,7 @@ export default function InsuranceForm({ vin, record, onClose, onSuccess }: Insur
                 {...register('premium_amount')}
                 disabled={isSubmitting}
                 className="input w-full"
-                placeholder="e.g., 150.00"
+                placeholder={t('insuranceForm.premiumAmountPlaceholder')}
               />
               <FormError error={errors.premium_amount} />
             </div>
@@ -246,7 +246,7 @@ export default function InsuranceForm({ vin, record, onClose, onSuccess }: Insur
               {...register('deductible')}
               disabled={isSubmitting}
               className="input w-full"
-              placeholder="e.g., 500.00"
+              placeholder={t('insuranceForm.deductiblePlaceholder')}
             />
             <FormError error={errors.deductible} />
           </div>
@@ -261,7 +261,7 @@ export default function InsuranceForm({ vin, record, onClose, onSuccess }: Insur
               disabled={isSubmitting}
               className="input w-full"
               rows={3}
-              placeholder="e.g., 100/300/100 Bodily Injury/Property Damage"
+              placeholder={t('insuranceForm.coverageLimitsPlaceholder')}
             />
           </div>
 
@@ -286,7 +286,7 @@ export default function InsuranceForm({ vin, record, onClose, onSuccess }: Insur
               className="btn btn-primary rounded-lg transition-colors"
               disabled={isSubmitting}
             >
-              Cancel
+              {t('common:cancel')}
             </button>
             <button
               type="submit"

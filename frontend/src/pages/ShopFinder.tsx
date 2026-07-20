@@ -31,6 +31,9 @@ export default function ShopFinder() {
   // Imperial users pick miles, metric users pick kilometres — hardcoding miles
   // showed "5 miles" to metric users and searched an imperial radius.
   const radiusOptions = system === 'metric' ? [10, 25, 50, 100, 150] : [5, 10, 25, 50, 100]
+  // Unit symbol always comes from UnitFormatter — never hardcoded into a
+  // translation value, which is how metric users used to be told "miles".
+  const distanceUnit = UnitFormatter.getDistanceUnit(system)
   const [searchRadius, setSearchRadius] = useState<number>(system === 'metric' ? 25 : 5)
   const [shopType, setShopType] = useState<'auto' | 'rv'>('auto')
 
@@ -79,7 +82,7 @@ export default function ShopFinder() {
     setError('')
 
     if (!navigator.geolocation) {
-      setError('Geolocation is not supported by your browser')
+      setError(t('shopFinder.geolocationUnsupported'))
       setStep('permission')
       return
     }
@@ -89,16 +92,16 @@ export default function ShopFinder() {
         await searchNearbyShops(position.coords.latitude, position.coords.longitude)
       },
       (err) => {
-        let errorMessage = 'Failed to get your location'
+        let errorMessage = t('shopFinder.locationFailed')
         switch (err.code) {
           case err.PERMISSION_DENIED:
-            errorMessage = 'Location permission denied. Please enable location access in your browser settings.'
+            errorMessage = t('shopFinder.locationDenied')
             break
           case err.POSITION_UNAVAILABLE:
-            errorMessage = 'Location information is unavailable.'
+            errorMessage = t('shopFinder.locationUnavailable')
             break
           case err.TIMEOUT:
-            errorMessage = 'Location request timed out.'
+            errorMessage = t('shopFinder.locationTimeout')
             break
         }
         setError(errorMessage)
@@ -141,7 +144,7 @@ export default function ShopFinder() {
       setStep('results')
     } catch (err) {
       const detail = (err as { response?: { data?: { detail?: string } } }).response?.data?.detail
-      const errorMessage = typeof detail === 'string' ? detail : 'Failed to search for shops'
+      const errorMessage = typeof detail === 'string' ? detail : t('shopFinder.searchFailed')
       setError(errorMessage)
       toast.error(errorMessage)
       setStep('permission')
@@ -167,13 +170,15 @@ export default function ShopFinder() {
       })
 
       setSavedShops((prev) => new Set(prev).add(shop.external_id || shop.business_name))
-      toast.success(`${shop.business_name} saved to address book!`)
+      // ``name`` is the provider-supplied business name — interpolated, never
+      // passed through t() as a key.
+      toast.success(t('shopFinder.savedToast', { name: shop.business_name }))
 
       // Refresh recommendations after saving
       loadRecommendations()
     } catch (err) {
       const detail = (err as { response?: { data?: { detail?: string } } }).response?.data?.detail
-      toast.error(typeof detail === 'string' ? detail : 'Failed to save shop')
+      toast.error(typeof detail === 'string' ? detail : t('shopFinder.saveFailed'))
     }
   }
 
@@ -204,7 +209,7 @@ export default function ShopFinder() {
               {/* Search Radius */}
               <div>
                 <label htmlFor="search_radius" className="block text-sm font-medium text-garage-text mb-2">
-                  Search Radius
+                  {t('shopFinder.searchRadius')}
                 </label>
                 <select
                   id="search_radius"
@@ -263,7 +268,7 @@ export default function ShopFinder() {
                           </p>
                         )}
                         <p className="text-xs text-garage-text-muted mt-2">
-                          Used {shop.usage_count} time{shop.usage_count !== 1 ? 's' : ''}
+                          {t('shopFinder.usedTimes', { count: shop.usage_count })}
                         </p>
                       </div>
                     </div>
@@ -285,7 +290,9 @@ export default function ShopFinder() {
               <div>
                 <h2 className="text-xl font-semibold text-garage-text">{t('shopFinder.enableLocation')}</h2>
                 <p className="text-garage-text-muted mt-2 max-w-md mx-auto">
-                  We need your location to find nearby {shopType === 'auto' ? 'auto repair' : 'RV repair'} shops within {searchRadius} mile{searchRadius !== 1 ? 's' : ''}.
+                  {shopType === 'auto'
+                    ? t('shopFinder.locationPromptAuto', { radius: searchRadius, unit: distanceUnit })
+                    : t('shopFinder.locationPromptRv', { radius: searchRadius, unit: distanceUnit })}
                 </p>
               </div>
 
@@ -305,7 +312,8 @@ export default function ShopFinder() {
               </button>
 
               <p className="text-xs text-garage-text-muted">
-                Powered by TomTom Places & OpenStreetMap
+                {/* Provider brand names are not translatable — i18n-exempt */}
+                {t('shopFinder.poweredBy')} TomTom Places & OpenStreetMap
               </p>
             </div>
           </div>
@@ -320,7 +328,9 @@ export default function ShopFinder() {
             <div>
               <h2 className="text-xl font-semibold text-garage-text">{t('shopFinder.searching')}</h2>
               <p className="text-garage-text-muted mt-2">
-                Finding nearby {shopType === 'auto' ? 'auto repair' : 'RV repair'} shops within {searchRadius} mile{searchRadius !== 1 ? 's' : ''}
+                {shopType === 'auto'
+                  ? t('shopFinder.searchingHintAuto', { radius: searchRadius, unit: distanceUnit })
+                  : t('shopFinder.searchingHintRv', { radius: searchRadius, unit: distanceUnit })}
               </p>
             </div>
           </div>
@@ -333,10 +343,12 @@ export default function ShopFinder() {
           <div className="flex items-center justify-between">
             <div>
               <h2 className="text-xl font-semibold text-garage-text">
-                Found {searchResults.length} shop{searchResults.length !== 1 ? 's' : ''}
+                {t('shopFinder.foundShops', { count: searchResults.length })}
               </h2>
               <p className="text-sm text-garage-text-muted mt-1">
-                Source: {searchSource === 'tomtom' ? 'TomTom Places' : 'OpenStreetMap'}
+                {t('shopFinder.source')}:{' '}
+                {/* Provider brand names are not translatable — i18n-exempt */}
+                {searchSource === 'tomtom' ? 'TomTom Places' : 'OpenStreetMap'}
               </p>
             </div>
             <button
@@ -373,7 +385,9 @@ export default function ShopFinder() {
                         <div>
                           <h3 className="text-lg font-semibold text-garage-text">{shop.business_name}</h3>
                           <p className="text-sm text-garage-text-muted">
-                            {formatDistance(shop.distance_meters)} away
+                            {t('shopFinder.distanceAway', {
+                              distance: formatDistance(shop.distance_meters),
+                            })}
                           </p>
                         </div>
 
@@ -421,7 +435,7 @@ export default function ShopFinder() {
                             ? 'bg-success/20 text-success cursor-not-allowed'
                             : 'bg-primary text-white hover:bg-primary/90'
                         }`}
-                        title={isSaved ? 'Saved to address book' : 'Save to address book'}
+                        title={isSaved ? t('shopFinder.savedToAddressBook') : t('shopFinder.saveToAddressBook')}
                       >
                         {isSaved ? (
                           <>

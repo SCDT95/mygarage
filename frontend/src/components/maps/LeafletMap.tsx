@@ -1,4 +1,5 @@
 import { MapContainer, TileLayer, Marker, Popup, Circle } from 'react-leaflet'
+import { useTranslation } from 'react-i18next'
 import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
 
@@ -29,6 +30,8 @@ interface Props {
 }
 
 export default function LeafletMap({ pois, userLocation, searchRadius, onMarkerClick }: Props) {
+  const { t } = useTranslation('common')
+
   const getCategoryColor = (category: string): string => {
     const colors: Record<string, string> = {
       auto_shop: '#3b82f6',     // blue
@@ -62,7 +65,7 @@ export default function LeafletMap({ pois, userLocation, searchRadius, onMarkerC
 
       {/* User location marker */}
       <Marker position={[userLocation.lat, userLocation.lng]}>
-        <Popup>Your location</Popup>
+        <Popup>{t('leafletMap.yourLocation')}</Popup>
       </Marker>
 
       {/* Search radius circle */}

@@ -3,8 +3,11 @@
  * Shows business info with category-specific metadata.
  */
 
+import { useTranslation } from 'react-i18next'
 import { Check, Save, MapPin, Phone, Star, Globe, Zap } from 'lucide-react'
 import type { POIResult, EVChargingMetadata } from '../types/poi'
+import { useUnitPreference } from '../hooks/useUnitPreference'
+import { UnitConverter, UnitFormatter, type UnitSystem } from '../utils/units'
 
 interface POICardProps {
   poi: POIResult
@@ -12,23 +15,39 @@ interface POICardProps {
   isSaved: boolean
 }
 
-function formatDistance(meters: number | undefined): string {
+/**
+ * Distance in the user's chosen unit system.
+ *
+ * This used to convert to miles unconditionally and then, confusingly, fall
+ * back to metres under a mile — so a metric user saw "1.4 mi" and an imperial
+ * user saw "340 m". Both halves now follow `system`.
+ *
+ * One decimal rather than UnitFormatter.formatDistance, which rounds to whole
+ * units and would collapse every nearby result to "0 mi" (same reason
+ * ShopFinder formats its own).
+ */
+function formatDistance(meters: number | undefined, system: UnitSystem): string {
   if (!meters) return ''
 
-  const miles = meters * 0.000621371
-  if (miles < 1) {
-    return `${Math.round(meters)} m`
+  if (system === 'metric') {
+    if (meters < 1000) return `${Math.round(meters)} m`
+    return `${(meters / 1000).toFixed(1)} ${UnitFormatter.getDistanceUnit(system)}`
   }
-  return `${miles.toFixed(1)} mi`
+
+  const miles = UnitConverter.kmToMiles(meters / 1000) ?? 0
+  if (miles < 1) return `${Math.round(UnitConverter.metersToFeet(meters) ?? 0)} ft`
+  return `${miles.toFixed(1)} ${UnitFormatter.getDistanceUnit(system)}`
 }
 
 function CategoryBadge({ category }: { category: string }) {
+  const { t } = useTranslation('common')
+
   const badges = {
-    auto_shop: { label: 'Auto Shop', color: 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200' },
-    rv_shop: { label: 'RV Shop', color: 'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200' },
-    ev_charging: { label: 'EV Charging', color: 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200' },
-    gas_station: { label: 'Gas Station', color: 'bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200' },
-    propane: { label: 'Propane', color: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200' },
+    auto_shop: { label: t('poiCard.categoryAutoShop'), color: 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200' },
+    rv_shop: { label: t('poiCard.categoryRvShop'), color: 'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200' },
+    ev_charging: { label: t('poiCard.categoryEvCharging'), color: 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200' },
+    gas_station: { label: t('poiCard.categoryGasStation'), color: 'bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200' },
+    propane: { label: t('poiCard.categoryPropane'), color: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200' },
   }
 
   const badge = badges[category as keyof typeof badges] || badges.auto_shop
@@ -41,13 +60,16 @@ function CategoryBadge({ category }: { category: string }) {
 }
 
 function EVChargingInfo({ metadata }: { metadata: EVChargingMetadata }) {
+  const { t } = useTranslation('common')
+
   return (
     <div className="mt-2 space-y-1">
       {metadata.connector_types && metadata.connector_types.length > 0 && (
         <div className="flex items-start gap-2">
           <Zap className="w-4 h-4 text-green-600 dark:text-green-400 mt-0.5 flex-shrink-0" />
           <div className="text-sm text-gray-600 dark:text-gray-400">
-            <span className="font-medium">Connectors:</span> {metadata.connector_types.join(', ')}
+            <span className="font-medium">{t('poiCard.connectors')}:</span>{' '}
+            {metadata.connector_types.join(', ')}
           </div>
         </div>
       )}
@@ -58,7 +80,7 @@ function EVChargingInfo({ metadata }: { metadata: EVChargingMetadata }) {
       )}
       {metadata.network && (
         <div className="text-sm text-gray-600 dark:text-gray-400 ml-6">
-          <span className="font-medium">Network:</span> {metadata.network}
+          <span className="font-medium">{t('poiCard.network')}:</span> {metadata.network}
         </div>
       )}
     </div>
@@ -67,6 +89,8 @@ function EVChargingInfo({ metadata }: { metadata: EVChargingMetadata }) {
 
 
 export default function POICard({ poi, onSave, isSaved }: POICardProps) {
+  const { t } = useTranslation('common')
+  const { system } = useUnitPreference()
   const fullAddress = [
     poi.address,
     poi.city && poi.state ? `${poi.city}, ${poi.state}` : poi.city || poi.state,
@@ -82,7 +106,7 @@ export default function POICard({ poi, onSave, isSaved }: POICardProps) {
         <CategoryBadge category={poi.poi_category} />
         {poi.distance_meters && (
           <span className="text-sm text-gray-500 dark:text-gray-400">
-            {formatDistance(poi.distance_meters)}
+            {formatDistance(poi.distance_meters, system)}
           </span>
         )}
       </div>
@@ -155,8 +179,8 @@ export default function POICard({ poi, onSave, isSaved }: POICardProps) {
                 : 'bg-blue-600 text-white hover:bg-blue-700 dark:bg-blue-500 dark:hover:bg-blue-600'
             }
           `}
-          title={isSaved ? 'Saved to address book' : 'Save to address book'}
-          aria-label={isSaved ? 'Saved to address book' : 'Save to address book'}
+          title={isSaved ? t('poiCard.savedToAddressBook') : t('poiCard.saveToAddressBook')}
+          aria-label={isSaved ? t('poiCard.savedToAddressBook') : t('poiCard.saveToAddressBook')}
         >
           {isSaved ? <Check className="w-5 h-5" /> : <Save className="w-5 h-5" />}
         </button>
@@ -164,7 +188,8 @@ export default function POICard({ poi, onSave, isSaved }: POICardProps) {
 
       {/* Source indicator */}
       <div className="mt-2 text-xs text-gray-400 dark:text-gray-500 text-right">
-        Source: {poi.source}
+        {/* ``poi.source`` is a provider identifier — rendered as-is. */}
+        {t('poiCard.source')}: {poi.source}
       </div>
     </div>
   )

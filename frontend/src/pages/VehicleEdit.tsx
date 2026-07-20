@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useParams, useNavigate } from 'react-router-dom'
 import { useForm, type Resolver } from 'react-hook-form'
@@ -25,6 +25,12 @@ export default function VehicleEdit() {
 
   const [defEnabled, setDefEnabled] = useState(false)
   const { system } = useUnitPreference()
+
+  // fetchVehicle reset()s the form from the server response, so it must not
+  // re-run just because `t` got a new identity — a language switch mid-edit
+  // would silently discard everything the user had typed.
+  const tRef = useRef(t)
+  tRef.current = t
 
   const {
     register,
@@ -106,7 +112,7 @@ export default function VehicleEdit() {
 
       reset(formData as VehicleEditFormData)
     } catch (error) {
-      setError(error instanceof Error ? error.message : 'An error occurred')
+      setError(error instanceof Error ? error.message : tRef.current('vehicleEditPage.genericError'))
     } finally {
       setLoading(false)
     }
@@ -144,7 +150,7 @@ export default function VehicleEdit() {
       // Force a page reload to ensure fresh data
       window.location.href = withBase(`/vehicles/${vin}`)
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'An error occurred')
+      setError(err instanceof Error ? err.message : t('vehicleEditPage.genericError'))
     }
   }
 
@@ -196,7 +202,7 @@ export default function VehicleEdit() {
         <p className="text-garage-text-muted mt-1">
           {vehicle.year} {vehicle.make} {vehicle.model}
         </p>
-        <p className="text-sm text-garage-text-muted mt-1">VIN: {vin}</p>
+        <p className="text-sm text-garage-text-muted mt-1">{t('vehicleEditPage.vinLabel', { vin })}</p>
       </div>
 
       {error && (
@@ -219,7 +225,7 @@ export default function VehicleEdit() {
                 id="nickname"
                 {...register('nickname')}
                 className="w-full px-3 py-2 bg-garage-bg border border-garage-border rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500 text-garage-text"
-                placeholder="My Car"
+                placeholder={t('vehicleEditPage.nicknamePlaceholder')}
               />
               <FormError error={errors.nickname} />
             </div>
@@ -233,7 +239,7 @@ export default function VehicleEdit() {
                 id="license_plate"
                 {...register('license_plate')}
                 className="w-full px-3 py-2 bg-garage-bg border border-garage-border rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500 text-garage-text"
-                placeholder="ABC1234"
+                placeholder={t('vehicleEditPage.licensePlatePlaceholder')}
               />
               <FormError error={errors.license_plate} />
             </div>
@@ -268,7 +274,7 @@ export default function VehicleEdit() {
                 id="color"
                 {...register('color')}
                 className="w-full px-3 py-2 bg-garage-bg border border-garage-border rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500 text-garage-text"
-                placeholder="Blue"
+                placeholder={t('vehicleEditPage.colorPlaceholder')}
               />
               <FormError error={errors.color} />
             </div>
@@ -304,7 +310,7 @@ export default function VehicleEdit() {
                 id="make"
                 {...register('make')}
                 className="w-full px-3 py-2 bg-garage-bg border border-garage-border rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500 text-garage-text"
-                placeholder="Toyota"
+                placeholder={t('vehicleEditPage.makePlaceholder')}
               />
               <FormError error={errors.make} />
             </div>
@@ -318,7 +324,7 @@ export default function VehicleEdit() {
                 id="model"
                 {...register('model')}
                 className="w-full px-3 py-2 bg-garage-bg border border-garage-border rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500 text-garage-text"
-                placeholder="Camry"
+                placeholder={t('vehicleEditPage.modelPlaceholder')}
               />
               <FormError error={errors.model} />
             </div>
@@ -339,7 +345,7 @@ export default function VehicleEdit() {
                   id="trim"
                   {...register('trim')}
                   className="w-full px-3 py-2 bg-garage-bg border border-garage-border rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500 text-garage-text"
-                  placeholder="EX, Limited, etc."
+                  placeholder={t('vehicleEditPage.trimPlaceholder')}
                 />
                 <FormError error={errors.trim} />
               </div>
@@ -353,7 +359,7 @@ export default function VehicleEdit() {
                   id="body_class"
                   {...register('body_class')}
                   className="w-full px-3 py-2 bg-garage-bg border border-garage-border rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500 text-garage-text"
-                  placeholder="Sedan, Coupe, etc."
+                  placeholder={t('vehicleEditPage.bodyClassPlaceholder')}
                 />
                 <FormError error={errors.body_class} />
               </div>
@@ -367,7 +373,7 @@ export default function VehicleEdit() {
                   id="drive_type"
                   {...register('drive_type')}
                   className="w-full px-3 py-2 bg-garage-bg border border-garage-border rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500 text-garage-text"
-                  placeholder="FWD, RWD, AWD, 4WD"
+                  placeholder={t('vehicleEditPage.driveTypePlaceholder')}
                 />
                 <FormError error={errors.drive_type} />
               </div>
@@ -388,14 +394,14 @@ export default function VehicleEdit() {
 
               <div>
                 <label htmlFor="gvwr_class" className="block text-sm font-medium text-garage-text mb-1">
-                  GVWR Class
+                  {t('vehicleEditPage.gvwrClass')}
                 </label>
                 <input
                   type="text"
                   id="gvwr_class"
                   {...register('gvwr_class')}
                   className="w-full px-3 py-2 bg-garage-bg border border-garage-border rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500 text-garage-text"
-                  placeholder="Class 1, 2, etc."
+                  placeholder={t('vehicleEditPage.gvwrClassPlaceholder')}
                 />
                 <FormError error={errors.gvwr_class} />
               </div>
@@ -466,7 +472,7 @@ export default function VehicleEdit() {
                   id="transmission_type"
                   {...register('transmission_type')}
                   className="w-full px-3 py-2 bg-garage-bg border border-garage-border rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500 text-garage-text"
-                  placeholder="Automatic, Manual, CVT"
+                  placeholder={t('vehicleEditPage.transmissionTypePlaceholder')}
                 />
                 <FormError error={errors.transmission_type} />
               </div>
@@ -480,7 +486,7 @@ export default function VehicleEdit() {
                   id="transmission_speeds"
                   {...register('transmission_speeds')}
                   className="w-full px-3 py-2 bg-garage-bg border border-garage-border rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500 text-garage-text"
-                  placeholder="6-Speed, 8-Speed, etc."
+                  placeholder={t('vehicleEditPage.transmissionSpeedsPlaceholder')}
                 />
                 <FormError error={errors.transmission_speeds} />
               </div>

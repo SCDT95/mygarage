@@ -74,11 +74,21 @@ export default function OdometerRecordList({ vin, onAddClick, onEditClick }: Odo
 
     importMutation.mutate(formData, {
       onSuccess: (result) => {
-        // Show results
-        const message = `Import completed: ${result.success_count} records imported${result.skipped_count > 0 ? `, ${result.skipped_count} duplicates skipped` : ''}${result.error_count > 0 ? `, ${result.error_count} errors` : ''}`
+        // Show results. Each clause is its own key so translators can inflect
+        // the counts independently.
+        const parts = [t('odometerRecordList.importImported', { count: result.success_count })]
+        if (result.skipped_count > 0) {
+          parts.push(t('odometerRecordList.importSkipped', { count: result.skipped_count }))
+        }
+        if (result.error_count > 0) {
+          parts.push(t('odometerRecordList.importErrored', { count: result.error_count }))
+        }
+        const message = t('odometerRecordList.importCompleted', { summary: parts.join(', ') })
 
         if (result.errors && result.errors.length > 0) {
-          toast.error(message + ' - Errors: ' + result.errors.join(', '))
+          // Backend-supplied error strings are appended verbatim, never
+          // routed through t().
+          toast.error(`${message} - ${t('odometerRecordList.importErrorsLabel')}: ${result.errors.join(', ')}`)
         } else {
           toast.success(message)
         }
@@ -212,7 +222,7 @@ export default function OdometerRecordList({ vin, onAddClick, onEditClick }: Odo
                 <tr>
                   <th className="px-4 py-3 text-left text-xs font-medium text-garage-text-muted uppercase tracking-wider">{t('odometerList.date')}</th>
                   <th className="px-4 py-3 text-left text-xs font-medium text-garage-text-muted uppercase tracking-wider">
-                    Mileage ({UnitFormatter.getDistanceUnit(system)})
+                    {t('odometerRecordList.mileageColumn', { unit: UnitFormatter.getDistanceUnit(system) })}
                   </th>
                   <th className="px-4 py-3 text-left text-xs font-medium text-garage-text-muted uppercase tracking-wider">{t('odometerList.notes')}</th>
                   <th className="px-4 py-3 text-right text-xs font-medium text-garage-text-muted uppercase tracking-wider">{t('odometerList.actions')}</th>
@@ -232,7 +242,7 @@ export default function OdometerRecordList({ vin, onAddClick, onEditClick }: Odo
                         <Gauge className="w-4 h-4 text-garage-text-muted" />
                         {UnitFormatter.formatDistance(parseFloat(String(record.odometer_km)), system, showBoth)}
                         {(record as Record<string, unknown>).source === 'livelink' && (
-                          <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-xs bg-primary/10 text-primary" title="Auto-tracked by LiveLink">
+                          <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-xs bg-primary/10 text-primary" title={t('odometerRecordList.autoTrackedByLiveLink')}>
                             <Radio className="w-3 h-3" />
                           </span>
                         )}

@@ -39,8 +39,16 @@ export default function Register() {
       .catch(() => setIsFirstUser(false))
   }, [])
 
-  // Calculate password strength using helper from schema
+  // Calculate password strength using helper from schema. The label returned by
+  // getPasswordStrength is a stable identifier ('Weak' | 'Medium' | 'Strong') —
+  // branch on it, never on the translated text.
   const passwordStrength = getPasswordStrength(password)
+  const passwordStrengthLabel =
+    passwordStrength.label === 'Strong'
+      ? t('registerPage.strength.strong')
+      : passwordStrength.label === 'Medium'
+        ? t('registerPage.strength.medium')
+        : t('registerPage.strength.weak')
 
   const onSubmit = async (data: RegisterFormData) => {
     setError('')
@@ -52,7 +60,8 @@ export default function Register() {
         navigate('/login')
       }, 2000)
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Registration failed. Please try again.')
+      // Backend error text is rendered as-is; only the fallback is translated.
+      setError(err instanceof Error ? err.message : t('registerPage.failed'))
     }
   }
 
@@ -66,11 +75,13 @@ export default function Register() {
                 <CheckCircle className="w-12 h-12 text-success-500" />
               </div>
             </div>
-            <h2 className="text-2xl font-bold text-garage-text mb-2">Registration Successful!</h2>
+            <h2 className="text-2xl font-bold text-garage-text mb-2">
+              {t('registerPage.successTitle')}
+            </h2>
             <p className="text-garage-text-muted mb-4">
               {isFirstUser
-                ? 'You are the admin! Redirecting to login...'
-                : 'Your account has been created. Redirecting to login...'}
+                ? t('registerPage.successAdminRedirect')
+                : t('registerPage.successRedirect')}
             </p>
             <Loader className="w-6 h-6 animate-spin text-primary mx-auto" />
           </div>
@@ -87,7 +98,9 @@ export default function Register() {
         isFirstUser ? (
           <div className="mt-4 inline-flex items-center gap-2 px-4 py-2 bg-warning-500/10 border border-warning-500 rounded-full">
             <Crown className="w-5 h-5 text-warning-500" />
-            <span className="text-sm font-medium text-warning-500">You will be the admin!</span>
+            <span className="text-sm font-medium text-warning-500">
+              {t('registerPage.adminBadge')}
+            </span>
           </div>
         ) : undefined
       }
@@ -121,14 +134,14 @@ export default function Register() {
             className={`w-full px-4 py-3 bg-garage-bg border rounded-lg text-garage-text placeholder-garage-text-muted focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent ${
               errors.username ? 'border-red-500' : 'border-garage-border'
             }`}
-            placeholder="Choose a username"
+            placeholder={t('registerPage.usernamePlaceholder')}
             autoComplete="username"
             disabled={isSubmitting}
           />
           <FormError error={errors.username} />
           {!errors.username && (
             <p className="mt-1 text-xs text-garage-text-muted">
-              At least 3 characters, letters, numbers, _ and - only
+              {t('registerPage.usernameHint')}
             </p>
           )}
         </div>
@@ -165,7 +178,7 @@ export default function Register() {
               className={`w-full px-4 py-3 pr-12 bg-garage-bg border rounded-lg text-garage-text placeholder-garage-text-muted focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent ${
                 errors.password ? 'border-red-500' : 'border-garage-border'
               }`}
-              placeholder="Create a strong password"
+              placeholder={t('registerPage.passwordPlaceholder')}
               autoComplete="new-password"
               disabled={isSubmitting}
             />
@@ -173,7 +186,9 @@ export default function Register() {
               type="button"
               onClick={() => setShowPassword(!showPassword)}
               className="absolute right-3 top-1/2 -translate-y-1/2 p-2 text-garage-text-muted hover:text-garage-text transition-colors"
-              aria-label={showPassword ? 'Hide password' : 'Show password'}
+              aria-label={
+                showPassword ? t('registerPage.hidePassword') : t('registerPage.showPassword')
+              }
               tabIndex={-1}
             >
               {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
@@ -191,7 +206,9 @@ export default function Register() {
                   aria-valuenow={passwordStrength.score}
                   aria-valuemin={0}
                   aria-valuemax={6}
-                  aria-label={`Password strength: ${passwordStrength.label}`}
+                  aria-label={t('registerPage.passwordStrength', {
+                    strength: passwordStrengthLabel,
+                  })}
                 >
                   <div
                     className={`h-full transition-all duration-300 ${
@@ -201,11 +218,11 @@ export default function Register() {
                   />
                 </div>
                 <span className={`text-xs font-medium ${passwordStrength.color}`}>
-                  {passwordStrength.label}
+                  {passwordStrengthLabel}
                 </span>
               </div>
               <p className="text-xs text-garage-text-muted">
-                Must have: 8+ chars, uppercase, lowercase, number, special char (!@#$...)
+                {t('registerPage.passwordRequirements')}
               </p>
             </div>
           )}
@@ -214,7 +231,7 @@ export default function Register() {
         {/* Confirm Password Field */}
         <div>
           <label htmlFor="confirmPassword" className="block text-sm font-medium text-garage-text mb-2">
-            Confirm Password
+            {t('registerPage.confirmPasswordLabel')}
           </label>
           <div className="relative">
             <input
@@ -224,7 +241,7 @@ export default function Register() {
               className={`w-full px-4 py-3 pr-12 bg-garage-bg border rounded-lg text-garage-text placeholder-garage-text-muted focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent ${
                 errors.confirmPassword ? 'border-red-500' : 'border-garage-border'
               }`}
-              placeholder="Confirm your password"
+              placeholder={t('registerPage.confirmPasswordPlaceholder')}
               autoComplete="new-password"
               disabled={isSubmitting}
             />
@@ -232,7 +249,9 @@ export default function Register() {
               type="button"
               onClick={() => setShowConfirmPassword(!showConfirmPassword)}
               className="absolute right-3 top-1/2 -translate-y-1/2 p-2 text-garage-text-muted hover:text-garage-text transition-colors"
-              aria-label={showConfirmPassword ? 'Hide password' : 'Show password'}
+              aria-label={
+                showConfirmPassword ? t('registerPage.hidePassword') : t('registerPage.showPassword')
+              }
               tabIndex={-1}
             >
               {showConfirmPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
@@ -250,7 +269,7 @@ export default function Register() {
           {isSubmitting ? (
             <>
               <Loader className="w-5 h-5 animate-spin" />
-              Creating account...
+              {t('registerPage.submitting')}
             </>
           ) : (
             <>

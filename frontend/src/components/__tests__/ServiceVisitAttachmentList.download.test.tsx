@@ -1,7 +1,19 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen, fireEvent, waitFor } from '../../__tests__/test-utils'
-import ServiceAttachmentList from '../ServiceAttachmentList'
+import ServiceVisitAttachmentList from '../ServiceVisitAttachmentList'
 import type { Attachment } from '../../types/attachment'
+
+/**
+ * Regression cover for #107: `download_url` arrives from the API as an
+ * absolute path (`/api/attachments/1/download`), but axios already has
+ * `/api` as its baseURL — passing the raw value produces `/api/api/...`.
+ * `apiRelative()` strips the prefix.
+ *
+ * This test previously lived on ServiceAttachmentList, which was the legacy
+ * ServiceRecord component and had become unreachable; the fix shipped to both
+ * it and this one, but only the dead component was covered. Ported here so the
+ * live path is the one under test.
+ */
 
 const attachment: Attachment = {
   id: 1,
@@ -10,7 +22,7 @@ const attachment: Attachment = {
   file_type: 'application/pdf',
   download_url: '/api/attachments/1/download',
   record_id: 5,
-  record_type: 'service',
+  record_type: 'service_visit',
   uploaded_at: '2025-01-06T12:00:00',
 } as Attachment
 
@@ -35,15 +47,20 @@ beforeEach(() => {
   window.URL.revokeObjectURL = vi.fn()
 })
 
-describe('ServiceAttachmentList download (baseURL-relative axios arg)', () => {
+describe('ServiceVisitAttachmentList download (baseURL-relative axios arg)', () => {
   it('calls api.get with the /api-stripped path, not the raw download_url', async () => {
-    render(<ServiceAttachmentList recordId={5} />)
+    render(<ServiceVisitAttachmentList visitId={5} />)
 
-    const downloadButton = await screen.findByRole('button', { name: /download/i })
+    const downloadButton = await screen.findByRole('button', {
+      name: /serviceVisitAttachments\.download|download/i,
+    })
     fireEvent.click(downloadButton)
 
     await waitFor(() => {
-      expect(apiGet).toHaveBeenLastCalledWith('/attachments/1/download', expect.objectContaining({ responseType: 'blob' }))
+      expect(apiGet).toHaveBeenLastCalledWith(
+        '/attachments/1/download',
+        expect.objectContaining({ responseType: 'blob' }),
+      )
     })
   })
 })

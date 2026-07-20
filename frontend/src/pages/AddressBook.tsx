@@ -171,14 +171,14 @@ export default function AddressBook() {
                     <button
                       onClick={() => handleEditClick(entry)}
                       className="text-garage-text-muted hover:text-primary transition-colors"
-                      title="Edit"
+                      title={t('addressBookPage.edit')}
                     >
                       <Edit className="w-4 h-4" />
                     </button>
                     <button
                       onClick={() => handleDelete(entry.id)}
                       className="text-garage-text-muted hover:text-danger transition-colors"
-                      title="Delete"
+                      title={t('addressBookPage.delete')}
                     >
                       <Trash2 className="w-4 h-4" />
                     </button>
@@ -365,7 +365,7 @@ export function AddressBookForm({ entry, onClose, onSuccess }: AddressBookFormPr
                 type="text"
                 id="business_name"
                 {...register('business_name')}
-                placeholder="ABC Auto Shop"
+                placeholder={t('addressBookPage.businessNamePlaceholder')}
                 className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-primary bg-garage-bg text-garage-text ${
                   errors.business_name ? 'border-red-500' : 'border-garage-border'
                 }`}
@@ -382,7 +382,7 @@ export function AddressBookForm({ entry, onClose, onSuccess }: AddressBookFormPr
                 type="text"
                 id="name"
                 {...register('name')}
-                placeholder="John Doe"
+                placeholder={t('addressBookPage.contactNamePlaceholder')}
                 className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-primary bg-garage-bg text-garage-text ${
                   errors.name ? 'border-red-500' : 'border-garage-border'
                 }`}
@@ -489,7 +489,7 @@ export function AddressBookForm({ entry, onClose, onSuccess }: AddressBookFormPr
               type="text"
               id="address"
               {...register('address')}
-              placeholder="123 Main Street"
+              placeholder={t('addressBookPage.streetAddressPlaceholder')}
               className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-primary bg-garage-bg text-garage-text ${
                 errors.address ? 'border-red-500' : 'border-garage-border'
               }`}
@@ -507,7 +507,7 @@ export function AddressBookForm({ entry, onClose, onSuccess }: AddressBookFormPr
                 type="text"
                 id="city"
                 {...register('city')}
-                placeholder="Springfield"
+                placeholder={t('addressBookPage.cityPlaceholder')}
                 className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-primary bg-garage-bg text-garage-text ${
                   errors.city ? 'border-red-500' : 'border-garage-border'
                 }`}

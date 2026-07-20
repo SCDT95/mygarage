@@ -24,7 +24,26 @@
     "saveToAddressBook": "Save to address book",
     "saved": "Saved",
     "website": "Website",
-    "distanceUnknown": "Distance unknown"
+    "distanceUnknown": "Distance unknown",
+    "searchRadius": "Search Radius",
+    "usedTimes": "Used {{count}} time(s)",
+    "foundShops": "Found {{count}} shop(s)",
+    "source": "Source",
+    "poweredBy": "Powered by",
+    "distanceAway": "{{distance}} away",
+    "savedToAddressBook": "Saved to address book",
+    "locationPromptAuto": "We need your location to find nearby auto repair shops within {{radius}} {{unit}}.",
+    "locationPromptRv": "We need your location to find nearby RV repair shops within {{radius}} {{unit}}.",
+    "searchingHintAuto": "Finding nearby auto repair shops within {{radius}} {{unit}}",
+    "searchingHintRv": "Finding nearby RV repair shops within {{radius}} {{unit}}",
+    "geolocationUnsupported": "Geolocation is not supported by your browser",
+    "locationFailed": "Failed to get your location",
+    "locationDenied": "Location permission denied. Please enable location access in your browser settings.",
+    "locationUnavailable": "Location information is unavailable.",
+    "locationTimeout": "Location request timed out.",
+    "searchFailed": "Failed to search for shops",
+    "saveFailed": "Failed to save shop",
+    "savedToast": "{{name}} saved to address book!"
   },
   "success": "Success",
   "confirm": "Confirm",
@@ -201,7 +220,29 @@
     "searchingHint": "This may take a few seconds depending on your provider.",
     "newSearch": "New Search",
     "noPOIsFound": "No points of interest found",
-    "noPOIsHint": "Try a larger radius or enable more categories."
+    "noPOIsHint": "Try a larger radius or enable more categories.",
+    "or": "or",
+    "addressPlaceholder": "Search by address (city, postal code, etc.)",
+    "searchByAddress": "Search by address",
+    "addressTooShort": "Enter an address (≥2 characters)",
+    "addressNotFound": "No results for that address",
+    "geocodeFailed": "Geocoding failed",
+    "categoryAutoShops": "Auto Shops",
+    "categoryEvCharging": "EV Charging",
+    "categoryGasStations": "Gas Stations",
+    "categoryPropane": "Propane",
+    "categoryRvShops": "RV Shops",
+    "usedTimes": "Used {{count}} time(s)",
+    "foundCount": "Found {{count}} POI(s)",
+    "source": "Source",
+    "geolocationUnsupported": "Geolocation is not supported by your browser",
+    "locationFailed": "Failed to get your location",
+    "locationDenied": "Location permission denied. Please enable location access in your browser settings.",
+    "locationUnavailable": "Location information is unavailable.",
+    "locationTimeout": "Location request timed out.",
+    "searchFailed": "Failed to search for POIs",
+    "saveFailed": "Failed to save POI",
+    "savedToAddressBook": "{{name}} saved to address book!"
   },
   "about": {
     "title": "About",
@@ -244,7 +285,6 @@
     "validation": "Please check your input and try again."
   },
   "footer": "MyGarage v{{version}} - Self-hosted vehicle maintenance tracker",
-  "actions": "Actions",
   "active": "Active",
   "additionalNotes": "Additional notes",
   "admin": "Admin",
@@ -311,5 +351,106 @@
     "noVehicles": "No vehicles",
     "resetPassword": "Reset password",
     "showOnDashboard": "Show on dashboard"
+  },
+  "registerPage": {
+    "successTitle": "Registration Successful!",
+    "successAdminRedirect": "You are the admin! Redirecting to login...",
+    "successRedirect": "Your account has been created. Redirecting to login...",
+    "adminBadge": "You will be the admin!",
+    "usernamePlaceholder": "Choose a username",
+    "usernameHint": "At least 3 characters, letters, numbers, _ and - only",
+    "passwordPlaceholder": "Create a strong password",
+    "confirmPasswordLabel": "Confirm Password",
+    "confirmPasswordPlaceholder": "Confirm your password",
+    "showPassword": "Show password",
+    "hidePassword": "Hide password",
+    "passwordStrength": "Password strength: {{strength}}",
+    "passwordRequirements": "Must have: 8+ chars, uppercase, lowercase, number, special char (!@#$...)",
+    "submitting": "Creating account...",
+    "failed": "Registration failed. Please try again.",
+    "strength": {
+      "weak": "Weak",
+      "medium": "Medium",
+      "strong": "Strong"
+    }
+  },
+  "loginPage": {
+    "usernamePlaceholder": "Enter your username or email",
+    "passwordPlaceholder": "Enter your password",
+    "showPassword": "Show password",
+    "hidePassword": "Hide password",
+    "submitting": "Signing in..."
+  },
+  "linkAccountPage": {
+    "passwordPlaceholder": "Enter your password",
+    "cancel": "Cancel",
+    "linking": "Linking...",
+    "forgotPassword": "Forgot your password?",
+    "returnToLogin": "Return to login",
+    "missingToken": "Link token is missing. Please restart the login process.",
+    "passwordRequired": "Password is required",
+    "failed": "Failed to link account. Please try again."
+  },
+  "protectedRoute": {
+    "loadingAriaLabel": "Loading"
+  },
+  "addressBookPage": {
+    "edit": "Edit",
+    "delete": "Delete",
+    "businessNamePlaceholder": "ABC Auto Shop",
+    "contactNamePlaceholder": "John Doe",
+    "streetAddressPlaceholder": "123 Main Street",
+    "cityPlaceholder": "Springfield"
+  },
+  "poiCard": {
+    "categoryAutoShop": "Auto Shop",
+    "categoryRvShop": "RV Shop",
+    "categoryEvCharging": "EV Charging",
+    "categoryGasStation": "Gas Station",
+    "categoryPropane": "Propane",
+    "connectors": "Connectors",
+    "network": "Network",
+    "saveToAddressBook": "Save to address book",
+    "savedToAddressBook": "Saved to address book",
+    "source": "Source"
+  },
+  "addressBookQuickAdd": {
+    "title": "Add Address Book Entry",
+    "close": "Close",
+    "name": "Name",
+    "address": "Address (optional)",
+    "city": "City",
+    "state": "State",
+    "cancel": "Cancel",
+    "add": "Add",
+    "adding": "Adding...",
+    "addFailed": "Failed to add entry"
+  },
+  "addressBookAutocomplete": {
+    "placeholder": "Type to search...",
+    "clear": "Clear station",
+    "helperText": "Type at least 2 characters to search address book",
+    "noMatches": "No contacts found matching \"{{query}}\"",
+    "noMatchesInCategory": "No contacts found matching \"{{query}}\" in {{category}} category",
+    "addToAddressBook": "Add \"{{query}}\" to address book"
+  },
+  "exportMenu": {
+    "export": "Export"
+  },
+  "suppliesPage": {
+    "namePlaceholder": "Motor Oil 5W-30",
+    "categoryPlaceholder": "Fluids"
+  },
+  "errorBoundary": {
+    "title": "Something went wrong",
+    "description": "An unexpected error occurred. Please try refreshing the page or contact support if the problem persists.",
+    "tryAgain": "Try Again",
+    "goToDashboard": "Go to Dashboard"
+  },
+  "offlineBanner": {
+    "message": "You’re offline. Data shown may be from the last saved session."
+  },
+  "leafletMap": {
+    "yourLocation": "Your location"
   }
 }

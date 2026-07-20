@@ -14,11 +14,13 @@ import { toCanonicalKm, toCanonicalLiters, priceToDisplay, priceToCanonical } fr
 import { formatDateForInput } from '../utils/dateUtils'
 import CurrencyInputPrefix from './common/CurrencyInputPrefix'
 
+// `labelKey` is translated at render time; the fraction labels are numerals and
+// stay as-is (they are not prose).
 const FILL_LEVEL_PRESETS = [
-  { label: 'Full', value: 100 },
-  { label: '3/4', value: 75 },
-  { label: '1/2', value: 50 },
-  { label: '1/4', value: 25 },
+  { label: null, labelKey: 'defRecordForm.fillLevelFull', value: 100 },
+  { label: '3/4', labelKey: null, value: 75 },
+  { label: '1/2', labelKey: null, value: 50 },
+  { label: '1/4', labelKey: null, value: 25 },
 ] as const
 
 const SOURCE_SUGGESTIONS = [
@@ -211,7 +213,7 @@ export default function DEFRecordForm({
                       : 'bg-garage-bg text-garage-text border-garage-border hover:border-primary'
                   }`}
                 >
-                  {preset.label}
+                  {preset.labelKey ? t(preset.labelKey) : preset.label}
                 </button>
               ))}
             </div>
@@ -323,7 +325,7 @@ export default function DEFRecordForm({
               id="source"
               list="source-suggestions"
               {...register('source')}
-              placeholder="e.g., Truck Stop / Station Nozzle"
+              placeholder={t('defRecordForm.sourcePlaceholder')}
               className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-primary bg-garage-bg text-garage-text ${
                 errors.source ? 'border-red-500' : 'border-garage-border'
               }`}

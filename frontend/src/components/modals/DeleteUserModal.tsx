@@ -4,6 +4,34 @@ import { AlertTriangle } from 'lucide-react'
 import { toast } from 'sonner'
 import api from '@/services/api'
 
+/** Literal the admin must type to arm the delete button. Not translated on purpose. */
+const CONFIRM_TOKEN = 'DELETE'
+
+/**
+ * Render the confirm prompt with the token kept as a red monospace badge.
+ *
+ * This is the last stop before an irreversible delete, so the exact string the
+ * user has to type should be unmistakable — a plain interpolated sentence loses
+ * that. Locating the token inside the *translated* string preserves the badge
+ * without introducing <Trans>, which this codebase uses nowhere, and leaves
+ * word order entirely to the translator via {{token}}.
+ *
+ * Degrades to plain text if a translation drops the placeholder.
+ */
+export function renderConfirmPrompt(prompt: string) {
+  const at = prompt.indexOf(CONFIRM_TOKEN)
+  if (at === -1) return prompt
+  return (
+    <>
+      {prompt.slice(0, at)}
+      <code className="px-1.5 py-0.5 bg-garage-bg border border-danger rounded text-danger font-mono">
+        {CONFIRM_TOKEN}
+      </code>
+      {prompt.slice(at + CONFIRM_TOKEN.length)}
+    </>
+  )
+}
+
 interface User {
   id: number
   username: string
@@ -24,7 +52,7 @@ export default function DeleteUserModal({ isOpen, onClose, user, onConfirm }: De
   const [loading, setLoading] = useState(false)
 
   const handleDelete = async () => {
-    if (confirmText !== 'DELETE' || !user) return
+    if (confirmText !== CONFIRM_TOKEN || !user) return
 
     setLoading(true)
     try {
@@ -73,7 +101,7 @@ export default function DeleteUserModal({ isOpen, onClose, user, onConfirm }: De
             </p>
             {user.is_admin && (
               <p className="text-sm text-warning mt-2">
-                <strong>⚠️ This is an admin user</strong>
+                <strong>{t('deleteUserModal.adminUserWarning')}</strong>
               </p>
             )}
           </div>
@@ -92,13 +120,13 @@ export default function DeleteUserModal({ isOpen, onClose, user, onConfirm }: De
           {/* Confirmation Input */}
           <div>
             <label className="block text-sm font-medium text-garage-text mb-2">
-              Type <code className="px-1.5 py-0.5 bg-garage-bg border border-danger rounded text-danger font-mono">DELETE</code> to confirm:
+              {renderConfirmPrompt(t('deleteUserModal.typeToConfirm', { token: CONFIRM_TOKEN }))}
             </label>
             <input
               type="text"
               value={confirmText}
               onChange={(e) => setConfirmText(e.target.value)}
-              placeholder="DELETE"
+              placeholder={CONFIRM_TOKEN}
               className="w-full px-3 py-2 bg-garage-bg border border-garage-border rounded-lg text-garage-text focus:outline-none focus:ring-2 focus:ring-danger"
             />
           </div>
@@ -112,11 +140,11 @@ export default function DeleteUserModal({ isOpen, onClose, user, onConfirm }: De
               }}
               className="flex-1 px-4 py-2 bg-garage-bg border border-garage-border rounded-lg hover:bg-garage-surface text-garage-text transition-colors"
             >
-              Cancel
+              {t('deleteUserModal.cancel')}
             </button>
             <button
               onClick={handleDelete}
-              disabled={confirmText !== 'DELETE' || loading}
+              disabled={confirmText !== CONFIRM_TOKEN || loading}
               className="flex-1 px-4 py-2 bg-danger text-white rounded-lg hover:bg-danger/90 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
             >
               {loading ? t('common:deleting') : t('modal.deleteUser')}

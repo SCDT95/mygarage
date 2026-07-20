@@ -84,7 +84,7 @@ export default function VINInput({
   const validateVIN = async (vin: string) => {
     if (vin.length !== 17) {
       setValidationStatus('invalid')
-      setErrorMessage('VIN must be 17 characters')
+      setErrorMessage(t('vinInput.mustBe17Characters'))
       return
     }
 
@@ -97,11 +97,13 @@ export default function VINInput({
         setValidationStatus('valid')
       } else {
         setValidationStatus('invalid')
-        setErrorMessage(result.error || 'Invalid VIN format')
+        // `result.error` is backend-supplied text — surfaced verbatim, never
+        // routed through t().
+        setErrorMessage(result.error || t('vinInput.invalidFormat'))
       }
     } catch {
       setValidationStatus('invalid')
-      setErrorMessage('Failed to validate VIN')
+      setErrorMessage(t('vinInput.validateFailed'))
     } finally {
       setIsValidating(false)
     }
@@ -109,7 +111,7 @@ export default function VINInput({
 
   const handleDecode = async () => {
     if (value.length !== 17) {
-      setErrorMessage('VIN must be 17 characters')
+      setErrorMessage(t('vinInput.mustBe17Characters'))
       return
     }
 
@@ -124,10 +126,12 @@ export default function VINInput({
       }
     } catch (err: unknown) {
       if (err && typeof err === 'object' && 'response' in err) {
+        // `detail` is backend-supplied text — surfaced verbatim, never routed
+        // through t().
         const response = (err as { response?: { data?: { detail?: string } } }).response
-        setErrorMessage(response?.data?.detail ?? 'Failed to decode VIN')
+        setErrorMessage(response?.data?.detail ?? t('vinInput.decodeFailed'))
       } else {
-        setErrorMessage('Failed to decode VIN')
+        setErrorMessage(t('vinInput.decodeFailed'))
       }
     } finally {
       setIsDecoding(false)
@@ -174,7 +178,7 @@ export default function VINInput({
               : 'text-garage-text-muted'
           }`}
         >
-          {value.length}/17 characters
+          {t('vinInput.characterCount', { current: value.length, max: 17 })}
         </span>
         <button
           onClick={handleDecode}
@@ -217,47 +221,47 @@ export default function VINInput({
       {/* Decoded data display */}
       {decodedData && !errorMessage && (
         <div className="card bg-garage-surface-light">
-          <h4 className="text-lg font-semibold mb-3">Decoded Vehicle Information</h4>
+          <h4 className="text-lg font-semibold mb-3">{t('vinInput.decodedTitle')}</h4>
           <div className="grid grid-cols-2 gap-3 text-sm">
             {decodedData.year && (
               <div>
-                <span className="text-garage-text-muted">Year:</span>
+                <span className="text-garage-text-muted">{t('vinInput.fieldYear')}</span>
                 <span className="ml-2 font-medium">{decodedData.year}</span>
               </div>
             )}
             {decodedData.make && (
               <div>
-                <span className="text-garage-text-muted">Make:</span>
+                <span className="text-garage-text-muted">{t('vinInput.fieldMake')}</span>
                 <span className="ml-2 font-medium">{decodedData.make}</span>
               </div>
             )}
             {decodedData.model && (
               <div>
-                <span className="text-garage-text-muted">Model:</span>
+                <span className="text-garage-text-muted">{t('vinInput.fieldModel')}</span>
                 <span className="ml-2 font-medium">{decodedData.model}</span>
               </div>
             )}
             {decodedData.series && (
               <div>
-                <span className="text-garage-text-muted">Series:</span>
+                <span className="text-garage-text-muted">{t('vinInput.fieldSeries')}</span>
                 <span className="ml-2 font-medium">{decodedData.series}</span>
               </div>
             )}
             {decodedData.vehicle_type && (
               <div>
-                <span className="text-garage-text-muted">Type:</span>
+                <span className="text-garage-text-muted">{t('vinInput.fieldType')}</span>
                 <span className="ml-2 font-medium">{decodedData.vehicle_type}</span>
               </div>
             )}
             {decodedData.body_class && (
               <div>
-                <span className="text-garage-text-muted">Body:</span>
+                <span className="text-garage-text-muted">{t('vinInput.fieldBody')}</span>
                 <span className="ml-2 font-medium">{decodedData.body_class}</span>
               </div>
             )}
             {decodedData.engine?.displacement_l && (
               <div>
-                <span className="text-garage-text-muted">Engine:</span>
+                <span className="text-garage-text-muted">{t('vinInput.fieldEngine')}</span>
                 <span className="ml-2 font-medium">
                   {decodedData.engine.displacement_l}L
                   {decodedData.engine.cylinders && ` ${decodedData.engine.cylinders}cyl`}
@@ -266,19 +270,19 @@ export default function VINInput({
             )}
             {decodedData.drive_type && (
               <div>
-                <span className="text-garage-text-muted">Drive:</span>
+                <span className="text-garage-text-muted">{t('vinInput.fieldDrive')}</span>
                 <span className="ml-2 font-medium">{decodedData.drive_type}</span>
               </div>
             )}
             {decodedData.doors && (
               <div>
-                <span className="text-garage-text-muted">Doors:</span>
+                <span className="text-garage-text-muted">{t('vinInput.fieldDoors')}</span>
                 <span className="ml-2 font-medium">{decodedData.doors}</span>
               </div>
             )}
             {decodedData.plant_country && (
               <div>
-                <span className="text-garage-text-muted">Made in:</span>
+                <span className="text-garage-text-muted">{t('vinInput.fieldMadeIn')}</span>
                 <span className="ml-2 font-medium">
                   {decodedData.plant_city && `${decodedData.plant_city}, `}
                   {decodedData.plant_country}

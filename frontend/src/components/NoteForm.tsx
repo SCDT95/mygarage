@@ -89,7 +89,7 @@ export default function NoteForm({ vin, note, onClose, onSuccess }: NoteFormProp
               type="text"
               id="title"
               {...register('title')}
-              placeholder="e.g., Took road trip to the mountains"
+              placeholder={t('noteForm.titlePlaceholder')}
               className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-primary bg-garage-bg text-garage-text ${
                 errors.title ? 'border-red-500' : 'border-garage-border'
               }`}

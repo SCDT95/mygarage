@@ -78,10 +78,14 @@ function VehicleStatisticsCard({ stats }: VehicleStatisticsCardProps) {
         {stats.is_shared_with_me && (
           <div
             className="absolute top-3 left-3 bg-info text-white px-2 py-1 rounded-md text-xs font-semibold flex items-center gap-1"
-            title={`Shared by ${stats.shared_by_username}${stats.share_permission === 'write' ? ' (can edit)' : ' (view only)'}`}
+            title={
+              stats.share_permission === 'write'
+                ? t('vehicleStatisticsCardExtra.sharedByCanEdit', { username: stats.shared_by_username })
+                : t('vehicleStatisticsCardExtra.sharedByViewOnly', { username: stats.shared_by_username })
+            }
           >
             <Share2 className="w-3 h-3" />
-            Shared
+            {t('vehicleStatisticsCardExtra.sharedBadge')}
           </div>
         )}
 
@@ -103,7 +107,7 @@ function VehicleStatisticsCard({ stats }: VehicleStatisticsCardProps) {
         {stats.archived_at && (
           <div className="absolute inset-0 pointer-events-none overflow-hidden">
             <div className="absolute top-8 right-0 transform rotate-45 translate-x-1/4 -translate-y-1/4 bg-red-600/20 text-red-600 font-bold text-2xl px-16 py-2 border-y-2 border-red-600 shadow-lg">
-              ARCHIVED
+              {t('vehicleStatisticsCardExtra.archivedWatermark')}
             </div>
           </div>
         )}
@@ -172,7 +176,9 @@ function VehicleStatisticsCard({ stats }: VehicleStatisticsCardProps) {
               <div className="flex items-center gap-2">
                 <TrendingUp className="w-4 h-4 text-primary" />
                 <span className="text-sm text-garage-text-muted">
-                  Avg {UnitFormatter.getFuelEconomyUnit(system)}
+                  {t('vehicleStatisticsCardExtra.averageFuelEconomy', {
+                    unit: UnitFormatter.getFuelEconomyUnit(system),
+                  })}
                 </span>
               </div>
               <span className="text-lg font-bold text-garage-text">
@@ -209,7 +215,7 @@ function VehicleStatisticsCard({ stats }: VehicleStatisticsCardProps) {
           onClick={handleClick}
           className="w-full py-2 mt-2 bg-primary/10 text-primary rounded-md hover:bg-primary hover:text-white transition-colors font-medium text-sm"
         >
-          View Details
+          {t('vehicleStatisticsCardExtra.viewDetails')}
         </button>
       </div>
     </div>

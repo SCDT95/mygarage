@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
+import { useTranslation } from 'react-i18next'
 import { Plus, X } from 'lucide-react'
 import type { AddressBookEntry } from '../types/addressBook'
 import api from '../services/api'
@@ -9,6 +10,7 @@ interface AddressBookAutocompleteProps {
   onSelectEntry?: (entry: AddressBookEntry | null) => void
   categoryFilter?: string
   poiCategoryFilter?: string
+  /** Defaults to the translated generic search placeholder when omitted. */
   placeholder?: string
   className?: string
   id?: string
@@ -35,13 +37,14 @@ export default function AddressBookAutocomplete({
   onSelectEntry,
   categoryFilter,
   poiCategoryFilter,
-  placeholder = 'Type to search...',
+  placeholder,
   className = '',
   id,
   helperText,
   onClear,
   onAddNew,
 }: AddressBookAutocompleteProps) {
+  const { t } = useTranslation('common')
   const [entries, setEntries] = useState<AddressBookEntry[]>([])
   const [loading, setLoading] = useState(false)
   const [showDropdown, setShowDropdown] = useState(false)
@@ -156,7 +159,7 @@ export default function AddressBookAutocomplete({
         onChange={handleInputChange}
         onKeyDown={handleKeyDown}
         onFocus={() => value.length >= 2 && entries.length > 0 && setShowDropdown(true)}
-        placeholder={placeholder}
+        placeholder={placeholder ?? t('addressBookAutocomplete.placeholder')}
         className={`${className} ${onClear && value ? 'pr-10' : ''}`}
         autoComplete="off"
       />
@@ -171,7 +174,7 @@ export default function AddressBookAutocomplete({
         <button
           type="button"
           onClick={onClear}
-          aria-label="Clear station"
+          aria-label={t('addressBookAutocomplete.clear')}
           className="absolute right-2 top-1/2 -translate-y-1/2 p-1 text-garage-text-muted hover:text-garage-text rounded hover:bg-garage-bg"
         >
           <X className="w-4 h-4" />
@@ -200,9 +203,15 @@ export default function AddressBookAutocomplete({
 
       {!loading && value.length >= 2 && entries.length === 0 && showDropdown && (
         <div className="absolute z-50 w-full mt-1 bg-garage-surface border border-garage-border rounded-md shadow-lg">
+          {/* ``query``/``category`` are user-entered — interpolated as data,
+              never used as a translation key. */}
           <p className="text-sm text-garage-text-muted p-3">
-            No contacts found matching "{value}"
-            {categoryFilter && ` in ${categoryFilter} category`}
+            {categoryFilter
+              ? t('addressBookAutocomplete.noMatchesInCategory', {
+                  query: value,
+                  category: categoryFilter,
+                })
+              : t('addressBookAutocomplete.noMatches', { query: value })}
           </p>
           {onAddNew && (
             <button
@@ -214,7 +223,7 @@ export default function AddressBookAutocomplete({
               className="w-full text-left px-3 py-2 border-t border-garage-border hover:bg-garage-bg transition-colors flex items-center gap-2 text-sm text-primary"
             >
               <Plus className="w-4 h-4" />
-              <span>Add "{value}" to address book</span>
+              <span>{t('addressBookAutocomplete.addToAddressBook', { query: value })}</span>
             </button>
           )}
         </div>
@@ -224,7 +233,7 @@ export default function AddressBookAutocomplete({
         <p className="text-xs text-garage-text-muted mt-1">{helperText}</p>
       ) : (
         <p className="text-xs text-garage-text-muted mt-1">
-          Type at least 2 characters to search address book
+          {t('addressBookAutocomplete.helperText')}
         </p>
       )}
     </div>

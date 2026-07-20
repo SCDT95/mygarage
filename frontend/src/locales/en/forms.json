@@ -145,7 +145,6 @@
     "connection": "Connection",
     "connectionFailed": "Connection Failed",
     "customRelationship": "Custom Relationship",
-    "dashboard": "Dashboard",
     "dataImpact": "Data Impact",
     "dataIncluded": "Data Included",
     "dataRetention": "Data Retention",
@@ -187,7 +186,6 @@
     "failedToLoadLiveLink": "Failed to load LiveLink settings",
     "failedToLoadRecipients": "Failed to load eligible recipients",
     "failedToLoadSharingData": "Failed to load sharing data",
-    "failedToLoadUsers": "Failed to load users",
     "failedToReorder": "Failed to reorder",
     "failedToRestartMqtt": "Failed to restart MQTT subscriber",
     "failedToRevokeDeviceToken": "Failed to revoke device token",
@@ -220,7 +218,6 @@
     "leaveBlankToKeep": "leave blank to keep current",
     "liveLinkDescription": "Configure WiCAN OBD2 telemetry integration",
     "liveLinkSettings": "LiveLink Settings",
-    "loadingUsers": "Loading users...",
     "managedByOidc": "Managed by OIDC provider",
     "memberDataUnavailable": "Member data unavailable — some actions disabled.",
     "members": "Members",
@@ -235,7 +232,6 @@
     "noEligibleRecipients": "No eligible recipients.",
     "noUsers": "No Users",
     "noUsersFound": "No users found matching your search.",
-    "noUsersYet": "No users yet.",
     "notSharedYet": "Not shared with anyone yet",
     "oidcAuth": "OIDC Authentication",
     "oidcConfiguration": "OIDC Configuration",
@@ -263,7 +259,6 @@
     "salePrice": "Sale Price",
     "scopesHint": "Space-separated list of OIDC scopes",
     "searchByUsernameOrName": "Search by username or name...",
-    "searchUsersPlaceholder": "Search users by username, email, or name...",
     "selectNewOwner": "Select New Owner",
     "selectPoiProvider": "Select POI Provider",
     "selectUser": "Select a user...",
@@ -680,5 +675,124 @@
     "editTitle": "Edit Warranty",
     "mileageLimit": "Mileage Limit",
     "warrantyType": "Warranty Type"
+  },
+  "localAuthModalExtra": {
+    "strength": {
+      "weak": "Weak",
+      "medium": "Medium",
+      "strong": "Strong"
+    }
+  },
+  "deleteUserModal": {
+    "adminUserWarning": "⚠️ This is an admin user",
+    "typeToConfirm": "Type {{token}} to confirm:",
+    "cancel": "Cancel"
+  },
+  "vehicleSharingModal": {
+    "revokeShare": "Revoke share",
+    "cancel": "Cancel",
+    "done": "Done"
+  },
+  "familyManagementModal": {
+    "multiUserMode": "Multi-user mode",
+    "multiUserModeEnabled": "Multi-user mode enabled",
+    "multiUserModeDisabled": "Multi-user mode disabled",
+    "addUser": "Add User"
+  },
+  "addProviderModal": {
+    "apiKeyValid": "✓ API key is valid",
+    "getApiKey": "Get API key →",
+    "finish": "Finish",
+    "cancel": "Cancel",
+    "failedToTestApiKey": "Failed to test API key",
+    "failedToAddProvider": "Failed to add provider"
+  },
+  "editProviderModal": {
+    "apiKeyLabel": "API Key (leave blank to keep current)",
+    "currentApiKey": "Current: {{value}}",
+    "save": "Save",
+    "cancel": "Cancel",
+    "failedToUpdateProvider": "Failed to update provider"
+  },
+  "reminderForm": {
+    "typeDate": "Date",
+    "typeDateDescription": "Notify on a specific date",
+    "typeMileage": "Mileage",
+    "typeMileageDescription": "Notify at a specific mileage",
+    "typeBoth": "Both",
+    "typeBothDescription": "Notify when either date or mileage is reached",
+    "typeSmart": "Smart",
+    "typeSmartDescription": "Uses driving history to estimate — date is the hard cap",
+    "mileageIntervalPlaceholder": "e.g., 5000",
+    "mileageAbsolutePlaceholderImperial": "e.g., 92000",
+    "mileageAbsolutePlaceholderMetric": "e.g., 148000",
+    "mileageTargetHint": "Current: {{current}} + {{interval}} = {{target}} {{unit}} target"
+  },
+  "propaneRecordForm": {
+    "tankSizeOption": "{{size}} {{unit}} ({{kind}})",
+    "tankKindPortable": "portable",
+    "tankKindRv": "RV",
+    "autoCalculatedVolume": "Auto-calculated: {{value}} {{unit}}",
+    "propaneVolume": "Propane",
+    "vendorPlaceholder": "e.g., AmeriGas, U-Haul Propane"
+  },
+  "insuranceForm": {
+    "importFromPdf": "Import from PDF",
+    "providerPlaceholder": "e.g., State Farm, GEICO",
+    "policyNumberPlaceholder": "e.g., INS-12345",
+    "premiumAmountPlaceholder": "e.g., 150.00",
+    "deductiblePlaceholder": "e.g., 500.00",
+    "coverageLimitsPlaceholder": "e.g., 100/300/100 Bodily Injury/Property Damage"
+  },
+  "billingEntryForm": {
+    "electric": "Electric",
+    "water": "Water",
+    "waste": "Waste",
+    "autoCalculatedPlaceholder": "Auto-calculated"
+  },
+  "spotRentalForm": {
+    "locationNamePlaceholder": "e.g., Happy Hills RV Park",
+    "nightlyRate": "Nightly Rate",
+    "weeklyRate": "Weekly Rate",
+    "monthlyRate": "Monthly Rate",
+    "autoCalculatedPlaceholder": "Auto-calculated",
+    "amenitiesPlaceholder": "e.g., Full hookup, WiFi, Pool, Laundry, Pet friendly..."
+  },
+  "warrantyForm": {
+    "providerPlaceholder": "e.g., Honda, ACME Warranty Co",
+    "mileageLimitPlaceholder": "e.g., 100000",
+    "policyNumberPlaceholder": "e.g., WAR-12345"
+  },
+  "defRecordForm": {
+    "fillLevelFull": "Full",
+    "sourcePlaceholder": "e.g., Truck Stop / Station Nozzle"
+  },
+  "fuelRecordForm": {
+    "fillLevelFull": "Full",
+    "fuelTypePlaceholder": "Gasoline, Diesel, etc.",
+    "obcDurationPlaceholder": "HH:MM or seconds"
+  },
+  "noteForm": {
+    "titlePlaceholder": "e.g., Took road trip to the mountains"
+  },
+  "odometerRecordForm": {
+    "cancel": "Cancel",
+    "notes": "Notes"
+  },
+  "recallForm": {
+    "cancel": "Cancel",
+    "componentPlaceholder": "e.g., Air Bags, Brakes, Fuel System"
+  },
+  "taxRecordForm": {
+    "type": "Type"
+  },
+  "tollTagForm": {
+    "cancel": "Cancel"
+  },
+  "tollTransactionForm": {
+    "cancel": "Cancel"
+  },
+  "vinDecoderModal": {
+    "close": "Close"
   }
 }

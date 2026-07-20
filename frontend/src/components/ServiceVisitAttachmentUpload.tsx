@@ -25,13 +25,15 @@ export default function ServiceVisitAttachmentUpload({
   const validateFile = (file: File): string | null => {
     // Check file size
     if (file.size > MAX_FILE_SIZE) {
-      return `File size exceeds 10MB limit (${(file.size / 1024 / 1024).toFixed(2)}MB)`
+      return t('serviceVisitAttachmentUpload.errorTooLarge', {
+        size: (file.size / 1024 / 1024).toFixed(2),
+      })
     }
 
     // Check file type
     const fileExtension = '.' + file.name.split('.').pop()?.toLowerCase()
     if (!ALLOWED_TYPES.includes(file.type) && !ALLOWED_EXTENSIONS.includes(fileExtension)) {
-      return `File type not allowed. Supported: JPG, PNG, GIF, PDF`
+      return t('serviceVisitAttachmentUpload.errorInvalidType')
     }
 
     return null
@@ -77,7 +79,7 @@ export default function ServiceVisitAttachmentUpload({
       // Notify parent
       onUploadSuccess()
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to upload file')
+      setError(err instanceof Error ? err.message : t('serviceVisitAttachmentUpload.errorUploadFailed'))
     } finally {
       setUploading(false)
     }
@@ -110,7 +112,7 @@ export default function ServiceVisitAttachmentUpload({
           >
             <Upload className="w-4 h-4" />
             <span className="text-sm">
-              {selectedFile ? selectedFile.name : 'Choose file (JPG, PNG, GIF, PDF - Max 10MB)'}
+              {selectedFile ? selectedFile.name : t('serviceVisitAttachmentUpload.chooseFile')}
             </span>
           </label>
           {selectedFile && (
@@ -120,13 +122,15 @@ export default function ServiceVisitAttachmentUpload({
                 disabled={uploading}
                 className="px-4 py-2 bg-primary text-white rounded-md hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
               >
-                {uploading ? 'Uploading...' : 'Upload'}
+                {uploading
+                  ? t('serviceVisitAttachmentUpload.uploading')
+                  : t('serviceVisitAttachmentUpload.upload')}
               </button>
               <button
                 onClick={handleCancel}
                 disabled={uploading}
                 className="p-2 text-garage-text-muted hover:text-danger transition-colors"
-                aria-label="Cancel"
+                aria-label={t('serviceVisitAttachmentUpload.cancel')}
               >
                 <X className="w-5 h-5" />
               </button>
@@ -134,7 +138,7 @@ export default function ServiceVisitAttachmentUpload({
           )}
         </div>
         <p className="mt-1 text-xs text-garage-text-muted">
-          Supported formats: JPG, PNG, GIF, PDF (max 10MB)
+          {t('serviceVisitAttachmentUpload.supportedFormats')}
         </p>
       </div>
 

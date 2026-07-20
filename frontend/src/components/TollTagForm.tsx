@@ -155,7 +155,7 @@ export default function TollTagForm({ vin, tag, onClose, onSuccess }: TollTagFor
               className="btn btn-primary rounded-lg transition-colors"
               disabled={isSubmitting}
             >
-              Cancel
+              {t('tollTagForm.cancel')}
             </button>
             <button
               type="submit"

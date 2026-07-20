@@ -128,7 +128,7 @@ export default function RecallForm({ vin, recall, onClose, onSuccess }: RecallFo
               className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-primary bg-garage-bg text-garage-text ${
                 errors.component ? 'border-red-500' : 'border-garage-border'
               }`}
-              placeholder="e.g., Air Bags, Brakes, Fuel System"
+              placeholder={t('recallForm.componentPlaceholder')}
               disabled={isSubmitting}
             />
             <FormError error={errors.component} />
@@ -222,7 +222,7 @@ export default function RecallForm({ vin, recall, onClose, onSuccess }: RecallFo
               className="btn btn-primary rounded-lg transition-colors"
               disabled={isSubmitting}
             >
-              Cancel
+              {t('recallForm.cancel')}
             </button>
             <button
               type="submit"

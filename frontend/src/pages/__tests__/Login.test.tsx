@@ -62,11 +62,10 @@ function mockOidcError(): void {
     .mockRejectedValue(new Error('network')) as unknown as typeof globalThis.fetch
 }
 
-// i18next returns raw keys in tests (no full config). Query by placeholder +
-// button-text literals that don't go through translation, or by role + literal
-// i18n key strings.
-const USERNAME_PLACEHOLDER = /username or email/i
-const PASSWORD_PLACEHOLDER = /enter your password/i
+// i18next returns raw keys in tests (no full config), so every query below
+// matches the i18n key rather than the English copy.
+const USERNAME_PLACEHOLDER = /^loginPage\.usernamePlaceholder$/
+const PASSWORD_PLACEHOLDER = /^loginPage\.passwordPlaceholder$/
 const SSO_BUTTON = /login\.oidcSignIn/i // raw key — t() expands {{provider}} into the key template
 const TOGGLE_BUTTON = /continueWithPassword/i // raw key
 

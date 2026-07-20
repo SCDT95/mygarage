@@ -109,7 +109,7 @@ export default function OdometerRecordForm({ vin, record, onClose, onSuccess }: 
 
           <div>
             <label htmlFor="notes" className="block text-sm font-medium text-garage-text mb-1">
-              Notes
+              {t('odometerRecordForm.notes')}
             </label>
             <textarea
               id="notes"
@@ -140,7 +140,7 @@ export default function OdometerRecordForm({ vin, record, onClose, onSuccess }: 
               disabled={isSubmitting}
               className="btn btn-primary rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              Cancel
+              {t('odometerRecordForm.cancel')}
             </button>
           </div>
         </form>

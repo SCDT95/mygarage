@@ -1,4 +1,5 @@
 import { Bell, Radio, Send, Hash, MessageSquare, AtSign, Mail } from 'lucide-react';
+import { useTranslation } from 'react-i18next'
 
 export type NotificationSubTab = 'ntfy' | 'gotify' | 'pushover' | 'slack' | 'discord' | 'telegram' | 'email';
 
@@ -8,17 +9,20 @@ interface NotificationSubTabsProps {
   enabledServices: Record<NotificationSubTab, boolean>;
 }
 
-const subTabs = [
-  { id: 'ntfy' as const, label: 'ntfy', icon: Bell },
-  { id: 'gotify' as const, label: 'Gotify', icon: Radio },
-  { id: 'pushover' as const, label: 'Pushover', icon: Send },
-  { id: 'slack' as const, label: 'Slack', icon: Hash },
-  { id: 'discord' as const, label: 'Discord', icon: MessageSquare },
-  { id: 'telegram' as const, label: 'Telegram', icon: AtSign },
-  { id: 'email' as const, label: 'Email', icon: Mail },
-];
-
 export function NotificationSubTabs({ activeSubTab, onSubTabChange, enabledServices }: NotificationSubTabsProps) {
+  const { t } = useTranslation('settings')
+
+  // Service brand names are not translated.
+  const subTabs = [
+    { id: 'ntfy' as const, label: 'ntfy', icon: Bell }, // i18n-exempt
+    { id: 'gotify' as const, label: 'Gotify', icon: Radio }, // i18n-exempt
+    { id: 'pushover' as const, label: 'Pushover', icon: Send }, // i18n-exempt
+    { id: 'slack' as const, label: 'Slack', icon: Hash }, // i18n-exempt
+    { id: 'discord' as const, label: 'Discord', icon: MessageSquare }, // i18n-exempt
+    { id: 'telegram' as const, label: 'Telegram', icon: AtSign }, // i18n-exempt
+    { id: 'email' as const, label: t('notificationSubTabs.email'), icon: Mail },
+  ];
+
   return (
     <div className="flex flex-wrap gap-2 p-1 bg-garage-surface/50 rounded-lg border border-garage-border">
       {subTabs.map((tab) => {

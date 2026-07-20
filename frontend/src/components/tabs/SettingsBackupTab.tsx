@@ -83,7 +83,7 @@ export default function SettingsBackupTab() {
 
     try {
       const response = await api.post('/backup/create')
-      setMessage({ type: 'success', text: response.data.message || 'Settings backup created successfully!' })
+      setMessage({ type: 'success', text: response.data.message || t('backupTab.createSettingsSuccess') })
       await loadData()
     } catch {
       setMessage({ type: 'error', text: t('backup.createSettingsError') })
@@ -98,7 +98,7 @@ export default function SettingsBackupTab() {
 
     try {
       const response = await api.post('/backup/create-full')
-      setMessage({ type: 'success', text: response.data.message || 'Full backup created successfully!' })
+      setMessage({ type: 'success', text: response.data.message || t('backupTab.createFullSuccess') })
       await loadData()
     } catch {
       setMessage({ type: 'error', text: t('backup.createFullError') })
@@ -124,8 +124,8 @@ export default function SettingsBackupTab() {
 
   const handleRestore = async (filename: string, isFullBackup: boolean) => {
     const confirmMessage = isFullBackup
-      ? 'WARNING: This will overwrite your entire database and all uploaded files! A safety backup will be created first. Are you absolutely sure?'
-      : 'This will restore all settings from the backup. A safety backup will be created first. Continue?'
+      ? t('backupTab.confirmRestoreFull')
+      : t('backupTab.confirmRestoreSettings')
 
     if (!confirm(confirmMessage)) {
       return
@@ -145,27 +145,27 @@ export default function SettingsBackupTab() {
       if (isFullBackup) {
         setMessage({
           type: 'warning',
-          text: 'Full backup restored! Please refresh the page or restart the application for changes to take effect.'
+          text: t('backupTab.fullRestoreComplete')
         })
       }
     } catch (err: unknown) {
       const error = err as { response?: { data?: { detail?: string } }; message?: string }
-      setMessage({ type: 'error', text: error.response?.data?.detail || error.message || 'Restore failed' })
+      setMessage({ type: 'error', text: error.response?.data?.detail || error.message || t('backupTab.restoreFailed') })
     }
   }
 
   const handleDelete = async (filename: string) => {
-    if (!confirm(`Are you sure you want to delete ${filename}?`)) {
+    if (!confirm(t('backupTab.confirmDelete', { filename }))) {
       return
     }
 
     try {
       await api.delete(`/backup/${filename}`)
-      setMessage({ type: 'success', text: `Backup ${filename} deleted successfully` })
+      setMessage({ type: 'success', text: t('backupTab.deleteSuccess', { filename }) })
       await loadData()
     } catch (err: unknown) {
       const error = err as { response?: { data?: { detail?: string } }; message?: string }
-      setMessage({ type: 'error', text: error.response?.data?.detail || error.message || 'Failed to delete backup' })
+      setMessage({ type: 'error', text: error.response?.data?.detail || error.message || t('backupTab.deleteError') })
     }
   }
 
@@ -179,11 +179,11 @@ export default function SettingsBackupTab() {
           'Content-Type': 'multipart/form-data',
         },
       })
-      setMessage({ type: 'success', text: response.data.message || 'Backup uploaded successfully!' })
+      setMessage({ type: 'success', text: response.data.message || t('backupTab.uploadSuccess') })
       await loadData()
     } catch (err: unknown) {
       const error = err as { response?: { data?: { detail?: string } }; message?: string }
-      setMessage({ type: 'error', text: error.response?.data?.detail || error.message || 'Upload failed' })
+      setMessage({ type: 'error', text: error.response?.data?.detail || error.message || t('backupTab.uploadFailed') })
     } finally {
       if (settingsFileInputRef.current) settingsFileInputRef.current.value = ''
       if (fullFileInputRef.current) fullFileInputRef.current.value = ''
@@ -268,7 +268,7 @@ export default function SettingsBackupTab() {
               </div>
               <p className="text-2xl font-bold text-primary">{stats.settings_backups.count}</p>
               <p className="text-xs text-garage-text-muted mt-1">
-                {formatSize(stats.settings_backups.total_size_mb)} total
+                {t('backupTab.totalSize', { size: formatSize(stats.settings_backups.total_size_mb) })}
               </p>
             </div>
             <div className="bg-garage-bg rounded-lg p-4 border border-garage-border">
@@ -328,7 +328,7 @@ export default function SettingsBackupTab() {
                       {backup.filename}
                       {backup.is_safety && (
                         <span className="ml-2 px-2 py-0.5 text-xs bg-warning-500/20 text-warning-500 rounded">
-                          Safety
+                          {t('backupTab.safetyBadge')}
                         </span>
                       )}
                     </td>
@@ -395,7 +395,7 @@ export default function SettingsBackupTab() {
               </div>
               <p className="text-2xl font-bold text-warning-500">{stats.full_backups.count}</p>
               <p className="text-xs text-garage-text-muted mt-1">
-                {formatSize(stats.full_backups.total_size_mb)} total
+                {t('backupTab.totalSize', { size: formatSize(stats.full_backups.total_size_mb) })}
               </p>
             </div>
             <div className="bg-garage-bg rounded-lg p-4 border border-garage-border">
@@ -404,7 +404,7 @@ export default function SettingsBackupTab() {
                 <span className="text-sm font-medium">{t('backup.dataIncluded')}</span>
               </div>
               <p className="text-sm text-garage-text">
-                Database, Photos, Documents, Attachments
+                {t('backupTab.dataIncludedList')}
               </p>
             </div>
           </div>
@@ -417,11 +417,11 @@ export default function SettingsBackupTab() {
             <div>
               <h3 className="text-sm font-medium text-warning-500 mb-1">{t('backup.importantInfo')}:</h3>
               <ul className="text-sm text-warning-500/90 space-y-1">
-                <li>• Full backups include your entire database and all uploaded files</li>
-                <li>• Backup size depends on the amount of photos and documents you have uploaded</li>
-                <li>• Restoring a full backup will OVERWRITE all current data and files</li>
-                <li>• A safety backup is automatically created before any restore operation</li>
-                <li>• Application restart may be required after restoring a full backup</li>
+                <li>• {t('backupTab.infoIncludesEverything')}</li>
+                <li>• {t('backupTab.infoSizeDepends')}</li>
+                <li>• {t('backupTab.infoRestoreOverwrites')}</li>
+                <li>• {t('backupTab.infoSafetyBackup')}</li>
+                <li>• {t('backupTab.infoRestartRequired')}</li>
               </ul>
             </div>
           </div>
@@ -472,7 +472,7 @@ export default function SettingsBackupTab() {
                       {backup.filename}
                       {backup.is_safety && (
                         <span className="ml-2 px-2 py-0.5 text-xs bg-warning-500/20 text-warning-500 rounded">
-                          Safety
+                          {t('backupTab.safetyBadge')}
                         </span>
                       )}
                     </td>

@@ -150,7 +150,7 @@ export default function SettingsIntegrationsTab() {
   }
 
   const handleRemoveProvider = async (providerName: string) => {
-    if (!confirm(`Remove ${providerName} provider?`)) return
+    if (!confirm(t('integrationsTab.confirmRemoveProvider', { name: providerName }))) return
 
     try {
       await api.delete(`/settings/poi-providers/${providerName}`)
@@ -297,7 +297,7 @@ export default function SettingsIntegrationsTab() {
           {/* Check Interval */}
           <div>
             <label htmlFor="recall_interval" className="block text-sm font-medium text-garage-text mb-2">
-              Recall Check Interval
+              {t('integrationsTab.recallCheckInterval')}
             </label>
             <select
               id="recall_interval"
@@ -320,7 +320,7 @@ export default function SettingsIntegrationsTab() {
           {/* NHTSA Recalls API URL */}
           <div>
             <label htmlFor="recalls_api_url" className="block text-sm font-medium text-garage-text mb-2">
-              NHTSA Recalls API URL
+              {t('integrationsTab.nhtsaRecallsApiUrl')}
             </label>
             <input
               type="url"
@@ -387,11 +387,10 @@ export default function SettingsIntegrationsTab() {
           <div className="bg-garage-bg rounded-lg p-4 border border-garage-border">
             <h3 className="text-sm font-medium text-garage-text mb-2">{t('integrations.aboutCarComplaints')}</h3>
             <p className="text-sm text-garage-text-muted">
-              CarComplaints.com provides a database of consumer complaints, common problems, and issue trends for vehicles.
-              This integration adds convenient links to research known issues for your specific vehicle make, model, and year.
+              {t('integrationsTab.aboutCarComplaintsBody')}
             </p>
             <p className="text-sm text-garage-text-muted mt-2">
-              <strong>Note:</strong> This integration is only available for cars and trucks, not RVs, trailers, or fifth wheels.
+              <strong>{t('integrationsTab.noteLabel')}</strong> {t('integrationsTab.carComplaintsVehicleNote')}
             </p>
           </div>
         </div>
@@ -423,7 +422,9 @@ export default function SettingsIntegrationsTab() {
               {providers.map((provider) => (
                 <tr key={provider.name} className="border-b border-garage-border">
                   <td className="py-3 px-3 text-garage-text">
-                    {provider.is_default ? `${provider.display_name} (Default)` : provider.display_name}
+                    {provider.is_default
+                      ? t('integrationsTab.providerDefault', { name: provider.display_name })
+                      : provider.display_name}
                   </td>
                   <td className="py-3 px-3">
                     {provider.enabled ? (
@@ -435,21 +436,21 @@ export default function SettingsIntegrationsTab() {
                   <td className="py-3 px-3 text-garage-text-muted">
                     {provider.api_limit
                       ? `${provider.api_usage}/${provider.api_limit}`
-                      : `${provider.api_usage || 0}/Unlimited`}
+                      : `${provider.api_usage || 0}/${t('integrationsTab.unlimited')}`}
                   </td>
                   <td className="py-3 px-3 text-right space-x-2">
                     <button
                       onClick={() => handleEditProvider(provider)}
                       className="text-blue-400 hover:text-blue-300"
                     >
-                      Edit
+                      {t('integrationsTab.edit')}
                     </button>
                     {!provider.is_default && (
                       <button
                         onClick={() => handleRemoveProvider(provider.name)}
                         className="text-red-400 hover:text-red-300"
                       >
-                        Remove
+                        {t('integrationsTab.remove')}
                       </button>
                     )}
                   </td>
@@ -504,7 +505,7 @@ export default function SettingsIntegrationsTab() {
                       : livelinkDevices && livelinkDevices.online_count > 0
                       ? t('integrations.receivingData')
                       : livelinkDevices && livelinkDevices.total > 0
-                      ? 'No data (devices offline)'
+                      ? t('integrationsTab.noDataDevicesOffline')
                       : t('integrations.noDevices')}
                   </span>
                 </div>
@@ -512,10 +513,10 @@ export default function SettingsIntegrationsTab() {
                 {/* Device Summary */}
                 {livelinkDevices && livelinkDevices.total > 0 && (
                   <div className="text-sm text-garage-text-muted">
-                    {livelinkDevices.total} device{livelinkDevices.total !== 1 ? 's' : ''} linked
+                    {t('integrationsTab.devicesLinked', { count: livelinkDevices.total })}
                     {livelinkDevices.online_count > 0 && (
                       <span className="text-green-500">
-                        , {livelinkDevices.online_count} online
+                        {t('integrationsTab.devicesOnlineSuffix', { count: livelinkDevices.online_count })}
                       </span>
                     )}
                   </div>
@@ -549,11 +550,10 @@ export default function SettingsIntegrationsTab() {
             <div className="bg-garage-bg rounded-lg p-4 border border-garage-border">
               <h3 className="text-sm font-medium text-garage-text mb-2">{t('integrations.aboutLiveLink')}</h3>
               <p className="text-sm text-garage-text-muted">
-                LiveLink connects WiCAN PRO OBD2 devices to MyGarage for real-time vehicle telemetry.
-                Track engine parameters, detect drive sessions, and receive diagnostic trouble code alerts.
+                {t('integrationsTab.aboutLiveLinkBody')}
               </p>
               <p className="text-sm text-garage-text-muted mt-2">
-                <strong>Requires:</strong> WiCAN PRO with firmware v4.40 or newer
+                <strong>{t('integrationsTab.requiresLabel')}</strong> {t('integrationsTab.livelinkFirmwareRequirement')}
               </p>
             </div>
           </div>

@@ -203,7 +203,7 @@ export default function SpotRentalForm({ vin, rental, onClose, onSuccess }: Spot
                   }
                 }}
                 onSelectEntry={handleAddressBookSelect}
-                placeholder="e.g., Happy Hills RV Park"
+                placeholder={t('spotRentalForm.locationNamePlaceholder')}
                 className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-primary bg-garage-bg text-garage-text ${
                   errors.location_name ? 'border-red-500' : 'border-garage-border'
                 }`}
@@ -303,7 +303,13 @@ export default function SpotRentalForm({ vin, rental, onClose, onSuccess }: Spot
 
             <div>
               <label htmlFor="rate_amount" className="block text-sm font-medium text-garage-text mb-1">
-                {rateType === 'nightly' ? 'Nightly' : rateType === 'weekly' ? 'Weekly' : 'Monthly'} Rate
+                {t(
+                  rateType === 'nightly'
+                    ? 'spotRentalForm.nightlyRate'
+                    : rateType === 'weekly'
+                      ? 'spotRentalForm.weeklyRate'
+                      : 'spotRentalForm.monthlyRate'
+                )}
               </label>
               <div className="relative">
                 <CurrencyInputPrefix />
@@ -405,7 +411,7 @@ export default function SpotRentalForm({ vin, rental, onClose, onSuccess }: Spot
                 id="total_cost"
                 step="0.01"
                 {...register('total_cost', { valueAsNumber: true })}
-                placeholder="Auto-calculated"
+                placeholder={t('spotRentalForm.autoCalculatedPlaceholder')}
                 className="w-full pl-7 pr-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-primary bg-garage-bg/50 text-garage-text border-garage-border"
                 readOnly
               />
@@ -424,7 +430,7 @@ export default function SpotRentalForm({ vin, rental, onClose, onSuccess }: Spot
               id="amenities"
               rows={2}
               {...register('amenities')}
-              placeholder="e.g., Full hookup, WiFi, Pool, Laundry, Pet friendly..."
+              placeholder={t('spotRentalForm.amenitiesPlaceholder')}
               className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-primary bg-garage-bg text-garage-text ${
                 errors.amenities ? 'border-red-500' : 'border-garage-border'
               }`}

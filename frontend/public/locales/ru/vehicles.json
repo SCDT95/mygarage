@@ -638,7 +638,6 @@
     "title": "Заголовок"
   },
   "vehicleCard": {
-    "purchased": "Куплено",
     "sold": "Продано"
   },
   "vehicleStats": {
@@ -661,11 +660,7 @@
     "noResults": "Нет результатов"
   },
   "vinDemo": {
-    "enterVIN": "Введите VIN",
-    "exampleVINs": "Примеры VIN",
-    "fullResponseData": "Полные данные ответа",
-    "subtitle": "Подзаголовок",
-    "title": "Заголовок"
+    "enterVIN": "Введите VIN"
   },
   "vinInput": {
     "alreadyExists": "Транспортное средство с таким VIN уже существует. Попытка продолжить завершится неудачей.",

@@ -113,7 +113,7 @@ export default function WarrantyForm({ vin, record, onClose, onSuccess }: Warran
                 id="provider"
                 {...register('provider')}
                 className={`input w-full ${errors.provider ? 'border-red-500' : ''}`}
-                placeholder="e.g., Honda, ACME Warranty Co"
+                placeholder={t('warrantyForm.providerPlaceholder')}
                 disabled={isSubmitting}
               />
               <FormError error={errors.provider} />
@@ -160,7 +160,7 @@ export default function WarrantyForm({ vin, record, onClose, onSuccess }: Warran
                 id="mileage_limit_km"
                 {...register('mileage_limit_km', { valueAsNumber: true })}
                 className={`input w-full ${errors.mileage_limit_km ? 'border-red-500' : ''}`}
-                placeholder="e.g., 100000"
+                placeholder={t('warrantyForm.mileageLimitPlaceholder')}
                 min="0"
                 disabled={isSubmitting}
               />
@@ -176,7 +176,7 @@ export default function WarrantyForm({ vin, record, onClose, onSuccess }: Warran
                 id="policy_number"
                 {...register('policy_number')}
                 className={`input w-full ${errors.policy_number ? 'border-red-500' : ''}`}
-                placeholder="e.g., WAR-12345"
+                placeholder={t('warrantyForm.policyNumberPlaceholder')}
                 disabled={isSubmitting}
               />
               <FormError error={errors.policy_number} />
@@ -207,7 +207,7 @@ export default function WarrantyForm({ vin, record, onClose, onSuccess }: Warran
               {...register('notes')}
               className={`input w-full ${errors.notes ? 'border-red-500' : ''}`}
               rows={2}
-              placeholder="Additional notes..."
+              placeholder={t('common:additionalNotes')}
               disabled={isSubmitting}
             />
             <FormError error={errors.notes} />
@@ -220,7 +220,7 @@ export default function WarrantyForm({ vin, record, onClose, onSuccess }: Warran
               className="btn btn-primary rounded-lg transition-colors"
               disabled={isSubmitting}
             >
-              Cancel
+              {t('common:cancel')}
             </button>
             <button
               type="submit"

@@ -95,7 +95,7 @@ export default function TaxRecordForm({ vin, record, onClose, onSuccess }: TaxRe
 
             <div>
               <label htmlFor="tax_type" className="block text-sm font-medium text-garage-text mb-1">
-                Type
+                {t('taxRecordForm.type')}
               </label>
               <select
                 id="tax_type"

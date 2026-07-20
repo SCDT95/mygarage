@@ -99,6 +99,12 @@ export default function LiveLinkDTCsTab({ vin }: LiveLinkDTCsTabProps) {
     }
   }
 
+  const filterLabels: Record<FilterType, string> = {
+    all: t('livelinkDtcs.filterAll'),
+    active: t('livelinkDtcs.filterActive'),
+    cleared: t('livelinkDtcs.filterCleared'),
+  }
+
   const filteredDTCs = dtcs?.dtcs.filter((dtc) => {
     if (filter === 'all') return true
     if (filter === 'active') return dtc.is_active
@@ -134,7 +140,7 @@ export default function LiveLinkDTCsTab({ vin }: LiveLinkDTCsTabProps) {
                   : 'bg-garage-surface text-garage-text-muted hover:text-garage-text border border-garage-border'
               }`}
             >
-              {f.charAt(0).toUpperCase() + f.slice(1)}
+              {filterLabels[f]}
               {f === 'active' && dtcs && (
                 <span className="ml-2 px-1.5 py-0.5 bg-white/20 rounded text-xs">
                   {dtcs.active_count}
@@ -226,13 +232,13 @@ export default function LiveLinkDTCsTab({ vin }: LiveLinkDTCsTabProps) {
                       onClick={() => handleSaveNotes(dtc)}
                       className="px-3 py-1.5 bg-primary text-white rounded text-sm"
                     >
-                      Save
+                      {t('livelinkDtcs.saveNotes')}
                     </button>
                     <button
                       onClick={() => setEditingNotes(null)}
                       className="px-3 py-1.5 text-garage-text-muted hover:text-garage-text rounded text-sm"
                     >
-                      Cancel
+                      {t('livelinkDtcs.cancelNotes')}
                     </button>
                   </div>
                 ) : (

@@ -36,6 +36,7 @@ export default function AuthPageLayout({
             </div>
           </div>
           <h1 className="text-3xl font-bold text-garage-text mb-2">
+            {/* i18n-exempt — product brand name, identical in every locale */}
             My<span className="text-primary">Garage</span>
           </h1>
           <p className="text-garage-text-muted">{subtitle}</p>

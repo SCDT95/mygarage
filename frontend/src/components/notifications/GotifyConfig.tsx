@@ -27,8 +27,8 @@ export function GotifyConfig({
       <div className="flex items-center gap-3 mb-6">
         <Radio className="w-6 h-6 text-primary" />
         <div>
-          <h2 className="text-lg font-semibold text-garage-text">Gotify Configuration</h2>
-          <p className="text-sm text-garage-text-muted">Self-hosted push notification server</p>
+          <h2 className="text-lg font-semibold text-garage-text">{t('gotify.misc.title')}</h2>
+          <p className="text-sm text-garage-text-muted">{t('gotify.misc.subtitle')}</p>
         </div>
       </div>
 
@@ -74,9 +74,7 @@ export function GotifyConfig({
             disabled={saving || !isEnabled}
             className="w-full px-3 py-2 bg-garage-bg border border-garage-border rounded-lg text-garage-text placeholder-garage-text-muted focus:outline-none focus:ring-2 focus:ring-primary disabled:opacity-50"
           />
-          <p className="mt-1 text-xs text-garage-text-muted">
-            Create an application in Gotify and copy the token
-          </p>
+          <p className="mt-1 text-xs text-garage-text-muted">{t('gotify.misc.appTokenHint')}</p>
         </div>
 
         {/* Test Button */}
@@ -87,7 +85,7 @@ export function GotifyConfig({
             className="flex items-center gap-2 px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
           >
             <Send size={16} />
-            {testing ? 'Sending...' : 'Test Connection'}
+            {testing ? t('gotify.misc.sending') : t('gotify.misc.testConnection')}
           </button>
         </div>
 
@@ -96,7 +94,7 @@ export function GotifyConfig({
           <div className="flex items-start gap-2">
             <Info className="w-4 h-4 text-garage-text-muted mt-0.5" />
             <div className="text-xs text-garage-text-muted">
-              <p>Gotify is a self-hosted notification server. Create an application in your Gotify dashboard to get a token.</p>
+              <p>{t('gotify.misc.setupNote')}</p>
             </div>
           </div>
         </div>

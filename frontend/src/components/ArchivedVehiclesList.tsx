@@ -7,7 +7,7 @@
  * - Bulk delete selected vehicles
  */
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Eye, EyeOff, RotateCcw, Trash2, AlertTriangle } from 'lucide-react'
 import api from '@/services/api'
@@ -22,6 +22,12 @@ export default function ArchivedVehiclesList() {
   const [selectedVins, setSelectedVins] = useState<Set<string>>(new Set())
   const [confirmDelete, setConfirmDelete] = useState(false)
 
+  // `t` is used only for an error toast, so it must not sit in the deps below:
+  // a new identity on language switch would re-run the effect and refetch the
+  // list. Same shape as the mid-edit reset bug fixed in VehicleEdit.
+  const tRef = useRef(t)
+  tRef.current = t
+
   // Load archived vehicles
   const loadArchivedVehicles = useCallback(async () => {
     setLoading(true)
@@ -29,12 +35,12 @@ export default function ArchivedVehiclesList() {
       const response = await api.get<VehicleListResponse>('/vehicles/archived/list')
       setArchivedVehicles(response.data.vehicles)
     } catch (error) {
-      toast.error(t('archivedList.loadError'))
+      toast.error(tRef.current('archivedList.loadError'))
       console.error('Failed to load archived vehicles:', error)
     } finally {
       setLoading(false)
     }
-  }, [t])
+  }, [])
 
   useEffect(() => {
     void loadArchivedVehicles()
@@ -130,7 +136,7 @@ export default function ArchivedVehiclesList() {
               className="px-4 py-2 bg-danger text-white rounded-lg hover:bg-danger/90 transition-colors flex items-center gap-2"
             >
               <Trash2 className="w-4 h-4" />
-              Delete Selected
+              {t('archivedVehiclesList.deleteSelected')}
             </button>
           ) : (
             <div className="flex gap-2">
@@ -138,14 +144,14 @@ export default function ArchivedVehiclesList() {
                 onClick={() => setConfirmDelete(false)}
                 className="px-4 py-2 bg-garage-surface border border-garage-border text-garage-text rounded-lg hover:bg-garage-bg transition-colors"
               >
-                Cancel
+                {t('archivedVehiclesList.cancel')}
               </button>
               <button
                 onClick={handleBulkDelete}
                 className="px-4 py-2 bg-danger text-white rounded-lg hover:bg-danger/90 transition-colors flex items-center gap-2"
               >
                 <Trash2 className="w-4 h-4" />
-                Confirm Delete
+                {t('archivedVehiclesList.confirmDelete')}
               </button>
             </div>
           )}

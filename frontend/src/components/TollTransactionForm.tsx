@@ -188,7 +188,7 @@ export default function TollTransactionForm({ vin, tollTags, transaction, onClos
               className="btn btn-primary rounded-lg transition-colors"
               disabled={isSubmitting}
             >
-              Cancel
+              {t('tollTransactionForm.cancel')}
             </button>
             <button
               type="submit"

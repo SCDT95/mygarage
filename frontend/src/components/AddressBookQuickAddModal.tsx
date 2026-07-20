@@ -13,6 +13,7 @@
  */
 
 import { useEffect, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { X } from 'lucide-react'
 
 import api from '../services/api'
@@ -30,6 +31,7 @@ interface AddressBookQuickAddModalProps {
    * pick the entry up. Other call sites can pass other categories.
    */
   poiCategory?: string
+  /** Defaults to the translated generic heading when omitted. */
   title?: string
 }
 
@@ -39,8 +41,9 @@ export default function AddressBookQuickAddModal({
   onAdded,
   initialName = '',
   poiCategory,
-  title = 'Add Address Book Entry',
+  title,
 }: AddressBookQuickAddModalProps) {
+  const { t } = useTranslation('common')
   const [name, setName] = useState(initialName)
   const [address, setAddress] = useState('')
   const [city, setCity] = useState('')
@@ -85,7 +88,7 @@ export default function AddressBookQuickAddModal({
       onAdded(response.data)
       onClose()
     } catch (err: unknown) {
-      let message = 'Failed to add entry'
+      let message = t('addressBookQuickAdd.addFailed')
       if (err && typeof err === 'object' && 'response' in err) {
         const detail = (err as { response?: { data?: { detail?: string } } })
           .response?.data?.detail
@@ -112,12 +115,12 @@ export default function AddressBookQuickAddModal({
       >
         <div className="flex items-center justify-between p-4 border-b border-garage-border">
           <h2 id="ab-quick-add-title" className="text-lg font-semibold text-garage-text">
-            {title}
+            {title ?? t('addressBookQuickAdd.title')}
           </h2>
           <button
             type="button"
             onClick={onClose}
-            aria-label="Close"
+            aria-label={t('addressBookQuickAdd.close')}
             className="p-1 text-garage-text-muted hover:text-garage-text rounded hover:bg-garage-bg"
           >
             <X className="w-5 h-5" />
@@ -130,7 +133,7 @@ export default function AddressBookQuickAddModal({
               htmlFor="ab-quick-name"
               className="block text-sm font-medium text-garage-text mb-1"
             >
-              Name
+              {t('addressBookQuickAdd.name')}
             </label>
             <input
               id="ab-quick-name"
@@ -148,7 +151,7 @@ export default function AddressBookQuickAddModal({
               htmlFor="ab-quick-address"
               className="block text-sm font-medium text-garage-text mb-1"
             >
-              Address (optional)
+              {t('addressBookQuickAdd.address')}
             </label>
             <input
               id="ab-quick-address"
@@ -165,7 +168,7 @@ export default function AddressBookQuickAddModal({
                 htmlFor="ab-quick-city"
                 className="block text-sm font-medium text-garage-text mb-1"
               >
-                City
+                {t('addressBookQuickAdd.city')}
               </label>
               <input
                 id="ab-quick-city"
@@ -180,7 +183,7 @@ export default function AddressBookQuickAddModal({
                 htmlFor="ab-quick-state"
                 className="block text-sm font-medium text-garage-text mb-1"
               >
-                State
+                {t('addressBookQuickAdd.state')}
               </label>
               <input
                 id="ab-quick-state"
@@ -205,14 +208,14 @@ export default function AddressBookQuickAddModal({
               onClick={onClose}
               className="px-4 py-2 text-garage-text border border-garage-border rounded-md hover:bg-garage-bg"
             >
-              Cancel
+              {t('addressBookQuickAdd.cancel')}
             </button>
             <button
               type="submit"
               disabled={!canSubmit}
               className="px-4 py-2 bg-primary text-white rounded-md hover:bg-primary-700 disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              {submitting ? 'Adding...' : 'Add'}
+              {submitting ? t('addressBookQuickAdd.adding') : t('addressBookQuickAdd.add')}
             </button>
           </div>
         </form>

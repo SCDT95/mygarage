@@ -41,6 +41,7 @@ export default function About() {
             <Car className="w-12 h-12 text-primary" />
           </div>
           <h1 className="text-4xl font-bold text-garage-text mb-3">
+            {/* i18n-exempt — product brand name, identical in every locale */}
             My<span className="text-primary">Garage</span>
           </h1>
           <p className="text-xl text-garage-text-muted">
@@ -118,18 +119,21 @@ export default function About() {
             <li className="flex items-start gap-2">
               <CheckCircle className="w-4 h-4 text-primary mt-0.5 flex-shrink-0" />
               <span>
+                {/* i18n-exempt — AI assistant product name, identical in every locale */}
                 <strong className="text-garage-text">Claude</strong> – {t('about.claudeRole')}
               </span>
             </li>
             <li className="flex items-start gap-2">
               <CheckCircle className="w-4 h-4 text-primary mt-0.5 flex-shrink-0" />
               <span>
+                {/* i18n-exempt — AI assistant product name, identical in every locale */}
                 <strong className="text-garage-text">Operator</strong> – {t('about.operatorRole')}
               </span>
             </li>
             <li className="flex items-start gap-2">
               <CheckCircle className="w-4 h-4 text-primary mt-0.5 flex-shrink-0" />
               <span>
+                {/* i18n-exempt — AI assistant product name, identical in every locale */}
                 <strong className="text-garage-text">Codex</strong> – {t('about.codexRole')}
               </span>
             </li>

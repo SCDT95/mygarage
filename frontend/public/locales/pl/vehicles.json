@@ -638,7 +638,6 @@
     "title": "Tytuł"
   },
   "vehicleCard": {
-    "purchased": "Kupiony",
     "sold": "Sprzedany"
   },
   "vehicleStats": {
@@ -661,11 +660,7 @@
     "noResults": "Brak wyników"
   },
   "vinDemo": {
-    "enterVIN": "Wprowadź VIN",
-    "exampleVINs": "Przykładowe numery VIN",
-    "fullResponseData": "Pełne dane odpowiedzi",
-    "subtitle": "Podtytuł",
-    "title": "Tytuł"
+    "enterVIN": "Wprowadź VIN"
   },
   "vinInput": {
     "alreadyExists": "Pojazd o tym numerze VIN już istnieje. Kontynuowanie zakończy się niepowodzeniem.",

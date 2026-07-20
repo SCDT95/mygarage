@@ -42,7 +42,7 @@ function EditProviderModalContent({ provider, onClose, onSave }: Omit<Props, 'is
       onClose()
     } catch (error: unknown) {
       const err = error as { response?: { data?: { detail?: string } } }
-      setError(err.response?.data?.detail || 'Failed to update provider')
+      setError(err.response?.data?.detail || t('editProviderModal.failedToUpdateProvider'))
     }
   }
 
@@ -71,7 +71,7 @@ function EditProviderModalContent({ provider, onClose, onSave }: Omit<Props, 'is
 
           <div>
             <label className="block text-sm font-medium text-zinc-300 mb-2">
-              API Key (leave blank to keep current)
+              {t('editProviderModal.apiKeyLabel')}
             </label>
             <div className="relative">
               <input
@@ -90,7 +90,9 @@ function EditProviderModalContent({ provider, onClose, onSave }: Omit<Props, 'is
               </button>
             </div>
             {provider.api_key_masked && (
-              <p className="text-xs text-zinc-500 mt-1">Current: {provider.api_key_masked}</p>
+              <p className="text-xs text-zinc-500 mt-1">
+                {t('editProviderModal.currentApiKey', { value: provider.api_key_masked })}
+              </p>
             )}
           </div>
 
@@ -103,13 +105,13 @@ function EditProviderModalContent({ provider, onClose, onSave }: Omit<Props, 'is
               onClick={handleSave}
               className="px-4 py-2 bg-blue-600 hover:bg-blue-700 rounded text-white"
             >
-              Save
+              {t('editProviderModal.save')}
             </button>
             <button
               onClick={onClose}
               className="px-4 py-2 bg-zinc-700 hover:bg-zinc-600 rounded text-white"
             >
-              Cancel
+              {t('editProviderModal.cancel')}
             </button>
           </div>
         </div>

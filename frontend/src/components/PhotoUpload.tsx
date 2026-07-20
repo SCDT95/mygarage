@@ -50,13 +50,13 @@ export default function PhotoUpload({ vin, onSuccess, onClose }: PhotoUploadProp
     // Validate file type
     const validTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp', 'image/heic', 'image/heif']
     if (!validTypes.includes(selectedFile.type)) {
-      setError('Please select a valid image file (JPG, PNG, or WEBP)')
+      setError(t('photoUpload.errorInvalidType'))
       return
     }
 
     // Validate file size (10MB)
     if (selectedFile.size > 10 * 1024 * 1024) {
-      setError('File size must be less than 10MB')
+      setError(t('photoUpload.errorTooLarge'))
       return
     }
 
@@ -93,7 +93,7 @@ export default function PhotoUpload({ vin, onSuccess, onClose }: PhotoUploadProp
       onSuccess()
       onClose()
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'An error occurred')
+      setError(err instanceof Error ? err.message : t('photoUpload.errorGeneric'))
     } finally {
       setUploading(false)
     }
@@ -103,7 +103,7 @@ export default function PhotoUpload({ vin, onSuccess, onClose }: PhotoUploadProp
     <div className="fixed inset-0 modal-overlay flex items-center justify-center p-4 z-50">
       <div className="bg-garage-surface rounded-lg shadow-2xl max-w-2xl w-full border border-garage-border">
         <div className="bg-garage-surface border-b border-garage-border px-6 py-4 flex justify-between items-center rounded-t-lg">
-          <h2 className="text-xl font-semibold text-garage-text">Upload Photo</h2>
+          <h2 className="text-xl font-semibold text-garage-text">{t('photoUpload.title')}</h2>
           <button
             onClick={onClose}
             className="text-garage-text-muted hover:text-garage-text"
@@ -133,10 +133,10 @@ export default function PhotoUpload({ vin, onSuccess, onClose }: PhotoUploadProp
             >
               <Upload className="w-12 h-12 text-garage-text-muted mx-auto mb-4" />
               <p className="text-garage-text mb-2">
-                Drag and drop an image here, or click to select
+                {t('photoUpload.dragDrop')}
               </p>
               <p className="text-sm text-garage-text-muted mb-4">
-                JPG, PNG, WEBP, or HEIC (max 10MB)
+                {t('photoUpload.fileTypesHint')}
               </p>
               <input
                 ref={fileInputRef}
@@ -150,7 +150,7 @@ export default function PhotoUpload({ vin, onSuccess, onClose }: PhotoUploadProp
                 onClick={() => fileInputRef.current?.click()}
                 className="btn btn-primary rounded-lg transition-colors"
               >
-                Select File
+                {t('photoUpload.selectFile')}
               </button>
             </div>
           ) : (
@@ -158,7 +158,7 @@ export default function PhotoUpload({ vin, onSuccess, onClose }: PhotoUploadProp
               <div className="relative">
                 <img
                   src={preview}
-                  alt="Preview"
+                  alt={t('photoUpload.previewAlt')}
                   className="w-full h-64 object-contain bg-garage-bg rounded-lg"
                 />
                 <button
@@ -176,7 +176,7 @@ export default function PhotoUpload({ vin, onSuccess, onClose }: PhotoUploadProp
 
               <div>
                 <label htmlFor="caption" className="block text-sm font-medium text-garage-text mb-1">
-                  Caption (optional)
+                  {t('photoUpload.captionLabel')}
                 </label>
                 <input
                   type="text"
@@ -184,7 +184,7 @@ export default function PhotoUpload({ vin, onSuccess, onClose }: PhotoUploadProp
                   maxLength={200}
                   value={caption}
                   onChange={(e) => setCaption(e.target.value)}
-                  placeholder="Describe this photo..."
+                  placeholder={t('photoUpload.captionPlaceholder')}
                   className="w-full px-3 py-2 border border-garage-border rounded-md focus:outline-none focus:ring-2 focus:ring-primary bg-garage-bg text-garage-text"
                 />
               </div>
@@ -198,7 +198,7 @@ export default function PhotoUpload({ vin, onSuccess, onClose }: PhotoUploadProp
                   className="h-4 w-4 text-primary focus:ring-primary border-garage-border rounded bg-garage-bg"
                 />
                 <label htmlFor="set_as_main" className="ml-2 block text-sm text-garage-text">
-                  Set as main vehicle photo
+                  {t('photoUpload.setAsMain')}
                 </label>
               </div>
             </div>
@@ -219,7 +219,7 @@ export default function PhotoUpload({ vin, onSuccess, onClose }: PhotoUploadProp
               onClick={onClose}
               className="btn btn-primary rounded-lg transition-colors"
             >
-              Cancel
+              {t('photoUpload.cancel')}
             </button>
           </div>
         </form>

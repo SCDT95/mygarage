@@ -1,4 +1,5 @@
 import { useState, useRef } from 'react'
+import { useTranslation } from 'react-i18next'
 import api from '../services/api'
 import { InsurancePDFParseResponse, InsurancePolicyCreate } from '../types/insurance'
 import { CloudUpload, X, AlertTriangle, CheckCircle } from 'lucide-react'
@@ -10,6 +11,7 @@ interface InsurancePDFUploadProps {
 }
 
 export default function InsurancePDFUpload({ vin, onDataExtracted, onClose }: InsurancePDFUploadProps) {
+  const { t } = useTranslation('vehicles')
   const [file, setFile] = useState<File | null>(null)
   const [uploading, setUploading] = useState(false)
   const [parseResult, setParseResult] = useState<InsurancePDFParseResponse | null>(null)
@@ -38,7 +40,7 @@ export default function InsurancePDFUpload({ vin, onDataExtracted, onClose }: In
         setFile(droppedFile)
         setError(null)
       } else {
-        setError('Please upload a PDF file')
+        setError(t('insurancePdfUpload.errorInvalidType'))
       }
     }
   }
@@ -50,7 +52,7 @@ export default function InsurancePDFUpload({ vin, onDataExtracted, onClose }: In
         setFile(selectedFile)
         setError(null)
       } else {
-        setError('Please upload a PDF file')
+        setError(t('insurancePdfUpload.errorInvalidType'))
       }
     }
   }
@@ -74,7 +76,7 @@ export default function InsurancePDFUpload({ vin, onDataExtracted, onClose }: In
 
       setParseResult(response.data)
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to parse PDF')
+      setError(err instanceof Error ? err.message : t('insurancePdfUpload.errorParseFailed'))
     } finally {
       setUploading(false)
     }
@@ -111,9 +113,15 @@ export default function InsurancePDFUpload({ vin, onDataExtracted, onClose }: In
       low: 'bg-red-100 text-red-800',
     }
 
+    const labels = {
+      high: t('insurancePdfUpload.confidenceHigh'),
+      medium: t('insurancePdfUpload.confidenceMedium'),
+      low: t('insurancePdfUpload.confidenceLow'),
+    }
+
     return (
       <span className={`text-xs px-2 py-1 rounded ${colors[confidence]}`}>
-        {confidence}
+        {labels[confidence]}
       </span>
     )
   }
@@ -124,7 +132,7 @@ export default function InsurancePDFUpload({ vin, onDataExtracted, onClose }: In
         {/* Header */}
         <div className="sticky top-0 bg-garage-surface border-b border-garage-border px-6 py-4 flex justify-between items-center rounded-t-lg">
           <h2 className="text-xl font-semibold text-garage-text">
-            Import Insurance Policy from PDF
+            {t('insurancePdfUpload.title')}
           </h2>
           <button
             onClick={onClose}
@@ -152,16 +160,16 @@ export default function InsurancePDFUpload({ vin, onDataExtracted, onClose }: In
               >
                 <CloudUpload className="w-12 h-12 mx-auto text-garage-text-muted mb-4" />
                 <p className="text-garage-text mb-2">
-                  {file ? file.name : 'Drag and drop your insurance PDF here'}
+                  {file ? file.name : t('insurancePdfUpload.dragDrop')}
                 </p>
                 <p className="text-sm text-garage-text-muted mb-4">
-                  or
+                  {t('insurancePdfUpload.or')}
                 </p>
                 <button
                   onClick={() => fileInputRef.current?.click()}
                   className="btn btn-secondary"
                 >
-                  Choose File
+                  {t('insurancePdfUpload.chooseFile')}
                 </button>
                 <input
                   ref={fileInputRef}
@@ -179,7 +187,7 @@ export default function InsurancePDFUpload({ vin, onDataExtracted, onClose }: In
                     disabled={uploading}
                     className="btn btn-secondary w-full"
                   >
-                    {uploading ? 'Parsing PDF...' : 'Parse PDF'}
+                    {uploading ? t('insurancePdfUpload.parsing') : t('insurancePdfUpload.parse')}
                   </button>
                 </div>
               )}
@@ -200,11 +208,14 @@ export default function InsurancePDFUpload({ vin, onDataExtracted, onClose }: In
                   <CheckCircle className="w-5 h-5 text-green-600 dark:text-green-400 flex-shrink-0 mt-0.5" />
                   <div className="flex-1">
                     <p className="text-sm font-medium text-green-700 dark:text-green-300">
-                      PDF parsed successfully!
+                      {t('insurancePdfUpload.parseSuccess')}
                     </p>
                     {parseResult.vehicles_found.length > 0 && (
                       <p className="text-sm text-green-600 dark:text-green-400 mt-1">
-                        Found {parseResult.vehicles_found.length} vehicle(s): {parseResult.vehicles_found.join(', ')}
+                        {t('insurancePdfUpload.vehiclesFound', {
+                          count: parseResult.vehicles_found.length,
+                          vehicles: parseResult.vehicles_found.join(', '),
+                        })}
                       </p>
                     )}
                   </div>
@@ -217,7 +228,7 @@ export default function InsurancePDFUpload({ vin, onDataExtracted, onClose }: In
                       <AlertTriangle className="w-5 h-5 text-yellow-600 dark:text-yellow-400 flex-shrink-0 mt-0.5" />
                       <div>
                         <p className="text-sm font-medium text-yellow-700 dark:text-yellow-300 mb-2">
-                          Warnings:
+                          {t('insurancePdfUpload.warnings')}
                         </p>
                         <ul className="text-sm text-yellow-600 dark:text-yellow-400 space-y-1">
                           {parseResult.warnings.map((warning, idx) => (
@@ -232,7 +243,7 @@ export default function InsurancePDFUpload({ vin, onDataExtracted, onClose }: In
                 {/* Extracted Data */}
                 <div className="bg-garage-background border border-garage-border rounded-lg p-4">
                   <h3 className="text-sm font-semibold text-garage-text mb-3">
-                    Extracted Data
+                    {t('insurancePdfUpload.extractedData')}
                   </h3>
                   <div className="space-y-2 text-sm">
                     {Object.entries(parseResult.data).map(([key, value]) => {
@@ -264,18 +275,18 @@ export default function InsurancePDFUpload({ vin, onDataExtracted, onClose }: In
                     }}
                     className="btn btn-secondary flex-1"
                   >
-                    Upload Different PDF
+                    {t('insurancePdfUpload.uploadDifferent')}
                   </button>
                   <button
                     onClick={handleUseData}
                     className="btn btn-primary rounded-lg flex-1"
                   >
-                    Use This Data
+                    {t('insurancePdfUpload.useThisData')}
                   </button>
                 </div>
 
                 <p className="text-xs text-garage-text-muted text-center">
-                  You can review and edit all fields before saving the policy
+                  {t('insurancePdfUpload.reviewHint')}
                 </p>
               </div>
             </>

@@ -27,8 +27,8 @@ export function PushoverConfig({
       <div className="flex items-center gap-3 mb-6">
         <Send className="w-6 h-6 text-primary" />
         <div>
-          <h2 className="text-lg font-semibold text-garage-text">Pushover Configuration</h2>
-          <p className="text-sm text-garage-text-muted">Cross-platform push notifications</p>
+          <h2 className="text-lg font-semibold text-garage-text">{t('pushover.misc.title')}</h2>
+          <p className="text-sm text-garage-text-muted">{t('pushover.misc.subtitle')}</p>
         </div>
       </div>
 
@@ -58,15 +58,13 @@ export function PushoverConfig({
             disabled={saving || !isEnabled}
             className="w-full px-3 py-2 bg-garage-bg border border-garage-border rounded-lg text-garage-text placeholder-garage-text-muted focus:outline-none focus:ring-2 focus:ring-primary disabled:opacity-50"
           />
-          <p className="mt-1 text-xs text-garage-text-muted">
-            Found on your Pushover dashboard
-          </p>
+          <p className="mt-1 text-xs text-garage-text-muted">{t('pushover.misc.userKeyHint')}</p>
         </div>
 
-        {/* {t('pushover.apiToken')} */}
+        {/* API Token */}
         <div>
           <label htmlFor="pushover_api_token" className="block text-sm font-medium text-garage-text mb-1">
-            API Token / App Token
+            {t('pushover.misc.apiTokenLabel')}
           </label>
           <input
             type="password"
@@ -77,9 +75,7 @@ export function PushoverConfig({
             disabled={saving || !isEnabled}
             className="w-full px-3 py-2 bg-garage-bg border border-garage-border rounded-lg text-garage-text placeholder-garage-text-muted focus:outline-none focus:ring-2 focus:ring-primary disabled:opacity-50"
           />
-          <p className="mt-1 text-xs text-garage-text-muted">
-            Create an application at pushover.net to get a token
-          </p>
+          <p className="mt-1 text-xs text-garage-text-muted">{t('pushover.misc.apiTokenHint')}</p>
         </div>
 
         {/* Test Button */}
@@ -90,7 +86,7 @@ export function PushoverConfig({
             className="flex items-center gap-2 px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
           >
             <Send size={16} />
-            {testing ? 'Sending...' : 'Test Connection'}
+            {testing ? t('pushover.misc.sending') : t('pushover.misc.testConnection')}
           </button>
         </div>
 
@@ -99,7 +95,7 @@ export function PushoverConfig({
           <div className="flex items-start gap-2">
             <Info className="w-4 h-4 text-garage-text-muted mt-0.5" />
             <div className="text-xs text-garage-text-muted">
-              <p>Pushover requires a one-time $5 purchase per platform (iOS, Android, Desktop). Visit pushover.net to set up your account and create an application.</p>
+              <p>{t('pushover.misc.setupNote')}</p>
             </div>
           </div>
         </div>

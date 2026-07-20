@@ -96,7 +96,7 @@ export default function VINDecoderModal({ isOpen, onClose }: VINDecoderModalProp
             onClick={handleClose}
             className="px-4 py-2 text-sm font-medium text-garage-text bg-garage-bg border border-garage-border rounded-lg hover:bg-garage-muted transition-colors"
           >
-            Close
+            {t('vinDecoderModal.close')}
           </button>
         </div>
       </div>

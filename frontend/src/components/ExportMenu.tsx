@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
+import { useTranslation } from 'react-i18next'
 import { ChevronDown } from 'lucide-react'
 
 interface ExportMenuProps {
@@ -14,6 +15,7 @@ interface ExportMenuProps {
  * arrow-key navigation.
  */
 export default function ExportMenu({ onExportCSV, onExportPDF, disabled = false }: ExportMenuProps) {
+  const { t } = useTranslation('common')
   const [isOpen, setIsOpen] = useState(false)
   const [focusedIndex, setFocusedIndex] = useState(-1)
   const containerRef = useRef<HTMLDivElement>(null)
@@ -82,7 +84,7 @@ export default function ExportMenu({ onExportCSV, onExportPDF, disabled = false 
         aria-haspopup="true"
         aria-expanded={isOpen}
       >
-        <span>Export</span>
+        <span>{t('exportMenu.export')}</span>
         <ChevronDown className={`w-4 h-4 transition-transform ${isOpen ? 'rotate-180' : ''}`} />
       </button>
 

@@ -638,7 +638,6 @@
     "title": "Histórico de transferências"
   },
   "vehicleCard": {
-    "purchased": "Comprado",
     "sold": "Vendido"
   },
   "vehicleStats": {
@@ -661,11 +660,7 @@
     "noResults": "Nenhum resultado"
   },
   "vinDemo": {
-    "enterVIN": "Insira o VIN (Chassi)",
-    "exampleVINs": "Exemplos de VIN",
-    "fullResponseData": "Dados completos da resposta",
-    "subtitle": "Digite um número de identificação do veículo (VIN) de 17 caracteres para decodificar as informações do veículo no banco de dados da NHTSA",
-    "title": "Decodificador de VIN"
+    "enterVIN": "Insira o VIN (Chassi)"
   },
   "vinInput": {
     "alreadyExists": "Um veículo com este VIN já existe. A operação não poderá prosseguir.",

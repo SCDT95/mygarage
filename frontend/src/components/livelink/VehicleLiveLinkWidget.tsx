@@ -129,7 +129,11 @@ export default function VehicleLiveLinkWidget({ vin }: VehicleLiveLinkWidgetProp
               ? 'bg-blue-500/20 text-blue-500'
               : 'bg-garage-bg text-garage-text-muted'
         }`}>
-          {isRunning ? 'Running' : isOnline ? 'Parked' : 'Offline'}
+          {isRunning
+            ? t('vehicleLiveLinkWidget.statusRunning')
+            : isOnline
+              ? t('vehicleLiveLinkWidget.statusParked')
+              : t('vehicleLiveLinkWidget.statusOffline')}
         </span>
       </div>
 
@@ -155,7 +159,7 @@ export default function VehicleLiveLinkWidget({ vin }: VehicleLiveLinkWidgetProp
               <div className={`text-xs font-bold ${coolant.in_warning ? 'text-red-500' : 'text-garage-text'}`}>
                 {Math.round(convertedCoolant.value)}{convertedCoolant.unit}
               </div>
-              <div className="text-[10px] text-garage-text-muted">Coolant</div>
+              <div className="text-[10px] text-garage-text-muted">{t('vehicleLiveLinkWidget.coolant')}</div>
             </div>
           )}
         </div>

@@ -104,6 +104,7 @@ export const ThemeProvider: React.FC<ThemeProviderProps> = ({ children }) => {
         key: 'theme',
         value: newTheme,
         category: 'general',
+        // i18n-exempt — API payload metadata persisted server-side, never rendered
         description: 'User interface theme (light or dark)',
       });
     } catch (error) {

@@ -216,7 +216,7 @@ export default function VehicleSharingModal({
                           onClick={() => handleRevokeShare(share.id)}
                           disabled={revokingShareId === share.id}
                           className="p-2 text-danger hover:bg-danger/20 rounded transition-colors disabled:opacity-50"
-                          title="Revoke share"
+                          title={t('vehicleSharingModal.revokeShare')}
                         >
                           {revokingShareId === share.id ? (
                             <Loader2 className="w-4 h-4 animate-spin" />
@@ -269,7 +269,7 @@ export default function VehicleSharingModal({
                         onClick={() => setShowAddForm(false)}
                         className="flex-1 px-4 py-2 bg-garage-bg border border-garage-border rounded-lg hover:bg-garage-surface text-garage-text transition-colors"
                       >
-                        Cancel
+                        {t('vehicleSharingModal.cancel')}
                       </button>
                       <button
                         onClick={handleAddShare}
@@ -332,7 +332,7 @@ export default function VehicleSharingModal({
             onClick={onClose}
             className="w-full px-4 py-2 bg-garage-bg border border-garage-border rounded-lg hover:bg-garage-surface text-garage-text transition-colors"
           >
-            Done
+            {t('vehicleSharingModal.done')}
           </button>
         </div>
       </div>

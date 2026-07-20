@@ -8,6 +8,7 @@ import api from '../services/api'
 interface VendorSearchProps {
   value?: number
   onSelect: (vendor: Vendor | null) => void
+  /** Defaults to the translated search placeholder when omitted. */
   placeholder?: string
   disabled?: boolean
   className?: string
@@ -16,7 +17,7 @@ interface VendorSearchProps {
 export default function VendorSearch({
   value,
   onSelect,
-  placeholder = 'Search vendors...',
+  placeholder,
   disabled = false,
   className = '',
 }: VendorSearchProps) {
@@ -104,7 +105,7 @@ export default function VendorSearch({
 
   const handleCreateVendor = async () => {
     if (!newVendorName.trim()) {
-      toast.error('Vendor name is required')
+      toast.error(t('vendorSearch.nameRequired'))
       return
     }
 
@@ -116,9 +117,10 @@ export default function VendorSearch({
       handleSelect(newVendor)
       setShowCreateForm(false)
       setNewVendorName('')
-      toast.success(`Created vendor: ${newVendor.name}`)
+      // ``name`` is user-entered — interpolated as data, never used as a key.
+      toast.success(t('vendorSearch.created', { name: newVendor.name }))
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : 'Failed to create vendor')
+      toast.error(err instanceof Error ? err.message : t('vendorSearch.createFailed'))
     } finally {
       setCreating(false)
     }
@@ -151,7 +153,7 @@ export default function VendorSearch({
               setIsOpen(true)
             }}
             onFocus={() => setIsOpen(true)}
-            placeholder={placeholder}
+            placeholder={placeholder ?? t('vendorSearch.placeholder')}
             disabled={disabled}
             className="w-full pl-10 pr-3 py-2 border border-garage-border rounded-md focus:outline-none focus:ring-2 focus:ring-primary bg-garage-bg text-garage-text"
           />
@@ -161,7 +163,7 @@ export default function VendorSearch({
       {isOpen && !selectedVendor && (
         <div className="absolute z-50 w-full mt-1 bg-garage-surface border border-garage-border rounded-md shadow-lg max-h-60 overflow-auto">
           {loading && (
-            <div className="px-4 py-2 text-sm text-garage-text-muted">Searching...</div>
+            <div className="px-4 py-2 text-sm text-garage-text-muted">{t('vendorSearch.searching')}</div>
           )}
 
           {!loading && query.length >= 2 && vendors.length === 0 && (
@@ -198,7 +200,7 @@ export default function VendorSearch({
                     type="text"
                     value={newVendorName}
                     onChange={(e) => setNewVendorName(e.target.value)}
-                    placeholder="New vendor name"
+                    placeholder={t('vendorSearch.newVendorName')}
                     className="w-full px-3 py-2 text-sm border border-garage-border rounded-md focus:outline-none focus:ring-2 focus:ring-primary bg-garage-bg text-garage-text"
                     autoFocus
                   />
@@ -209,7 +211,7 @@ export default function VendorSearch({
                       disabled={creating}
                       className="flex-1 px-3 py-1.5 text-sm btn btn-primary rounded-md disabled:opacity-50"
                     >
-                      {creating ? 'Creating...' : 'Create'}
+                      {creating ? t('vendorSearch.creating') : t('vendorSearch.create')}
                     </button>
                     <button
                       type="button"
@@ -219,7 +221,7 @@ export default function VendorSearch({
                       }}
                       className="px-3 py-1.5 text-sm border border-garage-border rounded-md hover:bg-garage-bg text-garage-text"
                     >
-                      Cancel
+                      {t('vendorSearch.cancel')}
                     </button>
                   </div>
                 </div>
@@ -233,7 +235,8 @@ export default function VendorSearch({
                   className="w-full px-4 py-2 text-left text-sm text-primary hover:bg-garage-bg flex items-center gap-2"
                 >
                   <Plus className="w-4 h-4" />
-                  Create "{query}" as new vendor
+                  {/* ``query`` is user-entered — interpolated, never a key. */}
+                  {t('vendorSearch.createAsNew', { query })}
                 </button>
               )}
             </div>

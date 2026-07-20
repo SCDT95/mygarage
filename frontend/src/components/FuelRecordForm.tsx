@@ -101,11 +101,13 @@ export default function FuelRecordForm({ vin, record, onClose, onSuccess }: Fuel
   const [obcLoading, setObcLoading] = useState(false)
   const [obcMessage, setObcMessage] = useState<string | null>(null)
 
+  // `labelKey` is translated at render time; the fraction labels are numerals
+  // and stay as-is (they are not prose).
   const FILL_LEVEL_PRESETS = [
-    { label: 'Full', value: 100 },
-    { label: '3/4', value: 75 },
-    { label: '1/2', value: 50 },
-    { label: '1/4', value: 25 },
+    { label: null, labelKey: 'fuelRecordForm.fillLevelFull', value: 100 },
+    { label: '3/4', labelKey: null, value: 75 },
+    { label: '1/2', labelKey: null, value: 50 },
+    { label: '1/4', labelKey: null, value: 25 },
   ] as const
 
   // Helper to convert string | number to number (handles null from PostgreSQL API responses)
@@ -692,7 +694,7 @@ export default function FuelRecordForm({ vin, record, onClose, onSuccess }: Fuel
               type="text"
               id="fuel_type"
               {...register('fuel_type')}
-              placeholder="Gasoline, Diesel, etc."
+              placeholder={t('fuelRecordForm.fuelTypePlaceholder')}
               className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-primary bg-garage-bg text-garage-text ${
                 errors.fuel_type ? 'border-red-500' : 'border-garage-border'
               }`}
@@ -767,7 +769,7 @@ export default function FuelRecordForm({ vin, record, onClose, onSuccess }: Fuel
                         : 'bg-garage-bg text-garage-text border-garage-border hover:border-primary'
                     }`}
                   >
-                    {preset.label}
+                    {preset.labelKey ? t(preset.labelKey) : preset.label}
                   </button>
                 ))}
                 <button
@@ -1101,7 +1103,7 @@ export default function FuelRecordForm({ vin, record, onClose, onSuccess }: Fuel
                         type="text"
                         id="obc_trip_duration_s"
                         inputMode="text"
-                        placeholder="HH:MM or seconds"
+                        placeholder={t('fuelRecordForm.obcDurationPlaceholder')}
                         {...register('obc_trip_duration_s')}
                         className="w-full px-2 py-1 text-sm border rounded focus:outline-none focus:ring-2 focus:ring-primary bg-garage-bg text-garage-text border-garage-border"
                         disabled={isSubmitting}

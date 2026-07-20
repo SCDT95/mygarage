@@ -14,6 +14,7 @@ import CategoryToggle from '@/components/CategoryToggle'
 import POICard from '@/components/POICard'
 import MapDisplay from '@/components/MapDisplay'
 import { useUnitPreference } from '@/hooks/useUnitPreference'
+import { UnitFormatter } from '@/utils/units'
 import type {
   POIResult,
   POIRecommendation,
@@ -102,7 +103,7 @@ export default function POIFinder() {
     setError('')
 
     if (!navigator.geolocation) {
-      setError('Geolocation is not supported by your browser')
+      setError(t('poiFinder.geolocationUnsupported'))
       setStep('permission')
       return
     }
@@ -112,16 +113,16 @@ export default function POIFinder() {
         await searchNearbyPOIs(position.coords.latitude, position.coords.longitude)
       },
       (err) => {
-        let errorMessage = 'Failed to get your location'
+        let errorMessage = t('poiFinder.locationFailed')
         switch (err.code) {
           case err.PERMISSION_DENIED:
-            errorMessage = 'Location permission denied. Please enable location access in your browser settings.'
+            errorMessage = t('poiFinder.locationDenied')
             break
           case err.POSITION_UNAVAILABLE:
-            errorMessage = 'Location information is unavailable.'
+            errorMessage = t('poiFinder.locationUnavailable')
             break
           case err.TIMEOUT:
-            errorMessage = 'Location request timed out.'
+            errorMessage = t('poiFinder.locationTimeout')
             break
         }
         setError(errorMessage)
@@ -139,7 +140,7 @@ export default function POIFinder() {
   const handleAddressSearch = async () => {
     const q = addressQuery.trim()
     if (q.length < 2) {
-      toast.error(t('poiFinder.addressTooShort', { defaultValue: 'Enter an address (≥2 characters)' }))
+      toast.error(t('poiFinder.addressTooShort'))
       return
     }
     const activeCategories = getActiveCategories()
@@ -156,14 +157,14 @@ export default function POIFinder() {
       )
       const top = data.results[0]
       if (!top) {
-        toast.error(t('poiFinder.addressNotFound', { defaultValue: 'No results for that address' }))
+        toast.error(t('poiFinder.addressNotFound'))
         return
       }
       setStep('searching')
       await searchNearbyPOIs(top.latitude, top.longitude)
     } catch (err) {
       const detail = (err as { response?: { data?: { detail?: string } } }).response?.data?.detail
-      const message = detail || t('poiFinder.geocodeFailed', { defaultValue: 'Geocoding failed' })
+      const message = detail || t('poiFinder.geocodeFailed')
       setError(message)
       toast.error(message)
     } finally {
@@ -203,7 +204,7 @@ export default function POIFinder() {
       setStep('results')
     } catch (err) {
       const detail = (err as { response?: { data?: { detail?: string } } }).response?.data?.detail
-      const errorMessage = typeof detail === 'string' ? detail : 'Failed to search for POIs'
+      const errorMessage = typeof detail === 'string' ? detail : t('poiFinder.searchFailed')
       setError(errorMessage)
       toast.error(errorMessage)
       setStep('permission')
@@ -231,12 +232,14 @@ export default function POIFinder() {
       })
 
       setSavedPOIs((prev) => new Set(prev).add(poi.external_id || poi.business_name))
-      toast.success(`${poi.business_name} saved to address book!`)
+      // ``name`` is the provider-supplied business name — interpolated, never
+      // passed through t() as a key.
+      toast.success(t('poiFinder.savedToAddressBook', { name: poi.business_name }))
 
       loadRecommendations()
     } catch (err) {
       const detail = (err as { response?: { data?: { detail?: string } } }).response?.data?.detail
-      toast.error(typeof detail === 'string' ? detail : 'Failed to save POI')
+      toast.error(typeof detail === 'string' ? detail : t('poiFinder.saveFailed'))
     }
   }
 
@@ -265,31 +268,31 @@ export default function POIFinder() {
             <h2 className="text-lg font-semibold text-garage-text mb-4">{t('poiFinder.categories')}</h2>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <CategoryToggle
-                label="Auto Shops"
+                label={t('poiFinder.categoryAutoShops')}
                 category="auto_shop"
                 enabled={categories.auto_shop}
                 onToggle={(enabled) => handleCategoryToggle('auto_shop', enabled)}
               />
               <CategoryToggle
-                label="EV Charging"
+                label={t('poiFinder.categoryEvCharging')}
                 category="ev_charging"
                 enabled={categories.ev_charging}
                 onToggle={(enabled) => handleCategoryToggle('ev_charging', enabled)}
               />
               <CategoryToggle
-                label="Gas Stations"
+                label={t('poiFinder.categoryGasStations')}
                 category="gas_station"
                 enabled={categories.gas_station}
                 onToggle={(enabled) => handleCategoryToggle('gas_station', enabled)}
               />
               <CategoryToggle
-                label="Propane"
+                label={t('poiFinder.categoryPropane')}
                 category="propane"
                 enabled={categories.propane}
                 onToggle={(enabled) => handleCategoryToggle('propane', enabled)}
               />
               <CategoryToggle
-                label="RV Shops"
+                label={t('poiFinder.categoryRvShops')}
                 category="rv_shop"
                 enabled={categories.rv_shop}
                 onToggle={(enabled) => handleCategoryToggle('rv_shop', enabled)}
@@ -312,7 +315,7 @@ export default function POIFinder() {
                   : [10, 25, 50, 100, 200]
                 ).map((value) => (
                   <option key={value} value={value}>
-                    {value} {system === 'imperial' ? 'miles' : 'km'}
+                    {value} {UnitFormatter.getDistanceUnit(system)}
                   </option>
                 ))}
               </select>
@@ -339,7 +342,7 @@ export default function POIFinder() {
                         )}
                       </div>
                       <span className="text-sm text-garage-text-muted whitespace-nowrap">
-                        Used {poi.usage_count} {poi.usage_count === 1 ? 'time' : 'times'}
+                        {t('poiFinder.usedTimes', { count: poi.usage_count })}
                       </span>
                     </div>
                   </div>
@@ -365,7 +368,7 @@ export default function POIFinder() {
             <div className="flex items-center gap-2">
               <div className="flex-1 h-px bg-garage-border" />
               <span className="text-xs text-garage-text-muted uppercase">
-                {t('poiFinder.or', { defaultValue: 'or' })}
+                {t('poiFinder.or')}
               </span>
               <div className="flex-1 h-px bg-garage-border" />
             </div>
@@ -381,9 +384,7 @@ export default function POIFinder() {
                     void handleAddressSearch()
                   }
                 }}
-                placeholder={t('poiFinder.addressPlaceholder', {
-                  defaultValue: 'Search by address (city, postal code, etc.)',
-                })}
+                placeholder={t('poiFinder.addressPlaceholder')}
                 className="flex-1 px-3 py-2 bg-garage-bg border border-garage-border rounded-lg text-garage-text focus:outline-none focus:ring-2 focus:ring-primary"
               />
               <button
@@ -391,7 +392,7 @@ export default function POIFinder() {
                 onClick={() => void handleAddressSearch()}
                 disabled={geocoding || addressQuery.trim().length < 2}
                 className="px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary/90 transition-colors flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
-                aria-label={t('poiFinder.searchByAddress', { defaultValue: 'Search by address' })}
+                aria-label={t('poiFinder.searchByAddress')}
               >
                 {geocoding ? <Loader2 className="w-4 h-4 animate-spin" /> : <Search className="w-4 h-4" />}
               </button>
@@ -425,10 +426,12 @@ export default function POIFinder() {
           <div className="mb-6 flex items-center justify-between">
             <div>
               <h2 className="text-2xl font-bold text-garage-text">
-                Found {searchResults.length} POI{searchResults.length !== 1 ? 's' : ''}
+                {t('poiFinder.foundCount', { count: searchResults.length })}
               </h2>
               <p className="text-sm text-garage-text-muted mt-1">
-                Source: {searchSource === 'tomtom' ? 'TomTom' : searchSource === 'osm' ? 'OpenStreetMap' : searchSource}
+                {t('poiFinder.source')}:{' '}
+                {/* Provider brand names are not translatable — i18n-exempt */}
+                {searchSource === 'tomtom' ? 'TomTom' : searchSource === 'osm' ? 'OpenStreetMap' : searchSource}
               </p>
             </div>
             <button

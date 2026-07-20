@@ -314,14 +314,13 @@ export default function SettingsFilesTab() {
             <div className="bg-garage-bg rounded-lg p-4 border border-garage-border">
               <h3 className="text-sm font-medium text-garage-text mb-2">{t('files.aboutWindowStickers')}</h3>
               <p className="text-sm text-garage-text-muted">
-                Window stickers (Monroney labels) are federally mandated labels on new vehicles showing MSRP, fuel economy, standard equipment, and optional features.
-                Upload your vehicle's window sticker to automatically populate pricing and specification data.
+                {t('filesTab.aboutWindowStickersBody')}
               </p>
               <p className="text-sm text-garage-text-muted mt-2">
-                <strong>Supported formats:</strong> PDF, JPG, PNG (up to 10MB)
+                <strong>{t('filesTab.supportedFormatsLabel')}</strong> {t('filesTab.supportedFormatsValue')}
               </p>
               <p className="text-sm text-garage-text-muted mt-2">
-                <strong>Note:</strong> Window stickers are only available for passenger cars and trucks, not RVs, trailers, or fifth wheels.
+                <strong>{t('filesTab.noteLabel')}</strong> {t('filesTab.windowStickerVehicleNote')}
               </p>
             </div>
           </div>

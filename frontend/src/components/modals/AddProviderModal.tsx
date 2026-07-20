@@ -3,15 +3,15 @@ import { useState } from 'react'
 import { X } from 'lucide-react'
 import api from '../../services/api'
 
+enum ModalStep {
+  SELECT_PROVIDER = 'select',
+  ENTER_API_KEY = 'api_key'
+}
+
 interface Props {
   isOpen: boolean
   onClose: () => void
   onProviderAdded: () => void
-}
-
-enum ModalStep {
-  SELECT_PROVIDER = 'select',
-  ENTER_API_KEY = 'api_key'
 }
 
 const availableProviders = [
@@ -67,7 +67,7 @@ export default function AddProviderModal({ isOpen, onClose, onProviderAdded }: P
       }
     } catch (error: unknown) {
       const err = error as { response?: { data?: { detail?: string } } }
-      setErrorMessage(err.response?.data?.detail || 'Failed to test API key')
+      setErrorMessage(err.response?.data?.detail || t('addProviderModal.failedToTestApiKey'))
     } finally {
       setIsTestingKey(false)
     }
@@ -85,7 +85,7 @@ export default function AddProviderModal({ isOpen, onClose, onProviderAdded }: P
       handleClose()
     } catch (error: unknown) {
       const err = error as { response?: { data?: { detail?: string } } }
-      setErrorMessage(err.response?.data?.detail || 'Failed to add provider')
+      setErrorMessage(err.response?.data?.detail || t('addProviderModal.failedToAddProvider'))
     }
   }
 
@@ -147,7 +147,7 @@ export default function AddProviderModal({ isOpen, onClose, onProviderAdded }: P
               rel="noopener noreferrer"
               className="text-blue-400 hover:text-blue-300 text-sm inline-block"
             >
-              Get API key →
+              {t('addProviderModal.getApiKey')}
             </a>
 
             {errorMessage && (
@@ -155,7 +155,7 @@ export default function AddProviderModal({ isOpen, onClose, onProviderAdded }: P
             )}
 
             {isKeyValid && (
-              <p className="text-green-400 text-sm">✓ API key is valid</p>
+              <p className="text-green-400 text-sm">{t('addProviderModal.apiKeyValid')}</p>
             )}
 
             <div className="flex gap-2 pt-4">
@@ -172,14 +172,14 @@ export default function AddProviderModal({ isOpen, onClose, onProviderAdded }: P
                 disabled={!isKeyValid}
                 className="px-4 py-2 bg-green-600 hover:bg-green-700 rounded disabled:opacity-50 disabled:cursor-not-allowed text-white"
               >
-                Finish
+                {t('addProviderModal.finish')}
               </button>
 
               <button
                 onClick={handleClose}
                 className="px-4 py-2 bg-zinc-700 hover:bg-zinc-600 rounded text-white"
               >
-                Cancel
+                {t('addProviderModal.cancel')}
               </button>
             </div>
           </div>

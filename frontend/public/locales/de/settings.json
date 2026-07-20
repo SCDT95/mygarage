@@ -194,7 +194,6 @@
     "serverUrl": "Server-URL"
   },
   "pushover": {
-    "apiToken": "API-Token",
     "enable": "Pushover-Benachrichtigungen aktivieren",
     "userKey": "Benutzerschlüssel (User Key)"
   },
@@ -214,7 +213,6 @@
     "enable": "E-Mail-Benachrichtigungen aktivieren",
     "fromAddress": "Absenderadresse",
     "smtpHost": "SMTP-Host",
-    "smtpPassword": "SMTP-Passwort",
     "smtpUsername": "SMTP-Benutzername",
     "toAddress": "Empfängeradresse"
   },

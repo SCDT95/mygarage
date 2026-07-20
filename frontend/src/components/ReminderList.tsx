@@ -19,10 +19,10 @@ interface ReminderListProps {
   vin: string
 }
 
-const STATUS_TABS: { id: ReminderStatus | 'all'; label: string }[] = [
-  { id: 'pending', label: 'Pending' },
-  { id: 'done', label: 'Done' },
-  { id: 'dismissed', label: 'Dismissed' },
+const STATUS_TABS: { id: ReminderStatus | 'all'; labelKey: string }[] = [
+  { id: 'pending', labelKey: 'reminderList.statusPending' },
+  { id: 'done', labelKey: 'reminderList.statusDone' },
+  { id: 'dismissed', labelKey: 'reminderList.statusDismissed' },
 ]
 
 const TYPE_ICONS: Record<string, typeof Bell> = {
@@ -117,7 +117,7 @@ export default function ReminderList({ vin }: ReminderListProps) {
                 : 'text-garage-text-muted hover:text-garage-text'
             }`}
           >
-            {tab.label}
+            {t(tab.labelKey)}
           </button>
         ))}
       </div>

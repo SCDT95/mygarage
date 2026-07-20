@@ -17,13 +17,15 @@ import CurrencyInputPrefix from './common/CurrencyInputPrefix'
 // Propane density: 1 kg ≈ 1.968 L (1 gal ≈ 1.923 kg, 1 gal = 3.78541 L).
 const KG_TO_LITERS = 1.968
 
-// Tank sizes in kg (canonical). Display label is rendered with locale-aware
-// units at render time.
+// Tank sizes in kg (canonical). The nominal display size differs per system
+// (a 9.07 kg tank is sold as "20 lb"), so both are carried here; the unit
+// suffix and the "portable"/"RV" qualifier are resolved at render time via
+// UnitFormatter and t() — never baked into a translation value.
 const TANK_SIZES = [
-  { kg: 9.07,   labelMetric: '9 kg (portable)',   labelImperial: '20 lb (portable)' },
-  { kg: 14.97,  labelMetric: '15 kg (portable)',  labelImperial: '33 lb (portable)' },
-  { kg: 45.36,  labelMetric: '45 kg (RV)',        labelImperial: '100 lb (RV)' },
-  { kg: 190.51, labelMetric: '190 kg (RV)',       labelImperial: '420 lb (RV)' },
+  { kg: 9.07,   sizeMetric: 9,   sizeImperial: 20,  kind: 'portable' },
+  { kg: 14.97,  sizeMetric: 15,  sizeImperial: 33,  kind: 'portable' },
+  { kg: 45.36,  sizeMetric: 45,  sizeImperial: 100, kind: 'rv' },
+  { kg: 190.51, sizeMetric: 190, sizeImperial: 420, kind: 'rv' },
 ] as const
 
 interface PropaneRecordFormProps {
@@ -242,7 +244,15 @@ export default function PropaneRecordForm({
                     const value = system === 'imperial'
                       ? Math.round(UnitConverter.kgToLbs(tank.kg) ?? 0)
                       : tank.kg
-                    const label = system === 'imperial' ? tank.labelImperial : tank.labelMetric
+                    const label = t('propaneRecordForm.tankSizeOption', {
+                      size: system === 'imperial' ? tank.sizeImperial : tank.sizeMetric,
+                      unit: UnitFormatter.getWeightUnit(system),
+                      kind: t(
+                        tank.kind === 'rv'
+                          ? 'propaneRecordForm.tankKindRv'
+                          : 'propaneRecordForm.tankKindPortable'
+                      ),
+                    })
                     return (
                       <option key={tank.kg} value={value}>
                         {label}
@@ -282,7 +292,10 @@ export default function PropaneRecordForm({
                 : totalLiters
               return (
                 <p className="text-xs text-garage-text-muted mt-2">
-                  Auto-calculated: {display?.toFixed(2)} {UnitFormatter.getVolumeUnit(system)}
+                  {t('propaneRecordForm.autoCalculatedVolume', {
+                    value: display?.toFixed(2) ?? '',
+                    unit: UnitFormatter.getVolumeUnit(system),
+                  })}
                 </p>
               )
             })()}
@@ -291,7 +304,7 @@ export default function PropaneRecordForm({
           {/* Propane volume field */}
           <div>
             <label htmlFor="propane_liters" className="block text-sm font-medium text-garage-text mb-1">
-              Propane ({UnitFormatter.getVolumeUnit(system)})
+              {t('propaneRecordForm.propaneVolume')} ({UnitFormatter.getVolumeUnit(system)})
             </label>
             <input
               type="number"
@@ -333,7 +346,7 @@ export default function PropaneRecordForm({
 
             <div>
               <label htmlFor="cost" className="block text-sm font-medium text-garage-text mb-1">
-                Total Cost
+                {t('common:totalCost')}
               </label>
               <div className="relative">
                 <CurrencyInputPrefix />
@@ -365,7 +378,7 @@ export default function PropaneRecordForm({
               type="text"
               id="vendor"
               {...register('vendor')}
-              placeholder="e.g., AmeriGas, U-Haul Propane"
+              placeholder={t('propaneRecordForm.vendorPlaceholder')}
               className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-primary bg-garage-bg text-garage-text ${
                 errors.vendor ? 'border-red-500' : 'border-garage-border'
               }`}
@@ -376,7 +389,7 @@ export default function PropaneRecordForm({
 
           <div>
             <label htmlFor="notes" className="block text-sm font-medium text-garage-text mb-1">
-              Notes
+              {t('common:notes')}
             </label>
             <textarea
               id="notes"
@@ -407,7 +420,7 @@ export default function PropaneRecordForm({
               className="btn btn-primary rounded-lg transition-colors"
               disabled={isSubmitting}
             >
-              Cancel
+              {t('common:cancel')}
             </button>
           </div>
         </form>

@@ -26,11 +26,15 @@ interface ReminderFormProps {
   onSuccess: () => void
 }
 
-const REMINDER_TYPES: { value: ReminderType; label: string; description: string }[] = [
-  { value: 'date', label: 'Date', description: 'Notify on a specific date' },
-  { value: 'mileage', label: 'Mileage', description: 'Notify at a specific mileage' },
-  { value: 'both', label: 'Both', description: 'Notify when either date or mileage is reached' },
-  { value: 'smart', label: 'Smart', description: 'Uses driving history to estimate — date is the hard cap' },
+/**
+ * Reminder type choices. `labelKey`/`descriptionKey` are resolved through t()
+ * at render time — never store the English here.
+ */
+const REMINDER_TYPES: { value: ReminderType; labelKey: string; descriptionKey: string }[] = [
+  { value: 'date', labelKey: 'reminderForm.typeDate', descriptionKey: 'reminderForm.typeDateDescription' },
+  { value: 'mileage', labelKey: 'reminderForm.typeMileage', descriptionKey: 'reminderForm.typeMileageDescription' },
+  { value: 'both', labelKey: 'reminderForm.typeBoth', descriptionKey: 'reminderForm.typeBothDescription' },
+  { value: 'smart', labelKey: 'reminderForm.typeSmart', descriptionKey: 'reminderForm.typeSmartDescription' },
 ]
 
 export default function ReminderForm({ vin, reminder, currentMileage, onClose, onSuccess }: ReminderFormProps) {
@@ -177,8 +181,8 @@ export default function ReminderForm({ vin, reminder, currentMileage, onClose, o
                     : 'border-garage-border bg-garage-bg text-garage-text hover:border-primary/50'
                 }`}
               >
-                <div className="text-sm font-medium">{type.label}</div>
-                <div className="text-xs text-garage-text-muted mt-0.5">{type.description}</div>
+                <div className="text-sm font-medium">{t(type.labelKey)}</div>
+                <div className="text-xs text-garage-text-muted mt-0.5">{t(type.descriptionKey)}</div>
               </button>
             ))}
           </div>
@@ -209,13 +213,24 @@ export default function ReminderForm({ vin, reminder, currentMileage, onClose, o
               value={mileageInterval ?? ''}
               onChange={(e) => setMileageInterval(e.target.value ? parseInt(e.target.value) : undefined)}
               min="1"
-              placeholder={hasMileage ? 'e.g., 5000' : (system === 'imperial' ? 'e.g., 92000' : 'e.g., 148000')}
+              placeholder={
+                hasMileage
+                  ? t('reminderForm.mileageIntervalPlaceholder')
+                  : system === 'imperial'
+                    ? t('reminderForm.mileageAbsolutePlaceholderImperial')
+                    : t('reminderForm.mileageAbsolutePlaceholderMetric')
+              }
               disabled={submitting}
               className="w-full px-3 py-2 border border-garage-border rounded-md focus:outline-none focus:ring-2 focus:ring-primary bg-garage-bg text-garage-text"
             />
             {hasMileage && mileageInterval && currentDisplay != null ? (
               <p className="text-xs text-garage-text-muted mt-1">
-                Current: {Math.round(currentDisplay).toLocaleString(getActiveLocale())} + {mileageInterval.toLocaleString(getActiveLocale())} = {Math.round(absoluteTarget ?? 0).toLocaleString(getActiveLocale())} {UnitFormatter.getDistanceUnit(system)} target
+                {t('reminderForm.mileageTargetHint', {
+                  current: Math.round(currentDisplay).toLocaleString(getActiveLocale()),
+                  interval: mileageInterval.toLocaleString(getActiveLocale()),
+                  target: Math.round(absoluteTarget ?? 0).toLocaleString(getActiveLocale()),
+                  unit: UnitFormatter.getDistanceUnit(system),
+                })}
               </p>
             ) : !hasMileage ? (
               <p className="text-xs text-warning mt-1">{t('reminder.noOdometerData')}</p>

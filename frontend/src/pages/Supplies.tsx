@@ -316,7 +316,7 @@ export function SupplyForm({ supply, onClose, onSuccess }: SupplyFormProps) {
                 type="text"
                 id="name"
                 {...register('name')}
-                placeholder="Motor Oil 5W-30"
+                placeholder={t('suppliesPage.namePlaceholder')}
                 className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-primary bg-garage-bg text-garage-text ${
                   errors.name ? 'border-red-500' : 'border-garage-border'
                 }`}
@@ -375,7 +375,7 @@ export function SupplyForm({ supply, onClose, onSuccess }: SupplyFormProps) {
                 type="text"
                 id="category"
                 {...register('category')}
-                placeholder="Fluids"
+                placeholder={t('suppliesPage.categoryPlaceholder')}
                 className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-primary bg-garage-bg text-garage-text ${
                   errors.category ? 'border-red-500' : 'border-garage-border'
                 }`}

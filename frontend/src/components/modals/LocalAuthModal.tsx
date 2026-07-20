@@ -54,6 +54,17 @@ export default function LocalAuthModal({
   const [passwordChangeLoading, setPasswordChangeLoading] = useState(false)
   const [passwordChangeMessage, setPasswordChangeMessage] = useState<{ type: 'success' | 'error', text: string } | null>(null)
 
+  // Strength of the new password. getPasswordStrength returns a stable
+  // identifier ('Weak' | 'Medium' | 'Strong') — branch on that, never on the
+  // translated text.
+  const newPasswordStrength = getPasswordStrength(newPassword)
+  const newPasswordStrengthLabel =
+    newPasswordStrength.label === 'Strong'
+      ? t('localAuthModalExtra.strength.strong')
+      : newPasswordStrength.label === 'Medium'
+        ? t('localAuthModalExtra.strength.medium')
+        : t('localAuthModalExtra.strength.weak')
+
   // Handle password change
   const handlePasswordChange = async (e: SyntheticEvent<HTMLFormElement>) => {
     e.preventDefault()
@@ -329,13 +340,13 @@ export default function LocalAuthModal({
                               <div className="flex-1 h-1 bg-garage-surface rounded-full overflow-hidden">
                                 <div
                                   className={`h-full transition-all duration-300 ${
-                                    getPasswordStrength(newPassword).color.replace('text-', 'bg-')
+                                    newPasswordStrength.color.replace('text-', 'bg-')
                                   }`}
-                                  style={{ width: `${(getPasswordStrength(newPassword).score / 6) * 100}%` }}
+                                  style={{ width: `${(newPasswordStrength.score / 6) * 100}%` }}
                                 />
                               </div>
-                              <span className={`text-xs font-medium ${getPasswordStrength(newPassword).color}`}>
-                                {getPasswordStrength(newPassword).label}
+                              <span className={`text-xs font-medium ${newPasswordStrength.color}`}>
+                                {newPasswordStrengthLabel}
                               </span>
                             </div>
                             <p className="text-xs text-garage-text-muted">
@@ -499,13 +510,13 @@ export default function LocalAuthModal({
                               <div className="flex-1 h-1 bg-garage-surface rounded-full overflow-hidden">
                                 <div
                                   className={`h-full transition-all duration-300 ${
-                                    getPasswordStrength(newPassword).color.replace('text-', 'bg-')
+                                    newPasswordStrength.color.replace('text-', 'bg-')
                                   }`}
-                                  style={{ width: `${(getPasswordStrength(newPassword).score / 6) * 100}%` }}
+                                  style={{ width: `${(newPasswordStrength.score / 6) * 100}%` }}
                                 />
                               </div>
-                              <span className={`text-xs font-medium ${getPasswordStrength(newPassword).color}`}>
-                                {getPasswordStrength(newPassword).label}
+                              <span className={`text-xs font-medium ${newPasswordStrength.color}`}>
+                                {newPasswordStrengthLabel}
                               </span>
                             </div>
                             <p className="text-xs text-garage-text-muted">

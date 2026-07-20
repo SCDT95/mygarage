@@ -314,7 +314,11 @@ export default function FamilyManagementModal({ isOpen, onClose }: FamilyManagem
       await api.post('/settings/batch', {
         settings: { multi_user_enabled: newValue },
       })
-      toast.success(`{t('modal.multiUserMode')} ${enabled ? 'enabled' : 'disabled'}`)
+      toast.success(
+        enabled
+          ? t('familyManagementModal.multiUserModeEnabled')
+          : t('familyManagementModal.multiUserModeDisabled')
+      )
       await reloadAll()
     } catch {
       toast.error(t('modal.failedToUpdateMultiUser'))
@@ -464,7 +468,7 @@ export default function FamilyManagementModal({ isOpen, onClose }: FamilyManagem
                         className="w-4 h-4 text-primary bg-garage-bg border-garage-border rounded focus:ring-primary focus:ring-2"
                       />
                       <span className="text-sm font-medium text-garage-text">
-                        Multi-user mode
+                        {t('familyManagementModal.multiUserMode')}
                       </span>
                     </label>
                   ) : (
@@ -486,7 +490,7 @@ export default function FamilyManagementModal({ isOpen, onClose }: FamilyManagem
                           className="flex items-center gap-2 px-3 py-2 bg-primary text-white rounded-lg hover:bg-primary/90 transition-colors text-sm"
                         >
                           <UserPlus className="w-4 h-4" />
-                          Add User
+                          {t('familyManagementModal.addUser')}
                         </button>
                       </>
                     )}

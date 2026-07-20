@@ -194,7 +194,6 @@
     "serverUrl": "URL сервера"
   },
   "pushover": {
-    "apiToken": "Токен API",
     "enable": "Увімкнути сповіщення Pushover",
     "userKey": "Ключ користувача"
   },
@@ -214,7 +213,6 @@
     "enable": "Увімкнути сповіщення електронною поштою",
     "fromAddress": "Адреса відправника",
     "smtpHost": "SMTP-сервер",
-    "smtpPassword": "Пароль SMTP",
     "smtpUsername": "Ім'я користувача SMTP",
     "toAddress": "Адреса отримувача"
   },

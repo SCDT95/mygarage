@@ -243,7 +243,6 @@
     "validation": "Bitte überprüfe deine Eingabe und versuche es erneut."
   },
   "footer": "MyGarage v{{version}} - Selbstgehosteter Fahrzeug-Wartungsplaner",
-  "actions": "Aktionen",
   "active": "Aktiv",
   "additionalNotes": "Zusätzliche Notizen",
   "admin": "Admin",
