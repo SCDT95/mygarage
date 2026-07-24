@@ -952,6 +952,18 @@
     "service": "Service",
     "upcoming": "{{count}} Upcoming"
   },
+  "vehicleTypeLabels": {
+    "Car": "Car",
+    "SUV": "SUV",
+    "Truck": "Truck",
+    "Motorcycle": "Motorcycle",
+    "RV": "RV",
+    "Trailer": "Trailer",
+    "FifthWheel": "Fifth Wheel",
+    "TravelTrailer": "Travel Trailer",
+    "Electric": "Electric",
+    "Hybrid": "Hybrid"
+  },
   "vendorSearch": {
     "noResults": "No vendors found",
     "placeholder": "Search vendors...",

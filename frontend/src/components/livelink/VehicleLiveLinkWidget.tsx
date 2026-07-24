@@ -101,15 +101,29 @@ export default function VehicleLiveLinkWidget({ vin }: VehicleLiveLinkWidgetProp
   const isRunning = status.ecu_status === 'online'
   const isOnline = status.device_status === 'online'
 
+  const openLiveTab = () => {
+    navigate(`/vehicles/${vin}?tab=live`)
+  }
   const handleClick = (e: React.MouseEvent) => {
     e.stopPropagation()
-    navigate(`/vehicles/${vin}?tab=live`)
+    openLiveTab()
+  }
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault()
+      e.stopPropagation()
+      openLiveTab()
+    }
   }
 
   return (
     <div
       onClick={handleClick}
-      className={`mt-3 p-3 rounded-lg border cursor-pointer transition-all ${
+      onKeyDown={handleKeyDown}
+      role="button"
+      tabIndex={0}
+      aria-label={t('livelink.widget.title')}
+      className={`ui-focus-ring relative z-10 mt-3 p-3 rounded-lg border cursor-pointer transition-all ${
         isRunning
           ? 'bg-green-500/10 border-green-500/30 hover:border-green-500/50'
           : isOnline
