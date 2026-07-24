@@ -135,4 +135,17 @@ describe('VehicleWizard — canonical fuel-type select', () => {
     fireEvent.click(screen.getByRole('button', { name: 'common:close' }))
     expect(onClose).toHaveBeenCalled()
   })
+
+  it('advances to step 2 via the Next button lifted into the Drawer footer', async () => {
+    renderAndEnterVin()
+
+    const nextButton = await screen.findByRole('button', { name: 'wizard.next' })
+    // Prove the control lives in the Drawer's <footer> slot, not the body.
+    expect(nextButton.closest('footer')).not.toBeNull()
+
+    await waitFor(() => expect(nextButton).not.toBeDisabled())
+    fireEvent.click(nextButton)
+    // Step 2 heading proves the footer click advanced the wizard.
+    expect(await screen.findByText('edit.vehicleDetails')).toBeInTheDocument()
+  })
 })
