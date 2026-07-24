@@ -51,6 +51,7 @@ vi.mock('sonner', () => ({
 vi.mock('../../services/vehicleService', () => ({
   default: {
     get: vi.fn(),
+    getDetailStats: vi.fn(),
   },
 }))
 vi.mock('../../services/livelinkService', () => ({
@@ -129,6 +130,7 @@ describe('VehicleDetail — tablist accessible names', () => {
     vi.clearAllMocks()
     localStorage.clear()
     mockedVehicleService.get.mockResolvedValue(mockVehicle)
+    mockedVehicleService.getDetailStats.mockRejectedValue(new Error('no stats'))
     mockedLivelinkService.hasLinkedDevice.mockResolvedValue(false)
   })
 

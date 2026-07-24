@@ -32,7 +32,7 @@ import type { LucideIcon } from 'lucide-react'
 import vehicleService from '../services/vehicleService'
 import api from '../services/api'
 import { withBase } from '../utils/basePath'
-import type { Vehicle } from '../types/vehicle'
+import type { Vehicle, VehicleDetailStats } from '../types/vehicle'
 import type { LastLocation } from '../types/trips'
 import { isDieselFuelType } from '../constants/fuel'
 import ServiceTab from '../components/tabs/ServiceTab'
@@ -128,6 +128,7 @@ export default function VehicleDetail() {
   const [showMobileMenu, setShowMobileMenu] = useState(false)
   const [hasLiveLinkDevice, setHasLiveLinkDevice] = useState(false)
   const [lastLocation, setLastLocation] = useState<LastLocation | null>(null)
+  const [detailStats, setDetailStats] = useState<VehicleDetailStats | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const isOnline = useOnlineStatus()
   const loadVehicle = useCallback(async () => {
@@ -196,6 +197,29 @@ export default function VehicleDetail() {
       }
     }
     fetchLastLocation()
+  }, [vin])
+
+  // Fetch the hero/key-facts read-aggregation (overdue/upcoming/reading/last-service/
+  // last-fill-up/spent-YTD). Independent secondary fetch — the detail page never
+  // blocks on it (the hero renders without the reading/badge and the key-facts
+  // strip is omitted entirely until it resolves; no layout is reserved).
+  // B3: clear stats on vin change so B never shows A's numbers, and ignore a
+  // stale A response that resolves after we've navigated to B.
+  useEffect(() => {
+    if (!vin) return
+    let cancelled = false
+    setDetailStats(null)
+    vehicleService
+      .getDetailStats(vin)
+      .then((stats) => {
+        if (!cancelled) setDetailStats(stats)
+      })
+      .catch(() => {
+        if (!cancelled) setDetailStats(null)
+      })
+    return () => {
+      cancelled = true
+    }
   }, [vin])
 
   // Handle URL tab parameter from calendar navigation
@@ -509,7 +533,7 @@ export default function VehicleDetail() {
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-screen" role="status" aria-label={t('detail.loading')}>
-        <div className="w-12 h-12 border-4 border-primary border-t-transparent rounded-full animate-spin" />
+        <div className="h-12 w-12 rounded-full border-4 border-[color:var(--accent-solid)] border-t-transparent animate-spin" />
         <span className="sr-only">{t('detail.loading')}</span>
       </div>
     )
@@ -517,14 +541,14 @@ export default function VehicleDetail() {
 
   if (error || !vehicle) {
     return (
-      <div className="container mx-auto px-4 py-8">
-        <div className="bg-danger/10 border border-danger rounded-lg p-6 text-center">
-          <p className="text-danger mb-4">{error || t('detail.vehicleNotFound')}</p>
+      <div className="mx-auto max-w-[1120px] px-[clamp(16px,3vw,30px)] py-8">
+        <div className="rounded-panel border border-danger bg-danger/10 p-6 text-center">
+          <p className="mb-4 text-danger">{error || t('detail.vehicleNotFound')}</p>
           <Link
             to="/"
-            className="inline-flex items-center space-x-2 px-4 py-2 bg-garage-surface border border-garage-border rounded-lg hover:bg-garage-bg transition-colors"
+            className="inline-flex items-center gap-2 rounded-control border border-border bg-surface px-4 py-2 hover:bg-surface-2 transition-colors"
           >
-            <ArrowLeft className="w-4 h-4" />
+            <ArrowLeft className="h-4 w-4" />
             <span>{t('detail.backToDashboard')}</span>
           </Link>
         </div>
@@ -537,42 +561,38 @@ export default function VehicleDetail() {
     : null
 
   return (
-    <div className="min-h-screen bg-garage-bg pb-8">
-      {/* Header */}
-      <div className="bg-garage-surface border-b border-garage-border">
-        <div className="container mx-auto px-4 py-6">
-          {/* Header: relative container so mobile MoreVertical can be absolute-positioned */}
-          <div className="relative md:flex md:items-start md:justify-between">
-            <VehicleHero vehicle={vehicle} photoUrl={photoUrl} fromCache={fromCache} />
+    <div className="min-h-screen bg-bg pb-8">
+      <div className="mx-auto max-w-[1120px] px-[clamp(16px,3vw,30px)] pt-6">
+        {/* Back link (prototype dc.html:243) */}
+        <Link
+          to="/"
+          className="mb-4 inline-flex items-center gap-1.5 text-sm text-text-mute hover:text-text transition-colors"
+        >
+          <ArrowLeft className="h-4 w-4" />
+          <span>{t('detail.backToGarage')}</span>
+        </Link>
 
-            {/* Hidden file input for import */}
-            <input
-              ref={fileInputRef}
-              type="file"
-              accept=".json"
-              onChange={handleImportJSON}
-              className="hidden"
-            />
+        {/* Hero */}
+        <VehicleHero vehicle={vehicle} photoUrl={photoUrl} fromCache={fromCache} detailStats={detailStats} />
 
-            <VehicleActionsToolbar
-              vin={vin!}
-              isAdmin={isAdmin}
-              importing={importing}
-              exporting={exporting}
-              isOnline={isOnline}
-              onImportClick={handleImportClick}
-              onExport={handleExportJSON}
-              onOpenModal={setOpenModal}
-              onOpenMobileMenu={() => setShowMobileMenu(true)}
-            />
-          </div>
+        {/* Hidden file input for import */}
+        <input ref={fileInputRef} type="file" accept=".json" onChange={handleImportJSON} className="hidden" />
 
-          <VehiclePrimaryTabs
-            tabs={primaryTabs}
-            activeTab={activePrimaryTab}
-            onTabClick={handlePrimaryTabClick}
-          />
-        </div>
+        {/* Actions row + secondary toolbar (Task 4 restyle) */}
+        <VehicleActionsToolbar
+          vin={vin!}
+          isAdmin={isAdmin}
+          importing={importing}
+          exporting={exporting}
+          isOnline={isOnline}
+          onImportClick={handleImportClick}
+          onExport={handleExportJSON}
+          onOpenModal={setOpenModal}
+          onOpenMobileMenu={() => setShowMobileMenu(true)}
+        />
+
+        {/* Primary tabs */}
+        <VehiclePrimaryTabs tabs={primaryTabs} activeTab={activePrimaryTab} onTabClick={handlePrimaryTabClick} />
       </div>
 
       {/* Sub-tabs (if applicable) */}

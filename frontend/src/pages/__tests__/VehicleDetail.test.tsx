@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen, waitFor, fireEvent, within } from '@testing-library/react'
-import { MemoryRouter, Route, Routes } from 'react-router-dom'
+import { Link, MemoryRouter, Route, Routes } from 'react-router-dom'
 
 // Mock all tab components to avoid deep dependency trees
 vi.mock('../../components/tabs/ServiceTab', () => ({ default: () => <div>ServiceTab</div> }))
@@ -52,6 +52,7 @@ vi.mock('sonner', () => ({
 vi.mock('../../services/vehicleService', () => ({
   default: {
     get: vi.fn(),
+    getDetailStats: vi.fn(),
   },
 }))
 vi.mock('../../services/livelinkService', () => ({
@@ -95,7 +96,7 @@ vi.mock('../../contexts/AuthContext', () => ({
 import vehicleService from '../../services/vehicleService'
 import { livelinkService } from '../../services/livelinkService'
 import { useAuth } from '../../contexts/AuthContext'
-import type { Vehicle, VehicleType } from '../../types/vehicle'
+import type { Vehicle, VehicleDetailStats, VehicleType } from '../../types/vehicle'
 import VehicleDetail from '../VehicleDetail'
 
 const mockedVehicleService = vi.mocked(vehicleService)
@@ -134,6 +135,7 @@ describe('VehicleDetail', () => {
     vi.clearAllMocks()
     localStorage.clear()
     mockedVehicleService.get.mockResolvedValue(mockVehicle)
+    mockedVehicleService.getDetailStats.mockRejectedValue(new Error('no stats'))
     mockedLivelinkService.hasLinkedDevice.mockResolvedValue(false)
   })
 
@@ -376,5 +378,56 @@ describe('VehicleDetail', () => {
     })
 
     expect(screen.getByTitle('detail.misc.transferTooltip')).toBeInTheDocument()
+  })
+
+  // --- Detail-stats fetch (P5 Task 3) ---
+
+  it('fetches detail-stats for the current vin', async () => {
+    renderVehicleDetail()
+    await waitFor(() => expect(screen.getByText('Test Car')).toBeInTheDocument())
+    expect(mockedVehicleService.getDetailStats).toHaveBeenCalledWith('TEST12345678901234')
+  })
+
+  it('does not let a stale A response overwrite B after navigating A->B (B3)', async () => {
+    // Distinguish A vs B by HERO-visible status only (both rendered in THIS task):
+    // A is overdue, B is upcoming. Under the key-returning t() mock the badge text
+    // is the i18n key, so A shows 'vehicleStats.overdue' and B shows
+    // 'vehicleStats.upcoming' — no key-facts strip (Task 5), no unit/currency
+    // formatting. A resolves LATE (deferred); B resolves immediately; B must win.
+    let resolveA: (value: VehicleDetailStats) => void = () => {}
+    const A_STATS: VehicleDetailStats = {
+      overdue_count: 3, upcoming_count: 0,
+      latest_odometer_km: null, latest_odometer_date: null,
+      last_service_date: null, last_fillup_date: null,
+      spent_this_year: '0.00', year: 2026,
+    }
+    const B_STATS: VehicleDetailStats = { ...A_STATS, overdue_count: 0, upcoming_count: 4 }
+    mockedVehicleService.getDetailStats.mockImplementation((vin: string) =>
+      vin === 'AAAAAAAAAAAAAAAAA'
+        ? new Promise<VehicleDetailStats>((res) => { resolveA = res })
+        : Promise.resolve(B_STATS),
+    )
+    render(
+      <MemoryRouter initialEntries={['/vehicles/AAAAAAAAAAAAAAAAA']}>
+        <Routes>
+          <Route path="/vehicles/:vin" element={<VehicleDetail />} />
+        </Routes>
+        <Link to="/vehicles/BBBBBBBBBBBBBBBBB">go B</Link>
+      </MemoryRouter>,
+    )
+    await waitFor(() => expect(screen.getByText('Test Car')).toBeInTheDocument())
+    // Navigate A -> B (same route element, useParams changes -> [vin] effect re-runs).
+    fireEvent.click(screen.getByText('go B'))
+    // B rendered: hero shows the UPCOMING badge (overdue 0), never overdue.
+    await waitFor(() => expect(screen.getByText('vehicleStats.upcoming')).toBeInTheDocument())
+    expect(screen.queryByText('vehicleStats.overdue')).not.toBeInTheDocument()
+    // The stale A response now arrives; the cancelled guard must swallow it.
+    resolveA(A_STATS)
+    // Meaningful flush: awaiting waitFor yields to the microtask queue so A's
+    // .then() runs (and no-ops under the guard). B's upcoming badge must still
+    // stand and A's overdue badge must never appear. Without the guard, A would
+    // overwrite B here -> the upcoming badge vanishes and this waitFor throws.
+    await waitFor(() => expect(screen.getByText('vehicleStats.upcoming')).toBeInTheDocument())
+    expect(screen.queryByText('vehicleStats.overdue')).not.toBeInTheDocument()
   })
 })
