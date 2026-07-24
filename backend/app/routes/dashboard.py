@@ -28,6 +28,7 @@ from app.schemas.dashboard import (
 )
 from app.services.auth import require_auth
 from app.services.fuel_service import compute_full_tank_economy
+from app.services.odometer_service import latest_odometer_km_and_date
 from app.services.service_visit_service import service_visit_cost_load_options
 
 router = APIRouter(prefix="/api/dashboard", tags=["dashboard"])
@@ -90,19 +91,9 @@ async def calculate_vehicle_stats(
         .limit(1)
     )
 
-    # Get latest odometer_km reading and date
-    latest_odometer_record = await db.execute(
-        select(OdometerRecord.odometer_km, OdometerRecord.date)
-        .where(OdometerRecord.vin == vehicle.vin)
-        .order_by(OdometerRecord.date.desc())
-        .limit(1)
-    )
-    latest_odometer = latest_odometer_record.first()
-    latest_odometer_km: Decimal | None = None
-    latest_odometer_date: date_type | None = None
-    if latest_odometer:
-        latest_odometer_km = latest_odometer[0]
-        latest_odometer_date = latest_odometer[1]
+    # Latest odometer reading (km) + its date — one deterministic fetch shared
+    # with detail-stats (date DESC, id DESC tie-break; odometer_service). R2-B1.
+    latest_odometer_km, latest_odometer_date = await latest_odometer_km_and_date(db, vehicle.vin)
 
     # Count upcoming and overdue reminders
     today = date_type.today()
@@ -111,14 +102,10 @@ async def calculate_vehicle_stats(
     )
     pending_reminders = pending_reminders_result.scalars().all()
 
-    # Get current odometer_km for overdue check
-    current_odometer_record = await db.execute(
-        select(OdometerRecord.odometer_km)
-        .where(OdometerRecord.vin == vehicle.vin)
-        .order_by(OdometerRecord.date.desc())
-        .limit(1)
-    )
-    current_odometer_km = current_odometer_record.scalar_one_or_none()
+    # Reuse the SAME fetched reading for the mileage-reminder evaluation so the
+    # displayed reading and the mileage eval can never disagree — and so the
+    # dashboard card and the detail hero agree on a same-date-reading vehicle. R2-B1.
+    current_odometer_km = latest_odometer_km
 
     upcoming_count = 0
     overdue_count = 0

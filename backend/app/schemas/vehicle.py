@@ -365,3 +365,20 @@ class VehicleArchiveRequest(BaseModel):
             ]
         }
     }
+
+
+class VehicleDetailStats(BaseModel):
+    """Read-aggregation for the Vehicle Detail hero + key-facts strip (P5).
+
+    Metric-canonical: latest_odometer_km is raw km (frontend converts at the
+    boundary). spent_this_year is currency (Decimal -> JSON string).
+    """
+
+    overdue_count: int
+    upcoming_count: int
+    latest_odometer_km: Decimal | None  # required-but-nullable (M2) — NO `= None` default
+    latest_odometer_date: date | None  # required-but-nullable (M2) — NO `= None` default
+    last_service_date: date | None  # required-but-nullable (M2) — NO `= None` default
+    last_fillup_date: date | None  # required-but-nullable (M2) — NO `= None` default
+    spent_this_year: Decimal
+    year: int

@@ -16845,6 +16845,88 @@
         "title": "VehicleDTCUpdate",
         "type": "object"
       },
+      "VehicleDetailStats": {
+        "description": "Read-aggregation for the Vehicle Detail hero + key-facts strip (P5).\n\nMetric-canonical: latest_odometer_km is raw km (frontend converts at the\nboundary). spent_this_year is currency (Decimal -> JSON string).",
+        "properties": {
+          "last_fillup_date": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Fillup Date"
+          },
+          "last_service_date": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Service Date"
+          },
+          "latest_odometer_date": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Latest Odometer Date"
+          },
+          "latest_odometer_km": {
+            "anyOf": [
+              {
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Latest Odometer Km"
+          },
+          "overdue_count": {
+            "title": "Overdue Count",
+            "type": "integer"
+          },
+          "spent_this_year": {
+            "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+            "title": "Spent This Year",
+            "type": "string"
+          },
+          "upcoming_count": {
+            "title": "Upcoming Count",
+            "type": "integer"
+          },
+          "year": {
+            "title": "Year",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "overdue_count",
+          "upcoming_count",
+          "latest_odometer_km",
+          "latest_odometer_date",
+          "last_service_date",
+          "last_fillup_date",
+          "spent_this_year",
+          "year"
+        ],
+        "title": "VehicleDetailStats",
+        "type": "object"
+      },
       "VehicleListResponse": {
         "description": "Schema for vehicle list response.",
         "examples": [
@@ -28883,6 +28965,54 @@
         "summary": "Update Def Record",
         "tags": [
           "DEF Records"
+        ]
+      }
+    },
+    "/api/vehicles/{vin}/detail-stats": {
+      "get": {
+        "description": "Read-aggregation for the Vehicle Detail hero + key-facts strip.\n\nRequires READ access to the vehicle (owner, admin, or a read/write share).\nReturns 404 if the vehicle does not exist, 403 if the caller lacks access.",
+        "operationId": "get_vehicle_detail_stats_api_vehicles__vin__detail_stats_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "vin",
+            "required": true,
+            "schema": {
+              "title": "Vin",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/VehicleDetailStats"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Get Vehicle Detail Stats",
+        "tags": [
+          "Vehicles"
         ]
       }
     },

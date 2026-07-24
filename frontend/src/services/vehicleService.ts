@@ -13,6 +13,7 @@ import type {
   TrailerDetails,
   TrailerDetailsCreate,
   TrailerDetailsUpdate,
+  VehicleDetailStats,
 } from '../types/vehicle'
 import type { PhotoUpdate } from '../types/photo'
 
@@ -36,6 +37,14 @@ export const vehicleService = {
    */
   async get(vin: string): Promise<Vehicle> {
     const response = await api.get<Vehicle>(`/vehicles/${vin}`)
+    return response.data
+  },
+
+  /**
+   * Read-aggregation for the Vehicle Detail hero + key-facts strip.
+   */
+  async getDetailStats(vin: string): Promise<VehicleDetailStats> {
+    const response = await api.get<VehicleDetailStats>(`/vehicles/${vin}/detail-stats`)
     return response.data
   },
 
