@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next'
 import { Plus, Car as CarIcon, RefreshCw, ChevronDown } from 'lucide-react'
 import VehicleStatisticsCard from '../components/VehicleStatisticsCard'
 import VehicleWizard from '../components/VehicleWizard'
+import FleetHealthStrip from '../components/FleetHealthStrip'
 import { PageHeader, Dropdown, Button } from '../components/ui'
 import type { DropdownItem } from '../components/ui'
 import type { DashboardResponse } from '../types/dashboard'
@@ -161,6 +162,7 @@ export default function Dashboard() {
           </div>
         ) : dashboard && vehicleCount > 0 ? (
           <div>
+            {dashboard.fleet_health && <FleetHealthStrip fleet={dashboard.fleet_health} />}
 
             {/* Vehicles Grid */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">

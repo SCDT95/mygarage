@@ -90,6 +90,13 @@
     "byMaintenance": "By Maintenance",
     "filterTrigger": "Filter: {{label}}",
     "filterVehicles": "Filter vehicles",
+    "fleet": {
+      "overdueCaption": "Overdue · needs attention",
+      "upcomingCaption": "Upcoming · next 30 days",
+      "spentLabel": "Spent",
+      "nextDueLabel": "Next due",
+      "nextDueNone": "Nothing scheduled"
+    },
     "getStarted": "Get started by adding your first vehicle",
     "loadError": "Failed to load dashboard. Please try again.",
     "loading": "Loading dashboard...",
