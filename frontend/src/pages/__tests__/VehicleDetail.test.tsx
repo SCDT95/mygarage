@@ -16,6 +16,8 @@ vi.mock('../../components/tabs/TollsTab', () => ({ default: () => <div>TollsTab<
 vi.mock('../../components/tabs/SafetyTab', () => ({ default: () => <div>SafetyTab</div> }))
 vi.mock('../../components/tabs/SpotRentalsTab', () => ({ default: () => <div>SpotRentalsTab</div> }))
 vi.mock('../../components/tabs/PropaneTab', () => ({ default: () => <div>PropaneTab</div> }))
+vi.mock('../../components/tabs/DEFTab', () => ({ default: () => <div>DEFTab</div> }))
+vi.mock('../../components/ReminderList', () => ({ default: () => <div>ReminderList</div> }))
 vi.mock('../../components/tabs/LiveLinkLiveTab', () => ({ default: () => <div>LiveLinkLiveTab</div> }))
 vi.mock('../../components/tabs/LiveLinkDTCsTab', () => ({ default: () => <div>LiveLinkDTCsTab</div> }))
 vi.mock('../../components/tabs/LiveLinkSessionsTab', () => ({ default: () => <div>LiveLinkSessionsTab</div> }))
@@ -429,5 +431,109 @@ describe('VehicleDetail', () => {
     // overwrite B here -> the upcoming badge vanishes and this waitFor throws.
     await waitFor(() => expect(screen.getByText('vehicleStats.upcoming')).toBeInTheDocument())
     expect(screen.queryByText('vehicleStats.overdue')).not.toBeInTheDocument()
+  })
+
+  // --- Actions row + equipment expand (P5 Task 4) ---
+
+  it('Log Service switches to Maintenance/service (SDQ-1)', async () => {
+    renderVehicleDetail()
+    await waitFor(() => expect(screen.getByText('Test Car')).toBeInTheDocument())
+    fireEvent.click(screen.getByRole('button', { name: 'detail.hero.logService' }))
+    expect(await screen.findByText('ServiceTab')).toBeInTheDocument()
+  })
+
+  it('Add Fuel on a motorized car opens Fuel/fuel (SDQ-1)', async () => {
+    renderVehicleDetail()
+    await waitFor(() => expect(screen.getByText('Test Car')).toBeInTheDocument())
+    fireEvent.click(screen.getByRole('button', { name: 'detail.hero.addFuel' }))
+    expect(await screen.findByText('FuelTab')).toBeInTheDocument()
+  })
+
+  it('Add Fuel on a fifth-wheel with DEF+propane opens DEF, not Propane (B6)', async () => {
+    // Non-motorized (FifthWheel) + diesel -> hasDEF && hasPropane. First visible
+    // fuel sub-tab is DEF (config order Fuel->DEF->Propane). Buggy propane-first
+    // ordering would render PropaneTab instead.
+    mockedVehicleService.get.mockResolvedValue({
+      ...mockVehicle, vehicle_type: 'FifthWheel', fuel_type: 'diesel',
+    })
+    renderVehicleDetail()
+    await waitFor(() => expect(screen.getByText('Test Car')).toBeInTheDocument())
+    fireEvent.click(screen.getByRole('button', { name: 'detail.hero.addFuel' }))
+    expect(await screen.findByText('DEFTab')).toBeInTheDocument()
+    expect(screen.queryByText('PropaneTab')).not.toBeInTheDocument()
+  })
+
+  it('Reminder switches the active primary tab to Tracking (SDQ-1)', async () => {
+    renderVehicleDetail()
+    await waitFor(() => expect(screen.getByText('Test Car')).toBeInTheDocument())
+    fireEvent.click(screen.getByRole('button', { name: 'detail.hero.reminder' }))
+    await waitFor(() =>
+      expect(
+        screen.getAllByRole('tab', { name: 'detail.tabs.tracking' })
+          .some((el) => el.getAttribute('aria-selected') === 'true'),
+      ).toBe(true),
+    )
+  })
+
+  it('Standard/Optional expand AND scroll the read-only equipment <details> (SDQ-2, M6)', async () => {
+    const scrollSpy = vi.fn()
+    const original = Element.prototype.scrollIntoView
+    Element.prototype.scrollIntoView = scrollSpy
+    try {
+      mockedVehicleService.get.mockResolvedValue({
+        ...mockVehicle,
+        standard_equipment: { items: ['ABS', 'Airbags'] },
+        optional_equipment: { items: ['Sunroof'] },
+      })
+      renderVehicleDetail()
+      await waitFor(() => expect(screen.getByText('Test Car')).toBeInTheDocument())
+      // Overview is the default tab, so both <details> are mounted with refs.
+
+      // Standard: opens its <details> AND scrolls it into view. Deleting the
+      // scrollIntoView(...) line from the Task-4 effect makes the count stay 0.
+      fireEvent.click(screen.getByRole('button', { name: 'detail.hero.standard' }))
+      await waitFor(() =>
+        expect(screen.getByText('detail.standardEquipment').closest('details')?.open).toBe(true),
+      )
+      await waitFor(() => expect(scrollSpy).toHaveBeenCalledTimes(1))
+
+      // Optional: opens + scrolls the SECOND, distinct target.
+      fireEvent.click(screen.getByRole('button', { name: 'detail.hero.optional' }))
+      await waitFor(() =>
+        expect(screen.getByText('detail.optionalEquipment').closest('details')?.open).toBe(true),
+      )
+      await waitFor(() => expect(scrollSpy).toHaveBeenCalledTimes(2))
+
+      // Repeat-click Standard: the new signal object (nonce) re-fires the effect,
+      // so a repeat click is NOT a silent no-op -> a third scroll.
+      fireEvent.click(screen.getByRole('button', { name: 'detail.hero.standard' }))
+      await waitFor(() => expect(scrollSpy).toHaveBeenCalledTimes(3))
+    } finally {
+      Element.prototype.scrollIntoView = original
+    }
+  })
+
+  it('with only optional equipment: Standard button hidden, Optional opens + scrolls (B7/M6)', async () => {
+    const scrollSpy = vi.fn()
+    const original = Element.prototype.scrollIntoView
+    Element.prototype.scrollIntoView = scrollSpy
+    try {
+      mockedVehicleService.get.mockResolvedValue({
+        ...mockVehicle,
+        standard_equipment: null,
+        optional_equipment: { items: ['Sunroof'] },
+      })
+      renderVehicleDetail()
+      await waitFor(() => expect(screen.getByText('Test Car')).toBeInTheDocument())
+      // No standard list -> no Standard button; Optional present and functional.
+      expect(screen.queryByRole('button', { name: 'detail.hero.standard' })).not.toBeInTheDocument()
+      fireEvent.click(screen.getByRole('button', { name: 'detail.hero.optional' }))
+      await waitFor(() =>
+        expect(screen.getByText('detail.optionalEquipment').closest('details')?.open).toBe(true),
+      )
+      await waitFor(() => expect(scrollSpy).toHaveBeenCalledTimes(1))
+    } finally {
+      Element.prototype.scrollIntoView = original
+    }
   })
 })

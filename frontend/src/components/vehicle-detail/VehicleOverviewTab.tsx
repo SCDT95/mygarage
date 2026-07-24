@@ -1,4 +1,4 @@
-import { lazy, Suspense } from 'react'
+import { lazy, Suspense, useEffect, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Link } from 'react-router-dom'
 import { Calendar, FileText, Radio } from 'lucide-react'
@@ -13,6 +13,7 @@ import { useDateLocale } from '../../hooks/useDateLocale'
 import { useTimeFormat } from '../../hooks/useTimeFormat'
 import { formatDateTime } from '../../utils/parseAPITimestamp'
 import TransferHistorySection from '../TransferHistorySection'
+import type { EquipmentExpandSignal } from '../../pages/VehicleDetail'
 
 // Lazy-load map component — keeps Leaflet's ~150KB out of the main bundle
 const LastLocationMap = lazy(() => import('../maps/LastLocationMap'))
@@ -21,6 +22,7 @@ interface VehicleOverviewTabProps {
   vin: string
   vehicle: Vehicle
   lastLocation: LastLocation | null
+  expandEquipment: EquipmentExpandSignal | null
   onOpenModal: (modal: 'torqueSource' | 'windowSticker') => void
   onDownloadWindowSticker: () => void
 }
@@ -28,16 +30,27 @@ interface VehicleOverviewTabProps {
 /**
  * Vehicle Detail Overview tab content. Mechanically extracted from
  * VehicleDetail.tsx (P5 Task 1, verbatim — no restyle). Equipment expand/scroll
- * wiring lands in Task 4; the Card/CardHeader/Mono restyle lands in Task 7.
+ * wiring lands in Task 4 (behavioral only); the Card/CardHeader/Mono restyle
+ * lands in Task 7, which preserves the refs + effect below.
  */
 export default function VehicleOverviewTab({
-  vin, vehicle, lastLocation, onOpenModal, onDownloadWindowSticker,
+  vin, vehicle, lastLocation, expandEquipment, onOpenModal, onDownloadWindowSticker,
 }: VehicleOverviewTabProps) {
   const { t } = useTranslation('vehicles')
   const { system: unitSystem } = useUnitPreference()
   const dateLocale = useDateLocale()
   const { currencyCode, locale } = useCurrencyPreference()
   const { timeFormat } = useTimeFormat()
+  const standardRef = useRef<HTMLDetailsElement>(null)
+  const optionalRef = useRef<HTMLDetailsElement>(null)
+
+  useEffect(() => {
+    if (!expandEquipment) return
+    const el = expandEquipment.which === 'standard' ? standardRef.current : optionalRef.current
+    if (!el) return
+    el.open = true
+    el.scrollIntoView({ behavior: 'smooth', block: 'start' })
+  }, [expandEquipment])
 
   // Recomputed locally (was VehicleDetail.tsx:444) — the Overview reads it for
   // the VIN-decoded / powertrain / non-motorized-fuel-type gates.
@@ -430,7 +443,7 @@ export default function VehicleOverviewTab({
 
       {/* Standard Equipment - Collapsible */}
       {vehicle.standard_equipment && typeof vehicle.standard_equipment === 'object' && Object.keys(vehicle.standard_equipment).length > 0 && (
-        <details className="bg-garage-surface rounded-lg border border-garage-border p-6 break-inside-avoid group">
+        <details ref={standardRef} className="bg-garage-surface rounded-lg border border-garage-border p-6 break-inside-avoid group">
           <summary className="text-xl font-semibold text-garage-text cursor-pointer list-none flex items-center justify-between">
             <span>{t('detail.standardEquipment')}</span>
             <span className="text-sm font-normal text-garage-text-muted group-open:rotate-180 transition-transform">▼</span>
@@ -459,7 +472,7 @@ export default function VehicleOverviewTab({
 
       {/* Optional Equipment with Pricing - Collapsible */}
       {vehicle.optional_equipment && typeof vehicle.optional_equipment === 'object' && Object.keys(vehicle.optional_equipment).length > 0 && (
-        <details className="bg-garage-surface rounded-lg border border-garage-border p-6 break-inside-avoid group">
+        <details ref={optionalRef} className="bg-garage-surface rounded-lg border border-garage-border p-6 break-inside-avoid group">
           <summary className="text-xl font-semibold text-garage-text cursor-pointer list-none flex items-center justify-between">
             <span>{t('detail.optionalEquipment')}</span>
             <span className="text-sm font-normal text-garage-text-muted group-open:rotate-180 transition-transform">▼</span>

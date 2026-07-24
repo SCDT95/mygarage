@@ -110,6 +110,12 @@ export type ModalType = 'remove' | 'transfer' | 'sharing' | 'windowSticker' | 't
 export type PrimaryTabType = 'overview' | 'media' | 'maintenance' | 'fuel' | 'tracking' | 'financial' | 'livelink'
 export type SubTabType = 'photos' | 'documents' | 'service' | 'fuel' | 'def' | 'propane' | 'odometer' | 'notes' | 'warranties' | 'insurance' | 'tax' | 'tolls' | 'spotrentals' | 'suppliesused' | 'recalls' | 'reports' | 'reminders' | 'live' | 'dtcs' | 'sessions' | 'charts' | 'trips'
 
+// Hero action buttons switch to the relevant tab + sub-tab (SDQ-1). The
+// Equipment pill (SDQ-2) signals VehicleOverviewTab to expand + scroll a
+// read-only equipment list; the nonce makes a repeat click re-trigger the
+// effect even when `which` is unchanged.
+export interface EquipmentExpandSignal { which: 'standard' | 'optional'; nonce: number }
+
 export default function VehicleDetail() {
   const { t } = useTranslation('vehicles')
   const { vin } = useParams<{ vin: string }>()
@@ -129,6 +135,7 @@ export default function VehicleDetail() {
   const [hasLiveLinkDevice, setHasLiveLinkDevice] = useState(false)
   const [lastLocation, setLastLocation] = useState<LastLocation | null>(null)
   const [detailStats, setDetailStats] = useState<VehicleDetailStats | null>(null)
+  const [expandEquipment, setExpandEquipment] = useState<EquipmentExpandSignal | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const isOnline = useOnlineStatus()
   const loadVehicle = useCallback(async () => {
@@ -160,7 +167,14 @@ export default function VehicleDetail() {
     } finally {
       setLoading(false)
     }
-  }, [vin, t])
+    // `t` intentionally excluded: react-i18next's mock (and some real setups)
+    // hand back a fresh function identity per render. Depending on it here
+    // re-fires this effect — and therefore refetches + remounts the whole
+    // page — on every unrelated state update (e.g. a tab click), which is
+    // both wasteful and, under jsdom, indistinguishable from a real remount
+    // for any test asserting exact side-effect call counts (P5 Task 4).
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [vin])
 
   useEffect(() => {
     loadVehicle()
@@ -402,6 +416,22 @@ export default function VehicleDetail() {
     setActiveSubTab(subTabId as SubTabType)
   }
 
+  // Hero action buttons switch to the relevant tab + sub-tab (SDQ-1) — pure
+  // navigation, no P6-owned drawer state lifted into P5.
+  const goToSection = (primary: PrimaryTabType, sub: SubTabType) => {
+    setActivePrimaryTab(primary)
+    setActiveSubTab(sub)
+  }
+
+  // Equipment pill (SDQ-2): switch to Overview, then signal the Overview tab to
+  // expand + scroll the requested read-only equipment list. The nonce makes a
+  // repeat click re-trigger the effect.
+  const handleEquipmentClick = (which: 'standard' | 'optional') => {
+    setActivePrimaryTab('overview')
+    setActiveSubTab(null)
+    setExpandEquipment({ which, nonce: Date.now() })
+  }
+
   // Download window sticker with authentication
   const handleDownloadWindowSticker = async () => {
     if (!vin) return
@@ -425,6 +455,24 @@ export default function VehicleDetail() {
   // RVs ARE motorized and keep fuel/odometer tabs
   const isMotorized = vehicle?.vehicle_type &&
     !['Trailer', 'FifthWheel', 'TravelTrailer'].includes(vehicle.vehicle_type)
+
+  // Equipment-presence flags (B7) — the actions toolbar hides an Equipment
+  // button when its <details> target (below, in VehicleOverviewTab) is absent.
+  // Optional-chained into a local so no `vehicle.standard_equipment` non-null
+  // deref is written (B5 — strict-clean); `vehicle` is still `Vehicle | null`
+  // here, before the `!vehicle` early return.
+  const standardEquipment = vehicle?.standard_equipment
+  const hasStandardEquipment = Boolean(
+    standardEquipment &&
+    typeof standardEquipment === 'object' &&
+    Object.keys(standardEquipment).length > 0,
+  )
+  const optionalEquipment = vehicle?.optional_equipment
+  const hasOptionalEquipment = Boolean(
+    optionalEquipment &&
+    typeof optionalEquipment === 'object' &&
+    Object.keys(optionalEquipment).length > 0,
+  )
 
   // Check if vehicle is a fifth wheel, travel trailer, or RV (for propane tracking)
   const hasPropane = vehicle?.vehicle_type &&
@@ -580,12 +628,20 @@ export default function VehicleDetail() {
 
         {/* Actions row + secondary toolbar (Task 4 restyle) */}
         <VehicleActionsToolbar
-          vin={vin!}
           isAdmin={isAdmin}
           importing={importing}
           exporting={exporting}
           isOnline={isOnline}
-          onImportClick={handleImportClick}
+          showFuelAction={Boolean(isMotorized || hasDEF || hasPropane)}
+          hasStandardEquipment={hasStandardEquipment}
+          hasOptionalEquipment={hasOptionalEquipment}
+          onLogService={() => goToSection('maintenance', 'service')}
+          onAddFuel={() => goToSection('fuel', isMotorized ? 'fuel' : hasDEF ? 'def' : hasPropane ? 'propane' : 'fuel')}
+          onReminder={() => goToSection('tracking', 'reminders')}
+          onExpandEquipment={handleEquipmentClick}
+          onEdit={() => navigate(`/vehicles/${vin}/edit`)}
+          onAnalytics={() => navigate(`/vehicles/${vin}/analytics`)}
+          onImport={handleImportClick}
           onExport={handleExportJSON}
           onOpenModal={setOpenModal}
           onOpenMobileMenu={() => setShowMobileMenu(true)}
@@ -617,6 +673,7 @@ export default function VehicleDetail() {
             vin={vin!}
             vehicle={vehicle}
             lastLocation={lastLocation}
+            expandEquipment={expandEquipment}
             onOpenModal={setOpenModal}
             onDownloadWindowSticker={handleDownloadWindowSticker}
           />

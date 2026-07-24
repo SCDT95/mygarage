@@ -162,6 +162,14 @@
     "exportTooltip": "Export complete vehicle data as JSON",
     "exporting": "Exporting...",
     "fuelEconomy": "Fuel Economy",
+    "hero": {
+      "logService": "Log Service",
+      "addFuel": "Add Fuel",
+      "reminder": "Reminder",
+      "equipment": "Equipment",
+      "standard": "Standard",
+      "optional": "Optional"
+    },
     "import": "Import",
     "importData": "Import Data",
     "importError": "Failed to import data",
