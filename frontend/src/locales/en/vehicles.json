@@ -175,6 +175,10 @@
     "importError": "Failed to import data",
     "importSuccess": "Import completed successfully",
     "importing": "Importing...",
+    "keyFacts": {
+      "spent": "Spent",
+      "upcoming": "Upcoming"
+    },
     "lastLocation": "Last Seen Here",
     "lastLocationSeenAt": "Last seen: {{time}}",
     "loading": "Loading vehicle details...",

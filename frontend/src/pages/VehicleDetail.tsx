@@ -63,6 +63,7 @@ import VehicleActionsToolbar from '../components/vehicle-detail/VehicleActionsTo
 import VehiclePrimaryTabs from '../components/vehicle-detail/VehiclePrimaryTabs'
 import VehicleOverviewTab from '../components/vehicle-detail/VehicleOverviewTab'
 import VehicleMobileActionsSheet from '../components/vehicle-detail/VehicleMobileActionsSheet'
+import VehicleKeyFacts from '../components/vehicle-detail/VehicleKeyFacts'
 import { livelinkService } from '../services/livelinkService'
 import WindowStickerUpload from '../components/WindowStickerUpload'
 import VehicleRemoveModal from '../components/modals/VehicleRemoveModal'
@@ -655,6 +656,9 @@ export default function VehicleDetail() {
           onOpenModal={setOpenModal}
           onOpenMobileMenu={() => setShowMobileMenu(true)}
         />
+
+        {/* Key-facts strip (P5 Task 5) */}
+        {detailStats && <VehicleKeyFacts stats={detailStats} />}
 
         {/* Primary tabs */}
         <VehiclePrimaryTabs tabs={primaryTabs} activeTab={activePrimaryTab} onTabClick={handlePrimaryTabClick} />

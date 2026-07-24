@@ -78,6 +78,9 @@ vi.mock('../../services/api', () => ({
 vi.mock('../../hooks/useOnlineStatus', () => ({
   useOnlineStatus: vi.fn(() => true),
 }))
+vi.mock('../../hooks/useUnitPreference', () => ({
+  useUnitPreference: () => ({ system: 'imperial' }),
+}))
 vi.mock('../../contexts/AuthContext', () => ({
   useAuth: vi.fn(() => ({
     user: { id: 1, username: 'testuser', email: 'test@test.com', is_admin: false },
@@ -99,6 +102,7 @@ import vehicleService from '../../services/vehicleService'
 import { livelinkService } from '../../services/livelinkService'
 import { useAuth } from '../../contexts/AuthContext'
 import type { Vehicle, VehicleDetailStats, VehicleType } from '../../types/vehicle'
+import { UnitFormatter } from '../../utils/units'
 import VehicleDetail from '../VehicleDetail'
 
 const mockedVehicleService = vi.mocked(vehicleService)
@@ -431,6 +435,43 @@ describe('VehicleDetail', () => {
     // overwrite B here -> the upcoming badge vanishes and this waitFor throws.
     await waitFor(() => expect(screen.getByText('vehicleStats.upcoming')).toBeInTheDocument())
     expect(screen.queryByText('vehicleStats.overdue')).not.toBeInTheDocument()
+  })
+
+  it('renders fetched nonzero stats end-to-end: hero badge + reading + key facts (B4)', async () => {
+    // Successful NONZERO page integration: fetch -> page state -> props ->
+    // mounted VehicleHero AND VehicleKeyFacts. A broken page mount, an omitted
+    // detailStats prop, or a missing VehicleKeyFacts mount all fail here.
+    mockedVehicleService.getDetailStats.mockResolvedValue({
+      overdue_count: 3, upcoming_count: 2,
+      latest_odometer_km: '160000.00', latest_odometer_date: '2026-07-01',
+      last_service_date: '2026-06-15', last_fillup_date: '2026-07-10',
+      spent_this_year: '1234.50', year: 2026,
+    })
+    renderVehicleDetail()
+    await waitFor(() => expect(screen.getByText('Test Car')).toBeInTheDocument())
+
+    // Hero: overdue badge (overdue 3 > 0) + the boundary-converted odometer
+    // reading chip + the reading date. `Jul 1, 2026` is hero-only (the strip
+    // renders Jun 15 / Jul 10).
+    expect(await screen.findByText('vehicleStats.overdue')).toBeInTheDocument()
+    expect(screen.getByText('detail.misc.odometer')).toBeInTheDocument()
+    // R3-B2: assert the CONVERTED odometer VALUE, not just its label — computed
+    // from the SAME UnitFormatter the hero uses, with the file-pinned imperial
+    // system, so it renders in the hero's `<Mono>{reading}</Mono>` node. This fails
+    // if the boundary conversion is removed or raw km leaks to the UI.
+    const expectedOdometer = UnitFormatter.formatDistance(160000, 'imperial')
+    expect(screen.getByText(expectedOdometer)).toBeInTheDocument()
+    expect(screen.getByText(/Jul 1, 2026/)).toBeInTheDocument()
+
+    // Key-facts strip mounted + label-bound (role="group" makes it swap-proof):
+    const service = screen.getByRole('group', { name: 'vehicleStats.lastService' })
+    expect(within(service).getByText(/Jun 15, 2026/)).toBeInTheDocument()
+    const fillup = screen.getByRole('group', { name: 'vehicleStats.lastFillUp' })
+    expect(within(fillup).getByText(/Jul 10, 2026/)).toBeInTheDocument()
+    const spent = screen.getByRole('group', { name: 'detail.keyFacts.spent' })
+    expect(within(spent).getByText(/1,234\.50/)).toBeInTheDocument()
+    const upcoming = screen.getByRole('group', { name: 'detail.keyFacts.upcoming' })
+    expect(within(upcoming).getByText('2')).toBeInTheDocument()  // upcoming_count, not overdue
   })
 
   // --- Actions row + equipment expand (P5 Task 4) ---
