@@ -138,6 +138,15 @@ export default function VehicleDetail() {
   const [expandEquipment, setExpandEquipment] = useState<EquipmentExpandSignal | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const isOnline = useOnlineStatus()
+
+  // Kept out of loadVehicle's dependency array on purpose: the ref always
+  // reads the latest translator without destabilizing the callback,
+  // matching the established pattern in Dashboard.tsx.
+  const tRef = useRef(t)
+  useEffect(() => {
+    tRef.current = t
+  }, [t])
+
   const loadVehicle = useCallback(async () => {
     if (!vin) return
     const cacheKey = `vehicle-cache-${vin}`
@@ -163,7 +172,7 @@ export default function VehicleDetail() {
           }
         }
       }
-      setError(getApiErrorMessage(error, t('detail.misc.loadError')))
+      setError(getApiErrorMessage(error, tRef.current('detail.misc.loadError')))
     } finally {
       setLoading(false)
     }
@@ -173,7 +182,6 @@ export default function VehicleDetail() {
     // page — on every unrelated state update (e.g. a tab click), which is
     // both wasteful and, under jsdom, indistinguishable from a real remount
     // for any test asserting exact side-effect call counts (P5 Task 4).
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [vin])
 
   useEffect(() => {
@@ -393,8 +401,9 @@ export default function VehicleDetail() {
         break
       case 'fuel':
         // Fuel group is fuel/def/propane; pick the first sub-tab visible for this
-        // vehicle (propane-only trailers aren't motorized, so 'fuel' would be hidden)
-        setActiveSubTab(isMotorized ? 'fuel' : hasPropane ? 'propane' : hasDEF ? 'def' : 'fuel')
+        // vehicle (propane-only trailers aren't motorized, so 'fuel' would be hidden).
+        // Order matches the Add Fuel hero button (config order Fuel -> DEF -> Propane).
+        setActiveSubTab(isMotorized ? 'fuel' : hasDEF ? 'def' : hasPropane ? 'propane' : 'fuel')
         break
       case 'tracking':
         setActiveSubTab('notes')
