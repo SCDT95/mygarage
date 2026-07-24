@@ -1,11 +1,11 @@
-import { useState, useEffect, useMemo, useCallback } from 'react'
+import { useState, useEffect, useMemo, useCallback, useRef } from 'react'
 import { useLocation } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { Plus, Car as CarIcon, RefreshCw, ChevronDown } from 'lucide-react'
+import { Plus, Car as CarIcon, RefreshCw, ChevronDown, AlertCircle } from 'lucide-react'
 import VehicleStatisticsCard from '../components/VehicleStatisticsCard'
 import VehicleWizard from '../components/VehicleWizard'
 import FleetHealthStrip from '../components/FleetHealthStrip'
-import { PageHeader, Dropdown, Button } from '../components/ui'
+import { PageHeader, Dropdown, Button, EmptyState, Card } from '../components/ui'
 import type { DropdownItem } from '../components/ui'
 import type { DashboardResponse } from '../types/dashboard'
 import api from '../services/api'
@@ -23,17 +23,28 @@ export default function Dashboard() {
   const [sortBy, setSortBy] = useState<SortOption>('name')
   const [filterBy, setFilterBy] = useState<FilterOption>('all')
 
+  // Kept out of loadDashboard's dependency array on purpose: useTranslation()
+  // can hand back a new `t` identity on re-render (the vitest i18n mock does
+  // this on every render), and loadDashboard sitting in the mount/navigation
+  // effect's deps would otherwise re-fire the fetch every time `t` churns.
+  // The ref always reads the latest translator without destabilizing the
+  // callback.
+  const tRef = useRef(t)
+  useEffect(() => {
+    tRef.current = t
+  }, [t])
+
   const loadDashboard = useCallback(async () => {
     setError(null)
     try {
       const response = await api.get('/dashboard')
       setDashboard(response.data)
     } catch {
-      setError(t('dashboard.loadError'))
+      setError(tRef.current('dashboard.loadError'))
     } finally {
       setLoading(false)
     }
-  }, [t])
+  }, [])
 
   useEffect(() => {
     // Load dashboard data when component mounts or navigation occurs
@@ -146,20 +157,21 @@ export default function Dashboard() {
         {/* Vehicles Grid */}
         {loading ? (
           <div className="flex items-center justify-center py-16" role="status" aria-label={t('dashboard.loading')}>
-            <div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin" />
+            <div className="h-8 w-8 animate-spin rounded-full border-4 border-[color:var(--accent-solid)] border-t-transparent" />
             <span className="sr-only">{t('dashboard.loading')}</span>
           </div>
         ) : error ? (
-          <div className="bg-garage-surface rounded-lg border border-garage-border text-center py-16">
-            <p className="text-red-500 mb-4">{error}</p>
-            <button
-              onClick={loadDashboard}
-              className="inline-flex items-center gap-2 btn btn-primary rounded-lg"
-            >
-              <RefreshCw className="w-4 h-4" />
-              <span>{t('common:retry')}</span>
-            </button>
-          </div>
+          <Card padding="none">
+            <EmptyState
+              icon={AlertCircle}
+              title={error}
+              action={
+                <Button variant="secondary" icon={RefreshCw} onClick={loadDashboard}>
+                  {t('common:retry')}
+                </Button>
+              }
+            />
+          </Card>
         ) : dashboard && vehicleCount > 0 ? (
           <div>
             {dashboard.fleet_health && <FleetHealthStrip fleet={dashboard.fleet_health} />}
@@ -172,20 +184,18 @@ export default function Dashboard() {
             </div>
           </div>
         ) : (
-          <div className="bg-garage-surface rounded-lg border border-garage-border text-center py-16">
-            <CarIcon className="w-16 h-16 text-garage-text-muted mx-auto mb-4 opacity-50" />
-            <h3 className="text-xl font-semibold mb-2 text-garage-text">{t('dashboard.noVehiclesYet')}</h3>
-            <p className="text-garage-text-muted mb-6">
-              {t('dashboard.getStarted')}
-            </p>
-            <button
-              onClick={() => setShowWizard(true)}
-              className="inline-flex items-center gap-2 btn btn-primary rounded-lg"
-            >
-              <Plus className="w-5 h-5" />
-              <span>{t('dashboard.addFirstVehicle')}</span>
-            </button>
-          </div>
+          <Card padding="none">
+            <EmptyState
+              icon={CarIcon}
+              title={t('dashboard.noVehiclesYet')}
+              description={t('dashboard.getStarted')}
+              action={
+                <Button variant="primary" icon={Plus} onClick={() => setShowWizard(true)}>
+                  {t('dashboard.addFirstVehicle')}
+                </Button>
+              }
+            />
+          </Card>
         )}
       </div>
 
