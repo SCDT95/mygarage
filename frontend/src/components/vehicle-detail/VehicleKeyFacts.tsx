@@ -50,8 +50,18 @@ export default function VehicleKeyFacts({ stats }: VehicleKeyFactsProps) {
 
   return (
     <div className="mt-5 grid grid-cols-1 gap-px overflow-hidden rounded-panel border border-border bg-hair sm:grid-cols-2 lg:grid-cols-4">
-      {cell(Wrench, t('vehicleStats.lastService'), t('vehicleStats.lastService'), fmtDate(stats.last_service_date))}
-      {cell(Fuel, t('vehicleStats.lastFillUp'), t('vehicleStats.lastFillUp'), fmtDate(stats.last_fillup_date))}
+      {cell(
+        Wrench,
+        t('vehicleStats.lastService'),
+        t('vehicleStats.lastService'),
+        <Mono size="lg" weight="semibold">{fmtDate(stats.last_service_date)}</Mono>,
+      )}
+      {cell(
+        Fuel,
+        t('vehicleStats.lastFillUp'),
+        t('vehicleStats.lastFillUp'),
+        <Mono size="lg" weight="semibold">{fmtDate(stats.last_fillup_date)}</Mono>,
+      )}
       {cell(
         DollarSign,
         t('detail.keyFacts.spent'),
