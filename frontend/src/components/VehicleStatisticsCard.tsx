@@ -97,18 +97,22 @@ function VehicleStatisticsCard({ stats }: VehicleStatisticsCardProps) {
           </Mono>
         </div>
 
-        {/* Shared badge (display-only) */}
+        {/* Shared badge (display-only). The wrapper is pointer-events-none
+            (overlay chrome), so a `title` here can never fire on hover — the
+            can-edit/view-only distinction goes in an sr-only span inside the
+            Badge instead, which stays in the accessibility tree regardless
+            of pointer-events. Badge has no aria-label passthrough, so this
+            is the reliably-exposed option without touching the primitive. */}
         {stats.is_shared_with_me && (
-          <div
-            className="pointer-events-none absolute left-3 top-3"
-            title={
-              stats.share_permission === 'write'
-                ? t('vehicleStatisticsCardExtra.sharedByCanEdit', { username: stats.shared_by_username })
-                : t('vehicleStatisticsCardExtra.sharedByViewOnly', { username: stats.shared_by_username })
-            }
-          >
+          <div className="pointer-events-none absolute left-3 top-3">
             <Badge tone="info" icon={Share2}>
               {t('vehicleStatisticsCardExtra.sharedBadge')}
+              <span className="sr-only">
+                {' '}
+                {stats.share_permission === 'write'
+                  ? t('vehicleStatisticsCardExtra.sharedByCanEdit', { username: stats.shared_by_username })
+                  : t('vehicleStatisticsCardExtra.sharedByViewOnly', { username: stats.shared_by_username })}
+              </span>
             </Badge>
           </div>
         )}
