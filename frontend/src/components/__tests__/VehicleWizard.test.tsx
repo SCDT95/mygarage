@@ -122,4 +122,17 @@ describe('VehicleWizard — canonical fuel-type select', () => {
     const select = screen.getByLabelText('wizard.fuelType') as HTMLSelectElement
     expect(select.value).toBe('')
   })
+
+  it('renders as a Drawer with the step-progress subtitle and closes', () => {
+    const onClose = vi.fn()
+    render(<VehicleWizard onClose={onClose} />)
+
+    // Drawer shell.
+    expect(screen.getByRole('dialog')).toBeInTheDocument()
+    // First body row: the "Step X of 4" progress subtitle (key under the i18n mock).
+    expect(screen.getByText('wizard.misc.stepProgress')).toBeInTheDocument()
+    // The Drawer's built-in close button (aria-label = common:close) fires onClose.
+    fireEvent.click(screen.getByRole('button', { name: 'common:close' }))
+    expect(onClose).toHaveBeenCalled()
+  })
 })
