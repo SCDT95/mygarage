@@ -7103,6 +7103,7 @@ export interface components {
          * @description Complete dashboard data
          */
         DashboardResponse: {
+            fleet_health: components["schemas"]["FleetHealth"];
             /** Total Documents */
             total_documents: number;
             /** Total Fuel Records */
@@ -7675,6 +7676,35 @@ export interface components {
          * @enum {string}
          */
         FirmwareTrack: "obd" | "pro";
+        /**
+         * FleetHealth
+         * @description Fleet-wide health summary for the dashboard strip (read aggregation).
+         */
+        FleetHealth: {
+            next_due?: components["schemas"]["FleetNextDue"] | null;
+            /** Overdue Count */
+            overdue_count: number;
+            /** Spent This Year */
+            spent_this_year: string;
+            /** Upcoming 30D Count */
+            upcoming_30d_count: number;
+            /** Year */
+            year: number;
+        };
+        /**
+         * FleetNextDue
+         * @description Soonest pending reminder across the visible fleet.
+         */
+        FleetNextDue: {
+            /** Due Date */
+            due_date?: string | null;
+            /** Due Mileage Km */
+            due_mileage_km?: string | null;
+            /** Label */
+            label: string;
+            /** Vin */
+            vin: string;
+        };
         /**
          * FuelEconomyDataPoint
          * @description Single fuel economy data point (metric canonical).
@@ -13573,6 +13603,8 @@ export interface components {
             total_service_records: number;
             /** Upcoming Maintenance Count */
             upcoming_maintenance_count: number;
+            /** Vehicle Type */
+            vehicle_type?: string | null;
             /** Vin */
             vin: string;
             /** Year */

@@ -1,4 +1,5 @@
 from datetime import date as date_type
+from datetime import timedelta
 from decimal import Decimal
 from pathlib import Path
 
@@ -8,6 +9,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_db
 from app.models import (
+    DEFRecord,
     Document,
     FuelRecord,
     Note,
@@ -18,9 +20,15 @@ from app.models import (
 )
 from app.models.user import User
 from app.models.vehicle_share import VehicleShare
-from app.schemas.dashboard import DashboardResponse, VehicleStatistics
+from app.schemas.dashboard import (
+    DashboardResponse,
+    FleetHealth,
+    FleetNextDue,
+    VehicleStatistics,
+)
 from app.services.auth import require_auth
 from app.services.fuel_service import compute_full_tank_economy
+from app.services.service_visit_service import service_visit_cost_load_options
 
 router = APIRouter(prefix="/api/dashboard", tags=["dashboard"])
 
@@ -164,6 +172,7 @@ async def calculate_vehicle_stats(
         year=vehicle.year,
         make=vehicle.make,
         model=vehicle.model,
+        vehicle_type=vehicle.vehicle_type,
         main_photo_url=main_photo_url,
         total_service_records=service_count or 0,
         total_fuel_records=fuel_count or 0,
@@ -185,6 +194,191 @@ async def calculate_vehicle_stats(
         is_shared_with_me=is_shared_with_me,
         shared_by_username=shared_by_username,
         share_permission=share_permission,
+    )
+
+
+async def _fleet_next_due(
+    db: AsyncSession, vins: list[str], vehicle_stats: list[VehicleStatistics]
+) -> FleetNextDue | None:
+    """Pick the single most-urgent pending reminder across the fleet (OQ1).
+
+    Deterministic two-tier rule:
+
+    1. **Dated reminders win.** Candidates with a ``due_date``, ordered
+       ``due_date ASC, id ASC`` (the ``id`` tie-break is stable on SQLite AND
+       PG; uses ``ix_reminders_due_date``). A ``due_date`` is a
+       driver-independent absolute "when"; a mileage-to-date projection would
+       need a per-vehicle daily-distance model MyGarage does not store, so a
+       dated reminder always outranks a mileage-only one. Includes overdue
+       dated reminders (a past date sorts first — the most urgent "next").
+    2. **Mileage-only fallback.** Only when the fleet has no dated pending
+       reminder: rank ``due_date IS NULL AND due_mileage_km IS NOT NULL``
+       reminders by remaining distance to due — ``due_mileage_km − latest
+       odometer(vin)`` from ``vehicle_stats`` — with vehicles that have no
+       odometer reading sorted after those that do (falling back to
+       ``due_mileage_km ASC``); final tie-break ``id ASC``.
+    """
+    dated = (
+        await db.execute(
+            select(
+                Reminder.vin,
+                Reminder.title,
+                Reminder.due_date,
+                Reminder.due_mileage_km,
+            )
+            .where(
+                Reminder.vin.in_(vins),
+                Reminder.status == "pending",
+                Reminder.due_date.isnot(None),
+            )
+            .order_by(Reminder.due_date.asc(), Reminder.id.asc())
+            .limit(1)
+        )
+    ).first()
+    if dated is not None:
+        return FleetNextDue(
+            vin=dated[0],
+            label=dated[1],
+            due_date=dated[2],
+            due_mileage_km=dated[3],  # passed through so the strip can show both
+        )
+
+    mileage_rows = (
+        await db.execute(
+            select(
+                Reminder.id,
+                Reminder.vin,
+                Reminder.title,
+                Reminder.due_mileage_km,
+            ).where(
+                Reminder.vin.in_(vins),
+                Reminder.status == "pending",
+                Reminder.due_date.is_(None),
+                Reminder.due_mileage_km.isnot(None),
+            )
+        )
+    ).all()
+    if not mileage_rows:
+        return None
+
+    odo_by_vin = {s.vin: s.latest_odometer_km for s in vehicle_stats}
+    # Plain tuples (id, vin, title, due_mileage_km) so the sort key is fully
+    # typed without importing SQLAlchemy Row internals.
+    candidates: list[tuple[int, str, str, Decimal]] = [
+        (r[0], r[1], r[2], r[3]) for r in mileage_rows
+    ]
+
+    def _rank(item: tuple[int, str, str, Decimal]) -> tuple[int, Decimal, int]:
+        odo = odo_by_vin.get(item[1])
+        if odo is not None:
+            # Has an odometer reading -> rank first (0), by remaining distance.
+            return (0, item[3] - odo, item[0])
+        # No reading -> rank after (1), by absolute due mileage.
+        return (1, item[3], item[0])
+
+    best = min(candidates, key=_rank)
+    return FleetNextDue(
+        vin=best[1],
+        label=best[2],
+        due_date=None,
+        due_mileage_km=best[3],
+    )
+
+
+async def calculate_fleet_health(
+    db: AsyncSession, vehicle_stats: list[VehicleStatistics]
+) -> FleetHealth:
+    """Fleet-wide health summary for the dashboard strip.
+
+    Scope is the already-computed, already-authorized ``vehicle_stats`` — this
+    never re-scopes or widens the fleet. Overdue reuses the per-vehicle counts
+    verbatim (so the strip agrees with each card badge). Upcoming is the
+    strictly-future 30-day pending window (``today < due_date <= today+30``) so
+    a due-today reminder is Overdue only, never both. Spent-this-year mirrors
+    the garage-analytics monthly-trend running-cost set (service + fuel + DEF),
+    for records dated ``year_start <= date <= today`` (true YTD — a
+    later-this-year record is NOT counted). Next-due is delegated to
+    ``_fleet_next_due`` (dated reminders first, mileage-only fallback).
+
+    All date filters are Date-column-vs-Python-date range comparisons, so the
+    query is identical on SQLite (prod) and PostgreSQL (CI) — no EXTRACT /
+    strftime (G8). Costs are Decimal, never float (G9).
+    """
+    today = date_type.today()
+    year = today.year
+    year_start = date_type(year, 1, 1)
+    upcoming_end = today + timedelta(days=30)
+
+    overdue_count = sum(s.overdue_maintenance_count for s in vehicle_stats)
+
+    vins = [s.vin for s in vehicle_stats]
+    if not vins:
+        return FleetHealth(
+            overdue_count=overdue_count,
+            upcoming_30d_count=0,
+            year=year,
+            spent_this_year=Decimal("0.00"),
+            next_due=None,
+        )
+
+    # Upcoming — pending reminders due strictly after today, within 30 days.
+    # `> today` (not `>=`) keeps a due-today reminder Overdue-only (finding 6).
+    upcoming_30d = await db.scalar(
+        select(func.count(Reminder.id)).where(
+            Reminder.vin.in_(vins),
+            Reminder.status == "pending",
+            Reminder.due_date.isnot(None),
+            Reminder.due_date > today,
+            Reminder.due_date <= upcoming_end,
+        )
+    )
+
+    # Spent this year — service (property, so summed in Python) + fuel + DEF,
+    # dated this year up to and including today (true YTD; finding 5).
+    service_visits_result = await db.execute(
+        select(ServiceVisit)
+        .options(*service_visit_cost_load_options())
+        .where(
+            ServiceVisit.vin.in_(vins),
+            ServiceVisit.date >= year_start,
+            ServiceVisit.date <= today,
+        )
+    )
+    service_spent = sum(
+        (v.calculated_total_cost for v in service_visits_result.scalars().all()),
+        Decimal("0.00"),
+    )
+
+    fuel_costs = await db.execute(
+        select(FuelRecord.cost).where(
+            FuelRecord.vin.in_(vins),
+            FuelRecord.cost.isnot(None),
+            FuelRecord.date >= year_start,
+            FuelRecord.date <= today,
+        )
+    )
+    fuel_spent = sum((c for c in fuel_costs.scalars().all() if c), Decimal("0.00"))
+
+    def_costs = await db.execute(
+        select(DEFRecord.cost).where(
+            DEFRecord.vin.in_(vins),
+            DEFRecord.cost.isnot(None),
+            DEFRecord.date >= year_start,
+            DEFRecord.date <= today,
+        )
+    )
+    def_spent = sum((c for c in def_costs.scalars().all() if c), Decimal("0.00"))
+
+    spent_this_year = service_spent + fuel_spent + def_spent
+
+    next_due = await _fleet_next_due(db, vins, vehicle_stats)
+
+    return FleetHealth(
+        overdue_count=overdue_count,
+        upcoming_30d_count=upcoming_30d or 0,
+        year=year,
+        spent_this_year=spent_this_year,
+        next_due=next_due,
     )
 
 
@@ -266,6 +460,8 @@ async def get_dashboard(
     total_notes = sum(v.total_notes for v in vehicle_stats)
     total_photos = sum(v.total_photos for v in vehicle_stats)
 
+    fleet_health = await calculate_fleet_health(db, vehicle_stats)
+
     return DashboardResponse(
         total_vehicles=len(vehicle_stats),
         vehicles=vehicle_stats,
@@ -275,4 +471,5 @@ async def get_dashboard(
         total_documents=total_documents,
         total_notes=total_notes,
         total_photos=total_photos,
+        fleet_health=fleet_health,
     )

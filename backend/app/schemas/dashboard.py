@@ -12,6 +12,7 @@ class VehicleStatistics(BaseModel):
     year: int | None = None
     make: str | None = None
     model: str | None = None
+    vehicle_type: str | None = None
     main_photo_url: str | None = None
 
     # Counts
@@ -50,6 +51,28 @@ class VehicleStatistics(BaseModel):
         from_attributes = True
 
 
+class FleetNextDue(BaseModel):
+    """Soonest pending reminder across the visible fleet."""
+
+    vin: str
+    label: str
+    due_date: date_type | None = None
+    due_mileage_km: Decimal | None = None
+
+    class Config:
+        from_attributes = True
+
+
+class FleetHealth(BaseModel):
+    """Fleet-wide health summary for the dashboard strip (read aggregation)."""
+
+    overdue_count: int
+    upcoming_30d_count: int
+    year: int
+    spent_this_year: Decimal
+    next_due: FleetNextDue | None = None
+
+
 class DashboardResponse(BaseModel):
     """Complete dashboard data"""
 
@@ -63,3 +86,6 @@ class DashboardResponse(BaseModel):
     total_documents: int
     total_notes: int
     total_photos: int
+
+    # Fleet-health strip (P4)
+    fleet_health: FleetHealth
