@@ -5,6 +5,7 @@
 import { useState, useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
 import { ArrowRight, ChevronDown, ChevronUp, Clock, Loader2, History } from 'lucide-react'
+import { Card } from '@/components/ui'
 import { familyService } from '@/services/familyService'
 import type { VehicleTransferResponse } from '@/types/family'
 import { formatRelationship } from '@/types/family'
@@ -82,34 +83,34 @@ export default function TransferHistorySection({ vin }: TransferHistorySectionPr
   }
 
   return (
-    <div className="border border-garage-border rounded-lg overflow-hidden">
+    <div className="border border-border rounded-lg overflow-hidden">
       {/* Header - Clickable to expand/collapse */}
       <button
         onClick={() => setIsExpanded(!isExpanded)}
-        className="w-full flex items-center justify-between p-4 bg-garage-surface hover:bg-garage-bg transition-colors text-left"
+        className="w-full flex items-center justify-between p-4 bg-surface hover:bg-surface-2 transition-colors text-left"
       >
         <div className="flex items-center gap-2">
-          <History className="w-5 h-5 text-primary" />
-          <span className="font-medium text-garage-text">{t('transferHistory.title')}</span>
+          <History className="w-5 h-5 text-(--accent-fg)" />
+          <span className="font-medium text-text">{t('transferHistory.title')}</span>
           {!loading && (
-            <span className="text-sm text-garage-text-muted">
+            <span className="text-sm text-text-mute">
               ({transfers.length} {transfers.length === 1 ? 'transfer' : 'transfers'})
             </span>
           )}
         </div>
         {isExpanded ? (
-          <ChevronUp className="w-5 h-5 text-garage-text-muted" />
+          <ChevronUp className="w-5 h-5 text-text-mute" />
         ) : (
-          <ChevronDown className="w-5 h-5 text-garage-text-muted" />
+          <ChevronDown className="w-5 h-5 text-text-mute" />
         )}
       </button>
 
       {/* Content */}
       {isExpanded && (
-        <div className="p-4 border-t border-garage-border bg-garage-bg">
+        <div className="p-4 border-t border-border bg-surface-2">
           {loading ? (
             <div className="flex items-center justify-center py-4">
-              <Loader2 className="w-5 h-5 text-primary animate-spin" />
+              <Loader2 className="w-5 h-5 text-(--accent-fg) animate-spin" />
             </div>
           ) : error ? (
             <p className="text-danger text-sm">{error}</p>
@@ -122,33 +123,33 @@ export default function TransferHistorySection({ vin }: TransferHistorySectionPr
                 >
                   {/* Timeline line */}
                   {index < transfers.length - 1 && (
-                    <div className="absolute left-2 top-6 bottom-0 w-px bg-garage-border" />
+                    <div className="absolute left-2 top-6 bottom-0 w-px bg-border" />
                   )}
 
                   {/* Timeline dot */}
-                  <div className="absolute left-0 top-1.5 w-4 h-4 rounded-full bg-primary/20 border-2 border-primary" />
+                  <div className="absolute left-0 top-1.5 w-4 h-4 rounded-full bg-(--accent-soft) border-2 border-(--accent-line)" />
 
                   {/* Transfer card */}
-                  <div className="bg-garage-surface rounded-lg p-3 border border-garage-border">
+                  <Card padding="sm">
                     {/* From -> To */}
                     <div className="flex items-center gap-2 flex-wrap mb-2">
                       <div className="flex items-center gap-1">
-                        <span className="font-medium text-garage-text">
+                        <span className="font-medium text-text">
                           {getDisplayName(transfer.from_user)}
                         </span>
                         {transfer.from_user.relationship && (
-                          <span className="text-xs text-garage-text-muted px-1.5 py-0.5 bg-garage-bg rounded">
+                          <span className="text-xs text-text-mute px-1.5 py-0.5 bg-surface-2 rounded">
                             {formatRelationship(transfer.from_user.relationship, null, t)}
                           </span>
                         )}
                       </div>
-                      <ArrowRight className="w-4 h-4 text-garage-text-muted flex-shrink-0" />
+                      <ArrowRight className="w-4 h-4 text-text-mute flex-shrink-0" />
                       <div className="flex items-center gap-1">
-                        <span className="font-medium text-garage-text">
+                        <span className="font-medium text-text">
                           {getDisplayName(transfer.to_user)}
                         </span>
                         {transfer.to_user.relationship && (
-                          <span className="text-xs text-garage-text-muted px-1.5 py-0.5 bg-garage-bg rounded">
+                          <span className="text-xs text-text-mute px-1.5 py-0.5 bg-surface-2 rounded">
                             {formatRelationship(transfer.to_user.relationship, null, t)}
                           </span>
                         )}
@@ -156,12 +157,12 @@ export default function TransferHistorySection({ vin }: TransferHistorySectionPr
                     </div>
 
                     {/* Date and transferred by */}
-                    <div className="flex items-center gap-3 text-sm text-garage-text-muted">
+                    <div className="flex items-center gap-3 text-sm text-text-mute">
                       <div className="flex items-center gap-1">
                         <Clock className="w-3.5 h-3.5" />
                         <span>{formatDate(transfer.transferred_at)}</span>
                       </div>
-                      <span className="text-garage-border">•</span>
+                      <span className="text-border">•</span>
                       {/* One interpolated sentence, not "by" + name: word order
                           around an actor differs by language. */}
                       <span>
@@ -173,7 +174,7 @@ export default function TransferHistorySection({ vin }: TransferHistorySectionPr
 
                     {/* Notes */}
                     {transfer.transfer_notes && (
-                      <p className="mt-2 text-sm text-garage-text-muted italic">
+                      <p className="mt-2 text-sm text-text-mute italic">
                         "{transfer.transfer_notes}"
                       </p>
                     )}
@@ -193,7 +194,7 @@ export default function TransferHistorySection({ vin }: TransferHistorySectionPr
                           ))}
                       </div>
                     )}
-                  </div>
+                  </Card>
                 </div>
               ))}
             </div>
