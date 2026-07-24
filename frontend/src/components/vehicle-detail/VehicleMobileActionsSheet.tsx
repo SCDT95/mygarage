@@ -1,0 +1,98 @@
+import { useTranslation } from 'react-i18next'
+import { useNavigate } from 'react-router-dom'
+import { X, Upload, Download, BarChart3, Share2, Edit, ArrowRightLeft, Trash2 } from 'lucide-react'
+
+interface VehicleMobileActionsSheetProps {
+  vin: string
+  isAdmin: boolean
+  importing: boolean
+  exporting: boolean
+  isOnline: boolean
+  onImportClick: () => void
+  onExport: () => void
+  onOpenModal: (modal: 'remove' | 'transfer' | 'sharing') => void
+  onClose: () => void
+}
+
+/**
+ * Vehicle Detail mobile actions sheet. Mechanically extracted from
+ * VehicleDetail.tsx (P5 Task 1, verbatim — no restyle). Retokenize-only in
+ * Task 8 (stays a bespoke bottom-sheet, not a right Drawer — D2).
+ */
+export default function VehicleMobileActionsSheet({
+  vin, isAdmin, importing, exporting, isOnline,
+  onImportClick, onExport, onOpenModal, onClose,
+}: VehicleMobileActionsSheetProps) {
+  const { t } = useTranslation('vehicles')
+  const navigate = useNavigate()
+  return (
+    <div className="fixed inset-0 bg-black/50 flex items-end justify-center z-50 md:hidden" onClick={onClose}>
+      <div className="bg-garage-surface rounded-t-2xl w-full max-w-lg max-h-[70vh] overflow-y-auto pb-safe" onClick={(e) => e.stopPropagation()}>
+        <div className="flex items-center justify-between p-4 border-b border-garage-border">
+          <h3 className="text-lg font-semibold text-garage-text">{t('detail.actions')}</h3>
+          <button
+            onClick={onClose}
+            className="p-2 text-garage-text-muted hover:text-garage-text rounded-lg transition-colors"
+          >
+            <X className="w-5 h-5" />
+          </button>
+        </div>
+        <div className="p-2">
+          <button
+            onClick={() => { onImportClick(); onClose() }}
+            disabled={importing || !isOnline}
+            className="w-full flex items-center space-x-3 px-4 py-3 text-left text-garage-text hover:bg-garage-bg rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            <Upload className="w-5 h-5" />
+            <span>{importing ? t('detail.importing') : t('detail.importData')}</span>
+          </button>
+          <button
+            onClick={() => { onExport(); onClose() }}
+            disabled={exporting || !isOnline}
+            className="w-full flex items-center space-x-3 px-4 py-3 text-left text-garage-text hover:bg-garage-bg rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            <Download className="w-5 h-5" />
+            <span>{exporting ? t('detail.exporting') : t('detail.exportData')}</span>
+          </button>
+          <button
+            onClick={() => { navigate(`/vehicles/${vin}/analytics`); onClose() }}
+            className="w-full flex items-center space-x-3 px-4 py-3 text-left text-garage-text hover:bg-garage-bg rounded-lg transition-colors"
+          >
+            <BarChart3 className="w-5 h-5" />
+            <span>{t('detail.viewAnalytics')}</span>
+          </button>
+          <button
+            onClick={() => { onClose(); onOpenModal('sharing') }}
+            className="w-full flex items-center space-x-3 px-4 py-3 text-left text-garage-text hover:bg-garage-bg rounded-lg transition-colors"
+          >
+            <Share2 className="w-5 h-5" />
+            <span>{t('detail.shareVehicle')}</span>
+          </button>
+          <button
+            onClick={() => { navigate(`/vehicles/${vin}/edit`); onClose() }}
+            className="w-full flex items-center space-x-3 px-4 py-3 text-left text-garage-text hover:bg-garage-bg rounded-lg transition-colors"
+          >
+            <Edit className="w-5 h-5" />
+            <span>{t('detail.editVehicle')}</span>
+          </button>
+          {isAdmin && (
+            <button
+              onClick={() => { onClose(); onOpenModal('transfer') }}
+              className="w-full flex items-center space-x-3 px-4 py-3 text-left text-amber-400 hover:bg-amber-900/20 rounded-lg transition-colors"
+            >
+              <ArrowRightLeft className="w-5 h-5" />
+              <span>{t('detail.transferVehicle')}</span>
+            </button>
+          )}
+          <button
+            onClick={() => { onClose(); onOpenModal('remove') }}
+            className="w-full flex items-center space-x-3 px-4 py-3 text-left text-red-400 hover:bg-red-900/20 rounded-lg transition-colors"
+          >
+            <Trash2 className="w-5 h-5" />
+            <span>{t('detail.removeVehicle')}</span>
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
