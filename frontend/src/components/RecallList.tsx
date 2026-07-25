@@ -9,6 +9,7 @@ import { formatDateForDisplay } from '../utils/dateUtils'
 import { useDateLocale } from '../hooks/useDateLocale'
 import { useRecallRecords, useDeleteRecallRecord, useCheckNHTSA, useToggleRecallResolved } from '../hooks/queries/useRecallRecords'
 import { useQueryClient } from '@tanstack/react-query'
+import { Button, IconButton, EmptyState, Mono, Chip } from './ui'
 
 interface RecallListProps {
   vin: string
@@ -114,7 +115,7 @@ export default function RecallList({ vin, onAddClick, onEditClick, onRefresh }: 
   if (isLoading) {
     return (
       <div className="flex justify-center items-center min-h-[200px]">
-        <div className="text-garage-text-muted">{t('recallList.loading')}</div>
+        <div className="text-text-mute">{t('recallList.loading')}</div>
       </div>
     )
   }
@@ -131,156 +132,110 @@ export default function RecallList({ vin, onAddClick, onEditClick, onRefresh }: 
     <div>
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6">
         <div>
-          <h2 className="text-2xl font-bold text-garage-text">{t('recallList.title')}</h2>
-          <p className="text-sm text-garage-text-muted">
-            {t('recallList.activeCount', { active: stats.active_count, resolved: stats.resolved_count })}
-          </p>
+          <h2 className="text-2xl font-bold text-text">{t('recallList.title')}</h2>
+          <p className="text-sm text-text-mute">{t('recallList.activeCount', { active: stats.active_count, resolved: stats.resolved_count })}</p>
         </div>
         <div className="flex flex-wrap gap-2">
           <select
             value={statusFilter}
             onChange={(e) => setStatusFilter(e.target.value as 'all' | 'active' | 'resolved')}
-            className="px-3 py-2 border border-garage-border rounded-md focus:outline-none focus:ring-2 focus:ring-primary bg-garage-bg text-garage-text text-sm"
+            className="ui-focus-input ui-motion rounded-control border border-border bg-surface-2 px-3 py-2 text-sm text-text"
           >
             <option value="all">{t('recallList.allRecalls')}</option>
             <option value="active">{t('recallList.activeOnly')}</option>
             <option value="resolved">{t('recallList.resolvedOnly')}</option>
           </select>
-          <button
-            onClick={handleCheckNHTSA}
-            disabled={nhtsaMutation.isPending}
-            className="flex items-center gap-2 btn btn-primary rounded-lg transition-colors disabled:opacity-50"
-            title={t('recallList.checkNHTSATitle')}
-          >
-            <RefreshCw size={16} className={nhtsaMutation.isPending ? 'animate-spin' : ''} />
+          <Button variant="secondary" icon={RefreshCw} onClick={handleCheckNHTSA} loading={nhtsaMutation.isPending} title={t('recallList.checkNHTSATitle')}>
             {nhtsaMutation.isPending ? t('recallList.checking') : t('recallList.checkNHTSA')}
-          </button>
-          <button
-            onClick={onAddClick}
-            className="flex items-center gap-2 btn btn-primary rounded-lg transition-colors"
-          >
-            <Plus size={20} />
-            {t('recallList.addRecall')}
-          </button>
+          </Button>
+          <Button variant="primary" icon={Plus} onClick={onAddClick}>{t('recallList.addRecall')}</Button>
         </div>
       </div>
 
       {recalls.length === 0 ? (
-        <div className="text-center py-12 bg-garage-surface rounded-lg border border-garage-border">
-          <AlertTriangle size={48} className="mx-auto text-garage-text-muted mb-4" />
-          <p className="text-garage-text-muted mb-4">{t('recallList.noRecords')}</p>
-          <div className="flex gap-2 justify-center">
-            <button
-              onClick={handleCheckNHTSA}
-              disabled={nhtsaMutation.isPending}
-              className="inline-flex items-center gap-2 btn btn-primary rounded-lg transition-colors disabled:opacity-50"
-            >
-              <RefreshCw size={16} className={nhtsaMutation.isPending ? 'animate-spin' : ''} />
-              {nhtsaMutation.isPending ? t('recallList.checking') : t('recallList.checkNHTSA')}
-            </button>
-            <button
-              onClick={onAddClick}
-              className="inline-flex items-center gap-2 btn btn-primary rounded-lg transition-colors"
-            >
-              {t('recallList.addManualEntry')}
-            </button>
-          </div>
-        </div>
+        <EmptyState
+          icon={AlertTriangle}
+          title={t('recallList.noRecords')}
+          action={
+            <div className="flex gap-2 justify-center">
+              <Button variant="secondary" icon={RefreshCw} onClick={handleCheckNHTSA} loading={nhtsaMutation.isPending}>
+                {nhtsaMutation.isPending ? t('recallList.checking') : t('recallList.checkNHTSA')}
+              </Button>
+              <Button variant="primary" onClick={onAddClick}>{t('recallList.addManualEntry')}</Button>
+            </div>
+          }
+        />
       ) : (
         <div className="space-y-3">
           {recalls.map((recall) => (
             <div
               key={recall.id}
-              className={`bg-garage-surface rounded-lg p-6 border ${
-                recall.is_resolved
-                  ? 'border-garage-border opacity-75'
-                  : 'border-danger-500/50'
-              }`}
+              className={`rounded-card border bg-surface p-6 ${recall.is_resolved ? 'border-border opacity-75' : 'border-danger/50'}`}
             >
               <div className="flex justify-between items-start mb-4">
                 <div className="flex items-start gap-3 flex-1">
-                  {recall.is_resolved ? (
-                    <CheckCircle className="text-success-500 mt-1 flex-shrink-0" size={24} />
-                  ) : (
-                    <AlertTriangle className="text-danger-500 mt-1 flex-shrink-0" size={24} />
-                  )}
+                  {recall.is_resolved
+                    ? <CheckCircle aria-hidden="true" className="text-success mt-1 flex-shrink-0" size={24} />
+                    : <AlertTriangle aria-hidden="true" className="text-danger mt-1 flex-shrink-0" size={24} />}
                   <div className="flex-1">
                     <div className="flex items-center gap-2 mb-1">
-                      <h3 className="text-lg font-semibold text-garage-text">{recall.component}</h3>
+                      <h3 className="text-lg font-semibold text-text">{recall.component}</h3>
                       {recall.nhtsa_campaign_number && (
-                        <span className="text-xs px-2 py-1 bg-garage-bg rounded text-garage-text-muted font-mono">
-                          {recall.nhtsa_campaign_number}
-                        </span>
+                        <Chip tone="muted"><Mono size="xs" tone="inherit">{recall.nhtsa_campaign_number}</Mono></Chip>
                       )}
                     </div>
                     {recall.date_announced && (
-                      <p className="text-sm text-garage-text-muted mb-2">
-                        {t('recallList.announced')}: {formatDate(recall.date_announced)}
-                      </p>
+                      <p className="text-sm text-text-mute mb-2">{t('recallList.announced')}: <Mono size="sm" tone="muted">{formatDate(recall.date_announced)}</Mono></p>
                     )}
                   </div>
                 </div>
                 <div className="flex gap-2">
-                  <button
+                  <IconButton
+                    icon={recall.is_resolved ? AlertTriangle : CheckCircle}
+                    label={recall.is_resolved ? t('recallList.markActive') : t('recallList.markResolved')}
+                    variant="ghost"
+                    size="sm"
                     onClick={() => handleMarkResolved(recall)}
-                    className="btn btn-ghost btn-sm"
-                    title={recall.is_resolved ? t('recallList.markActive') : t('recallList.markResolved')}
-                  >
-                    {recall.is_resolved ? (
-                      <AlertTriangle size={16} />
-                    ) : (
-                      <CheckCircle size={16} />
-                    )}
-                  </button>
-                  <button
-                    onClick={() => onEditClick(recall)}
-                    className="btn btn-ghost btn-sm"
-                    title={t('common:edit')}
-                  >
-                    <Edit size={16} />
-                  </button>
-                  <button
-                    onClick={() => handleDelete(recall.id)}
-                    className="btn btn-ghost btn-sm text-danger"
+                  />
+                  <IconButton icon={Edit} label={t('common:edit')} variant="ghost" size="sm" onClick={() => onEditClick(recall)} />
+                  <IconButton
+                    icon={Trash2}
+                    label={t('common:delete')}
+                    variant="danger"
+                    size="sm"
                     disabled={deleteMutation.isPending && deleteMutation.variables === recall.id}
-                    title={t('common:delete')}
-                  >
-                    {deleteMutation.isPending && deleteMutation.variables === recall.id ? '...' : <Trash2 size={16} />}
-                  </button>
+                    onClick={() => handleDelete(recall.id)}
+                  />
                 </div>
               </div>
 
               <div className="space-y-3 ml-9">
                 <div>
-                  <p className="text-xs text-garage-text-muted mb-1">{t('recallList.summary')}</p>
-                  <p className="text-sm text-garage-text whitespace-pre-wrap">{recall.summary}</p>
+                  <p className="text-xs text-text-mute mb-1">{t('recallList.summary')}</p>
+                  <p className="text-sm text-text whitespace-pre-wrap">{recall.summary}</p>
                 </div>
-
                 {recall.consequence && (
                   <div>
-                    <p className="text-xs text-garage-text-muted mb-1">{t('recallList.consequence')}</p>
-                    <p className="text-sm text-garage-text whitespace-pre-wrap">{recall.consequence}</p>
+                    <p className="text-xs text-text-mute mb-1">{t('recallList.consequence')}</p>
+                    <p className="text-sm text-text whitespace-pre-wrap">{recall.consequence}</p>
                   </div>
                 )}
-
                 {recall.remedy && (
                   <div>
-                    <p className="text-xs text-garage-text-muted mb-1">{t('recallList.remedy')}</p>
-                    <p className="text-sm text-garage-text whitespace-pre-wrap">{recall.remedy}</p>
+                    <p className="text-xs text-text-mute mb-1">{t('recallList.remedy')}</p>
+                    <p className="text-sm text-text whitespace-pre-wrap">{recall.remedy}</p>
                   </div>
                 )}
-
                 {recall.notes && (
                   <div>
-                    <p className="text-xs text-garage-text-muted mb-1">{t('recallList.notes')}</p>
-                    <p className="text-sm text-garage-text whitespace-pre-wrap">{recall.notes}</p>
+                    <p className="text-xs text-text-mute mb-1">{t('recallList.notes')}</p>
+                    <p className="text-sm text-text whitespace-pre-wrap">{recall.notes}</p>
                   </div>
                 )}
-
                 {recall.is_resolved && recall.resolved_at && (
                   <div>
-                    <p className="text-xs text-garage-text-muted mb-1">{t('recallList.resolved')}</p>
-                    <p className="text-sm text-success-500">{formatDate(recall.resolved_at)}</p>
+                    <p className="text-xs text-text-mute mb-1">{t('recallList.resolved')}</p>
+                    <Mono as="p" size="sm" tone="success">{formatDate(recall.resolved_at)}</Mono>
                   </div>
                 )}
               </div>
@@ -296,21 +251,19 @@ export default function RecallList({ vin, onAddClick, onEditClick, onRefresh }: 
         vehicle.model &&
         vehicle.year &&
         ['Car', 'Truck', 'SUV', 'Motorcycle'].includes(vehicle.vehicle_type) && (
-        <div className="mt-6 bg-garage-surface rounded-lg border border-garage-border p-6">
+        <div className="mt-6 rounded-card border border-(--accent-line) bg-(--accent-soft) p-6">
           <div className="flex items-start gap-3">
-            <ExternalLink className="w-5 h-5 text-primary mt-1" />
+            <ExternalLink aria-hidden="true" className="w-5 h-5 text-(--accent-fg) mt-1" />
             <div className="flex-1">
-              <h3 className="text-lg font-semibold text-garage-text mb-2">{t('recallList.researchCommonIssues')}</h3>
-              <p className="text-sm text-garage-text-muted mb-4">
-                {t('recallList.carComplaintsDesc', { year: vehicle.year, make: vehicle.make, model: vehicle.model })}
-              </p>
+              <h3 className="text-lg font-semibold text-text mb-2">{t('recallList.researchCommonIssues')}</h3>
+              <p className="text-sm text-text-mute mb-4">{t('recallList.carComplaintsDesc', { year: vehicle.year, make: vehicle.make, model: vehicle.model })}</p>
               <a
                 href={`https://www.carcomplaints.com/${vehicle.make.toLowerCase().replace(/\b\w/g, c => c.toUpperCase()).replace(/\s+/g, '_')}/${vehicle.model.toLowerCase().replace(/\b\w/g, c => c.toUpperCase()).replace(/\s+/g, '_')}/${vehicle.year}/`}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="inline-flex items-center gap-2 btn btn-primary rounded-lg transition-colors"
+                className="ui-focus-ring ui-motion inline-flex items-center gap-2 rounded-control h-btn-md px-4 text-sm font-semibold bg-(--accent-solid) text-(--accent-on-solid) ui-hover-solid"
               >
-                <ExternalLink className="w-4 h-4" />
+                <ExternalLink aria-hidden="true" className="w-4 h-4" />
                 {t('recallList.viewOnCarComplaints')}
               </a>
             </div>
