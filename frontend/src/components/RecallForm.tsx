@@ -6,8 +6,8 @@ import { Save } from 'lucide-react'
 import FormModalWrapper from './FormModalWrapper'
 import type { Recall, RecallCreate, RecallUpdate } from '../types/recall'
 import { makeRecallSchema, type RecallFormData } from '../schemas/recall'
-import { FormError } from './FormError'
 import { useCreateRecallRecord, useUpdateRecallRecord } from '../hooks/queries/useRecallRecords'
+import { Button, Field, Input, Textarea, Checkbox } from './ui'
 
 interface RecallFormProps {
   vin: string
@@ -85,23 +85,10 @@ export default function RecallForm({ vin, recall, onClose, onSuccess }: RecallFo
       width="md"
       footer={
         <>
-          <button
-            type="button"
-            onClick={onClose}
-            className="btn btn-primary rounded-lg transition-colors"
-            disabled={isSubmitting}
-          >
-            {t('recallForm.cancel')}
-          </button>
-          <button
-            type="submit"
-            form="recall-form"
-            className="flex items-center gap-2 btn btn-primary rounded-lg transition-colors disabled:opacity-50"
-            disabled={isSubmitting}
-          >
-            <Save className="w-4 h-4" />
+          <Button variant="secondary" onClick={onClose} disabled={isSubmitting}>{t('recallForm.cancel')}</Button>
+          <Button type="submit" form="recall-form" variant="primary" icon={Save} loading={isSubmitting} disabled={isSubmitting}>
             {isSubmitting ? t('common:saving') : isEdit ? t('recall.updateRecall') : t('recall.addRecall')}
-          </button>
+          </Button>
         </>
       }
     >
@@ -113,138 +100,35 @@ export default function RecallForm({ vin, recall, onClose, onSuccess }: RecallFo
           )}
 
           <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label htmlFor="nhtsa_campaign_number" className="block text-sm font-medium text-garage-text mb-1">
-                {t('recall.nhtsaCampaignNumber')}
-              </label>
-              <input
-                type="text"
-                id="nhtsa_campaign_number"
-                {...register('nhtsa_campaign_number')}
-                className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-primary bg-garage-bg text-garage-text font-mono ${
-                  errors.nhtsa_campaign_number ? 'border-red-500' : 'border-garage-border'
-                }`}
-                placeholder="e.g., 23V123000"
-                disabled={isSubmitting}
-              />
-              <FormError error={errors.nhtsa_campaign_number} />
-            </div>
-
-            <div>
-              <label htmlFor="date_announced" className="block text-sm font-medium text-garage-text mb-1">
-                {t('recall.dateAnnounced')}
-              </label>
-              <input
-                type="date"
-                id="date_announced"
-                {...register('date_announced')}
-                className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-primary bg-garage-bg text-garage-text ${
-                  errors.date_announced ? 'border-red-500' : 'border-garage-border'
-                }`}
-                disabled={isSubmitting}
-              />
-              <FormError error={errors.date_announced} />
-            </div>
+            <Field id="nhtsa_campaign_number" label={t('recall.nhtsaCampaignNumber')} error={errors.nhtsa_campaign_number}>
+              <Input id="nhtsa_campaign_number" type="text" mono {...register('nhtsa_campaign_number')} placeholder="e.g., 23V123000" invalid={!!errors.nhtsa_campaign_number} disabled={isSubmitting} />
+            </Field>
+            <Field id="date_announced" label={t('recall.dateAnnounced')} error={errors.date_announced}>
+              <Input id="date_announced" type="date" {...register('date_announced')} invalid={!!errors.date_announced} disabled={isSubmitting} />
+            </Field>
           </div>
 
-          <div>
-            <label htmlFor="component" className="block text-sm font-medium text-garage-text mb-1">
-              {t('recall.component')} <span className="text-danger">*</span>
-            </label>
-            <input
-              type="text"
-              id="component"
-              {...register('component')}
-              className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-primary bg-garage-bg text-garage-text ${
-                errors.component ? 'border-red-500' : 'border-garage-border'
-              }`}
-              placeholder={t('recallForm.componentPlaceholder')}
-              disabled={isSubmitting}
-            />
-            <FormError error={errors.component} />
-          </div>
+          <Field id="component" label={t('recall.component')} required error={errors.component}>
+            <Input id="component" type="text" {...register('component')} placeholder={t('recallForm.componentPlaceholder')} invalid={!!errors.component} disabled={isSubmitting} />
+          </Field>
 
-          <div>
-            <label htmlFor="summary" className="block text-sm font-medium text-garage-text mb-1">
-              {t('recall.summary')} <span className="text-danger">*</span>
-            </label>
-            <textarea
-              id="summary"
-              {...register('summary')}
-              className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-primary bg-garage-bg text-garage-text ${
-                errors.summary ? 'border-red-500' : 'border-garage-border'
-              }`}
-              rows={3}
-              placeholder={t('recall.summaryPlaceholder')}
-              disabled={isSubmitting}
-            />
-            <FormError error={errors.summary} />
-          </div>
+          <Field id="summary" label={t('recall.summary')} required error={errors.summary}>
+            <Textarea id="summary" rows={3} {...register('summary')} placeholder={t('recall.summaryPlaceholder')} invalid={!!errors.summary} disabled={isSubmitting} />
+          </Field>
 
-          <div>
-            <label htmlFor="consequence" className="block text-sm font-medium text-garage-text mb-1">
-              {t('recall.consequence')}
-            </label>
-            <textarea
-              id="consequence"
-              {...register('consequence')}
-              className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-primary bg-garage-bg text-garage-text ${
-                errors.consequence ? 'border-red-500' : 'border-garage-border'
-              }`}
-              rows={2}
-              placeholder={t('recall.consequencePlaceholder')}
-              disabled={isSubmitting}
-            />
-            <FormError error={errors.consequence} />
-          </div>
+          <Field id="consequence" label={t('recall.consequence')} error={errors.consequence}>
+            <Textarea id="consequence" rows={2} {...register('consequence')} placeholder={t('recall.consequencePlaceholder')} invalid={!!errors.consequence} disabled={isSubmitting} />
+          </Field>
 
-          <div>
-            <label htmlFor="remedy" className="block text-sm font-medium text-garage-text mb-1">
-              {t('recall.remedy')}
-            </label>
-            <textarea
-              id="remedy"
-              {...register('remedy')}
-              className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-primary bg-garage-bg text-garage-text ${
-                errors.remedy ? 'border-red-500' : 'border-garage-border'
-              }`}
-              rows={2}
-              placeholder={t('recall.remedyPlaceholder')}
-              disabled={isSubmitting}
-            />
-            <FormError error={errors.remedy} />
-          </div>
+          <Field id="remedy" label={t('recall.remedy')} error={errors.remedy}>
+            <Textarea id="remedy" rows={2} {...register('remedy')} placeholder={t('recall.remedyPlaceholder')} invalid={!!errors.remedy} disabled={isSubmitting} />
+          </Field>
 
-          <div>
-            <label htmlFor="notes" className="block text-sm font-medium text-garage-text mb-1">
-              {t('common:notes')}
-            </label>
-            <textarea
-              id="notes"
-              {...register('notes')}
-              className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-primary bg-garage-bg text-garage-text ${
-                errors.notes ? 'border-red-500' : 'border-garage-border'
-              }`}
-              rows={2}
-              placeholder={t('common:additionalNotes')}
-              disabled={isSubmitting}
-            />
-            <FormError error={errors.notes} />
-          </div>
+          <Field id="notes" label={t('common:notes')} error={errors.notes}>
+            <Textarea id="notes" rows={2} {...register('notes')} placeholder={t('common:additionalNotes')} invalid={!!errors.notes} disabled={isSubmitting} />
+          </Field>
 
-          <div className="flex items-center">
-            <input
-              type="checkbox"
-              id="is_resolved"
-              {...register('is_resolved')}
-              className="w-4 h-4 text-primary bg-garage-bg border-garage-border rounded focus:ring-primary focus:ring-2"
-              disabled={isSubmitting}
-            />
-            <label htmlFor="is_resolved" className="ml-2 text-sm text-garage-text">
-              {t('recall.markAsResolved')}
-            </label>
-          </div>
-
+          <Checkbox id="is_resolved" label={t('recall.markAsResolved')} {...register('is_resolved')} disabled={isSubmitting} />
         </form>
     </FormModalWrapper>
   )
