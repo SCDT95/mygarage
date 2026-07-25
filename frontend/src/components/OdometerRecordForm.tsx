@@ -6,13 +6,13 @@ import { Save } from 'lucide-react'
 import FormModalWrapper from './FormModalWrapper'
 import type { OdometerRecord, OdometerRecordCreate, OdometerRecordUpdate } from '../types/odometer'
 import { makeOdometerRecordSchema, type OdometerRecordFormData } from '../schemas/odometer'
-import { FormError } from './FormError'
 import { useCreateOdometerRecord, useUpdateOdometerRecord } from '../hooks/queries/useOdometerRecords'
 import { useUnitPreference } from '../hooks/useUnitPreference'
 import { UnitConverter, UnitFormatter } from '../utils/units'
 import { toCanonicalKm } from '../utils/decimalSafe'
 import { formatDateForInput } from '../utils/dateUtils'
 import { useFormSubmit } from '../hooks/useFormSubmit'
+import { Button, Field, Input, Textarea } from './ui'
 
 interface OdometerRecordFormProps {
   vin: string
@@ -76,23 +76,10 @@ export default function OdometerRecordForm({ vin, record, onClose, onSuccess }: 
       width="sm"
       footer={
         <>
-          <button
-            type="button"
-            onClick={onClose}
-            disabled={isSubmitting}
-            className="btn btn-primary rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            {t('odometerRecordForm.cancel')}
-          </button>
-          <button
-            type="submit"
-            form="odometer-record-form"
-            disabled={isSubmitting}
-            className="flex items-center gap-2 btn btn-primary rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            <Save className="w-4 h-4" />
-            <span>{isSubmitting ? t('common:saving') : isEdit ? t('common:update') : t('common:create')}</span>
-          </button>
+          <Button variant="secondary" onClick={onClose} disabled={isSubmitting}>{t('odometerRecordForm.cancel')}</Button>
+          <Button type="submit" form="odometer-record-form" variant="primary" icon={Save} loading={isSubmitting} disabled={isSubmitting}>
+            {isSubmitting ? t('common:saving') : isEdit ? t('common:update') : t('common:create')}
+          </Button>
         </>
       }
     >
@@ -103,57 +90,26 @@ export default function OdometerRecordForm({ vin, record, onClose, onSuccess }: 
             </div>
           )}
 
-          <div>
-            <label htmlFor="date" className="block text-sm font-medium text-garage-text mb-1">
-              {t('common:date')} <span className="text-danger">*</span>
-            </label>
-            <input
-              type="date"
-              id="date"
-              {...register('date')}
-              className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-primary bg-garage-bg text-garage-text ${
-                errors.date ? 'border-red-500' : 'border-garage-border'
-              }`}
-              disabled={isSubmitting}
-            />
-            <FormError error={errors.date} />
-          </div>
+          <Field id="date" label={t('common:date')} required error={errors.date}>
+            <Input id="date" type="date" {...register('date')} invalid={!!errors.date} disabled={isSubmitting} />
+          </Field>
 
-          <div>
-            <label htmlFor="odometer_km" className="block text-sm font-medium text-garage-text mb-1">
-              {t('common:mileage')} ({UnitFormatter.getDistanceUnit(system)}) <span className="text-danger">*</span>
-            </label>
-            <input
-              type="number"
+          <Field id="odometer_km" label={t('common:mileage')} unit={UnitFormatter.getDistanceUnit(system)} required error={errors.odometer_km}>
+            <Input
               id="odometer_km"
+              type="number"
+              mono
               {...register('odometer_km', { valueAsNumber: true })}
               step="0.1"
               placeholder={system === 'imperial' ? '45000' : '72420'}
-              className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-primary bg-garage-bg text-garage-text ${
-                errors.odometer_km ? 'border-red-500' : 'border-garage-border'
-              }`}
+              invalid={!!errors.odometer_km}
               disabled={isSubmitting}
             />
-            <FormError error={errors.odometer_km} />
-          </div>
+          </Field>
 
-          <div>
-            <label htmlFor="notes" className="block text-sm font-medium text-garage-text mb-1">
-              {t('odometerRecordForm.notes')}
-            </label>
-            <textarea
-              id="notes"
-              rows={3}
-              {...register('notes')}
-              placeholder={t('odometer.notesPlaceholder')}
-              className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-primary bg-garage-bg text-garage-text ${
-                errors.notes ? 'border-red-500' : 'border-garage-border'
-              }`}
-              disabled={isSubmitting}
-            />
-            <FormError error={errors.notes} />
-          </div>
-
+          <Field id="notes" label={t('odometerRecordForm.notes')} error={errors.notes}>
+            <Textarea id="notes" rows={3} {...register('notes')} placeholder={t('odometer.notesPlaceholder')} invalid={!!errors.notes} disabled={isSubmitting} />
+          </Field>
         </form>
     </FormModalWrapper>
   )
