@@ -15,8 +15,26 @@ vi.mock('../../hooks/queries/useFuelRecords', () => ({
   useImportFuelCSV: () => useImportFuelCSVMock(),
 }))
 vi.mock('../../services/api', () => ({ default: { get: (...a: unknown[]) => apiGetMock(...a) } }))
+// Mutable so the unit-aware volume-header test (B7) can toggle metric/imperial;
+// every other test leaves it at the metric default set in beforeEach.
+const unitPrefMock = vi.hoisted(() => ({ system: 'metric' as 'metric' | 'imperial', showBoth: false }))
 vi.mock('../../hooks/useUnitPreference', () => ({
-  useUnitPreference: () => ({ system: 'metric', showBoth: false }),
+  useUnitPreference: () => unitPrefMock,
+}))
+// LOCAL i18n mock (same pattern as the plan's DEF/Propane B5 fix — see
+// task-3-review.md Important #1): the GLOBAL setup.ts mock is `t: (key) => key`,
+// which discards interpolation args, so `t('fuelList.volumeUnit', { unit })` renders
+// the identical string regardless of unit — a header test against it can't tell L
+// from gal, or from a dropped {{unit}} entirely. This override retains `options.unit`
+// for the volume-header assertions below and is otherwise behaviour-identical to the
+// global mock (bare key, no unit) so the other 11 tests in this file stay green.
+vi.mock('react-i18next', () => ({
+  useTranslation: () => ({
+    t: (key: string, options?: { unit?: string }) => (options?.unit ? `${key} (${options.unit})` : key),
+    i18n: { language: 'en', changeLanguage: () => Promise.resolve() },
+  }),
+  Trans: ({ children }: { children: React.ReactNode }) => children,
+  initReactI18next: { type: '3rdParty', init: () => {} },
 }))
 // NOTE: the component imports formatCurrency from utils/formatUtils (NOT from this
 // hook), so the REAL formatter runs: formatCurrency(43.75) → "$43.75" and
@@ -55,6 +73,7 @@ const table = () => screen.getByRole('table', { name: 'fuelList.tableCaption' })
 
 beforeEach(() => {
   vi.clearAllMocks()
+  unitPrefMock.system = 'metric'
   vi.spyOn(window, 'confirm').mockReturnValue(true)
   useFuelRecordsMock.mockReturnValue({
     data: { records: [record], total: 1, average_l_per_100km: '8.5' },
@@ -94,10 +113,17 @@ describe('FuelRecordList — row cells scoped to the named table', () => {
     expect(within(table()).getByRole('columnheader', { name: 'fuelList.unitPrice' })).toBeInTheDocument()
   })
 
-  it('renders the volume header via the unit-aware key (fails if it reverts to a hardcoded "Volume (…)" literal or a static key)', async () => {
+  it('interpolates the SYSTEM volume unit into the header — L in metric, gal in imperial (fails if the impl omits {{unit}}, hardcodes one system, or reverts to a static key)', async () => {
+    unitPrefMock.system = 'metric'
+    const metric = render(<FuelRecordList {...DEFAULT_PROPS} />)
+    await waitFor(() => expect(apiGetMock).toHaveBeenCalled())
+    expect(within(table()).getByRole('columnheader', { name: 'fuelList.volumeUnit (L)' })).toBeInTheDocument()
+    metric.unmount()
+
+    unitPrefMock.system = 'imperial'
     render(<FuelRecordList {...DEFAULT_PROPS} />)
     await waitFor(() => expect(apiGetMock).toHaveBeenCalled())
-    expect(within(table()).getByRole('columnheader', { name: 'fuelList.volumeUnit' })).toBeInTheDocument()
+    expect(within(table()).getByRole('columnheader', { name: 'fuelList.volumeUnit (gal)' })).toBeInTheDocument()
   })
 
   it('shows the Full-tank badge (true) and the towing badge (true) IN-table (fails if either status column is dropped)', async () => {
@@ -152,8 +178,10 @@ describe('FuelRecordList — conditional propane column', () => {
     const propaneRec = { ...record, propane_liters: '39.750' } as FuelRecord
     useFuelRecordsMock.mockReturnValue({ data: { records: [propaneRec], total: 1, average_l_per_100km: null }, isLoading: false, error: null })
     render(<FuelRecordList {...DEFAULT_PROPS} />)
-    // header appears only after the async vehicle fetch resolves → findByRole waits
-    expect(await screen.findByRole('columnheader', { name: 'fuelList.propaneUnit' })).toBeInTheDocument()
+    // header appears only after the async vehicle fetch resolves → findByRole waits.
+    // Also carries `{ unit }` (same as the volume header, B7) — the local i18n mock
+    // now retains it, so the accessible name is the interpolated form (metric default: L).
+    expect(await screen.findByRole('columnheader', { name: 'fuelList.propaneUnit (L)' })).toBeInTheDocument()
   })
 
   it('omits the propane column for a non-propane vehicle', async () => {
