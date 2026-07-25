@@ -410,7 +410,11 @@
     "towing": "Towing",
     "paginatedCount": "{{shown}} of {{total}}",
     "pageRange": "Showing {{start}}–{{end}} of {{total}}",
-    "pageOf": "Page {{page}} of {{total}}"
+    "pageOf": "Page {{page}} of {{total}}",
+    "volumeUnit": "Volume ({{unit}})",
+    "propaneUnit": "Propane ({{unit}})",
+    "unitPrice": "Unit price",
+    "tableCaption": "Fuel fill-up history"
   },
   "insuranceList": {
     "addFirstPolicy": "Add Your First Insurance Policy",

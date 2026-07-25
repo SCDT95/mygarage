@@ -1,6 +1,6 @@
 import { useState, useMemo, useRef, useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Fuel, Plus, Edit, Trash2, Calendar, Gauge, TrendingUp, Search, Download, Upload, Truck } from 'lucide-react'
+import { Fuel, Plus, Edit, Trash2, TrendingUp, Search, Download, Upload, Truck, Gauge, ChevronLeft, ChevronRight } from 'lucide-react'
 import { toast } from 'sonner'
 import type { FuelRecord } from '../types/fuel'
 import type { Vehicle } from '../types/vehicle'
@@ -12,7 +12,8 @@ import { useUnitPreference } from '../hooks/useUnitPreference'
 import { UnitFormatter } from '../utils/units'
 import { priceToDisplay } from '../utils/decimalSafe'
 import { useFuelRecords, useDeleteFuelRecord, useImportFuelCSV } from '../hooks/queries/useFuelRecords'
-import { Badge } from './ui'
+import { Button, IconButton, Card, Mono, DataTable, Badge, SearchField, EmptyState, Checkbox } from './ui'
+import type { DataTableColumn } from './ui'
 
 interface FuelRecordListProps {
   vin: string
@@ -165,10 +166,53 @@ export default function FuelRecordList({ vin, onAddClick, onEditClick }: FuelRec
   const isPropane = vehicleFuelType?.toLowerCase().includes('propane')
   const showPropaneColumn = isPropane
 
+  const columns: DataTableColumn<FuelRecord>[] = [
+    { id: 'date', header: t('fuelList.date'), mono: true, render: (r) => formatDate(r.date) },
+    { id: 'mileage', header: t('fuelList.mileage'), align: 'right', mono: true,
+      render: (r) => r.odometer_km != null ? UnitFormatter.formatDistance(parseFloat(String(r.odometer_km)), system, showBoth) : '-' },
+    { id: 'volume', header: t('fuelList.volumeUnit', { unit: UnitFormatter.getVolumeUnit(system) }), align: 'right', mono: true,
+      render: (r) => r.liters ? UnitFormatter.formatVolume(parseFloat(r.liters.toString()), system, showBoth) : '-' },
+    ...(showPropaneColumn ? [{
+      id: 'propane', header: t('fuelList.propaneUnit', { unit: UnitFormatter.getVolumeUnit(system) }), align: 'right' as const, mono: true,
+      render: (r: FuelRecord) => r.propane_liters ? UnitFormatter.formatVolume(parseFloat(r.propane_liters.toString()), system, showBoth) : '-',
+    }] : []),
+    // B8: generic truthful header — the row value already respects every price_basis
+    // via priceToDisplay(…, r.price_basis), so a volume-only "Price/L" heading would
+    // lie for per_weight/per_kwh/per_tank rows. "Unit price" is honest across all four.
+    { id: 'price', header: t('fuelList.unitPrice'), align: 'right', mono: true,
+      render: (r) => r.price_per_unit ? formatCurrency(priceToDisplay(r.price_per_unit, system, r.price_basis) ?? 0, { currencyCode, locale }) : '-' },
+    { id: 'cost', header: t('fuelList.totalCost'), align: 'right', mono: true,
+      render: (r) => r.cost ? formatCurrency(parseFloat(r.cost.toString()), { currencyCode, locale }) : '-' },
+    { id: 'economy', header: t('fuelList.fuelEconomy'),
+      render: (r) => r.l_per_100km
+        ? <Badge tone="success">{UnitFormatter.formatFuelEconomy(parseFloat(r.l_per_100km.toString()), system, showBoth)}</Badge>
+        : <span className="text-sm text-text-mute">-</span> },
+    { id: 'fullTank', header: t('fuelList.fullTank'),
+      render: (r) => r.is_full_tank ? <Badge>{t('fuelList.full')}</Badge> : <Badge tone="muted">{t('fuelList.partial')}</Badge> },
+    { id: 'hauling', header: t('fuelList.hauling'),
+      render: (r) => r.is_hauling
+        ? <Badge tone="warning" icon={Truck}>{t('fuelList.towing')}</Badge>
+        : <span className="text-sm text-text-mute">-</span> },
+    { id: 'actions', header: t('fuelList.actions'), align: 'right',
+      render: (r) => (
+        <div className="flex justify-end gap-2">
+          <IconButton icon={Edit} label={t('common:edit')} variant="ghost" size="sm" onClick={() => onEditClick(r)} />
+          <IconButton
+            icon={Trash2}
+            label={t('common:delete')}
+            variant="danger"
+            size="sm"
+            disabled={deleteMutation.isPending && deleteMutation.variables === r.id}
+            onClick={() => handleDelete(r.id)}
+          />
+        </div>
+      ) },
+  ]
+
   if (isLoading) {
     return (
       <div className="flex justify-center items-center min-h-[200px]">
-        <div className="text-garage-text-muted">{t('fuelList.loading')}</div>
+        <div className="text-text-mute">{t('fuelList.loading')}</div>
       </div>
     )
   }
@@ -185,76 +229,43 @@ export default function FuelRecordList({ vin, onAddClick, onEditClick }: FuelRec
     <div className="space-y-4">
       <div className="flex flex-col gap-3 sm:flex-row sm:justify-between sm:items-center">
         <div className="flex items-center gap-2">
-          <Fuel className="w-5 h-5 text-garage-text-muted" />
-          <h3 className="text-lg font-semibold text-garage-text">
-            {t('fuelList.title')}
-          </h3>
-          <span className="text-sm text-garage-text-muted">
+          <Fuel aria-hidden="true" className="w-5 h-5 text-text-mute" />
+          <h3 className="text-lg font-semibold text-text">{t('fuelList.title')}</h3>
+          <span className="text-sm text-text-mute">
             (
             {totalRecords > PAGE_SIZE
-              ? t('fuelList.paginatedCount', {
-                  shown: records.length,
-                  total: totalRecords,
-                })
+              ? t('fuelList.paginatedCount', { shown: records.length, total: totalRecords })
               : t('fuelList.recordCount', { count: records.length })}
             )
           </span>
         </div>
         <div className="flex flex-wrap items-center gap-2">
-          {/* Search */}
           {records.length > 0 && (
-            <div className="relative flex-1 min-w-[10rem] sm:flex-none">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-garage-text-muted" />
-              <input
-                type="text"
-                placeholder={t('fuelList.searchPlaceholder')}
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="pl-10 pr-4 py-2 border border-garage-border rounded-md focus:outline-none focus:ring-2 focus:ring-primary bg-garage-bg text-garage-text w-full sm:w-56"
-              />
-            </div>
+            <SearchField
+              label={t('fuelList.searchPlaceholder')}
+              placeholder={t('fuelList.searchPlaceholder')}
+              value={searchQuery}
+              onChange={setSearchQuery}
+              className="flex-1 min-w-[10rem] sm:flex-none sm:w-56"
+            />
           )}
-          {/* Import button */}
-          <input
-            ref={fileInputRef}
-            type="file"
-            accept=".csv"
-            onChange={handleImportCSV}
-            className="hidden"
-          />
-          <button
-            onClick={handleImportClick}
-            disabled={importMutation.isPending}
-            className="flex items-center gap-2 btn btn-primary rounded-lg transition-colors disabled:opacity-50"
-            title={t('fuelList.importFromCSV')}
-          >
-            <Upload className="w-4 h-4" />
-            <span>{importMutation.isPending ? t('fuelList.importing') : t('fuelList.importCSV')}</span>
-          </button>
-          {/* Export button */}
+          <input ref={fileInputRef} type="file" accept=".csv" onChange={handleImportCSV} className="hidden" />
+          <Button variant="secondary" icon={Upload} onClick={handleImportClick} loading={importMutation.isPending} title={t('fuelList.importFromCSV')}>
+            {importMutation.isPending ? t('fuelList.importing') : t('fuelList.importCSV')}
+          </Button>
           {records.length > 0 && (
-            <button
-              onClick={handleExportCSV}
-              disabled={exporting}
-              className="flex items-center gap-2 btn btn-primary rounded-lg transition-colors disabled:opacity-50"
-              title={t('fuelList.exportToCSV')}>
-              <Download className="w-4 h-4" />
-              <span>{exporting ? t('fuelList.exporting') : t('fuelList.exportCSV')}</span>
-            </button>
+            <Button variant="secondary" icon={Download} onClick={handleExportCSV} loading={exporting} title={t('fuelList.exportToCSV')}>
+              {exporting ? t('fuelList.exporting') : t('fuelList.exportCSV')}
+            </Button>
           )}
-          <button
-            onClick={onAddClick}
-            className="flex items-center gap-2 btn btn-primary rounded-lg transition-colors"
-          >
-            <Plus className="w-4 h-4" />
-            <span>{t('fuelList.addFillUp')}</span>
-          </button>
+          <Button variant="primary" icon={Plus} onClick={onAddClick}>
+            {t('fuelList.addFillUp')}
+          </Button>
         </div>
       </div>
 
-      {/* Search results count */}
       {searchQuery && (
-        <div className="text-sm text-garage-text-muted">
+        <div className="text-sm text-text-mute">
           {t('fuelList.showingResults', { shown: filteredRecords.length, total: records.length })}
         </div>
       )}
@@ -274,256 +285,94 @@ export default function FuelRecordList({ vin, onAddClick, onEditClick }: FuelRec
         return (
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
             {averageEconomy !== null && (
-              <div className="bg-garage-surface border border-garage-border rounded-lg p-3">
-                <div className="flex items-center gap-1 text-xs text-garage-text-muted mb-1">
-                  <TrendingUp className="w-3 h-3" />
+              <Card padding="sm">
+                <div className="flex items-center gap-1 text-xs text-text-mute mb-1">
+                  <TrendingUp aria-hidden="true" className="w-3 h-3" />
                   <span>{t('fuelList.avgFuelEconomy')}</span>
                 </div>
-                <div className="text-lg font-semibold text-garage-text">
-                  {UnitFormatter.formatFuelEconomy(averageEconomy, system, showBoth)}
+                <Mono size="2xl" weight="bold">{UnitFormatter.formatFuelEconomy(averageEconomy, system, showBoth)}</Mono>
+                <div className="mt-1">
+                  <Checkbox
+                    id="fuel-incl-towing"
+                    label={t('fuelList.inclTowing')}
+                    checked={includeHauling}
+                    onChange={(e) => setIncludeHauling(e.target.checked)}
+                  />
                 </div>
-                <div className="flex items-center gap-2 mt-1">
-                  <label className="flex items-center gap-1 cursor-pointer">
-                    <input
-                      type="checkbox"
-                      checked={includeHauling}
-                      onChange={(e) => setIncludeHauling(e.target.checked)}
-                      className="h-3 w-3 text-primary focus:ring-primary border-garage-border rounded bg-garage-bg"
-                    />
-                    <span className="text-xs text-garage-text-muted">{t('fuelList.inclTowing')}</span>
-                  </label>
-                </div>
-              </div>
+              </Card>
             )}
             {totalCost > 0 && (
-              <div className="bg-garage-surface border border-garage-border rounded-lg p-3">
-                <div className="flex items-center gap-1 text-xs text-garage-text-muted mb-1">
+              <Card padding="sm">
+                <div className="flex items-center gap-1 text-xs text-text-mute mb-1">
                   <span>{t('fuelList.totalSpent')}</span>
                 </div>
-                <div className="text-lg font-semibold text-garage-text">
-                  {formatCurrency(totalCost, { currencyCode, locale })}
-                </div>
-                <p className="text-xs text-garage-text-muted">
-                  {UnitFormatter.formatVolumeTotal(totalLiters, system)}
-                </p>
-              </div>
+                <Mono size="2xl" weight="bold">{formatCurrency(totalCost, { currencyCode, locale })}</Mono>
+                <Mono size="sm" tone="muted" className="mt-1 block">{UnitFormatter.formatVolumeTotal(totalLiters, system)}</Mono>
+              </Card>
             )}
             {avgCostPerLiter !== null && (
-              <div className="bg-garage-surface border border-garage-border rounded-lg p-3">
-                <div className="flex items-center gap-1 text-xs text-garage-text-muted mb-1">
-                  <Gauge className="w-3 h-3" />
+              <Card padding="sm">
+                <div className="flex items-center gap-1 text-xs text-text-mute mb-1">
+                  <Gauge aria-hidden="true" className="w-3 h-3" />
                   <span>{UnitFormatter.getCostPerVolumeLabel(system)}</span>
                 </div>
-                <div className="text-lg font-semibold text-garage-text">
-                  {avgCostPerLiter !== null && UnitFormatter.formatCostPerVolume(avgCostPerLiter, system, currencyCode, locale)}
-                </div>
-              </div>
+                <Mono size="2xl" weight="bold">{UnitFormatter.formatCostPerVolume(avgCostPerLiter, system, currencyCode, locale)}</Mono>
+              </Card>
             )}
             {costPerKm !== null && isFinite(costPerKm) && (
-              <div className="bg-garage-surface border border-garage-border rounded-lg p-3">
-                <div className="flex items-center gap-1 text-xs text-garage-text-muted mb-1">
-                  <Truck className="w-3 h-3" />
+              <Card padding="sm">
+                <div className="flex items-center gap-1 text-xs text-text-mute mb-1">
+                  <Truck aria-hidden="true" className="w-3 h-3" />
                   <span>{UnitFormatter.getCostPerDistanceLabel(system)}</span>
                 </div>
-                <div className="text-lg font-semibold text-garage-text">
-                  {costPerKm !== null && UnitFormatter.formatCostPerDistance(costPerKm, system, currencyCode, locale)}
-                </div>
-              </div>
+                <Mono size="2xl" weight="bold">{UnitFormatter.formatCostPerDistance(costPerKm, system, currencyCode, locale)}</Mono>
+              </Card>
             )}
           </div>
         )
       })()}
 
       {records.length === 0 ? (
-        <div className="bg-garage-surface border border-garage-border rounded-lg p-8 text-center">
-          <Fuel className="w-12 h-12 text-garage-text-muted opacity-50 mx-auto mb-3" />
-          <p className="text-garage-text mb-2">{t('fuelList.noRecords')}</p>
-          <p className="text-sm text-garage-text-muted mb-4">{t('fuelList.noRecordsDesc')}</p>
-          <button
-            onClick={onAddClick}
-            className="inline-flex items-center gap-2 btn btn-primary rounded-lg transition-colors"
-          >
-            <Plus className="w-4 h-4" />
-            <span>{t('fuelList.addFirstFillUp')}</span>
-          </button>
-        </div>
+        <EmptyState
+          icon={Fuel}
+          title={t('fuelList.noRecords')}
+          description={t('fuelList.noRecordsDesc')}
+          action={<Button variant="primary" icon={Plus} onClick={onAddClick}>{t('fuelList.addFirstFillUp')}</Button>}
+        />
       ) : (
-        <div className="bg-garage-surface shadow rounded-lg overflow-hidden">
-          <div className="overflow-x-auto">
-            <table className="min-w-full divide-y divide-garage-border">
-              <thead className="bg-garage-bg">
-                <tr>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-garage-text-muted uppercase tracking-wider">{t('fuelList.date')}</th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-garage-text-muted uppercase tracking-wider">{t('fuelList.mileage')}</th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-garage-text-muted uppercase tracking-wider">
-                    Volume ({UnitFormatter.getVolumeUnit(system)})
-                  </th>
-                  {showPropaneColumn && (
-                    <th className="px-4 py-3 text-left text-xs font-medium text-garage-text-muted uppercase tracking-wider">
-                      Propane ({UnitFormatter.getVolumeUnit(system)})
-                    </th>
-                  )}
-                  <th className="px-4 py-3 text-left text-xs font-medium text-garage-text-muted uppercase tracking-wider">
-                    Price/{UnitFormatter.getVolumeUnit(system)}
-                  </th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-garage-text-muted uppercase tracking-wider">{t('fuelList.totalCost')}</th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-garage-text-muted uppercase tracking-wider">{t('fuelList.fuelEconomy')}</th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-garage-text-muted uppercase tracking-wider">{t('fuelList.fullTank')}</th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-garage-text-muted uppercase tracking-wider">{t('fuelList.hauling')}</th>
-                  <th className="px-4 py-3 text-right text-xs font-medium text-garage-text-muted uppercase tracking-wider">{t('fuelList.actions')}</th>
-                </tr>
-              </thead>
-              <tbody className="bg-garage-surface divide-y divide-garage-border">
-                {filteredRecords.length === 0 ? (
-                  <tr>
-                    <td colSpan={showPropaneColumn ? 10 : 9} className="px-4 py-8 text-center">
-                      <Search className="w-8 h-8 text-garage-text-muted opacity-50 mx-auto mb-2" />
-                      <p className="text-garage-text-muted">{t('fuelList.noMatchingRecords')}</p>
-                    </td>
-                  </tr>
-                ) : (
-                  filteredRecords.map((record) => (
-                  <tr key={record.id} className="hover:bg-garage-bg">
-                    <td className="px-4 py-3 whitespace-nowrap">
-                      <div className="flex items-center gap-2 text-sm text-garage-text">
-                        <Calendar className="w-4 h-4 text-garage-text-muted" />
-                        {formatDate(record.date)}
-                      </div>
-                    </td>
-                    <td className="px-4 py-3 whitespace-nowrap">
-                      {record.odometer_km != null ? (
-                        <div className="flex items-center gap-2 text-sm text-garage-text">
-                          <Gauge className="w-4 h-4 text-garage-text-muted" />
-                          {UnitFormatter.formatDistance(parseFloat(String(record.odometer_km)), system, showBoth)}
-                        </div>
-                      ) : (
-                        <span className="text-sm text-garage-text-muted">-</span>
-                      )}
-                    </td>
-                    <td className="px-4 py-3 whitespace-nowrap text-sm text-garage-text">
-                      {record.liters ? UnitFormatter.formatVolume(parseFloat(record.liters.toString()), system, showBoth) : '-'}
-                    </td>
-                    {showPropaneColumn && (
-                      <td className="px-4 py-3 whitespace-nowrap text-sm text-garage-text">
-                        {record.propane_liters ? UnitFormatter.formatVolume(parseFloat(record.propane_liters.toString()), system, showBoth) : '-'}
-                      </td>
-                    )}
-                    <td className="px-4 py-3 whitespace-nowrap text-sm text-garage-text">
-                      {record.price_per_unit
-                        ? formatCurrency(
-                            priceToDisplay(record.price_per_unit, system, record.price_basis) ?? 0,
-                            { currencyCode, locale },
-                          )
-                        : '-'}
-                    </td>
-                    <td className="px-4 py-3 whitespace-nowrap">
-                      {record.cost ? (
-                        <div className="text-sm text-garage-text">
-                          {formatCurrency(parseFloat(record.cost.toString()), { currencyCode, locale })}
-                        </div>
-                      ) : (
-                        <span className="text-sm text-garage-text-muted">-</span>
-                      )}
-                    </td>
-                    <td className="px-4 py-3 whitespace-nowrap">
-                      {record.l_per_100km ? (
-                        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
-                          {UnitFormatter.formatFuelEconomy(parseFloat(record.l_per_100km.toString()), system, showBoth)}
-                        </span>
-                      ) : (
-                        <span className="text-sm text-garage-text-muted">-</span>
-                      )}
-                    </td>
-                    <td className="px-4 py-3 whitespace-nowrap">
-                      {record.is_full_tank ? (
-                        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">{t('fuelList.full')}</span>
-                      ) : (
-                        <Badge>{t('fuelList.partial')}</Badge>
-                      )}
-                    </td>
-                    <td className="px-4 py-3 whitespace-nowrap">
-                      {record.is_hauling ? (
-                        <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium bg-orange-100 text-orange-800">
-                          <Truck className="w-3 h-3" />{t('fuelList.towing')}</span>
-                      ) : (
-                        <span className="text-sm text-garage-text-muted">-</span>
-                      )}
-                    </td>
-                    <td className="px-4 py-3 whitespace-nowrap text-right text-sm">
-                      <div className="flex justify-end gap-2">
-                        <button
-                          onClick={() => onEditClick(record)}
-                          className="text-primary hover:text-primary-600"
-                          title={t('common:edit')}
-                        >
-                          <Edit className="w-4 h-4" />
-                        </button>
-                        <button
-                          onClick={() => handleDelete(record.id)}
-                          disabled={deleteMutation.isPending && deleteMutation.variables === record.id}
-                          className="text-danger hover:text-danger/80 disabled:opacity-50"
-                          title={t('common:delete')}
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                  ))
-                )}
-              </tbody>
-            </table>
-          </div>
-        </div>
+        <Card padding="none">
+          <DataTable
+            caption={t('fuelList.tableCaption')}
+            columns={columns}
+            rows={filteredRecords}
+            rowKey={(r) => String(r.id)}
+            emptyState={<EmptyState size="sm" icon={Search} title={t('fuelList.noMatchingRecords')} />}
+          />
+        </Card>
       )}
 
       {/* Phase 3.8 pagination controls */}
       {totalRecords > PAGE_SIZE && (
         <div className="flex items-center justify-between text-sm">
-          <span className="text-garage-text-muted">
-            {t('fuelList.pageRange', {
-              start: page * PAGE_SIZE + 1,
-              end: Math.min(totalRecords, (page + 1) * PAGE_SIZE),
-              total: totalRecords,
-            })}
+          <span className="text-text-mute">
+            {t('fuelList.pageRange', { start: page * PAGE_SIZE + 1, end: Math.min(totalRecords, (page + 1) * PAGE_SIZE), total: totalRecords })}
           </span>
           <div className="flex items-center gap-2">
-            <button
-              type="button"
-              onClick={() => setPage((p) => Math.max(0, p - 1))}
-              disabled={!canPrev}
-              aria-label={t('common:previous')}
-              className="px-3 py-1 border border-garage-border rounded hover:bg-garage-bg disabled:opacity-40 disabled:cursor-not-allowed"
-            >
-              ‹
-            </button>
-            <span className="text-garage-text-muted">
-              {t('fuelList.pageOf', {
-                page: page + 1,
-                total: totalPages,
-              })}
-            </span>
-            <button
-              type="button"
-              onClick={() => setPage((p) => p + 1)}
-              disabled={!canNext}
-              aria-label={t('common:next')}
-              className="px-3 py-1 border border-garage-border rounded hover:bg-garage-bg disabled:opacity-40 disabled:cursor-not-allowed"
-            >
-              ›
-            </button>
+            <IconButton icon={ChevronLeft} label={t('common:previous')} variant="surface" size="sm" onClick={() => setPage((p) => Math.max(0, p - 1))} disabled={!canPrev} />
+            <span className="text-text-mute">{t('fuelList.pageOf', { page: page + 1, total: totalPages })}</span>
+            <IconButton icon={ChevronRight} label={t('common:next')} variant="surface" size="sm" onClick={() => setPage((p) => p + 1)} disabled={!canNext} />
           </div>
         </div>
       )}
 
-      {records.length > 0 && records.some(r => r.notes) && (
-        <div className="bg-garage-bg border border-garage-border rounded-lg p-4">
-          <h4 className="text-sm font-medium text-garage-text mb-2">{t('fuelList.notes')}:</h4>
+      {records.length > 0 && records.some((r) => r.notes) && (
+        <div className="bg-surface-2 border border-border rounded-lg p-4">
+          <h4 className="text-sm font-medium text-text mb-2">{t('fuelList.notes')}:</h4>
           <div className="space-y-2">
-            {records.filter(r => r.notes).map((record) => (
+            {records.filter((r) => r.notes).map((record) => (
               <div key={record.id} className="text-sm">
-                <span className="text-garage-text-muted">{formatDate(record.date)}:</span>
-                <span className="text-garage-text ml-2">{record.notes}</span>
+                <span className="text-text-mute">{formatDate(record.date)}:</span>
+                <span className="text-text ml-2">{record.notes}</span>
               </div>
             ))}
           </div>
