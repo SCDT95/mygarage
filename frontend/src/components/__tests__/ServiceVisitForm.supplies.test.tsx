@@ -4,6 +4,7 @@ import { render } from '../../__tests__/test-utils'
 import ServiceVisitForm from '../ServiceVisitForm'
 import { useSupplies } from '../../hooks/queries/useSupplies'
 import { displayToCanonical, canonicalToDisplay } from '../../utils/supplyUnits'
+import { formatCurrency } from '../../utils/formatUtils'
 import type { Supply } from '../../types/supplies'
 import type { ServiceVisit } from '../../types/serviceVisit'
 
@@ -115,13 +116,14 @@ describe('ServiceVisitForm — supplies used (Task 17)', () => {
     const quantityInput = screen.getByRole('spinbutton', { name: 'service.suppliesQuantity' })
     fireEvent.change(quantityInput, { target: { value: '2' } })
 
-    // Breakdown line: 2 display-unit (qt) -> canonical (L) * avg_unit_cost.
-    // (Subtotal is $0 here, so this happens to equal the grand total too —
-    // scope the query to the breakdown row itself rather than matching text.)
+    // The Total block now formats through the shared formatCurrency (SDQ-3), not a
+    // hardcoded `$`+toFixed. USD/en-US (the mocked currency prefs) → "$18.93"; the
+    // value is still derived from the canonical quantity, so it discriminates the
+    // parts+supplies cost (a dropped canonical conversion or a wrong unit-cost fails).
     const expectedCanonicalQty = displayToCanonical(2, 'volume', 'imperial')
-    const expectedPartsSuppliesCost = (10 * expectedCanonicalQty).toFixed(2)
+    const expectedPartsSuppliesCost = formatCurrency(10 * expectedCanonicalQty, { currencyCode: 'USD', locale: 'en-US' })
     const partsSuppliesRow = screen.getByText('service.partsSupplies:').closest('div')
-    expect(partsSuppliesRow).toHaveTextContent(`$${expectedPartsSuppliesCost}`)
+    expect(partsSuppliesRow).toHaveTextContent(expectedPartsSuppliesCost)
 
     fireEvent.submit(drawerForm())
 
