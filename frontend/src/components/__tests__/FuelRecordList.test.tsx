@@ -187,7 +187,11 @@ describe('FuelRecordList — conditional propane column', () => {
   it('omits the propane column for a non-propane vehicle', async () => {
     render(<FuelRecordList {...DEFAULT_PROPS} />)
     await waitFor(() => expect(apiGetMock).toHaveBeenCalled())
-    expect(screen.queryByRole('columnheader', { name: 'fuelList.propaneUnit' })).not.toBeInTheDocument()
+    // The real header renders interpolated (`fuelList.propaneUnit (L)` via the file-local
+    // {{unit}}-retaining mock), so an exact `name: 'fuelList.propaneUnit'` never matches and
+    // would pass even if a bug made the column always-on. Regex matches the interpolated form,
+    // so this now FAILS if the propane column ever renders for a non-propane vehicle.
+    expect(screen.queryByRole('columnheader', { name: /fuelList\.propaneUnit/ })).not.toBeInTheDocument()
   })
 })
 
