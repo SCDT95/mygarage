@@ -13,6 +13,7 @@ import { UnitConverter, UnitFormatter } from '../utils/units'
 import { toCanonicalKm, toCanonicalLiters, priceToDisplay, priceToCanonical } from '../utils/decimalSafe'
 import { formatDateForInput } from '../utils/dateUtils'
 import CurrencyInputPrefix from './common/CurrencyInputPrefix'
+import { Button, Field, Input, Textarea } from './ui'
 
 // `labelKey` is translated at render time; the fraction labels are numerals and
 // stay as-is (they are not prose).
@@ -162,23 +163,12 @@ export default function DEFRecordForm({
       width="md"
       footer={
         <>
-          <button
-            type="button"
-            onClick={onClose}
-            className="btn btn-primary rounded-lg transition-colors"
-            disabled={isSubmitting}
-          >
+          <Button variant="secondary" onClick={onClose} disabled={isSubmitting}>
             {t('common:cancel')}
-          </button>
-          <button
-            type="submit"
-            form="def-record-form"
-            disabled={isSubmitting}
-            className="flex items-center gap-2 btn btn-primary rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            <Save className="w-4 h-4" />
-            <span>{isSubmitting ? t('common:saving') : isEdit ? t('common:update') : t('common:create')}</span>
-          </button>
+          </Button>
+          <Button type="submit" form="def-record-form" variant="primary" icon={Save} loading={isSubmitting}>
+            {isSubmitting ? t('common:saving') : isEdit ? t('common:update') : t('common:create')}
+          </Button>
         </>
       }
     >
@@ -190,81 +180,47 @@ export default function DEFRecordForm({
           )}
 
           <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label htmlFor="date" className="block text-sm font-medium text-garage-text mb-1">
-                {t('common:date')} <span className="text-danger">*</span>
-              </label>
-              <input
-                type="date"
-                id="date"
-                {...register('date')}
-                className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-primary bg-garage-bg text-garage-text ${
-                  errors.date ? 'border-red-500' : 'border-garage-border'
-                }`}
-                disabled={isSubmitting}
-              />
-              <FormError error={errors.date} />
-            </div>
-
-            <div>
-              <label htmlFor="odometer_km" className="block text-sm font-medium text-garage-text mb-1">
-                {t('common:mileage')} ({UnitFormatter.getDistanceUnit(system)})
-              </label>
-              <input
-                type="number"
-                id="odometer_km"
-                {...register('odometer_km', { valueAsNumber: true })}
-                min="0"
-                step="0.1"
-                placeholder="55000"
-                className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-primary bg-garage-bg text-garage-text ${
-                  errors.odometer_km ? 'border-red-500' : 'border-garage-border'
-                }`}
-                disabled={isSubmitting}
-              />
-              <FormError error={errors.odometer_km} />
-            </div>
+            <Field id="date" label={t('common:date')} required error={errors.date}>
+              <Input type="date" id="date" {...register('date')} invalid={!!errors.date} disabled={isSubmitting} />
+            </Field>
+            <Field id="odometer_km" label={t('common:mileage')} unit={UnitFormatter.getDistanceUnit(system)} error={errors.odometer_km}>
+              <Input type="number" id="odometer_km" mono {...register('odometer_km', { valueAsNumber: true })} min="0" step="0.1" placeholder="55000" invalid={!!errors.odometer_km} disabled={isSubmitting} />
+            </Field>
           </div>
 
           {/* Fill Level */}
           <div>
-            <label className="block text-sm font-medium text-garage-text mb-2">
-              {t('def.tankLevelAfterFill')}
-            </label>
+            <label className="block text-sm font-medium text-text mb-2">{t('def.tankLevelAfterFill')}</label>
             <div className="flex gap-2 mb-2">
-              {FILL_LEVEL_PRESETS.map(preset => (
-                <button
+              {FILL_LEVEL_PRESETS.map((preset) => (
+                <Button
                   key={preset.value}
-                  type="button"
+                  size="sm"
+                  variant={watch('fill_level') === preset.value ? 'primary' : 'secondary'}
                   onClick={() => setValue('fill_level', preset.value)}
-                  className={`px-3 py-1.5 text-sm rounded-md border transition-colors ${
-                    watch('fill_level') === preset.value
-                      ? 'bg-primary text-(--accent-on-solid) border-primary'
-                      : 'bg-garage-bg text-garage-text border-garage-border hover:border-primary'
-                  }`}
                 >
                   {preset.labelKey ? t(preset.labelKey) : preset.label}
-                </button>
+                </Button>
               ))}
             </div>
             <div className="flex items-center gap-2">
-              <input
-                type="number"
-                id="fill_level"
-                {...register('fill_level', { valueAsNumber: true })}
-                min="0"
-                max="100"
-                step="1"
-                placeholder="75"
-                className={`w-24 px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-primary bg-garage-bg text-garage-text ${
-                  errors.fill_level ? 'border-red-500' : 'border-garage-border'
-                }`}
-                disabled={isSubmitting}
-              />
-              <span className="text-sm text-garage-text-muted">%</span>
-              {/* Visual gauge */}
+              <div className="w-24 shrink-0">
+                <Input
+                  type="number"
+                  id="fill_level"
+                  mono
+                  {...register('fill_level', { valueAsNumber: true })}
+                  min="0"
+                  max="100"
+                  step="1"
+                  placeholder="75"
+                  invalid={!!errors.fill_level}
+                  disabled={isSubmitting}
+                />
+              </div>
+              <span className="text-sm text-text-mute">%</span>
               {watch('fill_level') !== undefined && !isNaN(watch('fill_level') ?? NaN) && (
-                <div className="flex-1 h-4 bg-garage-bg rounded-full border border-garage-border overflow-hidden">
+                <div className="flex-1 h-4 rounded-full border border-border bg-surface-2 overflow-hidden">
                   <div
                     className={`h-full rounded-full transition-all ${
                       (watch('fill_level') ?? 0) > 50 ? 'bg-success' :
@@ -280,136 +236,43 @@ export default function DEFRecordForm({
 
           {/* Volume and Pricing */}
           <div className="grid grid-cols-3 gap-4">
-            <div>
-              <label htmlFor="liters" className="block text-sm font-medium text-garage-text mb-1">
-                {UnitFormatter.getVolumeUnit(system)}
-              </label>
-              <input
-                type="number"
-                id="liters"
-                {...register('liters', { valueAsNumber: true })}
-                min="0"
-                step="0.001"
-                placeholder="5.500"
-                className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-primary bg-garage-bg text-garage-text ${
-                  errors.liters ? 'border-red-500' : 'border-garage-border'
-                }`}
-                disabled={isSubmitting}
-              />
-              <FormError error={errors.liters} />
-            </div>
-
-            <div>
-              <label htmlFor="price_per_unit" className="block text-sm font-medium text-garage-text mb-1">
-                {t('fuel.pricePer')}/{UnitFormatter.getVolumeUnit(system)}
-              </label>
+            <Field id="liters" label={UnitFormatter.getVolumeUnit(system)} error={errors.liters}>
+              <Input type="number" id="liters" mono {...register('liters', { valueAsNumber: true })} min="0" step="0.001" placeholder="5.500" invalid={!!errors.liters} disabled={isSubmitting} />
+            </Field>
+            <Field id="price_per_unit" label={`${t('fuel.pricePer')}/${UnitFormatter.getVolumeUnit(system)}`} error={errors.price_per_unit}>
               <div className="relative">
                 <CurrencyInputPrefix />
-                <input
-                  type="number"
-                  id="price_per_unit"
-                  {...register('price_per_unit', { valueAsNumber: true })}
-                  min="0"
-                  step="0.001"
-                  placeholder="4.500"
-                  className={`w-full pl-7 pr-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-primary bg-garage-bg text-garage-text ${
-                    errors.price_per_unit ? 'border-red-500' : 'border-garage-border'
-                  }`}
-                  disabled={isSubmitting}
-                />
+                <input type="number" id="price_per_unit" {...register('price_per_unit', { valueAsNumber: true })} min="0" step="0.001" placeholder="4.500" className={`ui-focus-input ui-motion w-full rounded-control border bg-surface-2 pl-7 pr-3 py-2 text-sm text-text font-mono tabular-nums ${errors.price_per_unit ? 'border-danger' : 'border-border'}`} disabled={isSubmitting} />
               </div>
-              <FormError error={errors.price_per_unit} />
-            </div>
-
-            <div>
-              <label htmlFor="cost" className="block text-sm font-medium text-garage-text mb-1">
-                {t('common:totalCost')}
-              </label>
+            </Field>
+            <Field id="cost" label={t('common:totalCost')} error={errors.cost} hint={t('common:autoCalculated')}>
               <div className="relative">
                 <CurrencyInputPrefix />
-                <input
-                  type="number"
-                  id="cost"
-                  {...register('cost', { valueAsNumber: true })}
-                  min="0"
-                  step="0.01"
-                  placeholder="24.75"
-                  className={`w-full pl-7 pr-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-primary bg-garage-bg text-garage-text ${
-                    errors.cost ? 'border-red-500' : 'border-garage-border'
-                  }`}
-                  disabled={isSubmitting}
-                />
+                <input type="number" id="cost" {...register('cost', { valueAsNumber: true })} min="0" step="0.01" placeholder="24.75" className={`ui-focus-input ui-motion w-full rounded-control border bg-surface-2 pl-7 pr-3 py-2 text-sm text-text font-mono tabular-nums ${errors.cost ? 'border-danger' : 'border-border'}`} disabled={isSubmitting} />
               </div>
-              <FormError error={errors.cost} />
-              <p className="text-xs text-garage-text-muted mt-1">{t('common:autoCalculated')}</p>
-            </div>
+            </Field>
           </div>
 
           {/* Source */}
-          <div>
-            <label htmlFor="source" className="block text-sm font-medium text-garage-text mb-1">
-              {t('def.wherePurchased')}
-            </label>
-            <input
-              type="text"
-              id="source"
-              list="source-suggestions"
-              {...register('source')}
-              placeholder={t('defRecordForm.sourcePlaceholder')}
-              className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-primary bg-garage-bg text-garage-text ${
-                errors.source ? 'border-red-500' : 'border-garage-border'
-              }`}
-              disabled={isSubmitting}
-            />
+          <Field id="source" label={t('def.wherePurchased')} error={errors.source}>
+            <Input type="text" id="source" list="source-suggestions" {...register('source')} placeholder={t('defRecordForm.sourcePlaceholder')} invalid={!!errors.source} disabled={isSubmitting} />
             <datalist id="source-suggestions">
-              {SOURCE_SUGGESTIONS.map(s => (
-                <option key={s} value={s} />
-              ))}
+              {SOURCE_SUGGESTIONS.map((s) => (<option key={s} value={s} />))}
             </datalist>
-            <FormError error={errors.source} />
-          </div>
+          </Field>
 
           {/* Brand */}
-          <div>
-            <label htmlFor="brand" className="block text-sm font-medium text-garage-text mb-1">
-              {t('def.brand')}
-            </label>
-            <input
-              type="text"
-              id="brand"
-              list="brand-suggestions"
-              {...register('brand')}
-              placeholder="e.g., BlueDEF"
-              className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-primary bg-garage-bg text-garage-text ${
-                errors.brand ? 'border-red-500' : 'border-garage-border'
-              }`}
-              disabled={isSubmitting}
-            />
+          <Field id="brand" label={t('def.brand')} error={errors.brand}>
+            <Input type="text" id="brand" list="brand-suggestions" {...register('brand')} placeholder="e.g., BlueDEF" invalid={!!errors.brand} disabled={isSubmitting} />
             <datalist id="brand-suggestions">
-              {BRAND_SUGGESTIONS.map(b => (
-                <option key={b} value={b} />
-              ))}
+              {BRAND_SUGGESTIONS.map((b) => (<option key={b} value={b} />))}
             </datalist>
-            <FormError error={errors.brand} />
-          </div>
+          </Field>
 
           {/* Notes */}
-          <div>
-            <label htmlFor="notes" className="block text-sm font-medium text-garage-text mb-1">
-              {t('common:notes')}
-            </label>
-            <textarea
-              id="notes"
-              rows={3}
-              {...register('notes')}
-              placeholder={t('common:additionalNotes')}
-              className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-primary bg-garage-bg text-garage-text ${
-                errors.notes ? 'border-red-500' : 'border-garage-border'
-              }`}
-              disabled={isSubmitting}
-            />
-            <FormError error={errors.notes} />
-          </div>
+          <Field id="notes" label={t('common:notes')} error={errors.notes}>
+            <Textarea id="notes" rows={3} {...register('notes')} placeholder={t('common:additionalNotes')} invalid={!!errors.notes} disabled={isSubmitting} />
+          </Field>
         </form>
     </FormModalWrapper>
   )
