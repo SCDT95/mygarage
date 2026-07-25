@@ -4,9 +4,9 @@ import { useForm, type Resolver } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { Save } from 'lucide-react'
 import FormModalWrapper from './FormModalWrapper'
+import { Button, Field, Input, Textarea } from './ui'
 import type { WarrantyRecord, WarrantyRecordCreate, WarrantyRecordUpdate } from '../types/warranty'
 import { warrantySchema, type WarrantyFormData, WARRANTY_TYPES } from '../schemas/warranty'
-import { FormError } from './FormError'
 import { useCreateWarrantyRecord, useUpdateWarrantyRecord } from '../hooks/queries/useWarrantyRecords'
 import { formatDateForInput } from '../utils/dateUtils'
 import { useFormSubmit } from '../hooks/useFormSubmit'
@@ -83,23 +83,12 @@ export default function WarrantyForm({ vin, record, onClose, onSuccess }: Warran
       width="md"
       footer={
         <>
-          <button
-            type="button"
-            onClick={onClose}
-            className="btn btn-primary rounded-lg transition-colors"
-            disabled={isSubmitting}
-          >
+          <Button variant="secondary" onClick={onClose} disabled={isSubmitting}>
             {t('common:cancel')}
-          </button>
-          <button
-            type="submit"
-            form="warranty-form"
-            className="flex items-center gap-2 btn btn-primary rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-            disabled={isSubmitting}
-          >
-            <Save size={16} />
+          </Button>
+          <Button type="submit" form="warranty-form" variant="primary" icon={Save} loading={isSubmitting} disabled={isSubmitting}>
             {isSubmitting ? t('common:saving') : isEdit ? t('common:update') : t('common:create')}
-          </button>
+          </Button>
         </>
       }
     >
@@ -111,133 +100,50 @@ export default function WarrantyForm({ vin, record, onClose, onSuccess }: Warran
           )}
 
           <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label htmlFor="warranty_type" className="block text-sm font-medium text-garage-text mb-1">
-                {t('warranty.warrantyType')} <span className="text-danger">*</span>
-              </label>
+            <Field id="warranty_type" label={t('warranty.warrantyType')} required error={errors.warranty_type}>
               <select
                 id="warranty_type"
                 {...register('warranty_type')}
-                className={`input w-full ${errors.warranty_type ? 'border-red-500' : ''}`}
                 disabled={isSubmitting}
+                className={`ui-focus-input ui-motion w-full rounded-control border bg-surface-2 px-3 py-2 text-sm text-text ${errors.warranty_type ? 'border-danger' : 'border-border'}`}
               >
                 <option value="">{t('common:selectType')}</option>
                 {WARRANTY_TYPES.map((option) => (
                   <option key={option.value} value={option.value}>{t(option.labelKey)}</option>
                 ))}
               </select>
-              <FormError error={errors.warranty_type} />
-            </div>
+            </Field>
 
-            <div>
-              <label htmlFor="provider" className="block text-sm font-medium text-garage-text mb-1">
-                {t('insurance.provider')}
-              </label>
-              <input
-                type="text"
-                id="provider"
-                {...register('provider')}
-                className={`input w-full ${errors.provider ? 'border-red-500' : ''}`}
-                placeholder={t('warrantyForm.providerPlaceholder')}
-                disabled={isSubmitting}
-              />
-              <FormError error={errors.provider} />
-            </div>
+            <Field id="provider" label={t('insurance.provider')} error={errors.provider}>
+              <Input id="provider" type="text" {...register('provider')} placeholder={t('warrantyForm.providerPlaceholder')} invalid={!!errors.provider} disabled={isSubmitting} />
+            </Field>
           </div>
 
           <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label htmlFor="start_date" className="block text-sm font-medium text-garage-text mb-1">
-                {t('common:startDate')} <span className="text-danger">*</span>
-              </label>
-              <input
-                type="date"
-                id="start_date"
-                {...register('start_date')}
-                className={`input w-full ${errors.start_date ? 'border-red-500' : ''}`}
-                disabled={isSubmitting}
-              />
-              <FormError error={errors.start_date} />
-            </div>
-
-            <div>
-              <label htmlFor="end_date" className="block text-sm font-medium text-garage-text mb-1">
-                {t('common:endDate')}
-              </label>
-              <input
-                type="date"
-                id="end_date"
-                {...register('end_date')}
-                className={`input w-full ${errors.end_date ? 'border-red-500' : ''}`}
-                disabled={isSubmitting}
-              />
-              <FormError error={errors.end_date} />
-            </div>
+            <Field id="start_date" label={t('common:startDate')} required error={errors.start_date}>
+              <Input id="start_date" type="date" {...register('start_date')} invalid={!!errors.start_date} disabled={isSubmitting} />
+            </Field>
+            <Field id="end_date" label={t('common:endDate')} error={errors.end_date}>
+              <Input id="end_date" type="date" {...register('end_date')} invalid={!!errors.end_date} disabled={isSubmitting} />
+            </Field>
           </div>
 
           <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label htmlFor="mileage_limit_km" className="block text-sm font-medium text-garage-text mb-1">
-                {t('warranty.mileageLimit')} ({UnitFormatter.getDistanceUnit(system)})
-              </label>
-              <input
-                type="number"
-                id="mileage_limit_km"
-                {...register('mileage_limit_km', { valueAsNumber: true })}
-                className={`input w-full ${errors.mileage_limit_km ? 'border-red-500' : ''}`}
-                placeholder={t('warrantyForm.mileageLimitPlaceholder')}
-                min="0"
-                disabled={isSubmitting}
-              />
-              <FormError error={errors.mileage_limit_km} />
-            </div>
-
-            <div>
-              <label htmlFor="policy_number" className="block text-sm font-medium text-garage-text mb-1">
-                {t('insurance.policyNumber')}
-              </label>
-              <input
-                type="text"
-                id="policy_number"
-                {...register('policy_number')}
-                className={`input w-full ${errors.policy_number ? 'border-red-500' : ''}`}
-                placeholder={t('warrantyForm.policyNumberPlaceholder')}
-                disabled={isSubmitting}
-              />
-              <FormError error={errors.policy_number} />
-            </div>
+            <Field id="mileage_limit_km" label={t('warranty.mileageLimit')} unit={UnitFormatter.getDistanceUnit(system)} error={errors.mileage_limit_km}>
+              <Input id="mileage_limit_km" type="number" mono {...register('mileage_limit_km', { valueAsNumber: true })} min="0" placeholder={t('warrantyForm.mileageLimitPlaceholder')} invalid={!!errors.mileage_limit_km} disabled={isSubmitting} />
+            </Field>
+            <Field id="policy_number" label={t('insurance.policyNumber')} error={errors.policy_number}>
+              <Input id="policy_number" type="text" {...register('policy_number')} placeholder={t('warrantyForm.policyNumberPlaceholder')} invalid={!!errors.policy_number} disabled={isSubmitting} />
+            </Field>
           </div>
 
-          <div>
-            <label htmlFor="coverage_details" className="block text-sm font-medium text-garage-text mb-1">
-              {t('warranty.coverageDetails')}
-            </label>
-            <textarea
-              id="coverage_details"
-              {...register('coverage_details')}
-              className={`input w-full ${errors.coverage_details ? 'border-red-500' : ''}`}
-              rows={3}
-              placeholder={t('warranty.coverageDetailsPlaceholder')}
-              disabled={isSubmitting}
-            />
-            <FormError error={errors.coverage_details} />
-          </div>
+          <Field id="coverage_details" label={t('warranty.coverageDetails')} error={errors.coverage_details}>
+            <Textarea id="coverage_details" rows={3} {...register('coverage_details')} placeholder={t('warranty.coverageDetailsPlaceholder')} invalid={!!errors.coverage_details} disabled={isSubmitting} />
+          </Field>
 
-          <div>
-            <label htmlFor="notes" className="block text-sm font-medium text-garage-text mb-1">
-              {t('common:notes')}
-            </label>
-            <textarea
-              id="notes"
-              {...register('notes')}
-              className={`input w-full ${errors.notes ? 'border-red-500' : ''}`}
-              rows={2}
-              placeholder={t('common:additionalNotes')}
-              disabled={isSubmitting}
-            />
-            <FormError error={errors.notes} />
-          </div>
-
+          <Field id="notes" label={t('common:notes')} error={errors.notes}>
+            <Textarea id="notes" rows={2} {...register('notes')} placeholder={t('common:additionalNotes')} invalid={!!errors.notes} disabled={isSubmitting} />
+          </Field>
         </form>
     </FormModalWrapper>
   )
