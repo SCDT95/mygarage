@@ -138,9 +138,11 @@
     "readOnlyNotice": "DEF entry requires a diesel fuel type — records shown for reference",
     "recordCount": "{{count}} record(s)",
     "source": "Source",
+    "tableCaption": "DEF purchase history",
     "title": "DEF Records",
     "totalSpent": "Total Spent",
-    "type": "Type"
+    "type": "Type",
+    "volumeUnit": "Volume ({{unit}})"
   },
   "detail": {
     "actions": "Actions",

@@ -1,5 +1,5 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { render, screen } from '@testing-library/react'
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
+import { render, screen, within } from '@testing-library/react'
 import type { DEFRecord } from '../../types/def'
 
 // Mock the DEF query hooks so this stays a unit test — no QueryClient/api wiring.
@@ -20,9 +20,26 @@ vi.mock('@tanstack/react-query', () => ({
 }))
 
 // Same mock pattern as VehicleEdit.test.tsx — these hooks need AuthProvider
-// otherwise, and it's not under test here.
-vi.mock('../../hooks/useUnitPreference', () => ({
-  useUnitPreference: () => ({ system: 'metric', showBoth: false }),
+// otherwise, and it's not under test here. Mutable so the B7 unit-aware
+// volume-header test can toggle metric/imperial; every other test leaves it
+// at the metric default restored in afterEach.
+const unitPrefMock = vi.hoisted(() => ({ system: 'metric' as 'metric' | 'imperial', showBoth: false }))
+vi.mock('../../hooks/useUnitPreference', () => ({ useUnitPreference: () => unitPrefMock }))
+
+// LOCAL i18n mock (same pattern as the fuel-list B5 fix): the GLOBAL setup.ts
+// mock is `t: (key) => key`, which discards interpolation args, so
+// `t('defList.volumeUnit', { unit })` renders the identical string regardless
+// of unit — a header test against it can't tell L from gal, or from a dropped
+// {{unit}} entirely. This override retains `options.unit` for the volume-header
+// assertions and is otherwise behaviour-identical to the global mock (bare key,
+// no unit) so the maintained tests stay green.
+vi.mock('react-i18next', () => ({
+  useTranslation: () => ({
+    t: (key: string, options?: { unit?: string }) => (options?.unit ? `${key} (${options.unit})` : key),
+    i18n: { language: 'en', changeLanguage: () => Promise.resolve() },
+  }),
+  Trans: ({ children }: { children: React.ReactNode }) => children,
+  initReactI18next: { type: '3rdParty', init: () => {} },
 }))
 vi.mock('../../hooks/useCurrencyPreference', () => ({
   useCurrencyPreference: () => ({
@@ -97,5 +114,46 @@ describe('DEFRecordList — readOnly gating (non-diesel vehicles)', () => {
     expect(screen.getByText('defList.addDEF')).toBeInTheDocument()
     expect(screen.getByLabelText('common:edit')).toBeInTheDocument()
     expect(screen.getByLabelText('common:delete')).toBeInTheDocument()
+  })
+})
+
+describe('DEFRecordList — DataTable structure + unit-aware header (M3/B7)', () => {
+  afterEach(() => { unitPrefMock.system = 'metric' })
+
+  it('renders a DataTable whose accessible name IS the translated caption (M3 — proves the hand-rolled <table> → <DataTable> migration landed)', () => {
+    render(<DEFRecordList vin="TEST12345678901234" />)
+    expect(screen.getByRole('table', { name: 'defList.tableCaption' })).toBeInTheDocument()
+  })
+
+  it('interpolates the SYSTEM volume unit into the header — L in metric, gal in imperial (B7) (fails if the impl omits {{unit}}, hardcodes gal for both, or reverts to the static `defList.gallons` key)', () => {
+    // getVolumeUnit → 'L' (metric) / 'gal' (imperial); the local mock renders it into the header.
+    unitPrefMock.system = 'metric'
+    const metric = render(<DEFRecordList vin="TEST12345678901234" />)
+    const metricTable = screen.getByRole('table', { name: 'defList.tableCaption' })
+    expect(within(metricTable).getByRole('columnheader', { name: 'defList.volumeUnit (L)' })).toBeInTheDocument()
+    expect(within(metricTable).queryByRole('columnheader', { name: 'defList.gallons' })).not.toBeInTheDocument()
+    metric.unmount()
+    unitPrefMock.system = 'imperial'
+    render(<DEFRecordList vin="TEST12345678901234" />)
+    const imperialTable = screen.getByRole('table', { name: 'defList.tableCaption' })
+    expect(within(imperialTable).getByRole('columnheader', { name: 'defList.volumeUnit (gal)' })).toBeInTheDocument()
+  })
+
+  it('renders the Type column as a Chip — purchase for a manual record, auto for an auto_fuel_sync record (SDQ-A category chip landed)', () => {
+    const { unmount } = render(<DEFRecordList vin="TEST12345678901234" />)
+    expect(within(screen.getByRole('table', { name: 'defList.tableCaption' })).getByText('defList.purchase')).toBeInTheDocument()
+    unmount()
+    useDEFRecordsMock.mockReturnValue({ data: { records: [{ ...mockRecord, id: 2, entry_type: 'auto_fuel_sync' }] }, isLoading: false, error: null })
+    render(<DEFRecordList vin="TEST12345678901234" />)
+    expect(within(screen.getByRole('table', { name: 'defList.tableCaption' })).getByText('defList.auto')).toBeInTheDocument()
+  })
+
+  it('renders Card summary tiles when analytics are present (M3 — a tile label proves the Card+Mono block landed)', () => {
+    useDEFAnalyticsMock.mockReturnValue({ data: {
+      record_count: 3, total_cost: 74.25, total_liters: 62.4, estimated_km_remaining: 2500,
+      estimated_days_remaining: 40, liters_per_1000_km: null, avg_cost_per_liter: null, data_confidence: 'high',
+    } })
+    render(<DEFRecordList vin="TEST12345678901234" />)
+    expect(screen.getByText('defList.totalSpent')).toBeInTheDocument()
   })
 })
