@@ -734,11 +734,13 @@
     "noRecordsDesc": "Track propane refills for your fifth wheel",
     "pricePerUnit": "Price/Unit",
     "recordCount": "{{count}} record(s)",
+    "tableCaption": "Propane refill history",
     "title": "Propane Records",
     "totalGallons": "Total Gallons",
     "totalLiters": "Total Liters",
     "totalSpent": "Total Spent",
-    "vendor": "Vendor"
+    "vendor": "Vendor",
+    "volumeUnit": "Volume ({{unit}})"
   },
   "quickEntry": {
     "fuelRecord": "Fuel record",
