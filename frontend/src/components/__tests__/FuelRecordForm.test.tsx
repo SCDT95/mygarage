@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { screen, waitFor, fireEvent } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { render } from '../../__tests__/test-utils'
@@ -21,8 +21,11 @@ vi.mock('../../services/api', () => ({
 }))
 
 // Requires AuthProvider otherwise — same mock pattern as ServiceVisitForm.test.tsx
+// Hoisted + MUTABLE so one describe block (B9, below) can flip to imperial
+// without affecting every other test in this file, which stays on metric.
+const unitPrefMock = vi.hoisted(() => ({ system: 'metric' as 'metric' | 'imperial', showBoth: false }))
 vi.mock('../../hooks/useUnitPreference', () => ({
-  useUnitPreference: () => ({ system: 'metric', showBoth: false }),
+  useUnitPreference: () => unitPrefMock,
 }))
 
 vi.mock('../../contexts/AuthContext', () => ({
@@ -330,5 +333,25 @@ describe('FuelRecordForm — footer lift (P3 Task 4)', () => {
     fireEvent.click(screen.getByRole('button', { name: 'common:create' }))
 
     await waitFor(() => expect(mockedApiPost).toHaveBeenCalled())
+  })
+})
+
+describe('FuelRecordForm — OBC fields stay canonical-labeled in imperial (B9)', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    localStorage.clear()                 // moreDetailsOpen persists in localStorage
+    unitPrefMock.system = 'imperial'     // US units
+    mockedApiGet.mockResolvedValue({ data: mockVehicle({ fuel_type: 'gasoline' }) })
+  })
+  afterEach(() => { unitPrefMock.system = 'metric' })   // restore for the rest of the file
+
+  it('labels OBC consumption/speed with the FIXED canonical unit even for imperial (fails if the restyle converted them to mpg/mph)', async () => {
+    const user = userEvent.setup()
+    render(<FuelRecordForm {...DEFAULT_PROPS} />)
+    await waitFor(() => expect(mockedApiGet).toHaveBeenCalled())
+    await user.click(screen.getByText('fuel.moreDetails'))  // open the More-details panel (collapsed by default)
+    // Field renders the unit inside the <label> as "(L/100km)"; getByLabelText matches the whole label text.
+    expect(screen.getByLabelText('fuel.obcConsumption (L/100km)')).toHaveAttribute('id', 'obc_l_per_100km')
+    expect(screen.getByLabelText('fuel.obcAvgSpeed (km/h)')).toHaveAttribute('id', 'obc_avg_speed_kmh')
   })
 })

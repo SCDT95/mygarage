@@ -602,49 +602,40 @@ export default function FuelRecordForm({ vin, record, onClose, onSuccess }: Fuel
 
           {/* DEF Level - diesel vehicles only; the server rejects DEF data on non-diesel */}
           {showDefLevel && (
-            <div className="border border-garage-border rounded-lg p-4 space-y-2">
-              <label className="block text-sm font-medium text-garage-text">
-                {t('fuel.defTankLevel')}
-              </label>
+            <div className="rounded-lg border border-border p-4 space-y-2">
+              <label className="block text-sm font-medium text-text">{t('fuel.defTankLevel')}</label>
               <div className="flex gap-2 mb-2">
-                {FILL_LEVEL_PRESETS.map(preset => (
-                  <button
+                {FILL_LEVEL_PRESETS.map((preset) => (
+                  <Button
                     key={preset.value}
-                    type="button"
+                    size="sm"
+                    variant={watch('def_fill_level') === preset.value ? 'primary' : 'secondary'}
                     onClick={() => setValue('def_fill_level', preset.value)}
-                    className={`px-3 py-1.5 text-sm rounded-md border transition-colors ${
-                      watch('def_fill_level') === preset.value
-                        ? 'bg-primary text-(--accent-on-solid) border-primary'
-                        : 'bg-garage-bg text-garage-text border-garage-border hover:border-primary'
-                    }`}
                   >
                     {preset.labelKey ? t(preset.labelKey) : preset.label}
-                  </button>
+                  </Button>
                 ))}
-                <button
-                  type="button"
-                  onClick={() => setValue('def_fill_level', undefined)}
-                  className="px-3 py-1.5 text-sm rounded-md border border-garage-border bg-garage-bg text-garage-text-muted hover:border-danger"
-                >
+                <Button size="sm" variant="ghost" onClick={() => setValue('def_fill_level', undefined)}>
                   {t('common:clear')}
-                </button>
+                </Button>
               </div>
               <div className="flex items-center gap-2">
-                <input
-                  type="number"
-                  {...register('def_fill_level', { valueAsNumber: true })}
-                  min="0"
-                  max="100"
-                  step="1"
-                  placeholder="75"
-                  className={`w-24 px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-primary bg-garage-bg text-garage-text ${
-                    errors.def_fill_level ? 'border-red-500' : 'border-garage-border'
-                  }`}
-                  disabled={isSubmitting}
-                />
-                <span className="text-sm text-garage-text-muted">%</span>
+                <div className="w-24 shrink-0">
+                  <Input
+                    type="number"
+                    mono
+                    {...register('def_fill_level', { valueAsNumber: true })}
+                    min="0"
+                    max="100"
+                    step="1"
+                    placeholder="75"
+                    invalid={!!errors.def_fill_level}
+                    disabled={isSubmitting}
+                  />
+                </div>
+                <span className="text-sm text-text-mute">%</span>
                 {watch('def_fill_level') !== undefined && !isNaN(watch('def_fill_level') ?? NaN) && (
-                  <div className="flex-1 h-4 bg-garage-bg rounded-full border border-garage-border overflow-hidden">
+                  <div className="flex-1 h-4 rounded-full border border-border bg-surface-2 overflow-hidden">
                     <div
                       className={`h-full rounded-full transition-all ${
                         (watch('def_fill_level') ?? 0) > 50 ? 'bg-success' :
@@ -656,9 +647,7 @@ export default function FuelRecordForm({ vin, record, onClose, onSuccess }: Fuel
                 )}
               </div>
               <FormError error={errors.def_fill_level} />
-              <p className="text-xs text-garage-text-muted">
-                {t('fuel.defAutoCreatesHint')}
-              </p>
+              <p className="text-xs text-text-mute">{t('fuel.defAutoCreatesHint')}</p>
             </div>
           )}
 
@@ -687,27 +676,25 @@ export default function FuelRecordForm({ vin, record, onClose, onSuccess }: Fuel
           )}
 
           {/* "More details" — extended fuel tracking metadata (issue #69) */}
-          <div className="border border-garage-border rounded-lg overflow-hidden">
+          <div className="rounded-lg border border-border overflow-hidden">
             <button
               type="button"
               onClick={toggleMoreDetails}
-              className="w-full flex items-center justify-between px-4 py-3 bg-garage-bg hover:bg-garage-surface transition-colors"
+              className="w-full flex items-center justify-between px-4 py-3 bg-surface-2 hover:bg-surface-3 transition-colors"
               aria-expanded={moreDetailsOpen}
             >
-              <span className="text-sm font-medium text-garage-text flex items-center gap-2">
-                {moreDetailsOpen ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+              <span className="text-sm font-medium text-text flex items-center gap-2">
+                {moreDetailsOpen ? <ChevronUp aria-hidden="true" className="w-4 h-4" /> : <ChevronDown aria-hidden="true" className="w-4 h-4" />}
                 {t('fuel.moreDetails')}
               </span>
-              <span className="text-xs text-garage-text-muted">{t('fuel.moreDetailsHint')}</span>
+              <span className="text-xs text-text-mute">{t('fuel.moreDetailsHint')}</span>
             </button>
 
             {moreDetailsOpen && (
-              <div className="p-4 space-y-4 border-t border-garage-border">
-                {/* Fill-up time (issue #109) — date comes from the record's date field */}
+              <div className="p-4 space-y-4 border-t border-border">
+                {/* Fill-up time — TimeInput24 untouched (owns the AM/PM control) */}
                 <fieldset>
-                  <legend className="block text-sm font-medium text-garage-text mb-1">
-                    {t('fuel.filledAt')}
-                  </legend>
+                  <legend className="block text-sm font-medium text-text mb-1">{t('fuel.filledAt')}</legend>
                   <TimeInput24
                     id="filled_at_time"
                     ariaLabel={t('fuel.filledAtTimeLabel')}
@@ -716,16 +703,12 @@ export default function FuelRecordForm({ vin, record, onClose, onSuccess }: Fuel
                     timeFormat={timeFormat}
                     disabled={isSubmitting}
                   />
-                  <p className="text-xs text-garage-text-muted mt-1">
-                    {t('fuel.filledAtTimeOnlyHint')}
-                  </p>
+                  <p className="text-xs text-text-mute mt-1">{t('fuel.filledAtTimeOnlyHint')}</p>
                 </fieldset>
 
-                {/* Station autocomplete + one-time-visit */}
+                {/* Station autocomplete + one-time-visit (AddressBookAutocomplete OUT of scope — only its className retokenized) */}
                 <div>
-                  <label htmlFor="station_name_freetext" className="block text-sm font-medium text-garage-text mb-1">
-                    {t('fuel.station')}
-                  </label>
+                  <label htmlFor="station_name_freetext" className="block text-sm font-medium text-text mb-1">{t('fuel.station')}</label>
                   <AddressBookAutocomplete
                     id="station_name_freetext"
                     value={stationText}
@@ -733,12 +716,8 @@ export default function FuelRecordForm({ vin, record, onClose, onSuccess }: Fuel
                     onSelectEntry={handleStationSelect}
                     poiCategoryFilter="gas_station"
                     placeholder={t('fuel.stationPlaceholder')}
-                    helperText={
-                      hasLinkedStation
-                        ? t('fuel.stationPicked')
-                        : t('fuel.stationCreatedHint')
-                    }
-                    className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-primary bg-garage-bg text-garage-text border-garage-border"
+                    helperText={hasLinkedStation ? t('fuel.stationPicked') : t('fuel.stationCreatedHint')}
+                    className="ui-focus-input ui-motion w-full rounded-control border border-border bg-surface-2 px-3 py-2 text-sm text-text"
                     onClear={() => {
                       setStationText('')
                       setLinkedStation(null)
@@ -750,87 +729,45 @@ export default function FuelRecordForm({ vin, record, onClose, onSuccess }: Fuel
                       setQuickAddOpen(true)
                     }}
                   />
-                  <div className="mt-2 flex items-center">
-                    <input
-                      type="checkbox"
-                      id="one_time_visit"
-                      {...register('one_time_visit')}
-                      disabled={isSubmitting || hasLinkedStation}
-                      className="h-4 w-4 text-primary focus:ring-primary border-garage-border rounded bg-garage-bg disabled:opacity-50"
-                    />
-                    <label
-                      htmlFor="one_time_visit"
-                      className={`ml-2 block text-sm ${hasLinkedStation ? 'text-garage-text-muted' : 'text-garage-text'}`}
-                    >
-                      {t('fuel.stationOneTimeVisit')}
-                    </label>
+                  <div className="mt-2">
+                    <Checkbox id="one_time_visit" label={t('fuel.stationOneTimeVisit')} {...register('one_time_visit')} disabled={isSubmitting || hasLinkedStation} />
                   </div>
                 </div>
 
-                {/* Driver — freetext only for v1; user FK can be wired in a follow-up */}
-                <div>
-                  <label htmlFor="driver_name_freetext" className="block text-sm font-medium text-garage-text mb-1">
-                    {t('fuel.driver')}
-                  </label>
-                  <input
-                    type="text"
-                    id="driver_name_freetext"
-                    {...register('driver_name_freetext')}
-                    placeholder={t('fuel.driverFreetextPlaceholder')}
-                    className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-primary bg-garage-bg text-garage-text border-garage-border"
-                    disabled={isSubmitting}
-                  />
-                </div>
+                {/* Driver freetext */}
+                <Field id="driver_name_freetext" label={t('fuel.driver')}>
+                  <Input type="text" id="driver_name_freetext" {...register('driver_name_freetext')} placeholder={t('fuel.driverFreetextPlaceholder')} disabled={isSubmitting} />
+                </Field>
 
+                {/* Payment method + trip type — native selects, retokenized */}
                 <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label htmlFor="payment_method" className="block text-sm font-medium text-garage-text mb-1">
-                      {t('fuel.paymentMethod')}
-                    </label>
-                    <select
-                      id="payment_method"
-                      {...register('payment_method')}
-                      className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-primary bg-garage-bg text-garage-text border-garage-border"
-                      disabled={isSubmitting}
-                    >
+                  <Field id="payment_method" label={t('fuel.paymentMethod')} error={errors.payment_method}>
+                    <select id="payment_method" {...register('payment_method')} className="ui-focus-input ui-motion w-full rounded-control border border-border bg-surface-2 px-3 py-2 text-sm text-text" disabled={isSubmitting}>
                       <option value="">{t('fuel.paymentMethodPlaceholder')}</option>
                       {PAYMENT_METHOD_VALUES.map((value) => (
-                        <option key={value} value={value}>
-                          {t(`fuel.paymentMethods.${value}`)}
-                        </option>
+                        <option key={value} value={value}>{t(`fuel.paymentMethods.${value}`)}</option>
                       ))}
                     </select>
-                    <FormError error={errors.payment_method} />
-                  </div>
-
-                  <div>
-                    <label htmlFor="trip_type" className="block text-sm font-medium text-garage-text mb-1">
-                      {t('fuel.tripType')}
-                    </label>
-                    <select
-                      id="trip_type"
-                      {...register('trip_type')}
-                      className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-primary bg-garage-bg text-garage-text border-garage-border"
-                      disabled={isSubmitting}
-                    >
+                  </Field>
+                  <Field id="trip_type" label={t('fuel.tripType')} error={errors.trip_type}>
+                    <select id="trip_type" {...register('trip_type')} className="ui-focus-input ui-motion w-full rounded-control border border-border bg-surface-2 px-3 py-2 text-sm text-text" disabled={isSubmitting}>
                       <option value="">{t('fuel.tripTypePlaceholder')}</option>
                       {TRIP_TYPE_VALUES.map((value) => (
-                        <option key={value} value={value}>
-                          {t(`fuel.tripTypes.${value}`)}
-                        </option>
+                        <option key={value} value={value}>{t(`fuel.tripTypes.${value}`)}</option>
                       ))}
                     </select>
-                    <FormError error={errors.trip_type} />
-                  </div>
+                  </Field>
                 </div>
 
-                <div>
-                  <label htmlFor="outside_temp_display" className="block text-sm font-medium text-garage-text mb-1">
-                    {t('fuel.outsideTemp')} ({system === 'imperial' ? '°F' : '°C'})
-                  </label>
-                  <input
+                {/* Outside temp — controlled input (value/onChange). M1: compose <Input>
+                    (it forwards value/onChange/step/id via ...rest). This IS a real
+                    display-boundary field: the label unit varies (°F/°C) AND onChange
+                    converts F→C to canonical — unchanged from today. */}
+                <Field id="outside_temp_display" label={t('fuel.outsideTemp')} unit={system === 'imperial' ? '°F' : '°C'} error={errors.outside_temp_c}>
+                  <Input
                     type="number"
                     id="outside_temp_display"
+                    mono
                     step="0.1"
                     value={outsideTempDisplay}
                     onChange={(e) => {
@@ -842,104 +779,63 @@ export default function FuelRecordForm({ vin, record, onClose, onSuccess }: Fuel
                       }
                       const num = parseFloat(raw)
                       if (Number.isNaN(num)) return
-                      // Backend stores canonical Celsius; convert F → C on imperial.
                       const canonical = system === 'imperial' ? ((num - 32) * 5) / 9 : num
                       setValue('outside_temp_c', canonical, { shouldValidate: true })
                     }}
-                    className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-primary bg-garage-bg text-garage-text border-garage-border"
+                    invalid={!!errors.outside_temp_c}
                     disabled={isSubmitting}
                   />
-                  <FormError error={errors.outside_temp_c} />
-                </div>
+                </Field>
 
-                {/* OBC subsection */}
-                <div className="border border-garage-border rounded-md p-3 bg-garage-bg space-y-3">
+                {/* OBC subsection — box + buttons retokenized (G4c). B9: these three are
+                    genuine USER-INPUT fields (not display-of-canonical), so they compose
+                    <Input> inside <Field> (M1) with FIXED canonical unit labels (B9 — see
+                    the note after this block). The two numeric fields carry unit="L/100km"
+                    / unit="km/h" because the round-trip is canonical-symmetric (no
+                    conversion either direction). */}
+                <div className="rounded-md border border-border bg-surface-2 p-3 space-y-3">
                   <div className="flex items-center justify-between">
-                    <h4 className="text-sm font-medium text-garage-text">{t('fuel.obcTitle')}</h4>
-                    <button
-                      type="button"
+                    <h4 className="text-sm font-medium text-text">{t('fuel.obcTitle')}</h4>
+                    <Button
+                      size="sm"
+                      variant="secondary"
+                      icon={Sparkles}
                       onClick={fetchObcSuggestion}
                       disabled={!obcAvailable || obcLoading || isSubmitting}
                       title={!obcAvailable ? t('fuel.obcAutoFillHint') : undefined}
-                      className="flex items-center gap-1 text-xs px-2 py-1 rounded border border-garage-border bg-garage-surface text-garage-text hover:border-primary disabled:opacity-50 disabled:cursor-not-allowed"
+                      loading={obcLoading}
                     >
-                      <Sparkles className="w-3 h-3" />
                       {obcLoading ? t('common:loading') : t('fuel.obcAutoFill')}
-                    </button>
+                    </Button>
                   </div>
-                  <p className="text-xs text-garage-text-muted">{t('fuel.obcHint')}</p>
+                  <p className="text-xs text-text-mute">{t('fuel.obcHint')}</p>
 
                   {obcSuggestion && (
-                    <div className="bg-primary/10 border border-primary rounded-md p-2 flex items-center justify-between gap-2">
-                      <div className="text-xs text-garage-text">
+                    <div className="rounded-md border border-(--accent-line) bg-(--accent-soft) p-2 flex items-center justify-between gap-2">
+                      <div className="text-xs text-text">
                         L/100km: {obcSuggestion.obc_l_per_100km ?? '—'} · km/h:{' '}
                         {obcSuggestion.obc_avg_speed_kmh ?? '—'} · s:{' '}
                         {obcSuggestion.obc_trip_duration_s ?? '—'}
                       </div>
                       <div className="flex gap-1">
-                        <button
-                          type="button"
-                          onClick={acceptObcSuggestion}
-                          className="text-xs px-2 py-1 rounded bg-primary text-(--accent-on-solid)"
-                        >
-                          {t('fuel.obcSuggestionAccept')}
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => setObcSuggestion(null)}
-                          className="text-xs px-2 py-1 rounded border border-garage-border bg-garage-surface text-garage-text"
-                        >
-                          {t('fuel.obcSuggestionDismiss')}
-                        </button>
+                        <Button size="sm" variant="primary" onClick={acceptObcSuggestion}>{t('fuel.obcSuggestionAccept')}</Button>
+                        <Button size="sm" variant="secondary" onClick={() => setObcSuggestion(null)}>{t('fuel.obcSuggestionDismiss')}</Button>
                       </div>
                     </div>
                   )}
 
-                  {obcMessage && (
-                    <p className="text-xs text-garage-text-muted">{obcMessage}</p>
-                  )}
+                  {obcMessage && <p className="text-xs text-text-mute">{obcMessage}</p>}
 
                   <div className="grid grid-cols-3 gap-2">
-                    <div>
-                      <label htmlFor="obc_l_per_100km" className="block text-xs text-garage-text-muted mb-1">
-                        {t('fuel.obcConsumption')}
-                      </label>
-                      <input
-                        type="number"
-                        id="obc_l_per_100km"
-                        step="0.01"
-                        {...register('obc_l_per_100km', { valueAsNumber: true })}
-                        className="w-full px-2 py-1 text-sm border rounded focus:outline-none focus:ring-2 focus:ring-primary bg-garage-bg text-garage-text border-garage-border"
-                        disabled={isSubmitting}
-                      />
-                    </div>
-                    <div>
-                      <label htmlFor="obc_avg_speed_kmh" className="block text-xs text-garage-text-muted mb-1">
-                        {t('fuel.obcAvgSpeed')}
-                      </label>
-                      <input
-                        type="number"
-                        id="obc_avg_speed_kmh"
-                        step="0.1"
-                        {...register('obc_avg_speed_kmh', { valueAsNumber: true })}
-                        className="w-full px-2 py-1 text-sm border rounded focus:outline-none focus:ring-2 focus:ring-primary bg-garage-bg text-garage-text border-garage-border"
-                        disabled={isSubmitting}
-                      />
-                    </div>
-                    <div>
-                      <label htmlFor="obc_trip_duration_s" className="block text-xs text-garage-text-muted mb-1">
-                        {t('fuel.obcDuration')}
-                      </label>
-                      <input
-                        type="text"
-                        id="obc_trip_duration_s"
-                        inputMode="text"
-                        placeholder={t('fuelRecordForm.obcDurationPlaceholder')}
-                        {...register('obc_trip_duration_s')}
-                        className="w-full px-2 py-1 text-sm border rounded focus:outline-none focus:ring-2 focus:ring-primary bg-garage-bg text-garage-text border-garage-border"
-                        disabled={isSubmitting}
-                      />
-                    </div>
+                    <Field id="obc_l_per_100km" label={t('fuel.obcConsumption')} unit="L/100km">
+                      <Input type="number" id="obc_l_per_100km" mono step="0.01" {...register('obc_l_per_100km', { valueAsNumber: true })} disabled={isSubmitting} />
+                    </Field>
+                    <Field id="obc_avg_speed_kmh" label={t('fuel.obcAvgSpeed')} unit="km/h">
+                      <Input type="number" id="obc_avg_speed_kmh" mono step="0.1" {...register('obc_avg_speed_kmh', { valueAsNumber: true })} disabled={isSubmitting} />
+                    </Field>
+                    <Field id="obc_trip_duration_s" label={t('fuel.obcDuration')}>
+                      <Input type="text" id="obc_trip_duration_s" inputMode="text" placeholder={t('fuelRecordForm.obcDurationPlaceholder')} {...register('obc_trip_duration_s')} disabled={isSubmitting} />
+                    </Field>
                   </div>
                 </div>
               </div>
