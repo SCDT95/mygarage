@@ -670,6 +670,7 @@
     "noRecordsDesc": "Track your vehicle's mileage over time",
     "notes": "Notes",
     "recordCount": "{{count}} record(s)",
+    "tableCaption": "Odometer reading history",
     "title": "Odometer Readings"
   },
   "photoGallery": {
