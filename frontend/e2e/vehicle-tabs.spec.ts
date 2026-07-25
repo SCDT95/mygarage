@@ -46,24 +46,39 @@ test.describe('Vehicle Detail — Tab Navigation', () => {
   })
 
   test('Maintenance tab — cycles through sub-tabs', async ({ page }) => {
+    const pageErrors: string[] = []
+    page.on('pageerror', (err) => pageErrors.push(err.message))
+
     await page.getByRole('tab', { name: 'Maintenance' }).click()
 
     // Default sub-tab should be Service
     const serviceTab = page.getByRole('tab', { name: 'Service' })
     await expect(serviceTab).toBeVisible({ timeout: 5000 })
 
-    // Cycle through visible sub-tabs (Fuel/DEF/Propane moved to their own Fuel tab)
+    // Each sub-tab body renders a stable heading — the English serviceList/
+    // odometerList/recallList `.title` (verified in en/vehicles.json). This is a
+    // body-level render proof, not just "no toast". (`Tabs` emits no role=tabpanel,
+    // so anchor on the heading, not a panel role.)
+    const bodyHeading: Record<string, string> = {
+      Service: 'Service History',
+      Odometer: 'Odometer Readings',
+      Recalls: 'Safety Recalls',
+    }
     const subTabs = ['Service', 'Odometer', 'Recalls']
     for (const tabName of subTabs) {
       const tab = page.getByRole('tab', { name: tabName })
       // Tab might not exist for non-motorized vehicles — skip if not visible
       if (await tab.isVisible()) {
         await tab.click()
-        // Give content time to render, no error toast
-        await page.waitForTimeout(500)
+        // The body actually rendered (survives loading), not an empty fallback:
+        await expect(page.getByRole('heading', { name: bodyHeading[tabName] })).toBeVisible({ timeout: 5000 })
+        // ...and no error toast.
         await expect(page.locator('[data-sonner-toast][data-type="error"]')).not.toBeVisible({ timeout: 2000 })
       }
     }
+
+    // No uncaught page error surfaced during the whole cycle.
+    expect(pageErrors, pageErrors.join('\n')).toEqual([])
   })
 
   test('Fuel tab — loads fuel/DEF/propane sub-tabs', async ({ page }) => {
