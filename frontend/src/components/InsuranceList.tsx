@@ -7,6 +7,7 @@ import { formatDateForDisplay, formatDateForInput } from '../utils/dateUtils'
 import { useDateLocale } from '../hooks/useDateLocale'
 import { formatCurrency } from '../utils/formatUtils'
 import { useCurrencyPreference } from '../hooks/useCurrencyPreference'
+import { Button, IconButton, Mono, EmptyState } from './ui'
 
 interface InsuranceListProps {
   vin: string
@@ -52,7 +53,7 @@ export default function InsuranceList({ vin, onAddClick, onEditClick }: Insuranc
   if (isLoading) {
     return (
       <div className="flex justify-center items-center min-h-[200px]">
-        <div className="text-garage-text-muted">{t('insuranceList.loading')}</div>
+        <div className="text-text-mute">{t('insuranceList.loading')}</div>
       </div>
     )
   }
@@ -69,91 +70,66 @@ export default function InsuranceList({ vin, onAddClick, onEditClick }: Insuranc
     <div>
       <div className="flex justify-between items-center mb-6">
         <div>
-          <h2 className="text-2xl font-bold text-garage-text">{t('insuranceList.title')}</h2>
-          <p className="text-sm text-garage-text-muted">
-            {t('insuranceList.policyCount', { count: policies.length })}
-          </p>
+          <h2 className="text-2xl font-bold text-text">{t('insuranceList.title')}</h2>
+          <p className="text-sm text-text-mute">{t('insuranceList.policyCount', { count: policies.length })}</p>
         </div>
-        <button
-          onClick={onAddClick}
-          className="flex items-center gap-2 btn btn-primary rounded-lg transition-colors"
-        >
-          <Plus size={20} />
-          {t('insuranceList.addPolicy')}
-        </button>
+        <Button variant="primary" icon={Plus} onClick={onAddClick}>{t('insuranceList.addPolicy')}</Button>
       </div>
 
       {policies.length === 0 ? (
-        <div className="text-center py-12 bg-garage-surface rounded-lg">
-          <Shield size={48} className="mx-auto text-garage-text-muted mb-4" />
-          <p className="text-garage-text-muted mb-4">{t('insuranceList.noRecords')}</p>
-          <button onClick={onAddClick} className="inline-flex items-center gap-2 btn btn-primary rounded-lg transition-colors">
-            {t('insuranceList.addFirstPolicy')}
-          </button>
-        </div>
+        <EmptyState
+          icon={Shield}
+          title={t('insuranceList.noRecords')}
+          action={<Button variant="primary" icon={Plus} onClick={onAddClick}>{t('insuranceList.addFirstPolicy')}</Button>}
+        />
       ) : (
         <div className="space-y-4">
           {policies.map((policy) => (
             <div
               key={policy.id}
-              className={`bg-garage-surface rounded-lg p-6 border ${
-                isExpired(policy.end_date)
-                  ? 'border-danger/30'
-                  : 'border-garage-border'
+              className={`bg-surface rounded-card p-6 border ${
+                isExpired(policy.end_date) ? 'border-danger/30' : 'border-border'
               }`}
             >
               <div className="flex justify-between items-start mb-4">
                 <div className="flex items-start gap-3">
-                  <Shield
-                    className={
-                      isExpired(policy.end_date)
-                        ? 'text-danger mt-1'
-                        : 'text-primary mt-1'
-                    }
-                    size={20}
-                  />
+                  <Shield aria-hidden="true" size={20} className={isExpired(policy.end_date) ? 'text-danger mt-1' : 'text-(--accent-fg) mt-1'} />
                   <div>
-                    <h3 className="text-lg font-semibold text-garage-text">{policy.provider}</h3>
-                    <p className="text-sm text-garage-text-muted">{policy.policy_type}</p>
+                    <h3 className="text-lg font-semibold text-text">{policy.provider}</h3>
+                    <p className="text-sm text-text-mute">{policy.policy_type}</p>
                   </div>
                 </div>
                 <div className="flex gap-2">
-                  <button
-                    onClick={() => onEditClick(policy)}
-                    className="btn btn-ghost btn-sm"
-                    title={t('common:edit')}
-                  >
-                    <Edit3 size={16} />
-                  </button>
-                  <button
-                    onClick={() => handleDelete(policy.id)}
-                    className="btn btn-ghost btn-sm text-danger"
+                  <IconButton icon={Edit3} label={t('common:edit')} variant="ghost" size="sm" onClick={() => onEditClick(policy)} />
+                  <IconButton
+                    icon={Trash2}
+                    label={t('common:delete')}
+                    variant="danger"
+                    size="sm"
                     disabled={deleteMutation.isPending && deleteMutation.variables === policy.id}
-                    title={t('common:delete')}
-                  >
-                    {deleteMutation.isPending && deleteMutation.variables === policy.id ? '...' : <Trash2 size={16} />}
-                  </button>
+                    onClick={() => handleDelete(policy.id)}
+                  />
                 </div>
               </div>
 
               <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
                 <div>
-                  <p className="text-xs text-garage-text-muted mb-1">{t('insuranceList.policyNumber')}</p>
-                  <p className="text-sm text-garage-text">{policy.policy_number}</p>
+                  <p className="text-xs text-text-mute mb-1">{t('insuranceList.policyNumber')}</p>
+                  <Mono size="sm" tabular={false} className="text-text">{policy.policy_number}</Mono>
                 </div>
                 <div>
-                  <p className="text-xs text-garage-text-muted mb-1">{t('insuranceList.startDate')}</p>
-                  <p className="text-sm text-garage-text">{formatDate(policy.start_date)}</p>
+                  <p className="text-xs text-text-mute mb-1">{t('insuranceList.startDate')}</p>
+                  <Mono size="sm" className="text-text">{formatDate(policy.start_date)}</Mono>
                 </div>
                 <div>
-                  <p className="text-xs text-garage-text-muted mb-1">{t('insuranceList.endDate')}</p>
-                  <p className="text-sm text-garage-text">{formatDate(policy.end_date)}</p>
+                  <p className="text-xs text-text-mute mb-1">{t('insuranceList.endDate')}</p>
+                  <Mono size="sm" className="text-text">{formatDate(policy.end_date)}</Mono>
                 </div>
                 {policy.premium_amount && (
                   <div>
-                    <p className="text-xs text-garage-text-muted mb-1">{t('insuranceList.premiumAmount')}</p>
-                    <p className="text-sm text-garage-text">
-                      {formatCurrency(policy.premium_amount, { currencyCode, locale })}
+                    <p className="text-xs text-text-mute mb-1">{t('insuranceList.premiumAmount')}</p>
+                    <p className="text-sm text-text">
+                      <Mono size="sm">{formatCurrency(policy.premium_amount, { currencyCode, locale })}</Mono>
                       {policy.premium_frequency && ` / ${policy.premium_frequency}`}
                     </p>
                   </div>
@@ -162,28 +138,29 @@ export default function InsuranceList({ vin, onAddClick, onEditClick }: Insuranc
 
               {policy.deductible && (
                 <div className="mb-2">
-                  <p className="text-xs text-garage-text-muted mb-1">{t('insuranceList.deductible')}</p>
-                  <p className="text-sm text-garage-text">{formatCurrency(policy.deductible, { currencyCode, locale })}</p>
+                  <p className="text-xs text-text-mute mb-1">{t('insuranceList.deductible')}</p>
+                  <Mono size="sm" className="text-text">{formatCurrency(policy.deductible, { currencyCode, locale })}</Mono>
                 </div>
               )}
 
               {policy.coverage_limits && (
                 <div className="mb-2">
-                  <p className="text-xs text-garage-text-muted mb-1">{t('insuranceList.coverageLimits')}</p>
-                  <p className="text-sm text-garage-text whitespace-pre-wrap">{policy.coverage_limits}</p>
+                  <p className="text-xs text-text-mute mb-1">{t('insuranceList.coverageLimits')}</p>
+                  <p className="text-sm text-text whitespace-pre-wrap">{policy.coverage_limits}</p>
                 </div>
               )}
 
               {policy.notes && (
                 <div>
-                  <p className="text-xs text-garage-text-muted mb-1">{t('insuranceList.notes')}</p>
-                  <p className="text-sm text-garage-text whitespace-pre-wrap">{policy.notes}</p>
+                  <p className="text-xs text-text-mute mb-1">{t('insuranceList.notes')}</p>
+                  <p className="text-sm text-text whitespace-pre-wrap">{policy.notes}</p>
                 </div>
               )}
 
               {isExpired(policy.end_date) && (
                 <div className="mt-4 text-sm text-danger flex items-center gap-2">
-                  <Calendar size={16} />{t('insuranceList.expired')}</div>
+                  <Calendar aria-hidden="true" size={16} />{t('insuranceList.expired')}
+                </div>
               )}
             </div>
           ))}
