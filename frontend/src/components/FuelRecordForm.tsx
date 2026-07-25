@@ -24,6 +24,7 @@ import { useAuth } from '../contexts/AuthContext'
 import { UnitConverter, UnitFormatter } from '../utils/units'
 import { toCanonicalKm, toCanonicalLiters, priceToDisplay, priceToCanonical } from '../utils/decimalSafe'
 import CurrencyInputPrefix from './common/CurrencyInputPrefix'
+import { Button, Field, Input, Textarea, Checkbox } from './ui'
 import { formatDateForInput } from '../utils/dateUtils'
 import TimeInput24, { normalizeTime, formatTimeForInput } from './common/TimeInput24'
 import { useTimeFormat } from '../hooks/useTimeFormat'
@@ -475,23 +476,18 @@ export default function FuelRecordForm({ vin, record, onClose, onSuccess }: Fuel
       width="lg"
       footer={
         <>
-          <button
-            type="button"
-            onClick={onClose}
-            className="btn btn-primary rounded-lg transition-colors"
-            disabled={isSubmitting}
-          >
+          <Button variant="secondary" onClick={onClose} disabled={isSubmitting}>
             {t('common:cancel')}
-          </button>
-          <button
+          </Button>
+          <Button
             type="submit"
             form="fuel-record-form"
-            disabled={isSubmitting}
-            className="flex items-center gap-2 btn btn-primary rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            variant="primary"
+            icon={Save}
+            loading={isSubmitting}
           >
-            <Save className="w-4 h-4" />
-            <span>{isSubmitting ? t('common:saving') : isEdit ? t('common:update') : t('common:create')}</span>
-          </button>
+            {isSubmitting ? t('common:saving') : isEdit ? t('common:update') : t('common:create')}
+          </Button>
         </>
       }
     >
@@ -506,113 +502,40 @@ export default function FuelRecordForm({ vin, record, onClose, onSuccess }: Fuel
           )}
 
           <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label htmlFor="date" className="block text-sm font-medium text-garage-text mb-1">
-                {t('common:date')} <span className="text-danger">*</span>
-              </label>
-              <input
-                type="date"
-                id="date"
-                {...register('date')}
-                className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-primary bg-garage-bg text-garage-text ${
-                  errors.date ? 'border-red-500' : 'border-garage-border'
-                }`}
-                disabled={isSubmitting}
-              />
-              <FormError error={errors.date} />
-            </div>
-
-            <div>
-              <label htmlFor="odometer_km" className="block text-sm font-medium text-garage-text mb-1">
-                {t('common:mileage')} ({UnitFormatter.getDistanceUnit(system)})
-              </label>
-              <input
+            <Field id="date" label={t('common:date')} required error={errors.date}>
+              <Input type="date" id="date" {...register('date')} invalid={!!errors.date} disabled={isSubmitting} />
+            </Field>
+            <Field id="odometer_km" label={t('common:mileage')} unit={UnitFormatter.getDistanceUnit(system)} error={errors.odometer_km}>
+              <Input
                 type="number"
                 id="odometer_km"
+                mono
                 {...register('odometer_km', { valueAsNumber: true })}
                 min="0"
                 placeholder={system === 'imperial' ? '45000' : '72420'}
-                className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-primary bg-garage-bg text-garage-text ${
-                  errors.odometer_km ? 'border-red-500' : 'border-garage-border'
-                }`}
+                invalid={!!errors.odometer_km}
                 disabled={isSubmitting}
               />
-              <FormError error={errors.odometer_km} />
-            </div>
+            </Field>
           </div>
 
           <div className="grid grid-cols-3 gap-4">
-            {/* Regular Fuel (Gallons) - Show for gas/diesel/hybrid */}
             {showGallons && (
-              <div>
-                <label htmlFor="liters" className="block text-sm font-medium text-garage-text mb-1">
-                  {t('fuel.volume')} ({UnitFormatter.getVolumeUnit(system)})
-                </label>
-                <input
-                  type="number"
-                  id="liters"
-                  {...register('liters', { valueAsNumber: true })}
-                  min="0"
-                  step="0.001"
-                  placeholder={system === 'imperial' ? '12.500' : '47.318'}
-                  className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-primary bg-garage-bg text-garage-text ${
-                    errors.liters ? 'border-red-500' : 'border-garage-border'
-                  }`}
-                  disabled={isSubmitting}
-                />
-                <FormError error={errors.liters} />
-              </div>
+              <Field id="liters" label={t('fuel.volume')} unit={UnitFormatter.getVolumeUnit(system)} error={errors.liters}>
+                <Input type="number" id="liters" mono {...register('liters', { valueAsNumber: true })} min="0" step="0.001" placeholder={system === 'imperial' ? '12.500' : '47.318'} invalid={!!errors.liters} disabled={isSubmitting} />
+              </Field>
             )}
-
-            {/* Electric Energy (kWh) - Show for electric/hybrid */}
             {showKwh && (
-              <div>
-                <label htmlFor="kwh" className="block text-sm font-medium text-garage-text mb-1">
-                  {t('fuel.energy')} (kWh)
-                </label>
-                <input
-                  type="number"
-                  id="kwh"
-                  {...register('kwh', { valueAsNumber: true })}
-                  min="0"
-                  step="0.001"
-                  placeholder="45.500"
-                  className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-primary bg-garage-bg text-garage-text ${
-                    errors.kwh ? 'border-red-500' : 'border-garage-border'
-                  }`}
-                  disabled={isSubmitting}
-                />
-                <FormError error={errors.kwh} />
-              </div>
+              <Field id="kwh" label={t('fuel.energy')} unit="kWh" error={errors.kwh}>
+                <Input type="number" id="kwh" mono {...register('kwh', { valueAsNumber: true })} min="0" step="0.001" placeholder="45.500" invalid={!!errors.kwh} disabled={isSubmitting} />
+              </Field>
             )}
-
-            {/* Propane - Show for propane vehicles */}
             {showPropane && (
-              <div>
-                <label htmlFor="propane_liters" className="block text-sm font-medium text-garage-text mb-1">
-                  {t('fuel.propane')} ({UnitFormatter.getVolumeUnit(system)})
-                </label>
-                <input
-                  type="number"
-                  id="propane_liters"
-                  {...register('propane_liters', { valueAsNumber: true })}
-                  min="0"
-                  step="0.001"
-                  placeholder="0.000"
-                  className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-primary bg-garage-bg text-garage-text ${
-                    errors.propane_liters ? 'border-red-500' : 'border-garage-border'
-                  }`}
-                  disabled={isSubmitting}
-                />
-                <FormError error={errors.propane_liters} />
-              </div>
+              <Field id="propane_liters" label={t('fuel.propane')} unit={UnitFormatter.getVolumeUnit(system)} error={errors.propane_liters}>
+                <Input type="number" id="propane_liters" mono {...register('propane_liters', { valueAsNumber: true })} min="0" step="0.001" placeholder="0.000" invalid={!!errors.propane_liters} disabled={isSubmitting} />
+              </Field>
             )}
-
-            {/* Price per unit */}
-            <div>
-              <label htmlFor="price_per_unit" className="block text-sm font-medium text-garage-text mb-1">
-                {priceLabel}
-              </label>
+            <Field id="price_per_unit" label={priceLabel} error={errors.price_per_unit}>
               <div className="relative">
                 <CurrencyInputPrefix />
                 <input
@@ -622,161 +545,59 @@ export default function FuelRecordForm({ vin, record, onClose, onSuccess }: Fuel
                   min="0"
                   step="0.001"
                   placeholder={isElectric ? '0.130' : (system === 'imperial' ? '3.499' : '0.924')}
-                  className={`w-full pl-7 pr-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-primary bg-garage-bg text-garage-text ${
-                    errors.price_per_unit ? 'border-red-500' : 'border-garage-border'
-                  }`}
+                  className={`ui-focus-input ui-motion w-full rounded-control border bg-surface-2 pl-7 pr-3 py-2 text-sm text-text font-mono tabular-nums ${errors.price_per_unit ? 'border-danger' : 'border-border'}`}
                   disabled={isSubmitting}
                 />
               </div>
-              <FormError error={errors.price_per_unit} />
-            </div>
+            </Field>
           </div>
 
-          <div>
-            <label htmlFor="price_basis" className="block text-sm font-medium text-garage-text mb-1">
-              {t('fuel.priceBasis')}
-            </label>
+          <Field id="price_basis" label={t('fuel.priceBasis')} error={errors.price_basis}>
             <select
               id="price_basis"
               {...register('price_basis')}
-              className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-primary bg-garage-bg text-garage-text border-garage-border"
+              className="ui-focus-input ui-motion w-full rounded-control border border-border bg-surface-2 px-3 py-2 text-sm text-text"
               disabled={isSubmitting}
               defaultValue={isElectric ? 'per_kwh' : 'per_volume'}
             >
               {/* Phase 3.6 — labels respect the user's unit preference.
                   Was hardcoded "L/gal" / "kg/lb" regardless of system,
                   per issue #69. */}
-              <option value="per_volume">
-                {t('fuel.priceBasisPerVolume', {
-                  unit: system === 'imperial' ? 'gal' : 'L',
-                })}
-              </option>
-              <option value="per_weight">
-                {t('fuel.priceBasisPerWeight', {
-                  unit: system === 'imperial' ? 'lb' : 'kg',
-                })}
-              </option>
+              <option value="per_volume">{t('fuel.priceBasisPerVolume', { unit: system === 'imperial' ? 'gal' : 'L' })}</option>
+              <option value="per_weight">{t('fuel.priceBasisPerWeight', { unit: system === 'imperial' ? 'lb' : 'kg' })}</option>
               <option value="per_kwh">{t('fuel.priceBasisPerKwh')}</option>
               <option value="per_tank">{t('fuel.priceBasisPerTank')}</option>
             </select>
-            <FormError error={errors.price_basis} />
-          </div>
+          </Field>
 
           <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label htmlFor="rebate" className="block text-sm font-medium text-garage-text mb-1">
-                {t('fuel.rebate')}
-              </label>
+            <Field id="rebate" label={t('fuel.rebate')} error={errors.rebate} hint={t('fuel.rebateHint')}>
               <div className="relative">
                 <CurrencyInputPrefix />
-                <input
-                  type="number"
-                  id="rebate"
-                  {...register('rebate', { valueAsNumber: true })}
-                  min="0"
-                  step="0.01"
-                  placeholder="0.00"
-                  className={`w-full pl-7 pr-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-primary bg-garage-bg text-garage-text ${
-                    errors.rebate ? 'border-red-500' : 'border-garage-border'
-                  }`}
-                  disabled={isSubmitting}
-                />
+                <input type="number" id="rebate" {...register('rebate', { valueAsNumber: true })} min="0" step="0.01" placeholder="0.00" className={`ui-focus-input ui-motion w-full rounded-control border bg-surface-2 pl-7 pr-3 py-2 text-sm text-text font-mono tabular-nums ${errors.rebate ? 'border-danger' : 'border-border'}`} disabled={isSubmitting} />
               </div>
-              <FormError error={errors.rebate} />
-              <p className="text-xs text-garage-text-muted mt-1">
-                {t('fuel.rebateHint')}
-              </p>
-            </div>
-
-            <div>
-              <label htmlFor="cost" className="block text-sm font-medium text-garage-text mb-1">
-                {t('common:totalCost')}
-              </label>
+            </Field>
+            <Field id="cost" label={t('common:totalCost')} error={errors.cost} hint={t('fuel.autoCalculatedHint')}>
               <div className="relative">
                 <CurrencyInputPrefix />
-                <input
-                  type="number"
-                  id="cost"
-                  {...register('cost', { valueAsNumber: true })}
-                  min="0"
-                  step="0.01"
-                  placeholder="42.99"
-                  className={`w-full pl-7 pr-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-primary bg-garage-bg text-garage-text ${
-                    errors.cost ? 'border-red-500' : 'border-garage-border'
-                  }`}
-                  disabled={isSubmitting}
-                />
+                <input type="number" id="cost" {...register('cost', { valueAsNumber: true })} min="0" step="0.01" placeholder="42.99" className={`ui-focus-input ui-motion w-full rounded-control border bg-surface-2 pl-7 pr-3 py-2 text-sm text-text font-mono tabular-nums ${errors.cost ? 'border-danger' : 'border-border'}`} disabled={isSubmitting} />
               </div>
-              <FormError error={errors.cost} />
-              <p className="text-xs text-garage-text-muted mt-1">
-                {t('fuel.autoCalculatedHint')}
-              </p>
-            </div>
+            </Field>
           </div>
 
-          <div>
-            <label htmlFor="fuel_type" className="block text-sm font-medium text-garage-text mb-1">
-              {t('fuel.fuelType')}
-            </label>
-            <input
-              type="text"
-              id="fuel_type"
-              {...register('fuel_type')}
-              placeholder={t('fuelRecordForm.fuelTypePlaceholder')}
-              className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-primary bg-garage-bg text-garage-text ${
-                errors.fuel_type ? 'border-red-500' : 'border-garage-border'
-              }`}
-              disabled={isSubmitting}
-            />
-            <FormError error={errors.fuel_type} />
-            <p className="text-xs text-garage-text-muted mt-1">
-              {t('fuel.autoPopulatedHint')}
-            </p>
-          </div>
+          <Field id="fuel_type" label={t('fuel.fuelType')} error={errors.fuel_type} hint={t('fuel.autoPopulatedHint')}>
+            <Input type="text" id="fuel_type" {...register('fuel_type')} placeholder={t('fuelRecordForm.fuelTypePlaceholder')} invalid={!!errors.fuel_type} disabled={isSubmitting} />
+          </Field>
 
           <div className="grid grid-cols-2 gap-4">
             {showFullTankCheckbox && (
-              <div className="flex items-center">
-                <input
-                  type="checkbox"
-                  id="is_full_tank"
-                  {...register('is_full_tank')}
-                  className="h-4 w-4 text-primary focus:ring-primary border-garage-border rounded bg-garage-bg"
-                  disabled={isSubmitting}
-                />
-                <label htmlFor="is_full_tank" className="ml-2 block text-sm text-garage-text">
-                  {t('fuel.fullTankFillup')}
-                </label>
-              </div>
+              <Checkbox id="is_full_tank" label={t('fuel.fullTankFillup')} {...register('is_full_tank')} disabled={isSubmitting} />
             )}
-
-            <div className="flex items-center">
-              <input
-                type="checkbox"
-                id="missed_fillup"
-                {...register('missed_fillup')}
-                className="h-4 w-4 text-primary focus:ring-primary border-garage-border rounded bg-garage-bg"
-                disabled={isSubmitting}
-              />
-              <label htmlFor="missed_fillup" className="ml-2 block text-sm text-garage-text">
-                {isElectric ? t('fuel.missedChargingSession') : t('fuel.missedFillup')}
-              </label>
-            </div>
+            <Checkbox id="missed_fillup" label={isElectric ? t('fuel.missedChargingSession') : t('fuel.missedFillup')} {...register('missed_fillup')} disabled={isSubmitting} />
           </div>
 
           {showHaulingCheckbox && (
-            <div className="flex items-center">
-              <input
-                type="checkbox"
-                id="is_hauling"
-                {...register('is_hauling')}
-                className="h-4 w-4 text-primary focus:ring-primary border-garage-border rounded bg-garage-bg"
-                disabled={isSubmitting}
-              />
-              <label htmlFor="is_hauling" className="ml-2 block text-sm text-garage-text">
-                {t('fuel.towingHaulingLoad')}
-              </label>
-            </div>
+            <Checkbox id="is_hauling" label={t('fuel.towingHaulingLoad')} {...register('is_hauling')} disabled={isSubmitting} />
           )}
 
           {/* DEF Level - diesel vehicles only; the server rejects DEF data on non-diesel */}
@@ -842,43 +663,27 @@ export default function FuelRecordForm({ vin, record, onClose, onSuccess }: Fuel
           )}
 
           {!isElectric && (
-            <div className="bg-primary/10 border border-primary rounded-lg p-3">
-              <p className="text-sm text-primary">
-                <strong>{t('common:tip')}:</strong> {t('fuel.mpgTip')}
-              </p>
+            <div className="rounded-lg border border-(--accent-line) bg-(--accent-soft) p-3">
+              <p className="text-sm text-(--accent-fg)"><strong>{t('common:tip')}:</strong> {t('fuel.mpgTip')}</p>
             </div>
           )}
 
           {isElectric && (
-            <div className="bg-primary/10 border border-primary rounded-lg p-3">
-              <p className="text-sm text-primary">
-                <strong>{t('common:tip')}:</strong> {t('fuel.electricTip')}
-              </p>
+            <div className="rounded-lg border border-(--accent-line) bg-(--accent-soft) p-3">
+              <p className="text-sm text-(--accent-fg)"><strong>{t('common:tip')}:</strong> {t('fuel.electricTip')}</p>
             </div>
           )}
 
           {/* Multi-fuel: only render when the vehicle has fuel_type_secondary set */}
           {isMultiFuel && (
-            <div>
-              <label htmlFor="fuel_type_used" className="block text-sm font-medium text-garage-text mb-1">
-                {t('fuel.fuelTypeUsed')}
-              </label>
-              <select
-                id="fuel_type_used"
-                {...register('fuel_type_used')}
-                className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-primary bg-garage-bg text-garage-text border-garage-border"
-                disabled={isSubmitting}
-              >
+            <Field id="fuel_type_used" label={t('fuel.fuelTypeUsed')} error={errors.fuel_type_used} hint={t('fuel.fuelTypeUsedHint')}>
+              <select id="fuel_type_used" {...register('fuel_type_used')} className="ui-focus-input ui-motion w-full rounded-control border border-border bg-surface-2 px-3 py-2 text-sm text-text" disabled={isSubmitting}>
                 <option value="">{t('common:select') || '—'}</option>
                 {FUEL_TYPE_VALUES.map((value) => (
-                  <option key={value} value={value}>
-                    {t(`fuel.fuelTypes.${value}`)}
-                  </option>
+                  <option key={value} value={value}>{t(`fuel.fuelTypes.${value}`)}</option>
                 ))}
               </select>
-              <FormError error={errors.fuel_type_used} />
-              <p className="text-xs text-garage-text-muted mt-1">{t('fuel.fuelTypeUsedHint')}</p>
-            </div>
+            </Field>
           )}
 
           {/* "More details" — extended fuel tracking metadata (issue #69) */}
@@ -1141,22 +946,9 @@ export default function FuelRecordForm({ vin, record, onClose, onSuccess }: Fuel
             )}
           </div>
 
-          <div>
-            <label htmlFor="notes" className="block text-sm font-medium text-garage-text mb-1">
-              {t('common:notes')}
-            </label>
-            <textarea
-              id="notes"
-              rows={3}
-              {...register('notes')}
-              placeholder={t('common:additionalNotes')}
-              className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-primary bg-garage-bg text-garage-text ${
-                errors.notes ? 'border-red-500' : 'border-garage-border'
-              }`}
-              disabled={isSubmitting}
-            />
-            <FormError error={errors.notes} />
-          </div>
+          <Field id="notes" label={t('common:notes')} error={errors.notes}>
+            <Textarea id="notes" rows={3} {...register('notes')} placeholder={t('common:additionalNotes')} invalid={!!errors.notes} disabled={isSubmitting} />
+          </Field>
         </form>
 
         <AddressBookQuickAddModal
