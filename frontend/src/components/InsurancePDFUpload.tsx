@@ -4,6 +4,15 @@ import { useTranslation } from 'react-i18next'
 import api from '../services/api'
 import { InsurancePDFParseResponse, InsurancePolicyCreate } from '../types/insurance'
 import { CloudUpload, X, AlertTriangle, CheckCircle } from 'lucide-react'
+import { Button, Card, IconButton, Chip } from './ui'
+import type { Tone } from './ui'
+
+// LD3: confidence is off-accent (§4.3); high→success, medium→warning, low→danger.
+const CONFIDENCE_TONE: Record<'high' | 'medium' | 'low', Tone> = {
+  high: 'success',
+  medium: 'warning',
+  low: 'danger',
+}
 
 /**
  * Parsed-policy field name -> translation key.
@@ -138,71 +147,55 @@ export default function InsurancePDFUpload({ vin, onDataExtracted, onClose }: In
     const confidence = parseResult?.confidence[field]
     if (!confidence) return null
 
-    const colors = {
-      high: 'bg-green-100 text-green-800',
-      medium: 'bg-yellow-100 text-yellow-800',
-      low: 'bg-red-100 text-red-800',
-    }
-
     const labels = {
       high: t('insurancePdfUpload.confidenceHigh'),
       medium: t('insurancePdfUpload.confidenceMedium'),
       low: t('insurancePdfUpload.confidenceLow'),
     }
 
-    return (
-      <span className={`text-xs px-2 py-1 rounded ${colors[confidence]}`}>
-        {labels[confidence]}
-      </span>
-    )
+    return <Chip tone={CONFIDENCE_TONE[confidence]}>{labels[confidence]}</Chip>
   }
 
   return createPortal(
     <div className="fixed inset-0 modal-overlay flex items-center justify-center z-drawer-nested p-4">
-      <div className="bg-garage-surface rounded-lg shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto border border-garage-border">
+      <div className="bg-surface rounded-lg shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto border border-border">
         {/* Header */}
-        <div className="sticky top-0 bg-garage-surface border-b border-garage-border px-6 py-4 flex justify-between items-center rounded-t-lg">
-          <h2 className="text-xl font-semibold text-garage-text">
-            {t('insurancePdfUpload.title')}
-          </h2>
-          <button
-            onClick={onClose}
-            className="text-garage-text-muted hover:text-garage-text"
-          >
-            <X className="w-6 h-6" />
-          </button>
+        <div className="sticky top-0 bg-surface border-b border-border px-6 py-4 flex justify-between items-center rounded-t-lg">
+          <h2 className="text-xl font-semibold text-text">{t('insurancePdfUpload.title')}</h2>
+          <IconButton icon={X} label={t('common:close')} variant="ghost" onClick={onClose} />
         </div>
 
         {/* Content */}
         <div className="p-6">
           {!parseResult ? (
             <>
-              {/* Upload Area */}
+              {/* Upload Area (G4b dropzone) */}
               <div
                 className={`border-2 border-dashed rounded-lg p-8 text-center ${
-                  dragActive
-                    ? 'border-primary bg-primary/5'
-                    : 'border-garage-border'
+                  dragActive ? 'border-(--accent-line) bg-(--accent-soft)' : 'border-border'
                 }`}
                 onDragEnter={handleDrag}
                 onDragLeave={handleDrag}
                 onDragOver={handleDrag}
                 onDrop={handleDrop}
               >
-                <CloudUpload className="w-12 h-12 mx-auto text-garage-text-muted mb-4" />
-                <p className="text-garage-text mb-2">
-                  {file ? file.name : t('insurancePdfUpload.dragDrop')}
-                </p>
-                <p className="text-sm text-garage-text-muted mb-4">
-                  {t('insurancePdfUpload.or')}
-                </p>
-                <button
-                  onClick={() => fileInputRef.current?.click()}
-                  className="btn btn-secondary"
-                >
+                <CloudUpload aria-hidden="true" className="w-12 h-12 mx-auto text-text-mute mb-4" />
+                <p className="text-text mb-2">{file ? file.name : t('insurancePdfUpload.dragDrop')}</p>
+                <p className="text-sm text-text-mute mb-4">{t('insurancePdfUpload.or')}</p>
+                {/* B3/M6/G4(b): the Choose-File affordance is a real focusable <Button> that clicks
+                    the hidden input's ref — restoring KEYBOARD operability (Tab to the button,
+                    Enter/Space opens the native picker), the exact pre-B3 trigger retokenized onto
+                    the primitive. A separate sr-only <label htmlFor> gives the input its accessible
+                    name so getByLabelText still resolves it (B3). "Retokenize only" does not forbid
+                    restoring keyboard access + an accessible name — both are net a11y gains. */}
+                <Button type="button" variant="secondary" onClick={() => fileInputRef.current?.click()}>
                   {t('insurancePdfUpload.chooseFile')}
-                </button>
+                </Button>
+                <label htmlFor="insurance-pdf-file" className="sr-only">
+                  {t('insurancePdfUpload.chooseFile')}
+                </label>
                 <input
+                  id="insurance-pdf-file"
                   ref={fileInputRef}
                   type="file"
                   accept=".pdf,application/pdf"
@@ -213,20 +206,16 @@ export default function InsurancePDFUpload({ vin, onDataExtracted, onClose }: In
 
               {file && (
                 <div className="mt-4">
-                  <button
-                    onClick={handleUpload}
-                    disabled={uploading}
-                    className="btn btn-secondary w-full"
-                  >
+                  <Button variant="secondary" className="w-full" loading={uploading} onClick={handleUpload}>
                     {uploading ? t('insurancePdfUpload.parsing') : t('insurancePdfUpload.parse')}
-                  </button>
+                  </Button>
                 </div>
               )}
 
               {error && (
-                <div className="mt-4 p-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg flex items-start gap-3">
-                  <AlertTriangle className="w-5 h-5 text-red-600 dark:text-red-400 flex-shrink-0 mt-0.5" />
-                  <p className="text-sm text-red-700 dark:text-red-300">{error}</p>
+                <div className="mt-4 p-4 bg-danger/10 border border-danger rounded-lg flex items-start gap-3">
+                  <AlertTriangle aria-hidden="true" className="w-5 h-5 text-danger flex-shrink-0 mt-0.5" />
+                  <p className="text-sm text-danger">{error}</p>
                 </div>
               )}
             </>
@@ -234,34 +223,27 @@ export default function InsurancePDFUpload({ vin, onDataExtracted, onClose }: In
             <>
               {/* Parse Results */}
               <div className="space-y-4">
-                {/* Success Message */}
-                <div className="p-4 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg flex items-start gap-3">
-                  <CheckCircle className="w-5 h-5 text-green-600 dark:text-green-400 flex-shrink-0 mt-0.5" />
+                {/* Success Message (G4e) */}
+                <div className="p-4 bg-success/10 border border-success rounded-lg flex items-start gap-3">
+                  <CheckCircle aria-hidden="true" className="w-5 h-5 text-success flex-shrink-0 mt-0.5" />
                   <div className="flex-1">
-                    <p className="text-sm font-medium text-green-700 dark:text-green-300">
-                      {t('insurancePdfUpload.parseSuccess')}
-                    </p>
+                    <p className="text-sm font-medium text-success">{t('insurancePdfUpload.parseSuccess')}</p>
                     {parseResult.vehicles_found.length > 0 && (
-                      <p className="text-sm text-green-600 dark:text-green-400 mt-1">
-                        {t('insurancePdfUpload.vehiclesFound', {
-                          count: parseResult.vehicles_found.length,
-                          vehicles: parseResult.vehicles_found.join(', '),
-                        })}
+                      <p className="text-sm text-success mt-1">
+                        {t('insurancePdfUpload.vehiclesFound', { count: parseResult.vehicles_found.length, vehicles: parseResult.vehicles_found.join(', ') })}
                       </p>
                     )}
                   </div>
                 </div>
 
-                {/* Warnings */}
+                {/* Warnings (G4e) */}
                 {parseResult.warnings.length > 0 && (
-                  <div className="p-4 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg">
+                  <div className="p-4 bg-warning/10 border border-warning rounded-lg">
                     <div className="flex items-start gap-3">
-                      <AlertTriangle className="w-5 h-5 text-yellow-600 dark:text-yellow-400 flex-shrink-0 mt-0.5" />
+                      <AlertTriangle aria-hidden="true" className="w-5 h-5 text-warning flex-shrink-0 mt-0.5" />
                       <div>
-                        <p className="text-sm font-medium text-yellow-700 dark:text-yellow-300 mb-2">
-                          {t('insurancePdfUpload.warnings')}
-                        </p>
-                        <ul className="text-sm text-yellow-600 dark:text-yellow-400 space-y-1">
+                        <p className="text-sm font-medium text-warning mb-2">{t('insurancePdfUpload.warnings')}</p>
+                        <ul className="text-sm text-warning space-y-1">
                           {parseResult.warnings.map((warning, idx) => (
                             <li key={idx}>• {warning}</li>
                           ))}
@@ -271,55 +253,40 @@ export default function InsurancePDFUpload({ vin, onDataExtracted, onClose }: In
                   </div>
                 )}
 
-                {/* Extracted Data */}
-                <div className="bg-garage-bg border border-garage-border rounded-lg p-4">
-                  <h3 className="text-sm font-semibold text-garage-text mb-3">
-                    {t('insurancePdfUpload.extractedData')}
-                  </h3>
+                {/* Extracted Data — B6: the real Card API fits (no conditional border, no status
+                    tone), so compose <Card>, not a raw bg-surface-2/border/rounded/p-4 copy. Do
+                    NOT override its fixed bg/border with competing utilities. padding="sm" ⇒ p-4. */}
+                <Card padding="sm">
+                  <h3 className="text-sm font-semibold text-text mb-3">{t('insurancePdfUpload.extractedData')}</h3>
                   <div className="space-y-2 text-sm">
                     {Object.entries(parseResult.data).map(([key, value]) => {
                       if (!value) return null
                       const labelKey = INSURANCE_FIELD_KEYS[key]
                       const label = labelKey ? t(labelKey) : humanizeFieldName(key)
                       return (
-                        <div key={key} className="flex justify-between items-start py-2 border-b border-garage-border last:border-0">
-                          <span className="text-garage-text-muted font-medium">
-                            {label}:
-                          </span>
+                        <div key={key} className="flex justify-between items-start py-2 border-b border-border last:border-0">
+                          <span className="text-text-mute font-medium">{label}:</span>
                           <div className="flex items-center gap-2">
-                            <span className="text-garage-text text-right">
-                              {value}
-                            </span>
+                            <span className="text-text text-right">{value}</span>
                             {getConfidenceBadge(key)}
                           </div>
                         </div>
                       )
                     })}
                   </div>
-                </div>
+                </Card>
 
                 {/* Actions */}
                 <div className="flex gap-3">
-                  <button
-                    onClick={() => {
-                      setParseResult(null)
-                      setFile(null)
-                    }}
-                    className="btn btn-secondary flex-1"
-                  >
+                  <Button variant="secondary" className="flex-1" onClick={() => { setParseResult(null); setFile(null) }}>
                     {t('insurancePdfUpload.uploadDifferent')}
-                  </button>
-                  <button
-                    onClick={handleUseData}
-                    className="btn btn-primary rounded-lg flex-1"
-                  >
+                  </Button>
+                  <Button variant="primary" className="flex-1" onClick={handleUseData}>
                     {t('insurancePdfUpload.useThisData')}
-                  </button>
+                  </Button>
                 </div>
 
-                <p className="text-xs text-garage-text-muted text-center">
-                  {t('insurancePdfUpload.reviewHint')}
-                </p>
+                <p className="text-xs text-text-mute text-center">{t('insurancePdfUpload.reviewHint')}</p>
               </div>
             </>
           )}
