@@ -2,6 +2,7 @@ import { useState, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Upload, X, AlertCircle } from 'lucide-react'
 import api from '../services/api'
+import { Button, IconButton } from './ui'
 
 interface ServiceVisitAttachmentUploadProps {
   visitId: number
@@ -96,7 +97,7 @@ export default function ServiceVisitAttachmentUpload({
   return (
     <div className="space-y-3">
       <div>
-        <label className="block text-sm font-medium text-garage-text mb-2">{t('serviceVisitAttachmentUpload.title')}</label>
+        <label className="mb-2 block text-sm font-medium text-text">{t('serviceVisitAttachmentUpload.title')}</label>
         <div className="flex items-center gap-2">
           <input
             ref={fileInputRef}
@@ -108,43 +109,32 @@ export default function ServiceVisitAttachmentUpload({
           />
           <label
             htmlFor="visit-file-upload"
-            className="flex-1 px-4 py-2 border border-garage-border rounded-md bg-garage-bg text-garage-text cursor-pointer hover:border-primary transition-colors flex items-center gap-2"
+            className="ui-motion flex flex-1 cursor-pointer items-center gap-2 rounded-control border border-border bg-surface-2 px-4 py-2 text-text hover:border-(--accent-line)"
           >
-            <Upload className="w-4 h-4" />
-            <span className="text-sm">
-              {selectedFile ? selectedFile.name : t('serviceVisitAttachmentUpload.chooseFile')}
-            </span>
+            <Upload aria-hidden="true" className="w-4 h-4" />
+            <span className="text-sm">{selectedFile ? selectedFile.name : t('serviceVisitAttachmentUpload.chooseFile')}</span>
           </label>
           {selectedFile && (
             <>
-              <button
-                onClick={handleUpload}
-                disabled={uploading}
-                className="px-4 py-2 bg-primary text-(--accent-on-solid) rounded-md hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-              >
-                {uploading
-                  ? t('serviceVisitAttachmentUpload.uploading')
-                  : t('serviceVisitAttachmentUpload.upload')}
-              </button>
-              <button
+              <Button variant="primary" onClick={handleUpload} loading={uploading}>
+                {t('serviceVisitAttachmentUpload.upload')}
+              </Button>
+              <IconButton
+                icon={X}
+                label={t('serviceVisitAttachmentUpload.cancel')}
+                variant="ghost"
                 onClick={handleCancel}
                 disabled={uploading}
-                className="p-2 text-garage-text-muted hover:text-danger transition-colors"
-                aria-label={t('serviceVisitAttachmentUpload.cancel')}
-              >
-                <X className="w-5 h-5" />
-              </button>
+              />
             </>
           )}
         </div>
-        <p className="mt-1 text-xs text-garage-text-muted">
-          {t('serviceVisitAttachmentUpload.supportedFormats')}
-        </p>
+        <p className="mt-1 text-xs text-text-mute">{t('serviceVisitAttachmentUpload.supportedFormats')}</p>
       </div>
 
       {error && (
         <div className="flex items-start gap-2 p-3 bg-danger/10 border border-danger/20 rounded-md">
-          <AlertCircle className="w-4 h-4 text-danger flex-shrink-0 mt-0.5" />
+          <AlertCircle aria-hidden="true" className="w-4 h-4 text-danger flex-shrink-0 mt-0.5" />
           <p className="text-sm text-danger">{error}</p>
         </div>
       )}
