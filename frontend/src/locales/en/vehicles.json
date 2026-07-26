@@ -928,6 +928,7 @@
     "exporting": "Exporting...",
     "month": "Month",
     "monthlyBreakdown": "Monthly Breakdown",
+    "monthlyBreakdownCaption": "Monthly toll totals",
     "noRecords": "No toll transactions recorded yet",
     "notes": "Notes",
     "title": "Toll Transactions",

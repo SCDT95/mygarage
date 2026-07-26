@@ -3,13 +3,15 @@ import { useTranslation } from 'react-i18next'
 import { useQueryClient } from '@tanstack/react-query'
 import { DollarSign, Plus, Edit, Trash2, MapPin, Calendar, Download, CreditCard } from 'lucide-react'
 import { toast } from 'sonner'
-import type { TollTransaction } from '../types/toll'
+import type { TollTransaction, MonthlyTotal } from '../types/toll'
 import { formatCurrency } from '../utils/formatUtils'
 import { formatDateForDisplay } from '../utils/dateUtils'
 import { useDateLocale } from '../hooks/useDateLocale'
 import { useCurrencyPreference } from '../hooks/useCurrencyPreference'
 import { useTollTransactions, useTollTags, useTollTransactionSummary, useDeleteTollTransaction } from '../hooks/queries/useTollRecords'
 import api from '../services/api'
+import { Button, IconButton, Card, Mono, EmptyState, DataTable } from './ui'
+import type { DataTableColumn } from './ui'
 
 interface TollTransactionListProps {
   vin: string
@@ -97,10 +99,16 @@ export default function TollTransactionList({ vin, onAddClick, onEditClick }: To
     return tag ? `${tag.toll_system} (${tag.tag_number})` : t('tollTransactionList.unknownTag')
   }
 
+  const monthlyColumns: DataTableColumn<MonthlyTotal>[] = [
+    { id: 'month', header: t('tollList.month'), mono: true, render: (m) => formatDateForDisplay(m.month + '-01', { year: 'numeric', month: 'long' }, dateLocale) },
+    { id: 'count', header: t('tollList.transactions'), mono: true, align: 'right', render: (m) => m.count },
+    { id: 'total', header: t('tollList.total'), mono: true, align: 'right', render: (m) => formatCurrency(m.amount, { currencyCode, locale }) },
+  ]
+
   if (loading) {
     return (
       <div className="flex justify-center items-center min-h-[200px]">
-        <div className="text-garage-text-muted">{t('tollTransactionList.loading')}</div>
+        <div className="text-text-mute">{t('tollTransactionList.loading')}</div>
       </div>
     )
   }
@@ -117,135 +125,113 @@ export default function TollTransactionList({ vin, onAddClick, onEditClick }: To
     <div>
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6">
         <div>
-          <h2 className="text-2xl font-bold text-garage-text">{t('tollList.title')}</h2>
-          <p className="text-sm text-garage-text-muted">
-            {t('tollList.transactionCount', { count: transactions.length })}
-          </p>
+          <h2 className="text-2xl font-bold text-text">{t('tollList.title')}</h2>
+          <p className="text-sm text-text-mute">{t('tollList.transactionCount', { count: transactions.length })}</p>
         </div>
         <div className="flex flex-wrap gap-2">
           <select
             value={selectedTagFilter}
             onChange={(e) => setSelectedTagFilter(e.target.value ? parseInt(e.target.value) : '')}
-            className="px-3 py-2 border border-garage-border rounded-md focus:outline-none focus:ring-2 focus:ring-primary bg-garage-bg text-garage-text text-sm"
+            className="ui-focus-input ui-motion rounded-control border border-border bg-surface-2 px-3 py-2 text-sm text-text"
           >
             <option value="">{t('tollList.allTags')}</option>
-            {tollTags.filter(t => t.status === 'active').map((tag) => (
+            {tollTags.filter(tag => tag.status === 'active').map((tag) => (
               <option key={tag.id} value={tag.id}>{tag.toll_system} - {tag.tag_number}</option>
             ))}
           </select>
-          <button
-            onClick={handleExportCSV}
-            disabled={exporting || transactions.length === 0}
-            className="flex items-center gap-2 px-4 py-2 bg-gray-700 border border-gray-600 text-white rounded-lg hover:bg-gray-800 transition-colors disabled:opacity-50"
-            title={t('tollTransactionList.exportToCSV')}
-          >
-            <Download className="w-4 h-4" />
-            <span>{exporting ? t('tollList.exporting') : t('tollList.export')}</span>
-          </button>
-          <button
-            onClick={onAddClick}
-            className="flex items-center gap-2 px-4 py-2 bg-gray-700 border border-gray-600 text-white rounded-lg hover:bg-gray-800 transition-colors"
-          >
-            <Plus size={20} />
-            {t('tollTransactionList.addTransaction')}
-          </button>
+          <Button variant="secondary" icon={Download} onClick={handleExportCSV} loading={exporting} disabled={transactions.length === 0} title={t('tollTransactionList.exportToCSV')}>
+            {exporting ? t('tollList.exporting') : t('tollList.export')}
+          </Button>
+          <Button variant="primary" icon={Plus} onClick={onAddClick}>{t('tollTransactionList.addTransaction')}</Button>
         </div>
       </div>
 
       {/* Summary Cards */}
       {summary && (
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-          <div className="bg-garage-surface rounded-lg p-4 border border-garage-border">
+          <Card padding="sm">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-xs text-garage-text-muted mb-1">{t('tollList.totalTransactions')}</p>
-                <p className="text-2xl font-bold text-garage-text">{summary.total_transactions}</p>
+                <p className="text-xs text-text-mute mb-1">{t('tollList.totalTransactions')}</p>
+                <Mono size="2xl" weight="bold">{summary.total_transactions}</Mono>
               </div>
-              <Calendar className="text-primary" size={24} />
+              <Calendar aria-hidden="true" className="text-(--accent-fg)" size={24} />
             </div>
-          </div>
-          <div className="bg-garage-surface rounded-lg p-4 border border-garage-border">
+          </Card>
+          <Card padding="sm">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-xs text-garage-text-muted mb-1">{t('tollList.totalAmount')}</p>
-                <p className="text-2xl font-bold text-garage-text">{formatCurrency(Number(summary.total_amount), { currencyCode, locale })}</p>
+                <p className="text-xs text-text-mute mb-1">{t('tollList.totalAmount')}</p>
+                <Mono size="2xl" weight="bold">{formatCurrency(Number(summary.total_amount), { currencyCode, locale })}</Mono>
               </div>
-              <DollarSign className="text-success" size={24} />
+              <DollarSign aria-hidden="true" className="text-success" size={24} />
             </div>
-          </div>
-          <div className="bg-garage-surface rounded-lg p-4 border border-garage-border">
+          </Card>
+          <Card padding="sm">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-xs text-garage-text-muted mb-1">{t('tollList.averagePerTransaction')}</p>
-                <p className="text-2xl font-bold text-garage-text">
+                <p className="text-xs text-text-mute mb-1">{t('tollList.averagePerTransaction')}</p>
+                <Mono size="2xl" weight="bold">
                   {summary.total_transactions > 0
                     ? formatCurrency(Number(summary.total_amount) / summary.total_transactions, { currencyCode, locale })
                     : formatCurrency(0, { currencyCode, locale, zeroIsValid: true })}
-                </p>
+                </Mono>
               </div>
-              <CreditCard className="text-primary" size={24} />
+              <CreditCard aria-hidden="true" className="text-(--accent-fg)" size={24} />
             </div>
-          </div>
+          </Card>
         </div>
       )}
 
       {transactions.length === 0 ? (
-        <div className="text-center py-12 bg-garage-surface rounded-lg border border-garage-border">
-          <DollarSign size={48} className="mx-auto text-garage-text-muted mb-4" />
-          <p className="text-garage-text-muted mb-4">{t('tollList.noRecords')}</p>
-          <button onClick={onAddClick} className="inline-flex items-center gap-2 px-4 py-2 bg-gray-700 border border-gray-600 text-white rounded-lg hover:bg-gray-800 transition-colors">
-            {t('tollList.addFirstTransaction')}
-          </button>
-        </div>
+        <EmptyState
+          icon={DollarSign}
+          title={t('tollList.noRecords')}
+          action={<Button variant="primary" icon={Plus} onClick={onAddClick}>{t('tollList.addFirstTransaction')}</Button>}
+        />
       ) : (
         <div className="space-y-3">
           {transactions.map((transaction) => (
             <div
               key={transaction.id}
-              className="bg-garage-surface rounded-lg p-4 border border-garage-border hover:border-primary/50 transition-colors"
+              className="bg-surface rounded-card p-4 border border-border hover:border-(--accent-line) ui-motion"
             >
               <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
                 <div className="flex-1">
                   <div className="flex items-start gap-3 mb-2">
-                    <MapPin className="text-primary mt-1" size={18} />
+                    <MapPin aria-hidden="true" className="text-(--accent-fg) mt-1" size={18} />
                     <div className="flex-1">
-                      <h3 className="text-lg font-semibold text-garage-text">{transaction.location}</h3>
-                      <p className="text-sm text-garage-text-muted">{formatDate(transaction.date)}</p>
+                      <h3 className="text-lg font-semibold text-text">{transaction.location}</h3>
+                      <Mono size="sm" className="text-text-mute">{formatDate(transaction.date)}</Mono>
                     </div>
                   </div>
                   <div className="grid grid-cols-2 md:grid-cols-3 gap-3 ml-9">
                     <div>
-                      <p className="text-xs text-garage-text-muted mb-1">{t('tollList.amount')}</p>
-                      <p className="text-sm font-semibold text-garage-text">{formatCurrency(transaction.amount, { currencyCode, locale })}</p>
+                      <p className="text-xs text-text-mute mb-1">{t('tollList.amount')}</p>
+                      <Mono size="sm">{formatCurrency(transaction.amount, { currencyCode, locale })}</Mono>
                     </div>
                     <div>
-                      <p className="text-xs text-garage-text-muted mb-1">{t('tollList.tollTag')}</p>
-                      <p className="text-sm text-garage-text">{getTollTagName(transaction.toll_tag_id)}</p>
+                      <p className="text-xs text-text-mute mb-1">{t('tollList.tollTag')}</p>
+                      <p className="text-sm text-text">{getTollTagName(transaction.toll_tag_id)}</p>
                     </div>
                     {transaction.notes && (
                       <div className="col-span-2 md:col-span-1">
-                        <p className="text-xs text-garage-text-muted mb-1">{t('tollList.notes')}</p>
-                        <p className="text-sm text-garage-text">{transaction.notes}</p>
+                        <p className="text-xs text-text-mute mb-1">{t('tollList.notes')}</p>
+                        <p className="text-sm text-text">{transaction.notes}</p>
                       </div>
                     )}
                   </div>
                 </div>
                 <div className="flex gap-2 ml-9 md:ml-0">
-                  <button
-                    onClick={() => onEditClick(transaction)}
-                    className="btn btn-ghost btn-sm"
-                    title={t('common:edit')}
-                  >
-                    <Edit size={16} />
-                  </button>
-                  <button
-                    onClick={() => handleDelete(transaction.id)}
-                    className="btn btn-ghost btn-sm text-danger"
+                  <IconButton icon={Edit} label={t('common:edit')} variant="ghost" size="sm" onClick={() => onEditClick(transaction)} />
+                  <IconButton
+                    icon={Trash2}
+                    label={t('common:delete')}
+                    variant="danger"
+                    size="sm"
                     disabled={deleteMutation.isPending && deleteMutation.variables === transaction.id}
-                    title={t('common:delete')}
-                  >
-                    {deleteMutation.isPending && deleteMutation.variables === transaction.id ? '...' : <Trash2 size={16} />}
-                  </button>
+                    onClick={() => handleDelete(transaction.id)}
+                  />
                 </div>
               </div>
             </div>
@@ -253,35 +239,18 @@ export default function TollTransactionList({ vin, onAddClick, onEditClick }: To
         </div>
       )}
 
-      {/* Monthly Breakdown */}
+      {/* Monthly Breakdown — DataTable, OUTSIDE the transaction card list (LD2) */}
       {summary && summary.monthly_totals.length > 0 && (
         <div className="mt-8">
-          <h3 className="text-lg font-semibold text-garage-text mb-4">{t('tollList.monthlyBreakdown')}</h3>
-          <div className="bg-garage-surface rounded-lg border border-garage-border overflow-hidden">
-            <table className="w-full">
-              <thead className="bg-garage-bg">
-                <tr>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-garage-text-muted uppercase tracking-wider">{t('tollList.month')}</th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-garage-text-muted uppercase tracking-wider">{t('tollList.transactions')}</th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-garage-text-muted uppercase tracking-wider">{t('tollList.total')}</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-garage-border">
-                {summary.monthly_totals.map((monthly) => {
-                  const m = monthly as { month: string; count: number; amount: number }
-                  return (
-                  <tr key={m.month} className="hover:bg-garage-bg/50">
-                    <td className="px-4 py-3 text-sm text-garage-text">
-                      {formatDateForDisplay(m.month + '-01', { year: 'numeric', month: 'long' }, dateLocale)}
-                    </td>
-                    <td className="px-4 py-3 text-sm text-garage-text">{m.count}</td>
-                    <td className="px-4 py-3 text-sm font-semibold text-garage-text">{formatCurrency(m.amount, { currencyCode, locale })}</td>
-                  </tr>
-                  )
-                })}
-              </tbody>
-            </table>
-          </div>
+          <h3 className="text-lg font-semibold text-text mb-4">{t('tollList.monthlyBreakdown')}</h3>
+          <Card padding="none">
+            <DataTable
+              caption={t('tollList.monthlyBreakdownCaption')}
+              columns={monthlyColumns}
+              rows={summary.monthly_totals as unknown as MonthlyTotal[]}
+              rowKey={(m) => m.month}
+            />
+          </Card>
         </div>
       )}
     </div>
