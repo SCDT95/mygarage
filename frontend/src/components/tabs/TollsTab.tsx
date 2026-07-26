@@ -75,7 +75,7 @@ export default function TollsTab({ vin }: TollsTabProps) {
       </section>
 
       {/* Divider */}
-      <div className="border-t border-garage-border"></div>
+      <div className="border-t border-border"></div>
 
       {/* Toll Transactions Section */}
       <section>
