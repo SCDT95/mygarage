@@ -114,17 +114,36 @@ test.describe('Vehicle Detail — Tab Navigation', () => {
   })
 
   test('Financial tab — cycles through sub-tabs', async ({ page }) => {
+    const pageErrors: string[] = []
+    page.on('pageerror', (err) => pageErrors.push(err.message))
+
     await page.getByRole('tab', { name: 'Financial' }).click()
 
-    const subTabs = ['Warranties', 'Insurance', 'Tax & Registration', 'Tolls']
+    // Each Financial sub-tab body renders a stable English heading (verified in
+    // en/vehicles.json + en/common.json). Body-level render proof, not just "no toast".
+    const bodyHeading: Record<string, string> = {
+      Warranties: 'Warranties',
+      Insurance: 'Insurance Policies',
+      'Tax & Registration': 'Tax & Registration Records',
+      Tolls: 'Toll Tags',
+      'Spot Rentals': 'Spot Rentals',
+      Supplies: 'Supplies Used',
+    }
+    const subTabs = ['Warranties', 'Insurance', 'Tax & Registration', 'Tolls', 'Spot Rentals', 'Supplies']
     for (const tabName of subTabs) {
       const tab = page.getByRole('tab', { name: tabName })
+      // Spot Rentals only shows for RV/fifth-wheel vehicles — skip if not visible.
       if (await tab.isVisible()) {
         await tab.click()
-        await page.waitForTimeout(500)
+        // The body actually rendered (survives loading), not an empty fallback:
+        await expect(page.getByRole('heading', { name: bodyHeading[tabName] })).toBeVisible({ timeout: 5000 })
+        // ...and no error toast.
         await expect(page.locator('[data-sonner-toast][data-type="error"]')).not.toBeVisible({ timeout: 2000 })
       }
     }
+
+    // No uncaught page error surfaced during the whole cycle.
+    expect(pageErrors, pageErrors.join('\n')).toEqual([])
   })
 
   test('switching between primary tabs preserves page stability', async ({ page }) => {
