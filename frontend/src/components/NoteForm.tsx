@@ -4,9 +4,9 @@ import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { Save } from 'lucide-react'
 import FormModalWrapper from './FormModalWrapper'
+import { Button, Field, Input, Textarea } from './ui'
 import type { Note, NoteCreate, NoteUpdate } from '../types/note'
 import { makeNoteSchema, type NoteFormData } from '../schemas/note'
-import { FormError } from './FormError'
 import { useCreateNote, useUpdateNote } from '../hooks/queries/useNotes'
 import { useFormSubmit } from '../hooks/useFormSubmit'
 
@@ -68,23 +68,12 @@ export default function NoteForm({ vin, note, onClose, onSuccess }: NoteFormProp
       width="sm"
       footer={
         <>
-          <button
-            type="button"
-            onClick={onClose}
-            disabled={isSubmitting}
-            className="btn btn-primary rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-          >
+          <Button variant="secondary" onClick={onClose} disabled={isSubmitting}>
             {t('common:cancel')}
-          </button>
-          <button
-            type="submit"
-            form="note-form"
-            disabled={isSubmitting}
-            className="flex items-center gap-2 btn btn-primary rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            <Save className="w-4 h-4" />
-            <span>{isSubmitting ? t('common:saving') : isEdit ? t('common:update') : t('common:create')}</span>
-          </button>
+          </Button>
+          <Button type="submit" form="note-form" icon={Save} loading={isSubmitting} disabled={isSubmitting}>
+            {isSubmitting ? t('common:saving') : isEdit ? t('common:update') : t('common:create')}
+          </Button>
         </>
       }
     >
@@ -95,61 +84,48 @@ export default function NoteForm({ vin, note, onClose, onSuccess }: NoteFormProp
             </div>
           )}
 
-          <div>
-            <label htmlFor="date" className="block text-sm font-medium text-garage-text mb-1">
-              {t('common:date')} <span className="text-danger">*</span>
-            </label>
-            <input
-              type="date"
+          <Field id="date" label={t('common:date')} required error={errors.date}>
+            <Input
               id="date"
+              type="date"
               {...register('date')}
-              className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-primary bg-garage-bg text-garage-text ${
-                errors.date ? 'border-red-500' : 'border-garage-border'
-              }`}
+              invalid={!!errors.date}
               disabled={isSubmitting}
             />
-            <FormError error={errors.date} />
-          </div>
+          </Field>
 
-          <div>
-            <label htmlFor="title" className="block text-sm font-medium text-garage-text mb-1">
-              {t('note.titleOptional')}
-            </label>
-            <input
-              type="text"
+          <Field
+            id="title"
+            label={t('note.titleOptional')}
+            error={errors.title}
+            hint={`${title?.length ?? 0}/100 ${t('common:characters')}`}
+          >
+            <Input
               id="title"
+              type="text"
               {...register('title')}
               placeholder={t('noteForm.titlePlaceholder')}
-              className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-primary bg-garage-bg text-garage-text ${
-                errors.title ? 'border-red-500' : 'border-garage-border'
-              }`}
+              invalid={!!errors.title}
               disabled={isSubmitting}
             />
-            <FormError error={errors.title} />
-            <p className="text-xs text-garage-text-muted mt-1">
-              {title?.length ?? 0}/100 {t('common:characters')}
-            </p>
-          </div>
+          </Field>
 
-          <div>
-            <label htmlFor="content" className="block text-sm font-medium text-garage-text mb-1">
-              {t('note.content')} <span className="text-danger">*</span>
-            </label>
-            <textarea
+          <Field
+            id="content"
+            label={t('note.content')}
+            required
+            error={errors.content}
+            hint={t('note.freeFormHint')}
+          >
+            <Textarea
               id="content"
               rows={10}
               {...register('content')}
               placeholder={t('note.contentPlaceholder')}
-              className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-primary bg-garage-bg text-garage-text ${
-                errors.content ? 'border-red-500' : 'border-garage-border'
-              }`}
+              invalid={!!errors.content}
               disabled={isSubmitting}
             />
-            <FormError error={errors.content} />
-            <p className="text-xs text-garage-text-muted mt-1">
-              {t('note.freeFormHint')}
-            </p>
-          </div>
+          </Field>
         </form>
     </FormModalWrapper>
   )
