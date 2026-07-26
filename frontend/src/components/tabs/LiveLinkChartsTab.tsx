@@ -16,6 +16,7 @@ import {
   ResponsiveContainer,
 } from 'recharts'
 import { BarChart3, RefreshCw, Download, Calendar } from 'lucide-react'
+import { Card, Chip, Button, Mono, EmptyState } from '../ui'
 import { livelinkService } from '@/services/livelinkService'
 import type { TelemetryQueryResponse, LiveLinkParameter } from '@/types/livelink'
 import { parseAPITimestampMs } from '@/utils/parseAPITimestamp'
@@ -33,7 +34,10 @@ type TimeRange = '1h' | '6h' | '24h' | '7d' | '30d'
 
 const TIME_RANGES: TimeRange[] = ['1h', '6h', '24h', '7d', '30d']
 
-// Chart colors
+// Chart-series colours (data-encoding, NOT UI semantics). Kept as a literal palette (G4(d) carve-out):
+// no chart-palette token exists in the P0 token layer, and the design forbids deriving series colours
+// from the status/accent tokens (§4.9). The recharts structural chrome (grid/axis/tooltip) DOES move to
+// tokens below; only these per-series data colours stay literal.
 const CHART_COLORS = [
   '#3b82f6', // blue
   '#10b981', // green
@@ -195,20 +199,14 @@ export default function LiveLinkChartsTab({ vin }: LiveLinkChartsTabProps) {
   if (loading && parameters.length === 0) {
     return (
       <div className="flex items-center justify-center py-12">
-        <RefreshCw className="w-8 h-8 text-primary animate-spin" />
+        <RefreshCw aria-hidden="true" className="w-8 h-8 text-text-mute animate-spin" />
       </div>
     )
   }
 
   if (parameters.length === 0) {
     return (
-      <div className="bg-garage-surface rounded-lg border border-garage-border p-8 text-center">
-        <BarChart3 className="w-12 h-12 mx-auto mb-3 text-garage-text-muted opacity-50" />
-        <p className="text-garage-text">{t('livelink.charts.noParams')}</p>
-        <p className="text-sm text-garage-text-muted mt-2">
-          {t('livelink.charts.paramsWillAppear')}
-        </p>
-      </div>
+      <EmptyState icon={BarChart3} title={t('livelink.charts.noParams')} description={t('livelink.charts.paramsWillAppear')} />
     )
   }
 
@@ -218,38 +216,25 @@ export default function LiveLinkChartsTab({ vin }: LiveLinkChartsTabProps) {
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
         {/* Time Range Selector */}
         <div className="flex items-center gap-2">
-          <Calendar className="w-5 h-5 text-garage-text-muted" />
+          <Calendar aria-hidden="true" className="w-5 h-5 text-text-mute" />
           <div className="flex flex-wrap gap-1">
             {TIME_RANGES.map((range) => (
-              <button
-                key={range}
-                onClick={() => setTimeRange(range)}
-                className={`px-2 sm:px-3 py-1.5 rounded text-sm font-medium transition-colors ${
-                  timeRange === range
-                    ? 'bg-primary text-(--accent-on-solid)'
-                    : 'bg-garage-surface text-garage-text-muted hover:text-garage-text border border-garage-border'
-                }`}
-              >
+              <Chip key={range} onClick={() => setTimeRange(range)} selected={timeRange === range}>
                 {timeRangeLabels[range]}
-              </button>
+              </Chip>
             ))}
           </div>
         </div>
 
         {/* Export Button */}
-        <button
-          onClick={handleExport}
-          disabled={!telemetry || telemetry.total_points === 0}
-          className="flex items-center gap-2 px-4 py-2 bg-garage-surface border border-garage-border rounded-lg text-garage-text hover:bg-garage-bg disabled:opacity-50"
-        >
-          <Download className="w-4 h-4" />
+        <Button variant="secondary" icon={Download} onClick={handleExport} disabled={!telemetry || telemetry.total_points === 0}>
           {t('livelinkCharts.exportCsv')}
-        </button>
+        </Button>
       </div>
 
       {/* Parameter Selector */}
-      <div className="bg-garage-surface rounded-lg border border-garage-border p-4">
-        <p className="text-sm text-garage-text-muted mb-3">{t('livelink.charts.selectParams')}:</p>
+      <Card padding="sm">
+        <p className="text-sm text-text-mute mb-3">{t('livelink.charts.selectParams')}:</p>
         <div className="flex flex-wrap gap-2">
           {parameters.map((param) => {
             const isSelected = selectedParams.includes(param.param_key)
@@ -258,11 +243,10 @@ export default function LiveLinkChartsTab({ vin }: LiveLinkChartsTabProps) {
             return (
               <button
                 key={param.param_key}
+                type="button"
                 onClick={() => toggleParam(param.param_key)}
-                className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-all ${
-                  isSelected
-                    ? 'text-white'
-                    : 'bg-garage-bg text-garage-text-muted hover:text-garage-text border border-garage-border'
+                className={`ui-focus-ring ui-motion rounded-chip px-3 py-1.5 text-sm font-medium ${
+                  isSelected ? 'text-(--accent-on-solid)' : 'bg-surface-2 text-text-mute hover:text-text border border-border'
                 }`}
                 style={isSelected ? { backgroundColor: color } : {}}
               >
@@ -272,104 +256,83 @@ export default function LiveLinkChartsTab({ vin }: LiveLinkChartsTabProps) {
             )
           })}
         </div>
-      </div>
+      </Card>
 
       {/* Chart */}
       {loading ? (
         <div className="flex items-center justify-center py-12">
-          <RefreshCw className="w-8 h-8 text-primary animate-spin" />
+          <RefreshCw aria-hidden="true" className="w-8 h-8 text-text-mute animate-spin" />
         </div>
       ) : chartData.length > 0 ? (
-        <div className="bg-garage-surface rounded-lg border border-garage-border p-4">
+        <Card padding="sm">
           <div className="h-[250px] md:h-[400px]">
-          <ResponsiveContainer width="100%" height="100%">
-            <LineChart data={chartData} margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#3a4050" />
-              <XAxis
-                dataKey="timestamp"
-                tickFormatter={formatXAxis}
-                stroke="#9ca3af"
-                fontSize={12}
-              />
-              <YAxis stroke="#9ca3af" fontSize={12} />
-              <Tooltip
-                contentStyle={{
-                  backgroundColor: '#1a1f28',
-                  border: '1px solid #3a4050',
-                  borderRadius: '8px',
-                }}
-                labelFormatter={(value) => formatDateTime(value, timeFormat, { seconds: true })}
-                formatter={(value, name) => {
-                  const param = parameters.find((p) => p.param_key === name)
-                  const displayValue =
-                    typeof value === 'number' ? value.toFixed(2) : t('livelinkCharts.notAvailable')
-                  return [`${displayValue} ${param?.unit || ''}`, param?.display_name || name || '']
-                }}
-              />
-              <Legend />
-              {selectedParams.map((paramKey, index) => {
-                const param = parameters.find((p) => p.param_key === paramKey)
-                const color = CHART_COLORS[index % CHART_COLORS.length]
+            <ResponsiveContainer width="100%" height="100%">
+              <LineChart data={chartData} margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
+                <CartesianGrid strokeDasharray="3 3" stroke="var(--color-hair)" />
+                <XAxis dataKey="timestamp" tickFormatter={formatXAxis} stroke="var(--color-text-mute)" fontSize={12} />
+                <YAxis stroke="var(--color-text-mute)" fontSize={12} />
+                <Tooltip
+                  contentStyle={{
+                    backgroundColor: 'var(--color-surface-2)',
+                    border: '1px solid var(--color-border)',
+                    borderRadius: '8px',
+                    color: 'var(--color-text)',
+                  }}
+                  labelFormatter={(value) => formatDateTime(value, timeFormat, { seconds: true })}
+                  formatter={(value, name) => {
+                    const param = parameters.find((p) => p.param_key === name)
+                    const displayValue = typeof value === 'number' ? value.toFixed(2) : t('livelinkCharts.notAvailable')
+                    return [`${displayValue} ${param?.unit || ''}`, param?.display_name || name || '']
+                  }}
+                />
+                <Legend />
+                {selectedParams.map((paramKey, index) => {
+                  const param = parameters.find((p) => p.param_key === paramKey)
+                  const color = CHART_COLORS[index % CHART_COLORS.length]
 
-                return (
-                  <Line
-                    key={paramKey}
-                    type="monotone"
-                    dataKey={paramKey}
-                    name={param?.display_name || paramKey}
-                    stroke={color}
-                    dot={false}
-                    strokeWidth={2}
-                  />
-                )
-              })}
-            </LineChart>
-          </ResponsiveContainer>
+                  return (
+                    <Line key={paramKey} type="monotone" dataKey={paramKey} name={param?.display_name || paramKey} stroke={color} dot={false} strokeWidth={2} />
+                  )
+                })}
+              </LineChart>
+            </ResponsiveContainer>
           </div>
 
           {/* Stats Summary */}
           {telemetry && (
-            <div className="mt-4 pt-4 border-t border-garage-border">
+            <div className="mt-4 pt-4 border-t border-border">
               <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4 text-sm">
                 {telemetry.series.map((series, index) => (
                   <div
                     key={series.param_key}
-                    className="bg-garage-bg rounded-lg p-3"
+                    className="bg-surface-2 rounded-control p-3"
                     style={{ borderLeft: `3px solid ${CHART_COLORS[index % CHART_COLORS.length]}` }}
                   >
-                    <p className="text-garage-text-muted text-xs mb-1">
-                      {series.display_name || series.param_key}
-                    </p>
-                    <div className="flex justify-between text-garage-text">
+                    <p className="text-text-mute text-xs mb-1">{series.display_name || series.param_key}</p>
+                    <div className="flex justify-between text-text">
                       <span>
-                        {t('livelink.charts.min')}: {series.min_value?.toFixed(1)} {series.unit}
+                        {t('livelink.charts.min')}: <Mono size="xs">{series.min_value?.toFixed(1)}</Mono> {series.unit}
                       </span>
                       <span>
-                        {t('livelink.charts.max')}: {series.max_value?.toFixed(1)} {series.unit}
+                        {t('livelink.charts.max')}: <Mono size="xs">{series.max_value?.toFixed(1)}</Mono> {series.unit}
                       </span>
                     </div>
-                    <p className="text-garage-text-muted text-xs mt-1">
-                      {t('livelink.charts.avg')}: {series.avg_value?.toFixed(1)} {series.unit}
+                    <p className="text-text-mute text-xs mt-1">
+                      {t('livelink.charts.avg')}: <Mono size="xs">{series.avg_value?.toFixed(1)}</Mono> {series.unit}
                     </p>
                   </div>
                 ))}
               </div>
             </div>
           )}
-        </div>
+        </Card>
       ) : (
-        <div className="bg-garage-surface rounded-lg border border-garage-border p-8 text-center">
-          <BarChart3 className="w-12 h-12 mx-auto mb-3 text-garage-text-muted opacity-50" />
-          <p className="text-garage-text">{t('livelink.charts.noData')}</p>
-          <p className="text-sm text-garage-text-muted mt-2">
-            {t('livelink.charts.tryDifferentRange')}
-          </p>
-        </div>
+        <EmptyState icon={BarChart3} title={t('livelink.charts.noData')} description={t('livelink.charts.tryDifferentRange')} />
       )}
 
       {/* Data Points Info */}
       {telemetry && telemetry.total_points > 0 && (
-        <p className="text-xs text-garage-text-muted text-right">
+        <p className="text-xs text-text-mute text-right">
           {t('livelink.charts.dataPoints', { count: telemetry.total_points.toLocaleString(getActiveLocale()) })}
         </p>
       )}
