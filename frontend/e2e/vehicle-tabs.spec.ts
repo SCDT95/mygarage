@@ -135,8 +135,15 @@ test.describe('Vehicle Detail — Tab Navigation', () => {
       // Spot Rentals only shows for RV/fifth-wheel vehicles — skip if not visible.
       if (await tab.isVisible()) {
         await tab.click()
-        // The body actually rendered (survives loading), not an empty fallback:
-        await expect(page.getByRole('heading', { name: bodyHeading[tabName] })).toBeVisible({ timeout: 5000 })
+        // The body actually rendered (survives loading), not an empty fallback. exact: true
+        // disambiguates from each body's own EmptyState fallback title, which — for a
+        // freshly seeded test vehicle with zero records in every Financial category —
+        // case-insensitively contains the tab title as a substring (e.g. Warranties'
+        // "Warranties" section heading vs its EmptyState "No warranties recorded yet";
+        // same for Insurance/"Insurance Policies" and Tolls/"Toll Tags"). Without exact,
+        // getByRole('heading', { name }) resolves to 2 elements and throws a strict-mode
+        // violation — a locator ambiguity, not an empty-fallback failure.
+        await expect(page.getByRole('heading', { name: bodyHeading[tabName], exact: true })).toBeVisible({ timeout: 5000 })
         // ...and no error toast.
         await expect(page.locator('[data-sonner-toast][data-type="error"]')).not.toBeVisible({ timeout: 2000 })
       }
