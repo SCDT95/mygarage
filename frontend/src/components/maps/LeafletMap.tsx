@@ -32,6 +32,10 @@ interface Props {
 export default function LeafletMap({ pois, userLocation, searchRadius, onMarkerClick }: Props) {
   const { t } = useTranslation('common')
 
+  // POI-category colours (data-encoding, NOT UI semantics). Kept as a literal palette (G4(e) carve-out):
+  // no POI-palette token exists in the P0 token layer, and the design forbids deriving category colours
+  // from the status/accent tokens (§4.9) — mapping these distinct hues onto danger/warning/success/info
+  // would collide (no purple token; propane vs gas both land on warning) and lose category legibility.
   const getCategoryColor = (category: string): string => {
     const colors: Record<string, string> = {
       auto_shop: '#3b82f6',     // blue
@@ -72,7 +76,7 @@ export default function LeafletMap({ pois, userLocation, searchRadius, onMarkerC
       <Circle
         center={[userLocation.lat, userLocation.lng]}
         radius={searchRadius * 1609.34}  // miles to meters
-        pathOptions={{ fillColor: 'blue', fillOpacity: 0.1, color: 'blue' }}
+        pathOptions={{ fillColor: 'var(--accent)', fillOpacity: 0.1, color: 'var(--accent)' }}
       />
 
       {/* POI markers */}
