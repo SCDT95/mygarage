@@ -26,23 +26,35 @@ test.describe('Vehicle Detail — Tab Navigation', () => {
     await expect(page.getByText('Purchase Information')).toBeVisible()
   })
 
-  test('Media tab — Photos sub-tab loads', async ({ page }) => {
+  test('Media tab — cycles through sub-tabs', async ({ page }) => {
+    const pageErrors: string[] = []
+    page.on('pageerror', (err) => pageErrors.push(err.message))
+
     await page.getByRole('tab', { name: 'Media' }).click()
 
-    // Photos sub-tab should be the default
-    await expect(page.getByRole('tab', { name: 'Photos' })).toBeVisible({ timeout: 5000 })
-    await expect(page.getByRole('tab', { name: 'Documents' })).toBeVisible()
+    // Each sub-tab body renders a stable English heading (verified in en/vehicles.json): PhotoGallery's
+    // <h3> "Photo Gallery" (photoGallery.misc.title) and DocumentList's <h3> "Documents"
+    // (documentList.title). Body-level render proof, not just "no toast". exact:true disambiguates each
+    // from its own EmptyState fallback title (e.g. Documents vs "No documents yet"), which the freshly
+    // seeded zero-record test vehicle renders — without exact, getByRole('heading',{name}) resolves 2
+    // nodes and throws a strict-mode violation.
+    const bodyHeading: Record<string, string> = {
+      Photos: 'Photo Gallery',
+      Documents: 'Documents',
+    }
+    const subTabs = ['Photos', 'Documents']
+    for (const tabName of subTabs) {
+      // M6: Media's Photos/Documents sub-tabs are UNCONDITIONAL (VehicleDetail.tsx subTabsConfig.media —
+      // neither carries a `visible` gate), so assert each is present rather than silently skipping via
+      // `if (await tab.isVisible())` — a removed/renamed/delayed tab must FAIL, not pass by omission.
+      const tab = page.getByRole('tab', { name: tabName })
+      await expect(tab).toBeVisible({ timeout: 5000 })
+      await tab.click()
+      await expect(page.getByRole('heading', { name: bodyHeading[tabName], exact: true })).toBeVisible({ timeout: 5000 })
+      await expect(page.locator('[data-sonner-toast][data-type="error"]')).not.toBeVisible({ timeout: 2000 })
+    }
 
-    // No error banner should appear
-    await expect(page.locator('[data-sonner-toast][data-type="error"]')).not.toBeVisible({ timeout: 2000 })
-  })
-
-  test('Media tab — switch to Documents sub-tab', async ({ page }) => {
-    await page.getByRole('tab', { name: 'Media' }).click()
-    await page.getByRole('tab', { name: 'Documents' }).click()
-
-    // Should not show errors
-    await expect(page.locator('[data-sonner-toast][data-type="error"]')).not.toBeVisible({ timeout: 2000 })
+    expect(pageErrors, pageErrors.join('\n')).toEqual([])
   })
 
   test('Maintenance tab — cycles through sub-tabs', async ({ page }) => {
@@ -102,15 +114,36 @@ test.describe('Vehicle Detail — Tab Navigation', () => {
     }
   })
 
-  test('Tracking tab — Notes and Reports sub-tabs load', async ({ page }) => {
+  test('Tracking tab — cycles through sub-tabs', async ({ page }) => {
+    const pageErrors: string[] = []
+    page.on('pageerror', (err) => pageErrors.push(err.message))
+
     await page.getByRole('tab', { name: 'Tracking' }).click()
 
-    // Notes is the default
-    await expect(page.getByRole('tab', { name: 'Notes' })).toBeVisible({ timeout: 5000 })
+    // Notes is the default; Reminders + Reports are the others. Each body renders a stable English heading
+    // (NoteList <h3> "Notes" / ReminderList <h3> "Reminders" from en/vehicles.json; ReportsPanel <h2>
+    // "Reports & Export" from en/analytics.json). exact:true disambiguates each from its own EmptyState
+    // fallback title ("No notes yet" / "No pending reminders"), which the freshly seeded zero-record test
+    // vehicle renders — without exact, getByRole('heading',{name}) resolves 2 nodes (strict-mode violation).
+    const bodyHeading: Record<string, string> = {
+      Notes: 'Notes',
+      Reminders: 'Reminders',
+      Reports: 'Reports & Export',
+    }
+    const subTabs = ['Notes', 'Reminders', 'Reports']
+    for (const tabName of subTabs) {
+      // M6: Tracking's Notes/Reminders/Reports sub-tabs are UNCONDITIONAL (VehicleDetail.tsx
+      // subTabsConfig.tracking — none carries a `visible` gate), so assert each is present rather than
+      // silently skipping via `if (await tab.isVisible())` — the newly-added Reminders cycle would
+      // otherwise be defeated the moment it regressed.
+      const tab = page.getByRole('tab', { name: tabName })
+      await expect(tab).toBeVisible({ timeout: 5000 })
+      await tab.click()
+      await expect(page.getByRole('heading', { name: bodyHeading[tabName], exact: true })).toBeVisible({ timeout: 5000 })
+      await expect(page.locator('[data-sonner-toast][data-type="error"]')).not.toBeVisible({ timeout: 2000 })
+    }
 
-    // Switch to Reports
-    await page.getByRole('tab', { name: 'Reports' }).click()
-    await expect(page.locator('[data-sonner-toast][data-type="error"]')).not.toBeVisible({ timeout: 2000 })
+    expect(pageErrors, pageErrors.join('\n')).toEqual([])
   })
 
   test('Financial tab — cycles through sub-tabs', async ({ page }) => {
