@@ -4,6 +4,7 @@ import { FileText, Download, Calendar, FileSpreadsheet } from 'lucide-react'
 import { toast } from 'sonner'
 import api from '../services/api'
 import { useCurrencyPreference } from '../hooks/useCurrencyPreference'
+import { Button, Field, Input, Card } from './ui'
 
 interface ReportsPanelProps {
   vin: string
@@ -89,73 +90,51 @@ export default function ReportsPanel({ vin }: ReportsPanelProps) {
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <h2 className="text-2xl font-bold text-garage-text">{t('reports.title')}</h2>
+        <h2 className="text-2xl font-bold text-text">{t('reports.title')}</h2>
       </div>
 
       {/* Date Range Selector */}
-      <div className="bg-garage-surface border border-garage-border rounded-lg p-6">
-        <h3 className="text-lg font-semibold text-garage-text mb-4 flex items-center gap-2">
-          <Calendar className="w-5 h-5 text-primary-500" />
+      <Card>
+        <h3 className="text-lg font-semibold text-text mb-4 flex items-center gap-2">
+          <Calendar aria-hidden="true" className="w-5 h-5 text-(--accent-fg)" />
           {t('reports.dateRangeTitle')}
         </h3>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div>
-            <label className="block text-sm font-medium text-garage-text mb-2">
-              {t('reports.startDate')}
-            </label>
-            <input
-              type="date"
-              value={startDate}
-              onChange={(e) => setStartDate(e.target.value)}
-              className="w-full px-3 py-2 bg-garage-bg border border-garage-border rounded-lg text-garage-text focus:outline-none focus:ring-2 focus:ring-primary-500"
-            />
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-garage-text mb-2">
-              {t('reports.endDate')}
-            </label>
-            <input
-              type="date"
-              value={endDate}
-              onChange={(e) => setEndDate(e.target.value)}
-              className="w-full px-3 py-2 bg-garage-bg border border-garage-border rounded-lg text-garage-text focus:outline-none focus:ring-2 focus:ring-primary-500"
-            />
-          </div>
+          <Field id="report-start-date" label={t('reports.startDate')}>
+            <Input id="report-start-date" type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} />
+          </Field>
+          <Field id="report-end-date" label={t('reports.endDate')}>
+            <Input id="report-end-date" type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} />
+          </Field>
         </div>
-      </div>
+      </Card>
 
       {/* PDF Reports */}
-      <div className="bg-garage-surface border border-garage-border rounded-lg p-6">
-        <h3 className="text-lg font-semibold text-garage-text mb-4 flex items-center gap-2">
-          <FileText className="w-5 h-5 text-danger-500" />
+      <Card>
+        <h3 className="text-lg font-semibold text-text mb-4 flex items-center gap-2">
+          <FileText aria-hidden="true" className="w-5 h-5 text-danger" />
           {t('reports.pdfReports')}
         </h3>
         <div className="space-y-4">
           {/* Service History Report */}
-          <div className="flex items-center justify-between p-4 bg-garage-bg border border-garage-border rounded-lg hover:border-primary-500 transition-colors">
+          <div className="flex items-center justify-between p-4 bg-surface-2 border border-border rounded-lg hover:border-(--accent-line) transition-colors">
             <div className="flex-1">
-              <h4 className="font-medium text-garage-text">{t('reports.serviceHistoryTitle')}</h4>
-              <p className="text-sm text-garage-text-muted mt-1">
+              <h4 className="font-medium text-text">{t('reports.serviceHistoryTitle')}</h4>
+              <p className="text-sm text-text-mute mt-1">
                 {t('reports.serviceHistoryDesc')}{' '}
                 {startDate || endDate ? t('reports.rangeCustom') : t('reports.rangeAll')}
               </p>
             </div>
-            <button
-              onClick={() => handleDownloadPDF('service-history')}
-              disabled={isGenerating}
-              aria-label={t('reports.downloadPdf')}
-              className="ml-4 flex items-center gap-2 px-4 py-2 btn btn-primary rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              <Download className="w-4 h-4" />
+            <Button variant="primary" icon={Download} onClick={() => handleDownloadPDF('service-history')} disabled={isGenerating} aria-label={t('reports.downloadPdf')} className="ml-4">
               <span className="hidden sm:inline">{t('reports.downloadPdf')}</span>
-            </button>
+            </Button>
           </div>
 
           {/* Annual Cost Summary */}
-          <div className="flex items-center justify-between p-4 bg-garage-bg border border-garage-border rounded-lg hover:border-primary-500 transition-colors">
+          <div className="flex items-center justify-between p-4 bg-surface-2 border border-border rounded-lg hover:border-(--accent-line) transition-colors">
             <div className="flex-1">
-              <h4 className="font-medium text-garage-text">{t('reports.annualCostTitle')}</h4>
-              <p className="text-sm text-garage-text-muted mt-1">
+              <h4 className="font-medium text-text">{t('reports.annualCostTitle')}</h4>
+              <p className="text-sm text-text-mute mt-1">
                 {t('reports.annualCostDesc')}
               </p>
               <div className="mt-2">
@@ -163,7 +142,7 @@ export default function ReportsPanel({ vin }: ReportsPanelProps) {
                   value={selectedYear}
                   onChange={(e) => setSelectedYear(Number(e.target.value))}
                   aria-label={t('reports.selectYear')}
-                  className="px-3 py-1 bg-garage-surface border border-garage-border rounded text-garage-text text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
+                  className="ui-focus-input ui-motion rounded-control border border-border bg-surface-2 px-3 py-1 text-sm text-text"
                 >
                   {years.map(year => (
                     <option key={year} value={year}>{year}</option>
@@ -171,22 +150,16 @@ export default function ReportsPanel({ vin }: ReportsPanelProps) {
                 </select>
               </div>
             </div>
-            <button
-              onClick={() => handleDownloadPDF('cost-summary')}
-              disabled={isGenerating}
-              aria-label={t('reports.downloadPdf')}
-              className="ml-4 flex items-center gap-2 px-4 py-2 btn btn-primary rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              <Download className="w-4 h-4" />
+            <Button variant="primary" icon={Download} onClick={() => handleDownloadPDF('cost-summary')} disabled={isGenerating} aria-label={t('reports.downloadPdf')} className="ml-4">
               <span className="hidden sm:inline">{t('reports.downloadPdf')}</span>
-            </button>
+            </Button>
           </div>
 
           {/* Tax Deduction Report */}
-          <div className="flex items-center justify-between p-4 bg-garage-bg border border-garage-border rounded-lg hover:border-primary-500 transition-colors">
+          <div className="flex items-center justify-between p-4 bg-surface-2 border border-border rounded-lg hover:border-(--accent-line) transition-colors">
             <div className="flex-1">
-              <h4 className="font-medium text-garage-text">{t('reports.taxDeductionTitle')}</h4>
-              <p className="text-sm text-garage-text-muted mt-1">
+              <h4 className="font-medium text-text">{t('reports.taxDeductionTitle')}</h4>
+              <p className="text-sm text-text-mute mt-1">
                 {t('reports.taxDeductionDesc')}
               </p>
               <div className="mt-2">
@@ -194,7 +167,7 @@ export default function ReportsPanel({ vin }: ReportsPanelProps) {
                   value={selectedYear}
                   onChange={(e) => setSelectedYear(Number(e.target.value))}
                   aria-label={t('reports.selectYear')}
-                  className="px-3 py-1 bg-garage-surface border border-garage-border rounded text-garage-text text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
+                  className="ui-focus-input ui-motion rounded-control border border-border bg-surface-2 px-3 py-1 text-sm text-text"
                 >
                   {years.map(year => (
                     <option key={year} value={year}>{year}</option>
@@ -202,51 +175,39 @@ export default function ReportsPanel({ vin }: ReportsPanelProps) {
                 </select>
               </div>
             </div>
-            <button
-              onClick={() => handleDownloadPDF('tax-deduction')}
-              disabled={isGenerating}
-              aria-label={t('reports.downloadPdf')}
-              className="ml-4 flex items-center gap-2 px-4 py-2 btn btn-primary rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              <Download className="w-4 h-4" />
+            <Button variant="primary" icon={Download} onClick={() => handleDownloadPDF('tax-deduction')} disabled={isGenerating} aria-label={t('reports.downloadPdf')} className="ml-4">
               <span className="hidden sm:inline">{t('reports.downloadPdf')}</span>
-            </button>
+            </Button>
           </div>
         </div>
-      </div>
+      </Card>
 
       {/* CSV Exports */}
-      <div className="bg-garage-surface border border-garage-border rounded-lg p-6">
-        <h3 className="text-lg font-semibold text-garage-text mb-4 flex items-center gap-2">
-          <FileSpreadsheet className="w-5 h-5 text-success-500" />
+      <Card>
+        <h3 className="text-lg font-semibold text-text mb-4 flex items-center gap-2">
+          <FileSpreadsheet aria-hidden="true" className="w-5 h-5 text-success" />
           {t('reports.csvExports')}
         </h3>
         <div className="space-y-4">
           {/* Service History CSV */}
-          <div className="flex items-center justify-between p-4 bg-garage-bg border border-garage-border rounded-lg hover:border-primary-500 transition-colors">
+          <div className="flex items-center justify-between p-4 bg-surface-2 border border-border rounded-lg hover:border-(--accent-line) transition-colors">
             <div className="flex-1">
-              <h4 className="font-medium text-garage-text">{t('reports.serviceHistoryCsvTitle')}</h4>
-              <p className="text-sm text-garage-text-muted mt-1">
+              <h4 className="font-medium text-text">{t('reports.serviceHistoryCsvTitle')}</h4>
+              <p className="text-sm text-text-mute mt-1">
                 {t('reports.serviceHistoryCsvDesc')}{' '}
                 {startDate || endDate ? t('reports.rangeCustom') : t('reports.rangeAll')}
               </p>
             </div>
-            <button
-              onClick={() => handleDownloadCSV('service-history')}
-              disabled={isGenerating}
-              aria-label={t('reports.exportCsv')}
-              className="ml-4 flex items-center gap-2 px-4 py-2 btn btn-primary rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              <Download className="w-4 h-4" />
+            <Button variant="primary" icon={Download} onClick={() => handleDownloadCSV('service-history')} disabled={isGenerating} aria-label={t('reports.exportCsv')} className="ml-4">
               <span className="hidden sm:inline">{t('reports.exportCsv')}</span>
-            </button>
+            </Button>
           </div>
 
           {/* All Records CSV */}
-          <div className="flex items-center justify-between p-4 bg-garage-bg border border-garage-border rounded-lg hover:border-primary-500 transition-colors">
+          <div className="flex items-center justify-between p-4 bg-surface-2 border border-border rounded-lg hover:border-(--accent-line) transition-colors">
             <div className="flex-1">
-              <h4 className="font-medium text-garage-text">{t('reports.allRecordsCsvTitle')}</h4>
-              <p className="text-sm text-garage-text-muted mt-1">
+              <h4 className="font-medium text-text">{t('reports.allRecordsCsvTitle')}</h4>
+              <p className="text-sm text-text-mute mt-1">
                 {t('reports.allRecordsCsvDesc')}
               </p>
               <div className="mt-2">
@@ -254,7 +215,7 @@ export default function ReportsPanel({ vin }: ReportsPanelProps) {
                   value={selectedYear}
                   onChange={(e) => setSelectedYear(Number(e.target.value))}
                   aria-label={t('reports.selectYear')}
-                  className="px-3 py-1 bg-garage-surface border border-garage-border rounded text-garage-text text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
+                  className="ui-focus-input ui-motion rounded-control border border-border bg-surface-2 px-3 py-1 text-sm text-text"
                 >
                   <option value="">{t('reports.allYears')}</option>
                   {years.map(year => (
@@ -263,25 +224,19 @@ export default function ReportsPanel({ vin }: ReportsPanelProps) {
                 </select>
               </div>
             </div>
-            <button
-              onClick={() => handleDownloadCSV('all-records')}
-              disabled={isGenerating}
-              aria-label={t('reports.exportCsv')}
-              className="ml-4 flex items-center gap-2 px-4 py-2 btn btn-primary rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              <Download className="w-4 h-4" />
+            <Button variant="primary" icon={Download} onClick={() => handleDownloadCSV('all-records')} disabled={isGenerating} aria-label={t('reports.exportCsv')} className="ml-4">
               <span className="hidden sm:inline">{t('reports.exportCsv')}</span>
-            </button>
+            </Button>
           </div>
         </div>
-      </div>
+      </Card>
 
       {isGenerating && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-garage-surface rounded-lg p-6 max-w-sm">
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+          <div className="bg-surface rounded-lg p-6 max-w-sm border border-border">
             <div className="flex items-center gap-3">
-              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-500"></div>
-              <p className="text-garage-text">{t('reports.generating')}</p>
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-(--accent-solid)"></div>
+              <p className="text-text">{t('reports.generating')}</p>
             </div>
           </div>
         </div>
