@@ -5,9 +5,9 @@ import { zodResolver } from '@hookform/resolvers/zod'
 import { Save } from 'lucide-react'
 import FormModalWrapper from './FormModalWrapper'
 import CurrencyInputPrefix from './common/CurrencyInputPrefix'
+import { Button, Field, Input, Textarea } from './ui'
 import type { TaxRecord, TaxRecordCreate, TaxRecordUpdate } from '../types/tax'
 import { makeTaxRecordSchema, type TaxRecordFormData, TAX_TYPES } from '../schemas/tax'
-import { FormError } from './FormError'
 import { useCreateTaxRecord, useUpdateTaxRecord } from '../hooks/queries/useTaxRecords'
 import { formatDateForInput } from '../utils/dateUtils'
 
@@ -79,23 +79,12 @@ export default function TaxRecordForm({ vin, record, onClose, onSuccess }: TaxRe
       width="sm"
       footer={
         <>
-          <button
-            type="button"
-            onClick={onClose}
-            disabled={isSubmitting}
-            className="btn btn-primary rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-          >
+          <Button variant="secondary" onClick={onClose} disabled={isSubmitting}>
             {t('common:cancel')}
-          </button>
-          <button
-            type="submit"
-            form="tax-record-form"
-            disabled={isSubmitting}
-            className="flex items-center gap-2 btn btn-primary rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            <Save className="w-4 h-4" />
-            <span>{isSubmitting ? t('common:saving') : isEdit ? t('common:update') : t('common:create')}</span>
-          </button>
+          </Button>
+          <Button type="submit" form="tax-record-form" variant="primary" icon={Save} loading={isSubmitting} disabled={isSubmitting}>
+            {isSubmitting ? t('common:saving') : isEdit ? t('common:update') : t('common:create')}
+          </Button>
         </>
       }
     >
@@ -107,102 +96,50 @@ export default function TaxRecordForm({ vin, record, onClose, onSuccess }: TaxRe
           )}
 
           <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label htmlFor="date" className="block text-sm font-medium text-garage-text mb-1">
-                {t('tax.datePaid')} <span className="text-danger">*</span>
-              </label>
-              <input
-                type="date"
-                id="date"
-                {...register('date')}
-                className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-primary bg-garage-bg text-garage-text ${
-                  errors.date ? 'border-red-500' : 'border-garage-border'
-                }`}
-                disabled={isSubmitting}
-              />
-              <FormError error={errors.date} />
-            </div>
+            <Field id="date" label={t('tax.datePaid')} required error={errors.date}>
+              <Input id="date" type="date" {...register('date')} invalid={!!errors.date} disabled={isSubmitting} />
+            </Field>
 
-            <div>
-              <label htmlFor="tax_type" className="block text-sm font-medium text-garage-text mb-1">
-                {t('taxRecordForm.type')}
-              </label>
+            <Field id="tax_type" label={t('taxRecordForm.type')} error={errors.tax_type}>
               <select
                 id="tax_type"
                 {...register('tax_type')}
-                className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-primary bg-garage-bg text-garage-text ${
-                  errors.tax_type ? 'border-red-500' : 'border-garage-border'
-                }`}
                 disabled={isSubmitting}
+                className={`ui-focus-input ui-motion w-full rounded-control border bg-surface-2 px-3 py-2 text-sm text-text ${errors.tax_type ? 'border-danger' : 'border-border'}`}
               >
-                <option value="" className="bg-garage-bg text-garage-text">{t('tax.selectType')}</option>
+                <option value="">{t('tax.selectType')}</option>
                 {TAX_TYPES.map((option) => (
-                  <option key={option.value} value={option.value} className="bg-garage-bg text-garage-text">{t(option.labelKey)}</option>
+                  <option key={option.value} value={option.value}>{t(option.labelKey)}</option>
                 ))}
               </select>
-              <FormError error={errors.tax_type} />
-            </div>
+            </Field>
           </div>
 
           <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label htmlFor="amount" className="block text-sm font-medium text-garage-text mb-1">
-                {t('common:amount')} <span className="text-danger">*</span>
-              </label>
+            <Field id="amount" label={t('common:amount')} required error={errors.amount}>
               <div className="relative">
                 <CurrencyInputPrefix />
                 <input
                   type="number"
                   id="amount"
+                  min="0"
                   step="0.01"
                   {...register('amount', { valueAsNumber: true })}
                   placeholder="85.50"
-                  className={`w-full pl-7 pr-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-primary bg-garage-bg text-garage-text ${
-                    errors.amount ? 'border-red-500' : 'border-garage-border'
-                  }`}
+                  className={`ui-focus-input ui-motion w-full rounded-control border bg-surface-2 pl-7 pr-3 py-2 text-sm text-text font-mono tabular-nums ${errors.amount ? 'border-danger' : 'border-border'}`}
                   disabled={isSubmitting}
                 />
               </div>
-              <FormError error={errors.amount} />
-            </div>
+            </Field>
 
-            <div>
-              <label htmlFor="renewal_date" className="block text-sm font-medium text-garage-text mb-1">
-                {t('tax.renewalDate')}
-              </label>
-              <input
-                type="date"
-                id="renewal_date"
-                {...register('renewal_date')}
-                className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-primary bg-garage-bg text-garage-text ${
-                  errors.renewal_date ? 'border-red-500' : 'border-garage-border'
-                }`}
-                disabled={isSubmitting}
-              />
-              <FormError error={errors.renewal_date} />
-              <p className="text-xs text-garage-text-muted mt-1">
-                {t('tax.renewalDateHint')}
-              </p>
-            </div>
+            <Field id="renewal_date" label={t('tax.renewalDate')} error={errors.renewal_date} hint={t('tax.renewalDateHint')}>
+              <Input id="renewal_date" type="date" {...register('renewal_date')} invalid={!!errors.renewal_date} disabled={isSubmitting} />
+            </Field>
           </div>
 
-          <div>
-            <label htmlFor="notes" className="block text-sm font-medium text-garage-text mb-1">
-              {t('common:notes')}
-            </label>
-            <textarea
-              id="notes"
-              rows={3}
-              {...register('notes')}
-              placeholder={t('common:additionalNotes')}
-              className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-primary bg-garage-bg text-garage-text ${
-                errors.notes ? 'border-red-500' : 'border-garage-border'
-              }`}
-              disabled={isSubmitting}
-            />
-            <FormError error={errors.notes} />
-          </div>
-
+          <Field id="notes" label={t('common:notes')} error={errors.notes}>
+            <Textarea id="notes" rows={3} {...register('notes')} placeholder={t('common:additionalNotes')} invalid={!!errors.notes} disabled={isSubmitting} />
+          </Field>
         </form>
     </FormModalWrapper>
   )
