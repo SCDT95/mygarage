@@ -28,6 +28,7 @@ import {
 } from '@/utils/telemetryUnits'
 import type { UnitSystem } from '@/utils/units'
 import { formatTime } from '@/utils/parseAPITimestamp'
+import { Card, Mono, EmptyState } from '../ui'
 
 interface LiveLinkLiveTabProps {
   vin: string
@@ -95,9 +96,9 @@ export default function LiveLinkLiveTab({ vin }: LiveLinkLiveTabProps) {
   }, [fetchStatus])
 
   const getStatusColor = (deviceStatus: string, ecuStatus: string) => {
-    if (deviceStatus !== 'online') return 'red'
-    if (ecuStatus === 'online') return 'green'
-    return 'blue'
+    if (deviceStatus !== 'online') return 'danger'
+    if (ecuStatus === 'online') return 'success'
+    return 'info'
   }
 
   const getStatusText = (deviceStatus: string, ecuStatus: string) => {
@@ -119,20 +120,18 @@ export default function LiveLinkLiveTab({ vin }: LiveLinkLiveTabProps) {
   if (loading) {
     return (
       <div className="flex items-center justify-center py-12">
-        <RefreshCw className="w-8 h-8 text-primary animate-spin" />
+        <RefreshCw aria-hidden="true" className="w-8 h-8 text-text-mute animate-spin" />
       </div>
     )
   }
 
   if (error || !status) {
     return (
-      <div className="bg-garage-surface rounded-lg border border-garage-border p-6 text-center">
-        <Radio className="w-12 h-12 mx-auto mb-3 text-garage-text-muted opacity-50" />
-        <p className="text-garage-text-muted">{error || t('livelink.noData')}</p>
-        <p className="text-sm text-garage-text-muted mt-2">
-          {t('livelink.ensureDeviceLinked')}
-        </p>
-      </div>
+      <EmptyState
+        icon={Radio}
+        title={error || t('livelink.noData')}
+        description={t('livelink.ensureDeviceLinked')}
+      />
     )
   }
 
@@ -142,29 +141,26 @@ export default function LiveLinkLiveTab({ vin }: LiveLinkLiveTabProps) {
   return (
     <div className="space-y-6">
       {/* Status Bar */}
-      <div className="bg-garage-surface rounded-lg border border-garage-border p-4">
+      <Card padding="sm">
         <div className="flex flex-wrap items-center gap-2 md:gap-4">
           {/* Connection Status */}
           <div className="flex items-center gap-2">
-            <div
+            <span
+              aria-hidden="true"
               className={`w-3 h-3 rounded-full ${
-                statusColor === 'green'
-                  ? 'bg-green-500'
-                  : statusColor === 'blue'
-                  ? 'bg-blue-500'
-                  : 'bg-red-500'
+                statusColor === 'success' ? 'bg-success' : statusColor === 'info' ? 'bg-info' : 'bg-danger'
               }`}
             />
-            <span className="text-garage-text font-medium">{statusText}</span>
+            <span className="text-text font-medium">{statusText}</span>
           </div>
 
           {/* WiFi Signal */}
           {status.rssi !== null && (
-            <div className="flex items-center gap-1 text-garage-text-muted">
+            <div className="flex items-center gap-1 text-text-mute">
               {status.device_status === 'online' ? (
-                <Wifi className="w-4 h-4" />
+                <Wifi aria-hidden="true" className="w-4 h-4" />
               ) : (
-                <WifiOff className="w-4 h-4" />
+                <WifiOff aria-hidden="true" className="w-4 h-4" />
               )}
               <span className="text-sm">{status.rssi} dBm</span>
             </div>
@@ -172,18 +168,20 @@ export default function LiveLinkLiveTab({ vin }: LiveLinkLiveTabProps) {
 
           {/* Current Session */}
           {status.current_session_id && (
-            <div className="flex items-center gap-1 text-green-500">
-              <Activity className="w-4 h-4" />
-              <span className="text-sm">{t('livelink.session')}: {formatDuration(status.session_duration_seconds)}</span>
+            <div className="flex items-center gap-1 text-success">
+              <Activity aria-hidden="true" className="w-4 h-4" />
+              <span className="text-sm">
+                {t('livelink.session')}: {formatDuration(status.session_duration_seconds)}
+              </span>
             </div>
           )}
 
           {/* Last Update */}
-          <div className="ml-auto text-sm text-garage-text-muted">
+          <div className="ml-auto text-sm text-text-mute">
             {t('livelink.lastUpdate')}: {formatTime(lastRefresh, timeFormat, { seconds: true })}
           </div>
         </div>
-      </div>
+      </Card>
 
       {/* Live Gauges Grid */}
       {(status.latest_values?.length ?? 0) > 0 ? (
@@ -193,17 +191,8 @@ export default function LiveLinkLiveTab({ vin }: LiveLinkLiveTabProps) {
           ))}
         </div>
       ) : (
-        <div className="bg-garage-surface rounded-lg border border-garage-border p-8 text-center">
-          <Car className="w-12 h-12 mx-auto mb-3 text-garage-text-muted opacity-50" />
-          <p className="text-garage-text-muted">{t('livelink.noTelemetry')}</p>
-          <p className="text-sm text-garage-text-muted mt-2">
-            {t('livelink.telemetryWillAppear')}
-          </p>
-        </div>
+        <EmptyState icon={Car} title={t('livelink.noTelemetry')} description={t('livelink.telemetryWillAppear')} />
       )}
-
-      {/* Active DTCs Summary */}
-      {/* This would show a quick summary of active DTCs, if any */}
     </div>
   )
 }
@@ -235,34 +224,24 @@ function GaugeCard({ value, unitSystem }: GaugeCardProps) {
     return getParamDisplayName(value.param_key, value.display_name ?? null)
   }, [value.param_key, value.display_name])
 
-  const getBgColor = () => {
-    if (value.in_warning) return 'bg-red-500/10 border-red-500/30'
-    return 'bg-garage-surface border-garage-border'
-  }
-
-  const getTextColor = () => {
-    if (value.in_warning) return 'text-red-500'
-    return 'text-garage-text'
-  }
-
   return (
-    <div className={`rounded-lg border p-4 ${getBgColor()}`}>
+    <div
+      className={`rounded-card border p-4 ${
+        value.in_warning ? 'bg-danger/10 border-danger/30' : 'bg-surface border-border'
+      }`}
+    >
       <div className="flex items-start justify-between mb-2">
         <div className="flex items-center gap-2">
-          <IconComponent className={`w-5 h-5 ${value.in_warning ? 'text-red-500' : 'text-primary'}`} />
-          <span className="text-sm text-garage-text-muted truncate">
-            {displayName}
-          </span>
+          <IconComponent aria-hidden="true" className={`w-5 h-5 ${value.in_warning ? 'text-danger' : 'text-text-mute'}`} />
+          <span className="text-sm text-text-mute truncate">{displayName}</span>
         </div>
-        {value.in_warning && <AlertTriangle className="w-4 h-4 text-red-500" />}
+        {value.in_warning && <AlertTriangle aria-hidden="true" className="w-4 h-4 text-danger" />}
       </div>
-      <div className={`text-2xl font-bold ${getTextColor()}`}>
+      <Mono as="div" size="2xl" weight="bold" tone={value.in_warning ? 'danger' : 'default'}>
         {formatTelemetryValue(converted.value, value.param_key)}
-        {converted.unit && (
-          <span className="text-sm font-normal text-garage-text-muted ml-1">{converted.unit}</span>
-        )}
-      </div>
-      <div className="text-xs text-garage-text-muted mt-1">
+        {converted.unit && <span className="text-sm font-normal text-text-mute ml-1">{converted.unit}</span>}
+      </Mono>
+      <div className="text-xs text-text-mute mt-1">
         {formatTime(value.timestamp, timeFormat, { seconds: true })}
       </div>
     </div>
