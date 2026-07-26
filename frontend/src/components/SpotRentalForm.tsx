@@ -216,7 +216,7 @@ export default function SpotRentalForm({ vin, rental, onClose, onSuccess }: Spot
             </div>
           )}
 
-          <Field id="location_name" label={t('spotRental.locationName')} hint={t('spotRental.addressBookHint')}>
+          <Field id="location_name" label={t('spotRental.locationName')} hint={t('spotRental.addressBookHint')} error={errors.location_name}>
             <AddressBookAutocomplete
               id="location_name"
               value={watch('location_name') || ''}
