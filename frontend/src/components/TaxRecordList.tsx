@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useQueryClient } from '@tanstack/react-query'
-import { Edit, Trash2, Plus, AlertCircle } from 'lucide-react'
+import { Edit, Trash2, Plus, AlertCircle, FileText } from 'lucide-react'
 import { toast } from 'sonner'
 import { formatDateForDisplay } from '../utils/dateUtils'
 import { formatCurrency } from '../utils/formatUtils'
@@ -9,6 +9,8 @@ import { useCurrencyPreference } from '../hooks/useCurrencyPreference'
 import type { TaxRecord } from '../types/tax'
 import TaxRecordForm from './TaxRecordForm'
 import { useTaxRecords, useDeleteTaxRecord } from '../hooks/queries/useTaxRecords'
+import { Button, IconButton, Card, Mono, EmptyState, DataTable } from './ui'
+import type { DataTableColumn } from './ui'
 
 interface TaxRecordListProps {
   vin: string
@@ -56,9 +58,39 @@ export default function TaxRecordList({ vin }: TaxRecordListProps) {
     return records.reduce((sum, record) => sum + parseFloat(String(record.amount)), 0)
   }
 
+  const columns: DataTableColumn<TaxRecord>[] = [
+    { id: 'datePaid', header: t('taxList.datePaid'), mono: true, render: (r) => formatDateForDisplay(r.date) },
+    { id: 'type', header: t('taxList.type'), render: (r) => r.tax_type || '-' },
+    { id: 'amount', header: t('taxList.amount'), mono: true, align: 'right', render: (r) => formatCurrency(r.amount, { currencyCode, locale }) },
+    { id: 'renewalDate', header: t('taxList.renewalDate'), mono: true, render: (r) => (r.renewal_date ? formatDateForDisplay(r.renewal_date) : '-') },
+    {
+      id: 'notes',
+      header: t('taxList.notes'),
+      render: (r) => (r.notes ? <span className="truncate max-w-xs block" title={r.notes}>{r.notes}</span> : <span className="text-text-mute">-</span>),
+    },
+    {
+      id: 'actions',
+      header: t('taxList.actions'),
+      align: 'right',
+      render: (r) => (
+        <div className="flex justify-end gap-2">
+          <IconButton icon={Edit} label={t('common:edit')} variant="ghost" size="sm" onClick={() => handleEdit(r)} />
+          <IconButton
+            icon={Trash2}
+            label={t('common:delete')}
+            variant="danger"
+            size="sm"
+            disabled={deleteMutation.isPending && deleteMutation.variables === r.id}
+            onClick={() => handleDelete(r.id)}
+          />
+        </div>
+      ),
+    },
+  ]
+
   if (isLoading) {
     return (
-      <div className="text-center py-8 text-garage-text-muted">{t('taxList.loading')}</div>
+      <div className="text-center py-8 text-text-mute">{t('taxList.loading')}</div>
     )
   }
 
@@ -75,107 +107,40 @@ export default function TaxRecordList({ vin }: TaxRecordListProps) {
 
       <div className="flex justify-between items-center mb-4">
         <div>
-          <h3 className="text-lg font-semibold text-garage-text">{t('taxList.title')}</h3>
+          <h3 className="text-lg font-semibold text-text">{t('taxList.title')}</h3>
           {records.length > 0 && (
-            <p className="text-sm text-garage-text-muted">
-              {t('taxList.recordCount', { count: records.length })} • {t('taxList.total')}: {formatCurrency(getTotalAmount(), { currencyCode, locale })}
+            <p className="text-sm text-text-mute">
+              {t('taxList.recordCount', { count: records.length })} • {t('taxList.total')}:{' '}
+              <Mono size="sm">{formatCurrency(getTotalAmount(), { currencyCode, locale })}</Mono>
             </p>
           )}
         </div>
-        <button
-          onClick={handleAdd}
-          className="flex items-center gap-2 btn btn-primary rounded-lg transition-colors"
-        >
-          <Plus className="w-4 h-4" />
-          <span>{t('taxList.addRecord')}</span>
-        </button>
+        <Button variant="primary" icon={Plus} onClick={handleAdd}>{t('taxList.addRecord')}</Button>
       </div>
 
       {error && (
         <div className="flex items-start gap-2 p-3 bg-danger/10 border border-danger/20 rounded-md mb-4">
-          <AlertCircle className="w-4 h-4 text-danger flex-shrink-0 mt-0.5" />
+          <AlertCircle aria-hidden="true" className="w-4 h-4 text-danger flex-shrink-0 mt-0.5" />
           <p className="text-sm text-danger">{error.message}</p>
         </div>
       )}
 
       {records.length === 0 ? (
-        <div className="text-center py-12 bg-garage-surface border border-garage-border rounded-lg">
-          <p className="text-garage-text mb-2">{t('taxList.noRecords')}</p>
-          <p className="text-sm text-garage-text-muted mb-4">{t('taxList.noRecordsDesc')}</p>
-          <button
-            onClick={handleAdd}
-            className="inline-flex items-center gap-2 btn btn-primary rounded-lg transition-colors"
-          >
-            <Plus className="w-4 h-4" />
-            <span>{t('taxList.addFirstRecord')}</span>
-          </button>
-        </div>
+        <EmptyState
+          icon={FileText}
+          title={t('taxList.noRecords')}
+          description={t('taxList.noRecordsDesc')}
+          action={<Button variant="primary" icon={Plus} onClick={handleAdd}>{t('taxList.addFirstRecord')}</Button>}
+        />
       ) : (
-        <div className="overflow-x-auto">
-          <table className="w-full">
-            <thead>
-              <tr className="border-b border-garage-border">
-                <th className="px-4 py-3 text-left text-sm font-semibold text-garage-text">{t('taxList.datePaid')}</th>
-                <th className="px-4 py-3 text-left text-sm font-semibold text-garage-text">{t('taxList.type')}</th>
-                <th className="px-4 py-3 text-right text-sm font-semibold text-garage-text">{t('taxList.amount')}</th>
-                <th className="px-4 py-3 text-left text-sm font-semibold text-garage-text">{t('taxList.renewalDate')}</th>
-                <th className="px-4 py-3 text-left text-sm font-semibold text-garage-text">{t('taxList.notes')}</th>
-                <th className="px-4 py-3 text-right text-sm font-semibold text-garage-text">{t('taxList.actions')}</th>
-              </tr>
-            </thead>
-            <tbody>
-              {records.map((record) => (
-                <tr
-                  key={record.id}
-                  className="border-b border-garage-border hover:bg-garage-bg/50 transition-colors"
-                >
-                  <td className="px-4 py-3 text-sm text-garage-text">
-                    {formatDateForDisplay(record.date)}
-                  </td>
-                  <td className="px-4 py-3 text-sm text-garage-text">
-                    {record.tax_type || '-'}
-                  </td>
-                  <td className="px-4 py-3 text-sm text-garage-text text-right font-medium">
-                    {formatCurrency(record.amount, { currencyCode, locale })}
-                  </td>
-                  <td className="px-4 py-3 text-sm text-garage-text">
-                    {record.renewal_date ? formatDateForDisplay(record.renewal_date) : '-'}
-                  </td>
-                  <td className="px-4 py-3 text-sm text-garage-text-muted">
-                    {record.notes ? (
-                      <span className="truncate max-w-xs block" title={record.notes}>
-                        {record.notes}
-                      </span>
-                    ) : (
-                      '-'
-                    )}
-                  </td>
-                  <td className="px-4 py-3 text-sm text-right">
-                    <div className="flex justify-end gap-2">
-                      <button
-                        onClick={() => handleEdit(record)}
-                        className="p-2 text-primary hover:bg-primary/10 rounded transition-colors"
-                        aria-label={t('common:edit')}
-                        title={t('common:edit')}
-                      >
-                        <Edit className="w-4 h-4" />
-                      </button>
-                      <button
-                        onClick={() => handleDelete(record.id)}
-                        disabled={deleteMutation.isPending && deleteMutation.variables === record.id}
-                        className="p-2 text-danger hover:bg-danger/10 rounded transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                        aria-label={t('common:delete')}
-                        title={t('common:delete')}
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+        <Card padding="none">
+          <DataTable
+            caption={t('taxList.tableCaption')}
+            columns={columns}
+            rows={records}
+            rowKey={(r) => String(r.id)}
+          />
+        </Card>
       )}
     </div>
   )

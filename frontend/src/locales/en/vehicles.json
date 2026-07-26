@@ -911,6 +911,7 @@
     "notes": "Notes",
     "recordCount": "{{count}} record(s)",
     "renewalDate": "Renewal Date",
+    "tableCaption": "Tax and registration record history",
     "title": "Tax & Registration Records",
     "total": "Total",
     "type": "Type"
