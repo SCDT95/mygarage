@@ -14,6 +14,7 @@ import ReminderForm from './ReminderForm'
 import type { Reminder, ReminderStatus } from '../types/reminder'
 import { useUnitPreference } from '../hooks/useUnitPreference'
 import { UnitFormatter } from '../utils/units'
+import { Button, IconButton, Card, Chip, Mono, EmptyState } from './ui'
 
 interface ReminderListProps {
   vin: string
@@ -93,81 +94,75 @@ export default function ReminderList({ vin }: ReminderListProps) {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
-          <Bell className="w-5 h-5 text-primary" />
-          <h3 className="text-lg font-semibold text-garage-text">{t('reminderList.title')}</h3>
+          <Bell aria-hidden="true" className="w-5 h-5 text-text-mute" />
+          <h3 className="text-lg font-semibold text-text">{t('reminderList.title')}</h3>
         </div>
-        <button
+        <Button
+          variant="primary"
+          size="sm"
+          icon={Plus}
           onClick={() => { setEditingReminder(undefined); setShowForm(true) }}
-          className="flex items-center gap-1 text-sm text-primary hover:text-primary/80"
         >
-          <Plus className="w-4 h-4" />
           {t('reminderList.addReminder')}
-        </button>
+        </Button>
       </div>
 
-      {/* Status filter tabs */}
-      <div className="flex gap-1 p-1 bg-garage-bg rounded-lg">
+      {/* Status filter */}
+      <div className="flex flex-wrap gap-2">
         {STATUS_TABS.map((tab) => (
-          <button
+          <Chip
             key={tab.id}
             onClick={() => setActiveStatus(tab.id)}
-            className={`flex-1 py-1.5 px-3 text-sm font-medium rounded-md transition-colors ${
-              activeStatus === tab.id
-                ? 'bg-garage-surface text-primary shadow-sm'
-                : 'text-garage-text-muted hover:text-garage-text'
-            }`}
+            selected={activeStatus === tab.id}
           >
             {t(tab.labelKey)}
-          </button>
+          </Chip>
         ))}
       </div>
 
       {/* Reminder list */}
       {isLoading ? (
-        <div className="text-center py-8 text-garage-text-muted">{t('reminderList.loading')}</div>
+        <div className="text-center py-8 text-text-mute">{t('reminderList.loading')}</div>
       ) : reminders.length === 0 ? (
-        <div className="text-center py-8 text-garage-text-muted">
-          {t('reminderList.noReminders', { status: activeStatus !== 'all' ? activeStatus : '' })}
-        </div>
+        <EmptyState
+          icon={Bell}
+          size="sm"
+          title={t('reminderList.noReminders', { status: activeStatus !== 'all' ? activeStatus : '' })}
+        />
       ) : (
         <div className="space-y-3">
           {reminders.map((reminder) => {
             const TypeIcon = TYPE_ICONS[reminder.reminder_type] || Bell
             return (
-              <div
-                key={reminder.id}
-                className="border border-garage-border rounded-lg p-4 bg-garage-surface"
-              >
+              <Card key={reminder.id} padding="sm">
                 <div className="flex items-start justify-between gap-3">
                   <div className="flex items-start gap-3 flex-1 min-w-0">
-                    <TypeIcon className="w-5 h-5 text-primary mt-0.5 shrink-0" />
+                    <TypeIcon aria-hidden="true" className="w-5 h-5 text-(--accent-fg) mt-0.5 shrink-0" />
                     <div className="min-w-0">
-                      <h4 className="text-sm font-medium text-garage-text">{reminder.title}</h4>
-                      <div className="flex flex-wrap gap-2 mt-1">
-                        <span className="px-2 py-0.5 text-xs bg-primary/10 text-primary rounded">
-                          {reminder.reminder_type}
-                        </span>
+                      <h4 className="text-sm font-medium text-text">{reminder.title}</h4>
+                      <div className="flex flex-wrap gap-2 mt-1 items-center">
+                        <Chip>{reminder.reminder_type}</Chip>
                         {reminder.due_date && (
-                          <span className="text-xs text-garage-text-muted">
-                            {t('reminderList.due')}: {formatDate(reminder.due_date)}
+                          <span className="text-xs text-text-mute">
+                            {t('reminderList.due')}: <Mono size="xs" tone="muted">{formatDate(reminder.due_date)}</Mono>
                           </span>
                         )}
                         {reminder.due_mileage_km && (
-                          <span className="text-xs text-garage-text-muted">
-                            {t('reminderList.due')}: {UnitFormatter.formatDistance(parseFloat(String(reminder.due_mileage_km)), system, showBoth)}
+                          <span className="text-xs text-text-mute">
+                            {t('reminderList.due')}: <Mono size="xs" tone="muted">{UnitFormatter.formatDistance(parseFloat(String(reminder.due_mileage_km)), system, showBoth)}</Mono>
                           </span>
                         )}
                         {reminder.estimated_due_date && (
-                          <span className="text-xs text-primary">
-                            {t('reminderList.estimated')}: {formatDate(reminder.estimated_due_date)}
+                          <span className="text-xs text-(--accent-fg)">
+                            {t('reminderList.estimated')}: <Mono size="xs" tone="accent">{formatDate(reminder.estimated_due_date)}</Mono>
                           </span>
                         )}
                       </div>
                       {reminder.notes && (
-                        <p className="text-xs text-garage-text-muted mt-1 truncate">{reminder.notes}</p>
+                        <p className="text-xs text-text-mute mt-1 truncate">{reminder.notes}</p>
                       )}
                       {reminder.line_item_id && (
-                        <p className="text-xs text-garage-text-muted mt-1">{t('reminderList.linkedToService')}</p>
+                        <p className="text-xs text-text-mute mt-1">{t('reminderList.linkedToService')}</p>
                       )}
                     </div>
                   </div>
@@ -176,39 +171,15 @@ export default function ReminderList({ vin }: ReminderListProps) {
                   <div className="flex items-center gap-1 shrink-0">
                     {reminder.status === 'pending' && (
                       <>
-                        <button
-                          onClick={() => handleMarkDone(reminder.id)}
-                          className="p-1.5 text-green-600 hover:bg-green-50 dark:hover:bg-green-900/20 rounded"
-                          title={t('reminderList.markDone')}
-                        >
-                          <Check className="w-4 h-4" />
-                        </button>
-                        <button
-                          onClick={() => handleDismiss(reminder.id)}
-                          className="p-1.5 text-garage-text-muted hover:bg-garage-bg rounded"
-                          title={t('reminderList.dismiss')}
-                        >
-                          <X className="w-4 h-4" />
-                        </button>
+                        <IconButton icon={Check} label={t('reminderList.markDone')} variant="ghost" size="sm" onClick={() => handleMarkDone(reminder.id)} />
+                        <IconButton icon={X} label={t('reminderList.dismiss')} variant="ghost" size="sm" onClick={() => handleDismiss(reminder.id)} />
                       </>
                     )}
-                    <button
-                      onClick={() => handleEdit(reminder)}
-                      className="p-1.5 text-garage-text-muted hover:bg-garage-bg rounded"
-                      title={t('common:edit')}
-                    >
-                      <Edit className="w-4 h-4" />
-                    </button>
-                    <button
-                      onClick={() => handleDelete(reminder.id)}
-                      className="p-1.5 text-danger hover:bg-danger/10 rounded"
-                      title={t('common:delete')}
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </button>
+                    <IconButton icon={Edit} label={t('common:edit')} variant="ghost" size="sm" onClick={() => handleEdit(reminder)} />
+                    <IconButton icon={Trash2} label={t('common:delete')} variant="danger" size="sm" onClick={() => handleDelete(reminder.id)} />
                   </div>
                 </div>
-              </div>
+              </Card>
             )
           })}
         </div>
