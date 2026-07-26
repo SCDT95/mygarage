@@ -5,9 +5,9 @@ import { zodResolver } from '@hookform/resolvers/zod'
 import { Save } from 'lucide-react'
 import FormModalWrapper from './FormModalWrapper'
 import CurrencyInputPrefix from './common/CurrencyInputPrefix'
+import { Button, Field, Input, Textarea } from './ui'
 import type { TollTransaction, TollTransactionCreate, TollTransactionUpdate, TollTag } from '../types/toll'
 import { tollTransactionSchema, type TollTransactionFormData } from '../schemas/tollTransaction'
-import { FormError } from './FormError'
 import { useCreateTollTransaction, useUpdateTollTransaction } from '../hooks/queries/useTollRecords'
 
 interface TollTransactionFormProps {
@@ -79,23 +79,12 @@ export default function TollTransactionForm({ vin, tollTags, transaction, onClos
       width="sm"
       footer={
         <>
-          <button
-            type="button"
-            onClick={onClose}
-            className="btn btn-primary rounded-lg transition-colors"
-            disabled={isSubmitting}
-          >
+          <Button variant="secondary" onClick={onClose} disabled={isSubmitting}>
             {t('tollTransactionForm.cancel')}
-          </button>
-          <button
-            type="submit"
-            form="toll-transaction-form"
-            className="flex items-center gap-2 btn btn-primary rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-            disabled={isSubmitting}
-          >
-            <Save className="w-4 h-4" />
+          </Button>
+          <Button type="submit" form="toll-transaction-form" variant="primary" icon={Save} loading={isSubmitting} disabled={isSubmitting}>
             {isSubmitting ? t('common:saving') : isEdit ? t('toll.updateTransaction') : t('toll.addTransaction')}
-          </button>
+          </Button>
         </>
       }
     >
@@ -107,72 +96,37 @@ export default function TollTransactionForm({ vin, tollTags, transaction, onClos
           )}
 
           <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label htmlFor="transaction_date" className="block text-sm font-medium text-garage-text mb-1">
-                {t('common:date')} <span className="text-danger">*</span>
-              </label>
-              <input
-                type="date"
-                id="transaction_date"
-                {...register('transaction_date')}
-                className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-primary bg-garage-bg text-garage-text ${
-                  errors.transaction_date ? 'border-red-500' : 'border-garage-border'
-                }`}
-                disabled={isSubmitting}
-              />
-              <FormError error={errors.transaction_date} />
-            </div>
+            <Field id="transaction_date" label={t('common:date')} required error={errors.transaction_date}>
+              <Input id="transaction_date" type="date" {...register('transaction_date')} invalid={!!errors.transaction_date} disabled={isSubmitting} />
+            </Field>
 
-            <div>
-              <label htmlFor="amount" className="block text-sm font-medium text-garage-text mb-1">
-                {t('common:amount')} <span className="text-danger">*</span>
-              </label>
+            <Field id="amount" label={t('common:amount')} required error={errors.amount}>
               <div className="relative">
-                <CurrencyInputPrefix className="absolute left-3 top-1/2 -translate-y-1/2 text-garage-text-muted" />
+                <CurrencyInputPrefix />
                 <input
                   type="number"
                   id="amount"
-                  {...register('amount', { valueAsNumber: true })}
-                  className={`w-full pl-7 pr-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-primary bg-garage-bg text-garage-text ${
-                    errors.amount ? 'border-red-500' : 'border-garage-border'
-                  }`}
-                  placeholder="0.00"
+                  min="0"
                   step="0.01"
+                  {...register('amount', { valueAsNumber: true })}
+                  placeholder="0.00"
+                  className={`ui-focus-input ui-motion w-full rounded-control border bg-surface-2 pl-7 pr-3 py-2 text-sm text-text font-mono tabular-nums ${errors.amount ? 'border-danger' : 'border-border'}`}
                   disabled={isSubmitting}
                 />
               </div>
-              <FormError error={errors.amount} />
-            </div>
+            </Field>
           </div>
 
-          <div>
-            <label htmlFor="location" className="block text-sm font-medium text-garage-text mb-1">
-              {t('toll.location')} <span className="text-danger">*</span>
-            </label>
-            <input
-              type="text"
-              id="location"
-              {...register('location')}
-              className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-primary bg-garage-bg text-garage-text ${
-                errors.location ? 'border-red-500' : 'border-garage-border'
-              }`}
-              placeholder={t('toll.locationPlaceholder')}
-              disabled={isSubmitting}
-            />
-            <FormError error={errors.location} />
-          </div>
+          <Field id="location" label={t('toll.location')} required error={errors.location}>
+            <Input id="location" type="text" {...register('location')} placeholder={t('toll.locationPlaceholder')} invalid={!!errors.location} disabled={isSubmitting} />
+          </Field>
 
-          <div>
-            <label htmlFor="toll_tag_id" className="block text-sm font-medium text-garage-text mb-1">
-              {t('toll.tollTag')}
-            </label>
+          <Field id="toll_tag_id" label={t('toll.tollTag')} error={errors.toll_tag_id}>
             <select
               id="toll_tag_id"
-              {...register('toll_tag_id')}
-              className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-primary bg-garage-bg text-garage-text ${
-                errors.toll_tag_id ? 'border-red-500' : 'border-garage-border'
-              }`}
+              {...register('toll_tag_id', { valueAsNumber: true })}
               disabled={isSubmitting}
+              className={`ui-focus-input ui-motion w-full rounded-control border bg-surface-2 px-3 py-2 text-sm text-text ${errors.toll_tag_id ? 'border-danger' : 'border-border'}`}
             >
               <option value="">{t('toll.noneManualPayment')}</option>
               {activeTollTags.map((tag) => (
@@ -181,31 +135,14 @@ export default function TollTransactionForm({ vin, tollTags, transaction, onClos
                 </option>
               ))}
             </select>
-            <FormError error={errors.toll_tag_id} />
             {activeTollTags.length === 0 && (
-              <p className="text-xs text-garage-text-muted mt-1">
-                {t('toll.noActiveTollTags')}
-              </p>
+              <p className="text-xs text-text-mute mt-1">{t('toll.noActiveTollTags')}</p>
             )}
-          </div>
+          </Field>
 
-          <div>
-            <label htmlFor="notes" className="block text-sm font-medium text-garage-text mb-1">
-              {t('common:notes')}
-            </label>
-            <textarea
-              id="notes"
-              {...register('notes')}
-              className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-primary bg-garage-bg text-garage-text ${
-                errors.notes ? 'border-red-500' : 'border-garage-border'
-              }`}
-              rows={3}
-              placeholder={t('toll.transactionNotesPlaceholder')}
-              disabled={isSubmitting}
-            />
-            <FormError error={errors.notes} />
-          </div>
-
+          <Field id="notes" label={t('common:notes')} error={errors.notes}>
+            <Textarea id="notes" rows={3} {...register('notes')} placeholder={t('toll.transactionNotesPlaceholder')} invalid={!!errors.notes} disabled={isSubmitting} />
+          </Field>
         </form>
     </FormModalWrapper>
   )
