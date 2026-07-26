@@ -1,13 +1,15 @@
 import { useState, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 import { formatDateForDisplay } from '../utils/dateUtils'
-import { Gauge, Plus, Edit, Trash2, Calendar, Download, Upload, Radio } from 'lucide-react'
+import { Gauge, Plus, Edit, Trash2, Download, Upload, Radio } from 'lucide-react'
 import { toast } from 'sonner'
 import type { OdometerRecord } from '../types/odometer'
 import api from '../services/api'
 import { useUnitPreference } from '../hooks/useUnitPreference'
 import { UnitFormatter } from '../utils/units'
 import { useOdometerRecords, useDeleteOdometerRecord, useImportOdometerCSV } from '../hooks/queries/useOdometerRecords'
+import { Button, IconButton, Card, Mono, Badge, DataTable, EmptyState } from './ui'
+import type { DataTableColumn } from './ui'
 
 interface OdometerRecordListProps {
   vin: string
@@ -121,10 +123,48 @@ export default function OdometerRecordList({ vin, onAddClick, onEditClick }: Odo
     return formatDateForDisplay(dateString)
   }
 
+  const columns: DataTableColumn<OdometerRecord>[] = [
+    { id: 'date', header: t('odometerList.date'), mono: true, render: (r) => formatDate(r.date) },
+    {
+      id: 'mileage',
+      header: t('odometerRecordList.mileageColumn', { unit: UnitFormatter.getDistanceUnit(system) }),
+      align: 'right',
+      render: (r) => (
+        <span className="inline-flex items-center justify-end gap-2">
+          <Mono>{UnitFormatter.formatDistance(parseFloat(String(r.odometer_km)), system, showBoth)}</Mono>
+          {(r as Record<string, unknown>).source === 'livelink' && (
+            <Badge tone="info" icon={Radio}>
+              <span className="sr-only">{t('odometerRecordList.autoTrackedByLiveLink')}</span>
+            </Badge>
+          )}
+        </span>
+      ),
+    },
+    { id: 'notes', header: t('odometerList.notes'), render: (r) => (r.notes ? r.notes : <span className="text-text-mute">-</span>) },
+    {
+      id: 'actions',
+      header: t('odometerList.actions'),
+      align: 'right',
+      render: (r) => (
+        <div className="flex justify-end gap-2">
+          <IconButton icon={Edit} label={t('common:edit')} variant="ghost" size="sm" onClick={() => onEditClick(r)} />
+          <IconButton
+            icon={Trash2}
+            label={t('common:delete')}
+            variant="danger"
+            size="sm"
+            disabled={deleteMutation.isPending && deleteMutation.variables === r.id}
+            onClick={() => handleDelete(r.id)}
+          />
+        </div>
+      ),
+    },
+  ]
+
   if (isLoading) {
     return (
       <div className="flex justify-center items-center min-h-[200px]">
-        <div className="text-garage-text-muted">{t('odometerList.loading')}</div>
+        <div className="text-text-mute">{t('odometerList.loading')}</div>
       </div>
     )
   }
@@ -141,145 +181,49 @@ export default function OdometerRecordList({ vin, onAddClick, onEditClick }: Odo
     <div className="space-y-4">
       <div className="flex justify-between items-center">
         <div className="flex items-center gap-2">
-          <Gauge className="w-5 h-5 text-garage-text-muted" />
-          <h3 className="text-lg font-semibold text-garage-text">{t('odometerList.title')}</h3>
-          <span className="text-sm text-garage-text-muted">({t('odometerList.recordCount', { count: records.length })})</span>
+          <Gauge aria-hidden="true" className="w-5 h-5 text-text-mute" />
+          <h3 className="text-lg font-semibold text-text">{t('odometerList.title')}</h3>
+          <span className="text-sm text-text-mute">({t('odometerList.recordCount', { count: records.length })})</span>
         </div>
         <div className="flex items-center gap-2">
-          {/* Import button */}
-          <input
-            ref={fileInputRef}
-            type="file"
-            accept=".csv"
-            onChange={handleImportCSV}
-            className="hidden"
-          />
-          <button
-            onClick={handleImportClick}
-            disabled={importMutation.isPending}
-            className="flex items-center gap-2 btn btn-primary rounded-lg transition-colors disabled:opacity-50"
-            title={t('odometerList.importFromCSV')}
-          >
-            <Upload className="w-4 h-4" />
-            <span>{importMutation.isPending ? t('odometerList.importing') : t('odometerList.importCSV')}</span>
-          </button>
-          {/* Export button */}
+          <input ref={fileInputRef} type="file" accept=".csv" onChange={handleImportCSV} className="hidden" />
+          <Button variant="secondary" icon={Upload} onClick={handleImportClick} loading={importMutation.isPending} title={t('odometerList.importFromCSV')}>
+            {importMutation.isPending ? t('odometerList.importing') : t('odometerList.importCSV')}
+          </Button>
           {records.length > 0 && (
-            <button
-              onClick={handleExportCSV}
-              disabled={exporting}
-              className="flex items-center gap-2 btn btn-primary rounded-lg transition-colors disabled:opacity-50"
-              title={t('odometerList.exportToCSV')}
-            >
-              <Download className="w-4 h-4" />
-              <span>{exporting ? t('odometerList.exporting') : t('odometerList.exportCSV')}</span>
-            </button>
+            <Button variant="secondary" icon={Download} onClick={handleExportCSV} loading={exporting} title={t('odometerList.exportToCSV')}>
+              {exporting ? t('odometerList.exporting') : t('odometerList.exportCSV')}
+            </Button>
           )}
-          <button
-            onClick={onAddClick}
-            className="flex items-center gap-2 btn btn-primary rounded-lg transition-colors"
-          >
-            <Plus className="w-4 h-4" />
-            <span>{t('odometerList.addReading')}</span>
-          </button>
+          <Button variant="primary" icon={Plus} onClick={onAddClick}>{t('odometerList.addReading')}</Button>
         </div>
       </div>
 
       {latestOdometerKm !== null && (
-        <div className="bg-primary/10 border border-primary rounded-lg p-4">
+        <Card padding="sm">
           <div className="flex items-center gap-3">
-            <div className="bg-primary/20 rounded-full p-3">
-              <Gauge className="w-6 h-6 text-primary" />
+            <div className="rounded-full bg-(--accent-soft) p-3">
+              <Gauge aria-hidden="true" className="w-6 h-6 text-(--accent-fg)" />
             </div>
             <div>
-              <p className="text-sm text-garage-text-muted">{t('odometerList.latestMileage')}</p>
-              <p className="text-2xl font-bold text-garage-text">
-                {UnitFormatter.formatDistance(latestOdometerKm, system, showBoth)}
-              </p>
+              <p className="text-sm text-text-mute">{t('odometerList.latestMileage')}</p>
+              <Mono size="2xl" weight="bold">{UnitFormatter.formatDistance(latestOdometerKm, system, showBoth)}</Mono>
             </div>
           </div>
-        </div>
+        </Card>
       )}
 
       {records.length === 0 ? (
-        <div className="bg-garage-surface border border-garage-border rounded-lg p-8 text-center">
-          <Gauge className="w-12 h-12 text-garage-text-muted opacity-50 mx-auto mb-3" />
-          <p className="text-garage-text mb-2">{t('odometerList.noRecords')}</p>
-          <p className="text-sm text-garage-text-muted mb-4">{t('odometerList.noRecordsDesc')}</p>
-          <button
-            onClick={onAddClick}
-            className="inline-flex items-center gap-2 btn btn-primary rounded-lg transition-colors"
-          >
-            <Plus className="w-4 h-4" />
-            <span>{t('odometerList.addFirstReading')}</span>
-          </button>
-        </div>
+        <EmptyState
+          icon={Gauge}
+          title={t('odometerList.noRecords')}
+          description={t('odometerList.noRecordsDesc')}
+          action={<Button variant="primary" icon={Plus} onClick={onAddClick}>{t('odometerList.addFirstReading')}</Button>}
+        />
       ) : (
-        <div className="bg-garage-surface shadow rounded-lg overflow-hidden">
-          <div className="overflow-x-auto">
-            <table className="min-w-full divide-y divide-garage-border">
-              <thead className="bg-garage-bg">
-                <tr>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-garage-text-muted uppercase tracking-wider">{t('odometerList.date')}</th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-garage-text-muted uppercase tracking-wider">
-                    {t('odometerRecordList.mileageColumn', { unit: UnitFormatter.getDistanceUnit(system) })}
-                  </th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-garage-text-muted uppercase tracking-wider">{t('odometerList.notes')}</th>
-                  <th className="px-4 py-3 text-right text-xs font-medium text-garage-text-muted uppercase tracking-wider">{t('odometerList.actions')}</th>
-                </tr>
-              </thead>
-              <tbody className="bg-garage-surface divide-y divide-garage-border">
-                {records.map((record) => (
-                  <tr key={record.id} className="hover:bg-garage-bg">
-                    <td className="px-4 py-3 whitespace-nowrap">
-                      <div className="flex items-center gap-2 text-sm text-garage-text">
-                        <Calendar className="w-4 h-4 text-garage-text-muted" />
-                        {formatDate(record.date)}
-                      </div>
-                    </td>
-                    <td className="px-4 py-3 whitespace-nowrap">
-                      <div className="flex items-center gap-2 text-sm font-medium text-garage-text">
-                        <Gauge className="w-4 h-4 text-garage-text-muted" />
-                        {UnitFormatter.formatDistance(parseFloat(String(record.odometer_km)), system, showBoth)}
-                        {(record as Record<string, unknown>).source === 'livelink' && (
-                          <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-xs bg-primary/10 text-primary" title={t('odometerRecordList.autoTrackedByLiveLink')}>
-                            <Radio className="w-3 h-3" />
-                          </span>
-                        )}
-                      </div>
-                    </td>
-                    <td className="px-4 py-3">
-                      {record.notes ? (
-                        <div className="text-sm text-garage-text">{record.notes}</div>
-                      ) : (
-                        <span className="text-sm text-garage-text-muted">-</span>
-                      )}
-                    </td>
-                    <td className="px-4 py-3 whitespace-nowrap text-right text-sm">
-                      <div className="flex justify-end gap-2">
-                        <button
-                          onClick={() => onEditClick(record)}
-                          className="text-primary hover:text-primary-dark"
-                          title={t('common:edit')}
-                        >
-                          <Edit className="w-4 h-4" />
-                        </button>
-                        <button
-                          onClick={() => handleDelete(record.id)}
-                          disabled={deleteMutation.isPending && deleteMutation.variables === record.id}
-                          className="text-danger hover:text-danger/80 disabled:opacity-50"
-                          title={t('common:delete')}
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </div>
+        <Card padding="none">
+          <DataTable caption={t('odometerList.tableCaption')} columns={columns} rows={records} rowKey={(r) => String(r.id)} />
+        </Card>
       )}
     </div>
   )

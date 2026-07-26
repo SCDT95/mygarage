@@ -2,14 +2,15 @@ import { lazy, Suspense } from 'react'
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { ReactQueryDevtools } from '@tanstack/react-query-devtools'
-import { Toaster } from 'sonner'
 import { ErrorBoundary } from './components/ErrorBoundary'
 import { AuthProvider } from './contexts/AuthContext'
 import { ThemeProvider } from './contexts/ThemeContext'
+import { AccentProvider } from './contexts/AccentContext'
 import ProtectedRoute from './components/ProtectedRoute'
 import { useAuth } from './contexts/AuthContext'
 import Layout from './components/Layout'
 import InstallPrompt from './components/InstallPrompt'
+import AppToaster from './components/AppToaster'
 import { useLanguageSync } from './hooks/useLanguageSync'
 import { basePath } from './utils/basePath'
 
@@ -35,6 +36,14 @@ const Analytics = lazy(() => import('./pages/Analytics'))
 const GarageAnalytics = lazy(() => import('./pages/GarageAnalytics'))
 const Settings = lazy(() => import('./pages/Settings'))
 const About = lazy(() => import('./pages/About'))
+
+// Dev-only primitive gallery. `import.meta.env.DEV` is statically replaced at
+// build time, so Rollup drops this chunk entirely from production bundles —
+// while validate-reachability.ts, which reads import specifiers as text, still
+// walks into it. That combination is what lets ALLOWLIST stay empty.
+const UIGallery = import.meta.env.DEV
+  ? lazy(() => import('./components/ui/gallery/Gallery'))
+  : null
 // Loading component
 const LoadingFallback = () => (
   <div className="flex items-center justify-center min-h-screen bg-garage-bg">
@@ -67,6 +76,7 @@ function App() {
   return (
     <ErrorBoundary>
       <ThemeProvider>
+        <AccentProvider>
         <AuthProvider>
           <LanguageSyncProvider>
           <QueryClientProvider client={queryClient}>
@@ -78,6 +88,7 @@ function App() {
                 <Route path="/register" element={<Register />} />
                 <Route path="/auth/oidc/success" element={<OIDCSuccess />} />
                 <Route path="/auth/link-account" element={<LinkAccount />} />
+                {UIGallery ? <Route path="/__ui" element={<UIGallery />} /> : null}
 
                 {/* Protected routes */}
                 <Route element={<ProtectedRoute />}>
@@ -107,12 +118,13 @@ function App() {
               </Routes>
             </Suspense>
             <InstallPrompt />
-            <Toaster position="bottom-right" richColors />
+            <AppToaster />
           </BrowserRouter>
           <ReactQueryDevtools initialIsOpen={false} />
           </QueryClientProvider>
           </LanguageSyncProvider>
         </AuthProvider>
+        </AccentProvider>
       </ThemeProvider>
     </ErrorBoundary>
   )

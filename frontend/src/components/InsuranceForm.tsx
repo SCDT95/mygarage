@@ -4,10 +4,10 @@ import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { Save, FileUp } from 'lucide-react'
 import FormModalWrapper from './FormModalWrapper'
+import { Button, Field, Input, Textarea } from './ui'
 import { toast } from 'sonner'
 import type { InsurancePolicy, InsurancePolicyCreate, InsurancePolicyUpdate } from '../types/insurance'
 import { insuranceSchema, type InsuranceFormData, POLICY_TYPES, PREMIUM_FREQUENCIES } from '../schemas/insurance'
-import { FormError } from './FormError'
 import InsurancePDFUpload from './InsurancePDFUpload'
 import { useCreateInsuranceRecord, useUpdateInsuranceRecord } from '../hooks/queries/useInsuranceRecords'
 import { formatDateForInput } from '../utils/dateUtils'
@@ -101,202 +101,102 @@ export default function InsuranceForm({ vin, record, onClose, onSuccess }: Insur
 
   return (
     <>
-    <FormModalWrapper title={isEdit ? t('insurance.editTitle') : t('insurance.createTitle')} onClose={onClose}>
-        <form onSubmit={handleSubmit(onSubmit)} className="p-6 space-y-4">
+    <FormModalWrapper
+      title={isEdit ? t('insurance.editTitle') : t('insurance.createTitle')}
+      onClose={onClose}
+      width="md"
+      footer={
+        <>
+          <Button variant="secondary" onClick={onClose} disabled={isSubmitting}>
+            {t('common:cancel')}
+          </Button>
+          <Button type="submit" form="insurance-form" variant="primary" icon={Save} loading={isSubmitting} disabled={isSubmitting}>
+            {isSubmitting ? t('common:saving') : isEdit ? t('common:update') : t('common:create')}
+          </Button>
+        </>
+      }
+    >
+        <form id="insurance-form" onSubmit={handleSubmit(onSubmit)} className="p-6 space-y-4">
 
-          {/* PDF Import Button - Only show on create */}
           {!isEdit && (
             <div className="mb-4">
-              <button
-                type="button"
-                onClick={() => setShowPDFUpload(true)}
-                className="btn btn-secondary w-full flex items-center justify-center gap-2"
-              >
-                <FileUp size={18} />
+              <Button type="button" variant="secondary" icon={FileUp} onClick={() => setShowPDFUpload(true)} className="w-full">
                 {t('insuranceForm.importFromPdf')}
-              </button>
-              <p className="text-xs text-garage-text-muted mt-2 text-center">
-                {t('insurance.pdfUploadHint')}
-              </p>
+              </Button>
+              <p className="text-xs text-text-mute mt-2 text-center">{t('insurance.pdfUploadHint')}</p>
             </div>
           )}
 
           <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label htmlFor="provider" className="block text-sm font-medium text-garage-text mb-1">
-                {t('insurance.provider')} <span className="text-danger">*</span>
-              </label>
-              <input
-                type="text"
+            <Field id="provider" label={t('insurance.provider')} required error={errors.provider}>
+              <Input
                 id="provider"
-                {...register('provider')}
-                disabled={isSubmitting}
-                className={`input w-full ${autoFilledFields.has('provider') ? 'bg-blue-50 dark:bg-blue-900/20 border-blue-300 dark:border-blue-700' : ''}`}
-                placeholder={t('insuranceForm.providerPlaceholder')}
-              />
-              <FormError error={errors.provider} />
-            </div>
-
-            <div>
-              <label htmlFor="policy_number" className="block text-sm font-medium text-garage-text mb-1">
-                {t('insurance.policyNumber')} <span className="text-danger">*</span>
-              </label>
-              <input
                 type="text"
-                id="policy_number"
-                {...register('policy_number')}
+                {...register('provider')}
+                placeholder={t('insuranceForm.providerPlaceholder')}
+                invalid={!!errors.provider}
                 disabled={isSubmitting}
-                className="input w-full"
-                placeholder={t('insuranceForm.policyNumberPlaceholder')}
+                className={autoFilledFields.has('provider') ? 'ring-2 ring-info/50' : ''}
               />
-              <FormError error={errors.policy_number} />
-            </div>
+            </Field>
+            <Field id="policy_number" label={t('insurance.policyNumber')} required error={errors.policy_number}>
+              <Input id="policy_number" type="text" {...register('policy_number')} placeholder={t('insuranceForm.policyNumberPlaceholder')} invalid={!!errors.policy_number} disabled={isSubmitting} />
+            </Field>
           </div>
 
-          <div>
-            <label htmlFor="policy_type" className="block text-sm font-medium text-garage-text mb-1">
-              {t('insurance.policyType')} <span className="text-danger">*</span>
-            </label>
+          <Field id="policy_type" label={t('insurance.policyType')} required error={errors.policy_type}>
             <select
               id="policy_type"
               {...register('policy_type')}
               disabled={isSubmitting}
-              className="input w-full"
+              className={`ui-focus-input ui-motion w-full rounded-control border bg-surface-2 px-3 py-2 text-sm text-text ${errors.policy_type ? 'border-danger' : 'border-border'}`}
             >
               <option value="">{t('common:selectType')}</option>
               {POLICY_TYPES.map((option) => (
                 <option key={option.value} value={option.value}>{t(option.labelKey)}</option>
               ))}
             </select>
-            <FormError error={errors.policy_type} />
+          </Field>
+
+          <div className="grid grid-cols-2 gap-4">
+            <Field id="start_date" label={t('common:startDate')} required error={errors.start_date}>
+              <Input id="start_date" type="date" {...register('start_date')} invalid={!!errors.start_date} disabled={isSubmitting} />
+            </Field>
+            <Field id="end_date" label={t('common:endDate')} required error={errors.end_date}>
+              <Input id="end_date" type="date" {...register('end_date')} invalid={!!errors.end_date} disabled={isSubmitting} />
+            </Field>
           </div>
 
           <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label htmlFor="start_date" className="block text-sm font-medium text-garage-text mb-1">
-                {t('common:startDate')} <span className="text-danger">*</span>
-              </label>
-              <input
-                type="date"
-                id="start_date"
-                {...register('start_date')}
-                disabled={isSubmitting}
-                className="input w-full"
-              />
-              <FormError error={errors.start_date} />
-            </div>
-
-            <div>
-              <label htmlFor="end_date" className="block text-sm font-medium text-garage-text mb-1">
-                {t('common:endDate')} <span className="text-danger">*</span>
-              </label>
-              <input
-                type="date"
-                id="end_date"
-                {...register('end_date')}
-                disabled={isSubmitting}
-                className="input w-full"
-              />
-              <FormError error={errors.end_date} />
-            </div>
-          </div>
-
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label htmlFor="premium_amount" className="block text-sm font-medium text-garage-text mb-1">
-                {t('insurance.premiumAmount')}
-              </label>
-              <input
-                type="text"
-                id="premium_amount"
-                {...register('premium_amount')}
-                disabled={isSubmitting}
-                className="input w-full"
-                placeholder={t('insuranceForm.premiumAmountPlaceholder')}
-              />
-              <FormError error={errors.premium_amount} />
-            </div>
-
-            <div>
-              <label htmlFor="premium_frequency" className="block text-sm font-medium text-garage-text mb-1">
-                {t('insurance.premiumFrequency')}
-              </label>
+            <Field id="premium_amount" label={t('insurance.premiumAmount')} error={errors.premium_amount}>
+              <Input id="premium_amount" type="text" {...register('premium_amount')} placeholder={t('insuranceForm.premiumAmountPlaceholder')} disabled={isSubmitting} />
+            </Field>
+            <Field id="premium_frequency" label={t('insurance.premiumFrequency')} error={errors.premium_frequency}>
               <select
                 id="premium_frequency"
                 {...register('premium_frequency')}
                 disabled={isSubmitting}
-                className="input w-full"
+                className="ui-focus-input ui-motion w-full rounded-control border border-border bg-surface-2 px-3 py-2 text-sm text-text"
               >
                 <option value="">{t('insurance.selectFrequency')}</option>
                 {PREMIUM_FREQUENCIES.map((option) => (
                   <option key={option.value} value={option.value}>{t(option.labelKey)}</option>
                 ))}
               </select>
-              <FormError error={errors.premium_frequency} />
-            </div>
+            </Field>
           </div>
 
-          <div>
-            <label htmlFor="deductible" className="block text-sm font-medium text-garage-text mb-1">
-              {t('insurance.deductible')}
-            </label>
-            <input
-              type="text"
-              id="deductible"
-              {...register('deductible')}
-              disabled={isSubmitting}
-              className="input w-full"
-              placeholder={t('insuranceForm.deductiblePlaceholder')}
-            />
-            <FormError error={errors.deductible} />
-          </div>
+          <Field id="deductible" label={t('insurance.deductible')} error={errors.deductible}>
+            <Input id="deductible" type="text" {...register('deductible')} placeholder={t('insuranceForm.deductiblePlaceholder')} disabled={isSubmitting} />
+          </Field>
 
-          <div>
-            <label htmlFor="coverage_limits" className="block text-sm font-medium text-garage-text mb-1">
-              {t('insurance.coverageLimits')}
-            </label>
-            <textarea
-              id="coverage_limits"
-              {...register('coverage_limits')}
-              disabled={isSubmitting}
-              className="input w-full"
-              rows={3}
-              placeholder={t('insuranceForm.coverageLimitsPlaceholder')}
-            />
-          </div>
+          <Field id="coverage_limits" label={t('insurance.coverageLimits')}>
+            <Textarea id="coverage_limits" rows={3} {...register('coverage_limits')} placeholder={t('insuranceForm.coverageLimitsPlaceholder')} disabled={isSubmitting} />
+          </Field>
 
-          <div>
-            <label htmlFor="notes" className="block text-sm font-medium text-garage-text mb-1">
-              {t('common:notes')}
-            </label>
-            <textarea
-              id="notes"
-              {...register('notes')}
-              disabled={isSubmitting}
-              className="input w-full"
-              rows={2}
-              placeholder={t('common:additionalNotes')}
-            />
-          </div>
-
-          <div className="flex justify-end gap-3 pt-4">
-            <button
-              type="button"
-              onClick={onClose}
-              className="btn btn-primary rounded-lg transition-colors"
-              disabled={isSubmitting}
-            >
-              {t('common:cancel')}
-            </button>
-            <button
-              type="submit"
-              className="flex items-center gap-2 btn btn-primary rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-              disabled={isSubmitting}
-            >
-              <Save size={16} />
-              {isSubmitting ? t('common:saving') : isEdit ? t('common:update') : t('common:create')}
-            </button>
-          </div>
+          <Field id="notes" label={t('common:notes')}>
+            <Textarea id="notes" rows={2} {...register('notes')} placeholder={t('common:additionalNotes')} disabled={isSubmitting} />
+          </Field>
         </form>
     </FormModalWrapper>
 

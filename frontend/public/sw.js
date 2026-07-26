@@ -20,9 +20,16 @@ const PREFETCH_URLS = [
   SCOPE + 'api/dashboard',
 ];
 
+// Replaced at build time by the mygarage-sw-font-assets Vite plugin.
+const FONT_ASSETS = /*__FONT_ASSETS__*/[];
+
 // Precache only immutable shell pieces. Do NOT precache `/` or `/index.html`:
 // those are mutable on each deploy and the navigation handler already serves
 // them network-first with a cache fallback.
+//
+// These 4 are the irreducible core of the offline guarantee: cached via a
+// single atomic `cache.addAll()` below, so any one of them failing correctly
+// fails the whole install — without them there is no offline story anyway.
 const STATIC_ASSETS = [
   SCOPE + 'manifest.json',
   SCOPE + 'icon-192.png',
@@ -36,6 +43,24 @@ self.addEventListener('install', (event) => {
     (async () => {
       const staticCache = await caches.open(CACHE_NAME);
       await staticCache.addAll(STATIC_ASSETS);
+
+      // Fonts are best-effort: cached one at a time so a single failed font
+      // fetch (large file, extra proxy hop) can't reject an addAll() and take
+      // the core assets above down with it. A missing font just degrades to
+      // fallback glyphs.
+      await Promise.all(
+        FONT_ASSETS.map(async (f) => {
+          const url = SCOPE + f.replace(/^\.\//, '');
+          try {
+            const response = await fetch(url);
+            if (response && response.ok) {
+              await staticCache.put(url, response.clone());
+            }
+          } catch (error) {
+            console.warn('[PWA] Font precache skipped:', url, error);
+          }
+        })
+      );
 
       const runtimeCache = await caches.open(RUNTIME_CACHE);
       await Promise.all(

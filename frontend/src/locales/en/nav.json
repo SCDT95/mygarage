@@ -10,7 +10,19 @@
   "calendar": "Calendar",
   "settings": "Settings",
   "about": "About",
+  "quickSettings": "Quick settings",
+  "themeToggle": "Toggle theme",
+  "allSettings": "All settings",
   "login": "Login",
   "logout": "Logout",
-  "admin": "ADMIN"
+  "admin": "ADMIN",
+  "search": "Search",
+  "searchPlaceholder": "Search vehicles, service, VIN…",
+  "openMenu": "Open menu",
+  "closeMenu": "Close menu",
+  "searchShellTitle": "Search is coming soon",
+  "searchShellBody": "Global search across vehicles, service history, and VINs is on the way.",
+  "notifications": "Notifications",
+  "notificationsEmptyTitle": "No notifications",
+  "notificationsEmptyBody": "You are all caught up. New alerts will appear here."
 }

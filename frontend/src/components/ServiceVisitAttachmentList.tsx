@@ -6,6 +6,7 @@ import { toast } from 'sonner'
 import api from '../services/api'
 import { apiRelative } from '../utils/basePath'
 import type { Attachment } from '../types/attachment'
+import { Card, IconButton, EmptyState, Mono } from './ui'
 
 interface ServiceVisitAttachmentListProps {
   visitId: number
@@ -86,70 +87,56 @@ export default function ServiceVisitAttachmentList({
   }
 
   if (loading) {
-    return (
-      <div className="text-center py-4 text-garage-text-muted text-sm">
-        {t('serviceVisitAttachments.loading')}
-      </div>
-    )
+    return <div className="text-center py-4 text-text-mute text-sm">{t('serviceVisitAttachments.loading')}</div>
   }
 
   if (error) {
     return (
       <div className="flex items-start gap-2 p-3 bg-danger/10 border border-danger/20 rounded-md">
-        <AlertCircle className="w-4 h-4 text-danger flex-shrink-0 mt-0.5" />
+        <AlertCircle aria-hidden="true" className="w-4 h-4 text-danger flex-shrink-0 mt-0.5" />
         <p className="text-sm text-danger">{error}</p>
       </div>
     )
   }
 
   if (attachments.length === 0) {
-    return (
-      <div className="text-center py-4 text-garage-text-muted text-sm">
-        <FileText className="w-8 h-8 mx-auto mb-2 opacity-50" />
-        <p>{t('serviceVisitAttachments.empty')}</p>
-      </div>
-    )
+    return <EmptyState size="sm" icon={FileText} title={t('serviceVisitAttachments.empty')} />
   }
 
   return (
     <div className="space-y-2">
-        {attachments.map((attachment) => (
-          <div
-            key={attachment.id}
-            className="flex items-center justify-between p-3 bg-garage-bg border border-garage-border rounded-md hover:border-primary/50 transition-colors"
-          >
+      {attachments.map((attachment) => (
+        <Card key={attachment.id} padding="sm">
+          <div className="flex items-center justify-between gap-3">
             <div className="flex items-center gap-3 flex-1 min-w-0">
-              <div className="text-garage-text-muted">{getFileIcon(attachment.file_type)}</div>
+              <div className="text-text-mute">{getFileIcon(attachment.file_type)}</div>
               <div className="flex-1 min-w-0">
-                <p className="text-sm font-medium text-garage-text truncate">{attachment.file_name}</p>
-                <p className="text-xs text-garage-text-muted">
-                  {formatFileSize(attachment.file_size)} •{' '}
-                  {formatDateForDisplay(attachment.uploaded_at.split('T')[0])}
-                </p>
+                <p className="text-sm font-medium text-text truncate">{attachment.file_name}</p>
+                <Mono as="p" size="xs" tone="muted">
+                  {formatFileSize(attachment.file_size)} • {formatDateForDisplay(attachment.uploaded_at.split('T')[0])}
+                </Mono>
               </div>
             </div>
-
             <div className="flex items-center gap-2">
-              <button
+              <IconButton
+                icon={Download}
+                label={t('serviceVisitAttachments.download')}
+                variant="ghost"
+                size="sm"
                 onClick={() => handleDownload(attachment)}
-                className="p-2 text-primary hover:bg-primary/10 rounded transition-colors"
-                aria-label={t('serviceVisitAttachments.download')}
-                title={t('serviceVisitAttachments.download')}
-              >
-                <Download className="w-4 h-4" />
-              </button>
-              <button
-                onClick={() => handleDelete(attachment.id)}
+              />
+              <IconButton
+                icon={Trash2}
+                label={t('common:delete')}
+                variant="danger"
+                size="sm"
                 disabled={deletingId === attachment.id}
-                className="p-2 text-danger hover:bg-danger/10 rounded transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                aria-label={t('common:delete')}
-                title={t('common:delete')}
-              >
-                <Trash2 className="w-4 h-4" />
-              </button>
+                onClick={() => handleDelete(attachment.id)}
+              />
             </div>
           </div>
-        ))}
+        </Card>
+      ))}
     </div>
   )
 }

@@ -20,6 +20,9 @@ import { useLatestMileage } from '../hooks/useLatestMileage'
 import { UnitConverter, UnitFormatter } from '../utils/units'
 import { toCanonicalKm } from '../utils/decimalSafe'
 import { canonicalToDisplay, displayToCanonical } from '../utils/supplyUnits'
+import { Button, Field, Input, Textarea, Mono } from './ui'
+import { formatCurrency, formatCurrencyZero } from '../utils/formatUtils'
+import { useCurrencyPreference } from '../hooks/useCurrencyPreference'
 
 // Shared by the edit-hydration effect (canonical -> display, via
 // canonicalToDisplay) and mapSuppliesUsedForSubmit (display -> canonical, via
@@ -77,6 +80,7 @@ export default function ServiceVisitForm({
   const { t } = useTranslation('forms')
   const isEdit = !!visit
   const { system } = useUnitPreference()
+  const { currencyCode, locale } = useCurrencyPreference()
   const createMutation = useCreateServiceVisit(vin)
   const updateMutation = useUpdateServiceVisit(vin)
   const isMotorized = !vehicleType || !NON_MOTORIZED_TYPES.includes(vehicleType)
@@ -411,57 +415,71 @@ export default function ServiceVisitForm({
   }
 
   return (
-    <FormModalWrapper title={isEdit ? t('service.editTitle') : t('service.createTitle')} onClose={onClose} maxWidth="max-w-full sm:max-w-3xl">
-        <form onSubmit={handleSubmit} className="p-6 space-y-6">
+    <FormModalWrapper
+      title={isEdit ? t('service.editTitle') : t('service.createTitle')}
+      onClose={onClose}
+      width="lg"
+      footer={
+        <>
+          <Button variant="secondary" onClick={onClose} disabled={submitting}>
+            {t('common:cancel')}
+          </Button>
+          <Button
+            type="submit"
+            form="service-visit-form"
+            variant="primary"
+            icon={Save}
+            loading={submitting}
+            disabled={submitting || (isEdit && !editHydrated)}
+          >
+            {submitting ? t('common:saving') : isEdit ? t('common:update') : t('common:create')}
+          </Button>
+        </>
+      }
+    >
+        <form id="service-visit-form" onSubmit={handleSubmit} className="p-6 space-y-6">
           {error && (
             <div className="bg-danger/10 border border-danger rounded-lg p-3 flex items-center gap-2">
-              <AlertTriangle className="w-5 h-5 text-danger" />
+              <AlertTriangle aria-hidden="true" className="w-5 h-5 text-danger" />
               <p className="text-sm text-danger">{error}</p>
             </div>
           )}
 
           {/* Visit Details */}
           <div className="space-y-4">
-            <h3 className="text-sm font-semibold text-garage-text-muted uppercase tracking-wide">
-              {t('service.visitDetails')}
-            </h3>
+            <h3 className="text-sm font-semibold text-text-mute uppercase tracking-wide">{t('service.visitDetails')}</h3>
 
             <div className={`grid grid-cols-1 ${isMotorized ? 'md:grid-cols-2' : ''} gap-4`}>
-              <div>
-                <label className="block text-sm font-medium text-garage-text mb-1">
-                  {t('common:date')} <span className="text-danger">*</span>
-                </label>
-                <input
+              <Field id="service-date" label={t('common:date')} required>
+                <Input
                   type="date"
+                  id="service-date"
                   value={formData.date}
                   onChange={(e) => handleFieldChange('date', e.target.value)}
                   required
                   disabled={submitting}
-                  className="w-full px-3 py-2 border border-garage-border rounded-md focus:outline-none focus:ring-2 focus:ring-primary bg-garage-bg text-garage-text"
                 />
-              </div>
+              </Field>
 
               {isMotorized && (
-                <div>
-                  <label className="block text-sm font-medium text-garage-text mb-1">
-                    {t('common:mileage')} ({UnitFormatter.getDistanceUnit(system)})
-                  </label>
-                  <input
+                <Field id="service-odometer" label={t('common:mileage')} unit={UnitFormatter.getDistanceUnit(system)}>
+                  <Input
                     type="number"
+                    id="service-odometer"
+                    mono
                     value={formData.odometer_km ?? ''}
                     onChange={(e) => handleFieldChange('odometer_km', e.target.value ? parseFloat(e.target.value) : undefined)}
                     min="0"
                     step="0.1"
                     placeholder={system === 'imperial' ? '45000' : '72420'}
                     disabled={submitting}
-                    className="w-full px-3 py-2 border border-garage-border rounded-md focus:outline-none focus:ring-2 focus:ring-primary bg-garage-bg text-garage-text"
                   />
-                </div>
+                </Field>
               )}
             </div>
 
-            <div>
-              <label className="block text-sm font-medium text-garage-text mb-1">{t('service.vendorShop')}</label>
+            <div className="mb-4">
+              <label className="mb-1 block text-sm font-medium text-text">{t('service.vendorShop')}</label>
               <VendorSearch
                 value={formData.vendor_id}
                 onSelect={(vendor) => handleFieldChange('vendor_id', vendor?.id)}
@@ -469,48 +487,36 @@ export default function ServiceVisitForm({
               />
             </div>
 
-            <div>
-              <label className="block text-sm font-medium text-garage-text mb-1">
-                {t('service.insuranceClaim')}
-              </label>
-              <input
+            <Field id="insurance-claim" label={t('service.insuranceClaim')}>
+              <Input
                 type="text"
+                id="insurance-claim"
                 value={formData.insurance_claim_number}
                 onChange={(e) => handleFieldChange('insurance_claim_number', e.target.value)}
                 placeholder="Claim #12345"
                 disabled={submitting}
-                className="w-full px-3 py-2 border border-garage-border rounded-md focus:outline-none focus:ring-2 focus:ring-primary bg-garage-bg text-garage-text"
               />
-            </div>
+            </Field>
 
-            <div>
-              <label className="block text-sm font-medium text-garage-text mb-1">{t('service.visitNotes')}</label>
-              <textarea
+            <Field id="visit-notes" label={t('service.visitNotes')}>
+              <Textarea
+                id="visit-notes"
+                rows={2}
                 value={formData.notes}
                 onChange={(e) => handleFieldChange('notes', e.target.value)}
                 placeholder={t('service.visitNotesPlaceholder')}
-                rows={2}
                 disabled={submitting}
-                className="w-full px-3 py-2 border border-garage-border rounded-md focus:outline-none focus:ring-2 focus:ring-primary bg-garage-bg text-garage-text"
               />
-            </div>
+            </Field>
           </div>
 
           {/* Line Items */}
           <div className="space-y-4">
             <div className="flex items-center justify-between">
-              <h3 className="text-sm font-semibold text-garage-text-muted uppercase tracking-wide">
-                {t('service.servicesPerformed')}
-              </h3>
-              <button
-                type="button"
-                onClick={handleAddLineItem}
-                disabled={submitting}
-                className="flex items-center gap-1 text-sm text-primary hover:text-primary/80"
-              >
-                <Plus className="w-4 h-4" />
+              <h3 className="text-sm font-semibold text-text-mute uppercase tracking-wide">{t('service.servicesPerformed')}</h3>
+              <Button variant="ghost" size="sm" icon={Plus} onClick={handleAddLineItem} disabled={submitting}>
                 {t('service.addItem')}
-              </button>
+              </Button>
             </div>
 
             <div className="space-y-3">
@@ -532,14 +538,9 @@ export default function ServiceVisitForm({
                   {/* Quick action to add repair from failed inspection */}
                   {item.is_inspection &&
                     (item.inspection_result === 'failed' || item.inspection_result === 'needs_attention') && (
-                      <button
-                        type="button"
-                        onClick={() => handleAddRepairFromInspection(index)}
-                        className="mt-2 ml-4 text-sm text-primary hover:text-primary/80 flex items-center gap-1"
-                      >
-                        <Plus className="w-3 h-3" />
+                      <Button variant="ghost" size="sm" icon={Plus} onClick={() => handleAddRepairFromInspection(index)} className="mt-2 ml-4">
                         {t('service.addRepairForInspection')}
-                      </button>
+                      </Button>
                     )}
                 </div>
               ))}
@@ -548,146 +549,112 @@ export default function ServiceVisitForm({
 
           {/* Tax & Fees */}
           <div className="space-y-4">
-            <h3 className="text-sm font-semibold text-garage-text-muted uppercase tracking-wide">
-              {t('service.taxAndFees')}
-            </h3>
+            <h3 className="text-sm font-semibold text-text-mute uppercase tracking-wide">{t('service.taxAndFees')}</h3>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <div>
-                <label className="block text-sm font-medium text-garage-text mb-1">{t('service.tax')}</label>
+              <Field id="tax-amount" label={t('service.tax')}>
                 <div className="relative">
                   <CurrencyInputPrefix />
                   <input
                     type="number"
+                    id="tax-amount"
                     value={formData.tax_amount ?? ''}
                     onChange={(e) => handleFieldChange('tax_amount', e.target.value ? parseFloat(e.target.value) : undefined)}
                     min="0"
                     step="0.01"
                     placeholder="0.00"
                     disabled={submitting}
-                    className="w-full pl-7 pr-3 py-2 border border-garage-border rounded-md focus:outline-none focus:ring-2 focus:ring-primary bg-garage-bg text-garage-text"
+                    className="ui-focus-input ui-motion w-full rounded-control border border-border bg-surface-2 pl-7 pr-3 py-2 text-sm text-text font-mono tabular-nums"
                   />
                 </div>
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-garage-text mb-1">{t('service.shopSupplies')}</label>
+              </Field>
+              <Field id="shop-supplies" label={t('service.shopSupplies')}>
                 <div className="relative">
                   <CurrencyInputPrefix />
                   <input
                     type="number"
+                    id="shop-supplies"
                     value={formData.shop_supplies ?? ''}
                     onChange={(e) => handleFieldChange('shop_supplies', e.target.value ? parseFloat(e.target.value) : undefined)}
                     min="0"
                     step="0.01"
                     placeholder="0.00"
                     disabled={submitting}
-                    className="w-full pl-7 pr-3 py-2 border border-garage-border rounded-md focus:outline-none focus:ring-2 focus:ring-primary bg-garage-bg text-garage-text"
+                    className="ui-focus-input ui-motion w-full rounded-control border border-border bg-surface-2 pl-7 pr-3 py-2 text-sm text-text font-mono tabular-nums"
                   />
                 </div>
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-garage-text mb-1">{t('service.miscFees')}</label>
+              </Field>
+              <Field id="misc-fees" label={t('service.miscFees')}>
                 <div className="relative">
                   <CurrencyInputPrefix />
                   <input
                     type="number"
+                    id="misc-fees"
                     value={formData.misc_fees ?? ''}
                     onChange={(e) => handleFieldChange('misc_fees', e.target.value ? parseFloat(e.target.value) : undefined)}
                     min="0"
                     step="0.01"
                     placeholder="0.00"
                     disabled={submitting}
-                    className="w-full pl-7 pr-3 py-2 border border-garage-border rounded-md focus:outline-none focus:ring-2 focus:ring-primary bg-garage-bg text-garage-text"
+                    className="ui-focus-input ui-motion w-full rounded-control border border-border bg-surface-2 pl-7 pr-3 py-2 text-sm text-text font-mono tabular-nums"
                   />
                 </div>
-              </div>
+              </Field>
             </div>
           </div>
 
           {/* Total */}
-          <div className="space-y-2 pt-4 border-t border-garage-border">
-            <div className="flex items-center justify-end gap-2 text-sm text-garage-text-muted">
+          <div className="space-y-2 pt-4 border-t border-border">
+            <div className="flex items-center justify-end gap-2 text-sm text-text-mute">
               <span>{t('service.subtotal')}:</span>
-              <span>${subtotal.toFixed(2)}</span>
+              <Mono>{formatCurrencyZero(subtotal, { currencyCode, locale })}</Mono>
             </div>
             {(formData.tax_amount || formData.shop_supplies || formData.misc_fees || partsSupplies > 0) && (
               <>
                 {formData.tax_amount && (
-                  <div className="flex items-center justify-end gap-2 text-sm text-garage-text-muted">
+                  <div className="flex items-center justify-end gap-2 text-sm text-text-mute">
                     <span>{t('service.tax')}:</span>
-                    <span>${formData.tax_amount.toFixed(2)}</span>
+                    <Mono>{formatCurrency(formData.tax_amount, { currencyCode, locale })}</Mono>
                   </div>
                 )}
                 {formData.shop_supplies && (
-                  <div className="flex items-center justify-end gap-2 text-sm text-garage-text-muted">
+                  <div className="flex items-center justify-end gap-2 text-sm text-text-mute">
                     <span>{t('service.shopSupplies')}:</span>
-                    <span>${formData.shop_supplies.toFixed(2)}</span>
+                    <Mono>{formatCurrency(formData.shop_supplies, { currencyCode, locale })}</Mono>
                   </div>
                 )}
                 {formData.misc_fees && (
-                  <div className="flex items-center justify-end gap-2 text-sm text-garage-text-muted">
+                  <div className="flex items-center justify-end gap-2 text-sm text-text-mute">
                     <span>{t('service.miscFees')}:</span>
-                    <span>${formData.misc_fees.toFixed(2)}</span>
+                    <Mono>{formatCurrency(formData.misc_fees, { currencyCode, locale })}</Mono>
                   </div>
                 )}
                 {partsSupplies > 0 && (
-                  <div className="flex items-center justify-end gap-2 text-sm text-garage-text-muted">
+                  <div className="flex items-center justify-end gap-2 text-sm text-text-mute">
                     <span>{t('service.partsSupplies')}:</span>
-                    <span>${partsSupplies.toFixed(2)}</span>
+                    <Mono>{formatCurrency(partsSupplies, { currencyCode, locale })}</Mono>
                   </div>
                 )}
               </>
             )}
             <div className="flex items-center justify-end gap-2">
-              <span className="text-sm text-garage-text-muted">{t('common:totalCost')}:</span>
-              <span className="text-lg font-semibold text-garage-text">${totalCost.toFixed(2)}</span>
+              <span className="text-sm text-text-mute">{t('common:totalCost')}:</span>
+              <Mono size="lg" weight="bold">{formatCurrencyZero(totalCost, { currencyCode, locale })}</Mono>
             </div>
           </div>
 
           {/* Attachments (only in edit mode) */}
           {isEdit && visit && (
-            <div className="space-y-4 pt-4 border-t border-garage-border">
+            <div className="space-y-4 pt-4 border-t border-border">
               <div className="flex items-center gap-2">
-                <Paperclip className="w-4 h-4 text-garage-text-muted" />
-                <h3 className="text-sm font-semibold text-garage-text-muted uppercase tracking-wide">
-                  {t('service.attachments')}
-                </h3>
+                <Paperclip aria-hidden="true" className="w-4 h-4 text-text-mute" />
+                <h3 className="text-sm font-semibold text-text-mute uppercase tracking-wide">{t('service.attachments')}</h3>
               </div>
-
-              <ServiceVisitAttachmentList
-                visitId={visit.id}
-                refreshTrigger={attachmentRefreshKey}
-              />
-
-              <ServiceVisitAttachmentUpload
-                visitId={visit.id}
-                onUploadSuccess={() => setAttachmentRefreshKey((k) => k + 1)}
-              />
+              <ServiceVisitAttachmentList visitId={visit.id} refreshTrigger={attachmentRefreshKey} />
+              <ServiceVisitAttachmentUpload visitId={visit.id} onUploadSuccess={() => setAttachmentRefreshKey((k) => k + 1)} />
             </div>
           )}
-
-          {/* Actions */}
-          <div className="flex gap-3 pt-4">
-            <button
-              type="submit"
-              disabled={submitting || (isEdit && !editHydrated)}
-              className="flex items-center gap-2 btn btn-primary rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              <Save className="w-4 h-4" />
-              <span>{submitting ? t('common:saving') : isEdit ? t('common:update') : t('common:create')}</span>
-            </button>
-
-            <button
-              type="button"
-              onClick={onClose}
-              disabled={submitting}
-              className="btn btn-primary rounded-lg transition-colors"
-            >
-              {t('common:cancel')}
-            </button>
-          </div>
-
           {isEdit && !editHydrated && (
-            <p className="text-sm text-garage-text-muted">
+            <p className="text-sm text-text-mute">
               {suppliesError ? t('service.suppliesLoadFailed') : t('service.suppliesLoading')}
             </p>
           )}

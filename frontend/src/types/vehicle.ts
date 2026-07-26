@@ -18,6 +18,7 @@ export type VehicleListResponse = components['schemas']['VehicleListResponse']
 export type TrailerDetails = components['schemas']['TrailerDetailsResponse']
 export type TrailerDetailsCreate = components['schemas']['TrailerDetailsCreate']
 export type TrailerDetailsUpdate = components['schemas']['TrailerDetailsUpdate']
+export type VehicleDetailStats = components['schemas']['VehicleDetailStats']
 
 /** Derived from the generated VehicleResponse vehicle_type enum */
 export type VehicleType = NonNullable<Vehicle['vehicle_type']>

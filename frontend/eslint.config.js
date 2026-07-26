@@ -5,7 +5,9 @@ import reactRefresh from 'eslint-plugin-react-refresh'
 import tseslint from 'typescript-eslint'
 
 export default tseslint.config(
-  { ignores: ['dist', 'node_modules'] },
+  {
+    ignores: ['dist', 'node_modules'],
+  },
   {
     extends: [js.configs.recommended, ...tseslint.configs.recommended],
     files: ['**/*.{ts,tsx}'],
@@ -34,6 +36,10 @@ export default tseslint.config(
         'warn',
         { argsIgnorePattern: '^_', varsIgnorePattern: '^_' },
       ],
+      // The i18n validators' regexes are single-quote-only, so a double-quoted
+      // t("key") or label: "English" is invisible to both gates. Zero
+      // double-quoted t( exists today by luck; the reskin rewrites ~180 files.
+      quotes: ['error', 'single', { avoidEscape: true, allowTemplateLiterals: true }],
       // i18n guards: prevent raw currency and hardcoded locale outside utility files
       'no-restricted-syntax': [
         'warn',
@@ -58,6 +64,13 @@ export default tseslint.config(
         },
       ],
     },
+  },
+  // openapi-typescript emits double-quoted strings and the file is regenerated
+  // by CI's check:api-freshness — hand-fixing quote style would fight the
+  // generator forever. Silence only `quotes`; every other rule still applies.
+  {
+    files: ['src/types/api.generated.ts'],
+    rules: { quotes: 'off' },
   },
   // Exempt utility files from the i18n lint guards (they ARE the centralized implementation)
   {

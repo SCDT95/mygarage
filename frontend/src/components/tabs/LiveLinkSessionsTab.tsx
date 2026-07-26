@@ -18,6 +18,7 @@ import {
 } from 'lucide-react'
 import { livelinkService } from '@/services/livelinkService'
 import type { DriveSession, DriveSessionListResponse } from '@/types/livelink'
+import { Card, Chip, Mono, EmptyState, Tile } from '../ui'
 import { useUnitPreference } from '@/hooks/useUnitPreference'
 import { useTimeFormat } from '@/hooks/useTimeFormat'
 import { formatAPITimestamp, formatTime } from '@/utils/parseAPITimestamp'
@@ -93,27 +94,21 @@ export default function LiveLinkSessionsTab({ vin }: LiveLinkSessionsTabProps) {
   if (loading) {
     return (
       <div className="flex items-center justify-center py-12">
-        <RefreshCw className="w-8 h-8 text-primary animate-spin" />
+        <RefreshCw className="w-8 h-8 text-text-mute animate-spin" />
       </div>
     )
   }
 
   if (!sessions || sessions.sessions.length === 0) {
     return (
-      <div className="bg-garage-surface rounded-lg border border-garage-border p-8 text-center">
-        <Clock className="w-12 h-12 mx-auto mb-3 text-garage-text-muted opacity-50" />
-        <p className="text-garage-text">{t('livelink.sessions.noRecords')}</p>
-        <p className="text-sm text-garage-text-muted mt-2">
-          {t('livelink.sessions.autoDetected')}
-        </p>
-      </div>
+      <EmptyState icon={Clock} title={t('livelink.sessions.noRecords')} description={t('livelink.sessions.autoDetected')} />
     )
   }
 
   return (
     <div className="space-y-4">
       {/* Session Count */}
-      <div className="flex items-center justify-between text-sm text-garage-text-muted">
+      <div className="flex items-center justify-between text-sm text-text-mute">
         <span>{t('livelink.sessions.sessionCount', { count: sessions.total })}</span>
       </div>
 
@@ -157,26 +152,19 @@ function SessionCard({
   const isActive = !session.ended_at
 
   return (
-    <div className="bg-garage-surface rounded-lg border border-garage-border overflow-hidden">
+    <Card padding="none" className="overflow-hidden">
       {/* Header - Always Visible */}
-      <button
-        onClick={onToggle}
-        className="w-full p-4 flex items-center justify-between hover:bg-garage-bg/50 transition-colors"
-      >
+      <button onClick={onToggle} className="w-full p-4 flex items-center justify-between hover:bg-surface-2/50 ui-motion">
         <div className="flex items-center gap-4">
           <div className="flex items-center gap-2">
-            <Calendar className="w-5 h-5 text-primary" />
+            <Calendar aria-hidden="true" className="w-5 h-5 text-text-mute" />
             <div className="text-left">
-              <div className="text-garage-text font-medium">
+              <div className="text-text font-medium">
                 {formatAPITimestamp(session.started_at, (d) =>
-                  d.toLocaleDateString(undefined, {
-                    weekday: 'short',
-                    month: 'short',
-                    day: 'numeric',
-                  }),
+                  d.toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' }),
                 )}
               </div>
-              <div className="text-xs text-garage-text-muted">
+              <div className="text-xs text-text-mute">
                 {formatTime(session.started_at, timeFormat)}
                 {session.ended_at && (
                   <>
@@ -187,118 +175,57 @@ function SessionCard({
               </div>
             </div>
           </div>
-          {isActive && (
-            <span className="flex items-center gap-1 px-2 py-1 bg-green-500/20 text-green-500 text-xs rounded">
-              <Activity className="w-3 h-3" />
-              {t('livelink.sessions.inProgress')}
-            </span>
-          )}
+          {isActive && <Chip tone="success" icon={Activity}>{t('livelink.sessions.inProgress')}</Chip>}
         </div>
 
         <div className="flex items-center gap-6">
           {/* Quick Stats */}
-          <div className="hidden md:flex items-center gap-6 text-sm text-garage-text-muted">
+          <div className="hidden md:flex items-center gap-6 text-sm text-text-mute">
             <div className="flex items-center gap-1">
-              <Clock className="w-4 h-4" />
-              <span>{formatDuration(session.duration_seconds)}</span>
+              <Clock aria-hidden="true" className="w-4 h-4" />
+              <Mono size="sm">{formatDuration(session.duration_seconds)}</Mono>
             </div>
             {session.distance_km != null && (
               <div className="flex items-center gap-1">
-                <MapPin className="w-4 h-4" />
-                <span>{formatOdometer(session.distance_km)}</span>
+                <MapPin aria-hidden="true" className="w-4 h-4" />
+                <Mono size="sm">{formatOdometer(session.distance_km)}</Mono>
               </div>
             )}
             {session.max_speed != null && (
               <div className="flex items-center gap-1">
-                <Gauge className="w-4 h-4" />
-                <span>{formatSpeed(session.max_speed)}</span>
+                <Gauge aria-hidden="true" className="w-4 h-4" />
+                <Mono size="sm">{formatSpeed(session.max_speed)}</Mono>
               </div>
             )}
           </div>
 
           {isExpanded ? (
-            <ChevronUp className="w-5 h-5 text-garage-text-muted" />
+            <ChevronUp aria-hidden="true" className="w-5 h-5 text-text-mute" />
           ) : (
-            <ChevronDown className="w-5 h-5 text-garage-text-muted" />
+            <ChevronDown aria-hidden="true" className="w-5 h-5 text-text-mute" />
           )}
         </div>
       </button>
 
       {/* Expanded Details */}
       {isExpanded && (
-        <div className="px-4 pb-4 border-t border-garage-border">
+        <div className="px-4 pb-4 border-t border-border">
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4 pt-4">
-            {/* Duration */}
-            <StatCard
-              icon={<Clock className="w-5 h-5 text-primary" />}
-              label={t('livelink.sessions.duration')}
-              value={formatDuration(session.duration_seconds)}
-            />
-
-            {/* Distance */}
-            <StatCard
-              icon={<MapPin className="w-5 h-5 text-primary" />}
-              label={t('livelink.sessions.distance')}
-              value={formatOdometer(session.distance_km)}
-            />
-
-            {/* Speed */}
-            <StatCard
-              icon={<Gauge className="w-5 h-5 text-primary" />}
-              label={t('livelink.sessions.avgMaxSpeed')}
-              value={`${formatSpeed(session.avg_speed)} / ${formatSpeed(session.max_speed)}`}
-            />
-
-            {/* RPM */}
+            <Tile icon={Clock} label={t('livelink.sessions.duration')} value={formatDuration(session.duration_seconds)} />
+            <Tile icon={MapPin} label={t('livelink.sessions.distance')} value={formatOdometer(session.distance_km)} />
+            <Tile icon={Gauge} label={t('livelink.sessions.avgMaxSpeed')} value={`${formatSpeed(session.avg_speed)} / ${formatSpeed(session.max_speed)}`} />
             {session.avg_rpm != null && (
-              <StatCard
-                icon={<Activity className="w-5 h-5 text-primary" />}
-                label={t('livelink.sessions.avgMaxRPM')}
-                value={`${session.avg_rpm?.toFixed(0) || '--'} / ${session.max_rpm?.toFixed(0) || '--'}`}
-              />
+              <Tile icon={Activity} label={t('livelink.sessions.avgMaxRPM')} value={`${session.avg_rpm?.toFixed(0) || '--'} / ${session.max_rpm?.toFixed(0) || '--'}`} />
             )}
-
-            {/* Coolant Temp */}
             {session.avg_coolant_temp != null && (
-              <StatCard
-                icon={<Thermometer className="w-5 h-5 text-primary" />}
-                label={t('livelink.sessions.avgMaxCoolant')}
-                value={`${formatTemp(session.avg_coolant_temp)} / ${formatTemp(session.max_coolant_temp)}`}
-              />
+              <Tile icon={Thermometer} label={t('livelink.sessions.avgMaxCoolant')} value={`${formatTemp(session.avg_coolant_temp)} / ${formatTemp(session.max_coolant_temp)}`} />
             )}
-
-            {/* Odometer */}
             {session.start_odometer != null && (
-              <StatCard
-                icon={<Gauge className="w-5 h-5 text-primary" />}
-                label={t('livelink.sessions.odometerStartEnd')}
-                value={`${formatOdometer(session.start_odometer)} → ${formatOdometer(session.end_odometer)}`}
-              />
+              <Tile icon={Gauge} label={t('livelink.sessions.odometerStartEnd')} value={`${formatOdometer(session.start_odometer)} → ${formatOdometer(session.end_odometer)}`} />
             )}
           </div>
         </div>
       )}
-    </div>
-  )
-}
-
-// Stat Card Component
-function StatCard({
-  icon,
-  label,
-  value,
-}: {
-  icon: React.ReactNode
-  label: string
-  value: string
-}) {
-  return (
-    <div className="bg-garage-bg rounded-lg p-3">
-      <div className="flex items-center gap-2 mb-1">
-        {icon}
-        <span className="text-xs text-garage-text-muted">{label}</span>
-      </div>
-      <div className="text-sm font-medium text-garage-text">{value}</div>
-    </div>
+    </Card>
   )
 }

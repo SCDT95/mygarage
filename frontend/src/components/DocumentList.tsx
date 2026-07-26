@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { formatDateForDisplay } from '../utils/dateUtils'
 import { FileText, Plus, Trash2, Download, Edit3, Save, X } from 'lucide-react'
+import { Button, IconButton, Card, Chip, Mono, EmptyState, Field, Input, Textarea } from './ui'
 import { toast } from 'sonner'
 import api from '../services/api'
 import type { Document } from '../types/document'
@@ -112,7 +113,7 @@ export default function DocumentList({ vin, onAddClick }: DocumentListProps) {
   if (isLoading) {
     return (
       <div className="flex justify-center items-center min-h-[200px]">
-        <div className="text-garage-text-muted">{t('documentList.loading')}</div>
+        <div className="text-text-mute">{t('documentList.loading')}</div>
       </div>
     )
   }
@@ -129,92 +130,73 @@ export default function DocumentList({ vin, onAddClick }: DocumentListProps) {
     <div className="space-y-4">
       <div className="flex justify-between items-center">
         <div className="flex items-center gap-2">
-          <FileText className="w-5 h-5 text-garage-text-muted" />
-          <h3 className="text-lg font-semibold text-garage-text">{t('documentList.title')}</h3>
-          <span className="text-sm text-garage-text-muted">({t('documentList.fileCount', { count: documents.length })})</span>
+          <FileText aria-hidden="true" className="w-5 h-5 text-text-mute" />
+          <h3 className="text-lg font-semibold text-text">{t('documentList.title')}</h3>
+          <span className="text-sm text-text-mute">({t('documentList.fileCount', { count: documents.length })})</span>
         </div>
-        <button
-          onClick={onAddClick}
-          className="flex items-center gap-2 btn btn-primary rounded-lg transition-colors"
-        >
-          <Plus className="w-4 h-4" />
-          <span>{t('documentList.uploadDocument')}</span>
-        </button>
+        <Button variant="primary" icon={Plus} onClick={onAddClick}>{t('documentList.uploadDocument')}</Button>
       </div>
 
       {documents.length === 0 ? (
-        <div className="bg-garage-surface border border-garage-border rounded-lg p-8 text-center">
-          <FileText className="w-12 h-12 text-garage-text-muted opacity-50 mx-auto mb-3" />
-          <p className="text-garage-text mb-2">{t('documentList.noRecords')}</p>
-          <p className="text-sm text-garage-text-muted mb-4">
-            {t('documentList.noRecordsDesc')}
-          </p>
-          <button
-            onClick={onAddClick}
-            className="inline-flex items-center gabtn-primary transition-colors"
-          >
-            <Plus className="w-4 h-4" />
-            <span>{t('documentList.uploadFirstDocument')}</span>
-          </button>
-        </div>
+        <EmptyState
+          icon={FileText}
+          title={t('documentList.noRecords')}
+          description={t('documentList.noRecordsDesc')}
+          action={
+            <Button variant="primary" icon={Plus} onClick={onAddClick}>
+              {t('documentList.uploadFirstDocument')}
+            </Button>
+          }
+        />
       ) : (
         <div className="space-y-3">
           {documents.map((doc) => (
-            <div
+            <Card
               key={doc.id}
-              className="bg-garage-surface border border-garage-border rounded-lg p-4 hover:border-primary/50 transition-colors"
+              padding="sm"
+              className="hover:border-(--accent-line) transition-colors"
             >
               {editingId === doc.id ? (
                 <div className="space-y-3">
-                  <div>
-                    <label className="block text-sm font-medium text-garage-text mb-1">{t('documentList.titleLabel')}</label>
-                    <input
+                  <Field id="edit-title" label={t('documentList.titleLabel')}>
+                    <Input
+                      id="edit-title"
                       type="text"
                       value={editData.title}
                       onChange={(e) => setEditData({ ...editData, title: e.target.value })}
-                      className="w-full px-3 py-2 border border-garage-border rounded-md focus:outline-none focus:ring-2 focus:ring-primary bg-garage-bg text-garage-text"
                     />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-garage-text mb-1">{t('documentList.typeLabel')}</label>
+                  </Field>
+                  <Field id="edit-document_type" label={t('documentList.typeLabel')}>
                     <select
+                      id="edit-document_type"
                       value={editData.document_type}
                       onChange={(e) => setEditData({ ...editData, document_type: e.target.value })}
-                      className="w-full px-3 py-2 border border-garage-border rounded-md focus:outline-none focus:ring-2 focus:ring-primary bg-garage-bg text-garage-text"
+                      className="ui-focus-input ui-motion w-full rounded-control border border-border bg-surface-2 px-3 py-2 text-sm text-text"
                     >
-                      <option value="" className="bg-garage-bg text-garage-text">{t('documentList.selectType')}</option>
-                      <option value="Insurance" className="bg-garage-bg text-garage-text">{t('documentList.typeInsurance')}</option>
-                      <option value="Registration" className="bg-garage-bg text-garage-text">{t('documentList.typeRegistration')}</option>
-                      <option value="Manual" className="bg-garage-bg text-garage-text">{t('documentList.typeManual')}</option>
-                      <option value="Receipt" className="bg-garage-bg text-garage-text">{t('documentList.typeReceipt')}</option>
-                      <option value="Inspection" className="bg-garage-bg text-garage-text">{t('documentList.typeInspection')}</option>
-                      <option value="Other" className="bg-garage-bg text-garage-text">{t('documentList.typeOther')}</option>
+                      <option value="">{t('documentList.selectType')}</option>
+                      <option value="Insurance">{t('documentList.typeInsurance')}</option>
+                      <option value="Registration">{t('documentList.typeRegistration')}</option>
+                      <option value="Manual">{t('documentList.typeManual')}</option>
+                      <option value="Receipt">{t('documentList.typeReceipt')}</option>
+                      <option value="Inspection">{t('documentList.typeInspection')}</option>
+                      <option value="Other">{t('documentList.typeOther')}</option>
                     </select>
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-garage-text mb-1">{t('documentList.descriptionLabel')}</label>
-                    <textarea
+                  </Field>
+                  <Field id="edit-description" label={t('documentList.descriptionLabel')}>
+                    <Textarea
+                      id="edit-description"
                       value={editData.description}
                       onChange={(e) => setEditData({ ...editData, description: e.target.value })}
                       rows={2}
-                      className="w-full px-3 py-2 border border-garage-border rounded-md focus:outline-none focus:ring-2 focus:ring-primary bg-garage-bg text-garage-text"
                     />
-                  </div>
+                  </Field>
                   <div className="flex gap-2">
-                    <button
-                      onClick={() => saveEdit(doc.id)}
-                      className="flex items-center gap-1 px-3 py-1 bg-primary text-white rounded-md hover:bg-primary-dark text-sm"
-                    >
-                      <Save className="w-3 h-3" />
+                    <Button variant="primary" size="sm" icon={Save} onClick={() => saveEdit(doc.id)}>
                       {t('documentList.save')}
-                    </button>
-                    <button
-                      onClick={cancelEdit}
-                      className="flex items-center gap-1 px-3 py-1 bg-gray-700 border border-gray-600 text-white rounded-md hover:bg-gray-800 text-sm"
-                    >
-                      <X className="w-3 h-3" />
+                    </Button>
+                    <Button variant="secondary" size="sm" icon={X} onClick={cancelEdit}>
                       {t('documentList.cancel')}
-                    </button>
+                    </Button>
                   </div>
                 </div>
               ) : (
@@ -225,50 +207,36 @@ export default function DocumentList({ vin, onAddClick }: DocumentListProps) {
                   <div className="flex-1 min-w-0">
                     <div className="flex items-start justify-between gap-2">
                       <div className="flex-1 min-w-0">
-                        <h4 className="text-garage-text font-medium truncate">{doc.title}</h4>
-                        <p className="text-sm text-garage-text-muted truncate">{doc.file_name}</p>
+                        <h4 className="text-text font-medium truncate">{doc.title}</h4>
+                        <p className="text-sm text-text-mute truncate">{doc.file_name}</p>
                       </div>
                       {doc.document_type && (
-                        <span className="px-2 py-1 bg-primary/20 text-primary text-xs rounded flex-shrink-0">
-                          {doc.document_type}
-                        </span>
+                        <Chip className="flex-shrink-0">{doc.document_type}</Chip>
                       )}
                     </div>
                     {doc.description && (
-                      <p className="text-sm text-garage-text-muted mt-2">{doc.description}</p>
+                      <p className="text-sm text-text-mute mt-2">{doc.description}</p>
                     )}
-                    <div className="flex items-center gap-4 mt-2 text-xs text-garage-text-muted">
-                      <span>{formatFileSize(doc.file_size)}</span>
-                      <span>{t('documentList.uploaded')} {formatDate(doc.uploaded_at)}</span>
+                    <div className="flex items-center gap-4 mt-2 text-xs text-text-mute">
+                      <Mono size="sm" tone="muted">{formatFileSize(doc.file_size)}</Mono>
+                      <span>{t('documentList.uploaded')} <Mono size="sm" tone="muted">{formatDate(doc.uploaded_at)}</Mono></span>
                     </div>
                   </div>
                   <div className="flex items-center gap-1 flex-shrink-0">
-                    <button
-                      onClick={() => handleDownload(doc.id, doc.file_name)}
-                      className="p-2 text-primary hover:bg-primary/10 rounded-full"
-                      title={t('documentList.download')}
-                    >
-                      <Download className="w-4 h-4" />
-                    </button>
-                    <button
-                      onClick={() => startEdit(doc)}
-                      className="p-2 text-garage-text-muted hover:bg-garage-bg rounded-full"
-                      title={t('common:edit')}
-                    >
-                      <Edit3 className="w-4 h-4" />
-                    </button>
-                    <button
-                      onClick={() => handleDelete(doc.id)}
+                    <IconButton icon={Download} label={t('documentList.download')} variant="ghost" size="sm" onClick={() => handleDownload(doc.id, doc.file_name)} />
+                    <IconButton icon={Edit3} label={t('common:edit')} variant="ghost" size="sm" onClick={() => startEdit(doc)} />
+                    <IconButton
+                      icon={Trash2}
+                      label={t('common:delete')}
+                      variant="danger"
+                      size="sm"
                       disabled={deleteMutation.isPending && deleteMutation.variables === doc.id}
-                      className="p-2 text-danger hover:bg-danger/10 rounded-full disabled:opacity-50"
-                      title={t('common:delete')}
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </button>
+                      onClick={() => handleDelete(doc.id)}
+                    />
                   </div>
                 </div>
               )}
-            </div>
+            </Card>
           ))}
         </div>
       )}

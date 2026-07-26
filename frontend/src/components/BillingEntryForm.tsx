@@ -4,6 +4,7 @@ import { useForm, type Resolver } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { Save } from 'lucide-react'
 import FormModalWrapper from './FormModalWrapper'
+import { Button, Field, Input, Textarea } from './ui'
 import CurrencyInputPrefix from './common/CurrencyInputPrefix'
 import type {
   SpotRentalBilling,
@@ -118,191 +119,124 @@ export default function BillingEntryForm({
   }
 
   return (
-    <FormModalWrapper title={isEdit ? t('billing.editTitle') : t('billing.createTitle')} onClose={onClose}>
-        <form onSubmit={handleSubmit(onSubmit as Parameters<typeof handleSubmit>[0])} className="p-6 space-y-6">
+    <FormModalWrapper
+      title={isEdit ? t('billing.editTitle') : t('billing.createTitle')}
+      onClose={onClose}
+      width="md"
+      footer={
+        <>
+          <Button variant="secondary" onClick={onClose} disabled={isSubmitting}>
+            {t('common:cancel')}
+          </Button>
+          <Button type="submit" form="billing-entry-form" variant="primary" icon={Save} loading={isSubmitting} disabled={isSubmitting}>
+            {isSubmitting ? t('common:saving') : isEdit ? t('common:update') : t('common:create')}
+          </Button>
+        </>
+      }
+    >
+        <form id="billing-entry-form" onSubmit={handleSubmit(onSubmit as Parameters<typeof handleSubmit>[0])} className="p-6 space-y-6">
           {error && (
             <div className="bg-danger/10 border border-danger rounded-lg p-3">
               <p className="text-sm text-danger">{error}</p>
             </div>
           )}
 
-          {/* Billing Date */}
-          <div>
-            <label htmlFor="billing_date" className="block text-sm font-medium text-garage-text mb-1">
-              {t('billing.billingDate')} <span className="text-danger">*</span>
-            </label>
-            <input
-              type="date"
-              id="billing_date"
-              {...register('billing_date')}
-              className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-primary bg-garage-bg text-garage-text ${
-                errors.billing_date ? 'border-red-500' : 'border-garage-border'
-              }`}
-            />
-            {errors.billing_date && (
-              <p className="mt-1 text-sm text-danger">{errors.billing_date.message}</p>
-            )}
-          </div>
+          <Field id="billing_date" label={t('billing.billingDate')} required error={errors.billing_date}>
+            <Input id="billing_date" type="date" {...register('billing_date')} invalid={!!errors.billing_date} disabled={isSubmitting} />
+          </Field>
 
-          {/* Monthly Rate */}
-          <div>
-            <label htmlFor="monthly_rate" className="block text-sm font-medium text-garage-text mb-1">
-              {t('spotRental.monthlyRate')}
-            </label>
+          <Field id="monthly_rate" label={t('spotRental.monthlyRate')} error={errors.monthly_rate}>
             <div className="relative">
               <CurrencyInputPrefix />
               <input
                 type="number"
                 id="monthly_rate"
+                min="0"
                 step="0.01"
                 {...register('monthly_rate', { valueAsNumber: true })}
                 placeholder="0.00"
-                className={`w-full pl-7 pr-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-primary bg-garage-bg text-garage-text ${
-                  errors.monthly_rate ? 'border-red-500' : 'border-garage-border'
-                }`}
+                className={`ui-focus-input ui-motion w-full rounded-control border bg-surface-2 pl-7 pr-3 py-2 text-sm text-text font-mono tabular-nums ${errors.monthly_rate ? 'border-danger' : 'border-border'}`}
+                disabled={isSubmitting}
               />
             </div>
-            {errors.monthly_rate && (
-              <p className="mt-1 text-sm text-danger">{errors.monthly_rate.message}</p>
-            )}
-          </div>
+          </Field>
 
-          {/* Utilities Grid */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            {/* Electric */}
-            <div>
-              <label htmlFor="electric" className="block text-sm font-medium text-garage-text mb-1">
-                {t('billingEntryForm.electric')}
-              </label>
+            <Field id="electric" label={t('billingEntryForm.electric')} error={errors.electric}>
               <div className="relative">
                 <CurrencyInputPrefix />
                 <input
                   type="number"
                   id="electric"
+                  min="0"
                   step="0.01"
                   {...register('electric', { valueAsNumber: true })}
                   placeholder="0.00"
-                  className={`w-full pl-7 pr-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-primary bg-garage-bg text-garage-text ${
-                    errors.electric ? 'border-red-500' : 'border-garage-border'
-                  }`}
+                  className={`ui-focus-input ui-motion w-full rounded-control border bg-surface-2 pl-7 pr-3 py-2 text-sm text-text font-mono tabular-nums ${errors.electric ? 'border-danger' : 'border-border'}`}
+                  disabled={isSubmitting}
                 />
               </div>
-              {errors.electric && (
-                <p className="mt-1 text-sm text-danger">{errors.electric.message}</p>
-              )}
-            </div>
+            </Field>
 
-            {/* Water */}
-            <div>
-              <label htmlFor="water" className="block text-sm font-medium text-garage-text mb-1">
-                {t('billingEntryForm.water')}
-              </label>
+            <Field id="water" label={t('billingEntryForm.water')} error={errors.water}>
               <div className="relative">
                 <CurrencyInputPrefix />
                 <input
                   type="number"
                   id="water"
+                  min="0"
                   step="0.01"
                   {...register('water', { valueAsNumber: true })}
                   placeholder="0.00"
-                  className={`w-full pl-7 pr-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-primary bg-garage-bg text-garage-text ${
-                    errors.water ? 'border-red-500' : 'border-garage-border'
-                  }`}
+                  className={`ui-focus-input ui-motion w-full rounded-control border bg-surface-2 pl-7 pr-3 py-2 text-sm text-text font-mono tabular-nums ${errors.water ? 'border-danger' : 'border-border'}`}
+                  disabled={isSubmitting}
                 />
               </div>
-              {errors.water && (
-                <p className="mt-1 text-sm text-danger">{errors.water.message}</p>
-              )}
-            </div>
+            </Field>
 
-            {/* Waste */}
-            <div>
-              <label htmlFor="waste" className="block text-sm font-medium text-garage-text mb-1">
-                {t('billingEntryForm.waste')}
-              </label>
+            <Field id="waste" label={t('billingEntryForm.waste')} error={errors.waste}>
               <div className="relative">
                 <CurrencyInputPrefix />
                 <input
                   type="number"
                   id="waste"
+                  min="0"
                   step="0.01"
                   {...register('waste', { valueAsNumber: true })}
                   placeholder="0.00"
-                  className={`w-full pl-7 pr-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-primary bg-garage-bg text-garage-text ${
-                    errors.waste ? 'border-red-500' : 'border-garage-border'
-                  }`}
+                  className={`ui-focus-input ui-motion w-full rounded-control border bg-surface-2 pl-7 pr-3 py-2 text-sm text-text font-mono tabular-nums ${errors.waste ? 'border-danger' : 'border-border'}`}
+                  disabled={isSubmitting}
                 />
               </div>
-              {errors.waste && (
-                <p className="mt-1 text-sm text-danger">{errors.waste.message}</p>
-              )}
-            </div>
+            </Field>
           </div>
 
-          {/* Total (Auto-calculated) */}
-          <div>
-            <label htmlFor="total" className="block text-sm font-medium text-garage-text mb-1">
-              {t('common:total')}
-            </label>
+          <Field id="total" label={t('common:total')} hint={t('billing.autoCalculatedHint')} error={errors.total}>
             <div className="relative">
               <CurrencyInputPrefix />
               <input
                 type="number"
                 id="total"
+                min="0"
                 step="0.01"
                 {...register('total', { valueAsNumber: true })}
                 placeholder={t('billingEntryForm.autoCalculatedPlaceholder')}
-                className="w-full pl-7 pr-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-primary bg-garage-bg/50 text-garage-text border-garage-border"
+                className="ui-focus-input ui-motion w-full rounded-control border border-border bg-surface-2 pl-7 pr-3 py-2 text-sm text-text font-mono tabular-nums"
                 readOnly
               />
             </div>
-            {errors.total && (
-              <p className="mt-1 text-sm text-danger">{errors.total.message}</p>
-            )}
-            <p className="mt-1 text-xs text-garage-text-muted">
-              {t('billing.autoCalculatedHint')}
-            </p>
-          </div>
+          </Field>
 
-          {/* Notes */}
-          <div>
-            <label htmlFor="notes" className="block text-sm font-medium text-garage-text mb-1">
-              {t('common:notes')}
-            </label>
-            <textarea
+          <Field id="notes" label={t('common:notes')} error={errors.notes}>
+            <Textarea
               id="notes"
               rows={4}
               {...register('notes')}
               placeholder={t('billing.notesPlaceholder')}
-              className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-primary bg-garage-bg text-garage-text ${
-                errors.notes ? 'border-red-500' : 'border-garage-border'
-              }`}
+              invalid={!!errors.notes}
+              disabled={isSubmitting}
             />
-            {errors.notes && (
-              <p className="mt-1 text-sm text-danger">{errors.notes.message}</p>
-            )}
-          </div>
-
-          {/* Actions */}
-          <div className="flex gap-3 pt-4">
-            <button
-              type="submit"
-              disabled={isSubmitting}
-              className="flex items-center gap-2 btn btn-primary rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              <Save className="w-4 h-4" />
-              <span>{isSubmitting ? t('common:saving') : isEdit ? t('common:update') : t('common:create')}</span>
-            </button>
-
-            <button
-              type="button"
-              onClick={onClose}
-              disabled={isSubmitting}
-              className="btn btn-primary rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              {t('common:cancel')}
-            </button>
-          </div>
+          </Field>
         </form>
     </FormModalWrapper>
   )

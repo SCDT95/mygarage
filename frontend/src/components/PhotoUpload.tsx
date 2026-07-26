@@ -2,6 +2,7 @@ import { useState, useRef, type SyntheticEvent } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Upload, X } from 'lucide-react'
 import api from '../services/api'
+import { Button, IconButton, Field, Input, Checkbox } from './ui'
 
 interface PhotoUploadProps {
   vin: string
@@ -101,15 +102,10 @@ export default function PhotoUpload({ vin, onSuccess, onClose }: PhotoUploadProp
 
   return (
     <div className="fixed inset-0 modal-overlay flex items-center justify-center p-4 z-50">
-      <div className="bg-garage-surface rounded-lg shadow-2xl max-w-2xl w-full border border-garage-border">
-        <div className="bg-garage-surface border-b border-garage-border px-6 py-4 flex justify-between items-center rounded-t-lg">
-          <h2 className="text-xl font-semibold text-garage-text">{t('photoUpload.title')}</h2>
-          <button
-            onClick={onClose}
-            className="text-garage-text-muted hover:text-garage-text"
-          >
-            <X className="w-5 h-5" />
-          </button>
+      <div className="bg-surface rounded-lg shadow-2xl max-w-2xl w-full border border-border">
+        <div className="bg-surface border-b border-border px-6 py-4 flex justify-between items-center rounded-t-lg">
+          <h2 className="text-xl font-semibold text-text">{t('photoUpload.title')}</h2>
+          <IconButton icon={X} label={t('common:close')} variant="ghost" onClick={onClose} />
         </div>
 
         <form onSubmit={handleSubmit} className="p-6 space-y-4">
@@ -123,35 +119,35 @@ export default function PhotoUpload({ vin, onSuccess, onClose }: PhotoUploadProp
             <div
               className={`border-2 border-dashed rounded-lg p-12 text-center transition-colors ${
                 dragActive
-                  ? 'border-primary bg-primary/10'
-                  : 'border-garage-border hover:border-primary/50'
+                  ? 'border-(--accent-line) bg-(--accent-soft)'
+                  : 'border-border hover:border-(--accent-line)'
               }`}
               onDragEnter={handleDrag}
               onDragLeave={handleDrag}
               onDragOver={handleDrag}
               onDrop={handleDrop}
             >
-              <Upload className="w-12 h-12 text-garage-text-muted mx-auto mb-4" />
-              <p className="text-garage-text mb-2">
+              <Upload aria-hidden="true" className="w-12 h-12 text-text-mute mx-auto mb-4" />
+              <p className="text-text mb-2">
                 {t('photoUpload.dragDrop')}
               </p>
-              <p className="text-sm text-garage-text-muted mb-4">
+              <p className="text-sm text-text-mute mb-4">
                 {t('photoUpload.fileTypesHint')}
               </p>
+              <label htmlFor="photo-upload-file" className="sr-only">
+                {t('photoUpload.selectFile')}
+              </label>
               <input
+                id="photo-upload-file"
                 ref={fileInputRef}
                 type="file"
                 accept="image/jpeg,image/jpg,image/png,image/webp,image/heic,image/heif"
                 onChange={handleFileInput}
                 className="hidden"
               />
-              <button
-                type="button"
-                onClick={() => fileInputRef.current?.click()}
-                className="btn btn-primary rounded-lg transition-colors"
-              >
+              <Button type="button" variant="secondary" onClick={() => fileInputRef.current?.click()}>
                 {t('photoUpload.selectFile')}
-              </button>
+              </Button>
             </div>
           ) : (
             <div className="space-y-4">
@@ -159,68 +155,48 @@ export default function PhotoUpload({ vin, onSuccess, onClose }: PhotoUploadProp
                 <img
                   src={preview}
                   alt={t('photoUpload.previewAlt')}
-                  className="w-full h-64 object-contain bg-garage-bg rounded-lg"
+                  className="w-full h-64 object-contain bg-surface-2 rounded-lg"
                 />
-                <button
-                  type="button"
+                <IconButton
+                  icon={X}
+                  label={t('common:remove')}
+                  variant="danger"
+                  className="absolute top-2 right-2"
                   onClick={() => {
                     setPreview(null)
                     setFile(null)
                     if (fileInputRef.current) fileInputRef.current.value = ''
                   }}
-                  className="absolute top-2 right-2 p-2 bg-danger text-white rounded-full hover:bg-danger/80"
-                >
-                  <X className="w-4 h-4" />
-                </button>
+                />
               </div>
 
-              <div>
-                <label htmlFor="caption" className="block text-sm font-medium text-garage-text mb-1">
-                  {t('photoUpload.captionLabel')}
-                </label>
-                <input
-                  type="text"
+              <Field id="caption" label={t('photoUpload.captionLabel')}>
+                <Input
                   id="caption"
+                  type="text"
                   maxLength={200}
                   value={caption}
                   onChange={(e) => setCaption(e.target.value)}
                   placeholder={t('photoUpload.captionPlaceholder')}
-                  className="w-full px-3 py-2 border border-garage-border rounded-md focus:outline-none focus:ring-2 focus:ring-primary bg-garage-bg text-garage-text"
                 />
-              </div>
+              </Field>
 
-              <div className="flex items-center">
-                <input
-                  type="checkbox"
-                  id="set_as_main"
-                  checked={setAsMain}
-                  onChange={(e) => setSetAsMain(e.target.checked)}
-                  className="h-4 w-4 text-primary focus:ring-primary border-garage-border rounded bg-garage-bg"
-                />
-                <label htmlFor="set_as_main" className="ml-2 block text-sm text-garage-text">
-                  {t('photoUpload.setAsMain')}
-                </label>
-              </div>
+              <Checkbox
+                id="set_as_main"
+                label={t('photoUpload.setAsMain')}
+                checked={setAsMain}
+                onChange={(e) => setSetAsMain(e.target.checked)}
+              />
             </div>
           )}
 
           <div className="flex gap-3 pt-4">
-            <button
-              type="submit"
-              disabled={uploading || !file}
-              className="flex items-center gap-2 btn btn-primary rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              <Upload className="w-4 h-4" />
-              <span>{uploading ? t('photoUpload.uploading') : t('photoUpload.uploadBtn')}</span>
-            </button>
-
-            <button
-              type="button"
-              onClick={onClose}
-              className="btn btn-primary rounded-lg transition-colors"
-            >
+            <Button type="submit" variant="primary" icon={Upload} loading={uploading} disabled={uploading || !file}>
+              {uploading ? t('photoUpload.uploading') : t('photoUpload.uploadBtn')}
+            </Button>
+            <Button type="button" variant="secondary" onClick={onClose}>
               {t('photoUpload.cancel')}
-            </button>
+            </Button>
           </div>
         </form>
       </div>

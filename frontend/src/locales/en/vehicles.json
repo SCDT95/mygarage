@@ -88,7 +88,15 @@
     "addVehicle": "Add Vehicle",
     "allVehicles": "All Vehicles",
     "byMaintenance": "By Maintenance",
+    "filterTrigger": "Filter: {{label}}",
     "filterVehicles": "Filter vehicles",
+    "fleet": {
+      "overdueCaption": "Overdue · needs attention",
+      "upcomingCaption": "Upcoming · next 30 days",
+      "spentLabel": "Spent",
+      "nextDueLabel": "Next due",
+      "nextDueNone": "Nothing scheduled"
+    },
     "getStarted": "Get started by adding your first vehicle",
     "loadError": "Failed to load dashboard. Please try again.",
     "loading": "Loading dashboard...",
@@ -99,6 +107,7 @@
     "oldestFirst": "Oldest First",
     "sharedWithMe": "Shared With Me",
     "sortByName": "Sort by Name",
+    "sortTrigger": "Sort: {{label}}",
     "sortVehicles": "Sort vehicles",
     "subtitle": "Manage your vehicles and track maintenance",
     "title": "My Garage"
@@ -129,9 +138,11 @@
     "readOnlyNotice": "DEF entry requires a diesel fuel type — records shown for reference",
     "recordCount": "{{count}} record(s)",
     "source": "Source",
+    "tableCaption": "DEF purchase history",
     "title": "DEF Records",
     "totalSpent": "Total Spent",
-    "type": "Type"
+    "type": "Type",
+    "volumeUnit": "Volume ({{unit}})"
   },
   "detail": {
     "actions": "Actions",
@@ -153,11 +164,23 @@
     "exportTooltip": "Export complete vehicle data as JSON",
     "exporting": "Exporting...",
     "fuelEconomy": "Fuel Economy",
+    "hero": {
+      "logService": "Log Service",
+      "addFuel": "Add Fuel",
+      "reminder": "Reminder",
+      "equipment": "Equipment",
+      "standard": "Standard",
+      "optional": "Optional"
+    },
     "import": "Import",
     "importData": "Import Data",
     "importError": "Failed to import data",
     "importSuccess": "Import completed successfully",
     "importing": "Importing...",
+    "keyFacts": {
+      "spent": "Spent",
+      "upcoming": "Upcoming"
+    },
     "lastLocation": "Last Seen Here",
     "lastLocationSeenAt": "Last seen: {{time}}",
     "loading": "Loading vehicle details...",
@@ -240,6 +263,7 @@
       "skippedCount": "{{count}} skipped",
       "smogRating": "Smog Rating",
       "speeds": "Speeds",
+      "subSections": "Sub-sections",
       "supplies": "Supplies",
       "taxRegistration": "Tax & Registration",
       "testOcr": "Test OCR",
@@ -388,7 +412,11 @@
     "towing": "Towing",
     "paginatedCount": "{{shown}} of {{total}}",
     "pageRange": "Showing {{start}}–{{end}} of {{total}}",
-    "pageOf": "Page {{page}} of {{total}}"
+    "pageOf": "Page {{page}} of {{total}}",
+    "volumeUnit": "Volume ({{unit}})",
+    "propaneUnit": "Propane ({{unit}})",
+    "unitPrice": "Unit price",
+    "tableCaption": "Fuel fill-up history"
   },
   "insuranceList": {
     "addFirstPolicy": "Add Your First Insurance Policy",
@@ -642,6 +670,7 @@
     "noRecordsDesc": "Track your vehicle's mileage over time",
     "notes": "Notes",
     "recordCount": "{{count}} record(s)",
+    "tableCaption": "Odometer reading history",
     "title": "Odometer Readings"
   },
   "photoGallery": {
@@ -706,11 +735,13 @@
     "noRecordsDesc": "Track propane refills for your fifth wheel",
     "pricePerUnit": "Price/Unit",
     "recordCount": "{{count}} record(s)",
+    "tableCaption": "Propane refill history",
     "title": "Propane Records",
     "totalGallons": "Total Gallons",
     "totalLiters": "Total Liters",
     "totalSpent": "Total Spent",
-    "vendor": "Vendor"
+    "vendor": "Vendor",
+    "volumeUnit": "Volume ({{unit}})"
   },
   "quickEntry": {
     "fuelRecord": "Fuel record",
@@ -880,6 +911,7 @@
     "notes": "Notes",
     "recordCount": "{{count}} record(s)",
     "renewalDate": "Renewal Date",
+    "tableCaption": "Tax and registration record history",
     "title": "Tax & Registration Records",
     "total": "Total",
     "type": "Type"
@@ -897,6 +929,7 @@
     "exporting": "Exporting...",
     "month": "Month",
     "monthlyBreakdown": "Monthly Breakdown",
+    "monthlyBreakdownCaption": "Monthly toll totals",
     "noRecords": "No toll transactions recorded yet",
     "notes": "Notes",
     "title": "Toll Transactions",
@@ -941,6 +974,18 @@
     "recentActivity": "Recent Activity",
     "service": "Service",
     "upcoming": "{{count}} Upcoming"
+  },
+  "vehicleTypeLabels": {
+    "Car": "Car",
+    "SUV": "SUV",
+    "Truck": "Truck",
+    "Motorcycle": "Motorcycle",
+    "RV": "RV",
+    "Trailer": "Trailer",
+    "FifthWheel": "Fifth Wheel",
+    "TravelTrailer": "Travel Trailer",
+    "Electric": "Electric",
+    "Hybrid": "Hybrid"
   },
   "vendorSearch": {
     "noResults": "No vendors found",
@@ -1092,11 +1137,13 @@
     "model": "Model",
     "next": "Next",
     "nickname": "Nickname",
+    "stepOf": "Step {{current}} of {{total}}",
     "title": "Add New Vehicle",
     "trim": "Trim",
     "vin": "VIN",
     "year": "Year",
     "misc": {
+      "progressLabel": "Add vehicle progress",
       "stepProgress": "Step {{current}} of {{total}}: {{description}}",
       "stepDetailsTitle": "Details",
       "stepDetailsDesc": "Basic info",

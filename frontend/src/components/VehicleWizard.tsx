@@ -11,9 +11,10 @@ import { useTranslation } from 'react-i18next'
 import { useNavigate } from 'react-router-dom'
 import { useForm, type Resolver } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
-import { X, ChevronLeft, ChevronRight, Check } from 'lucide-react'
+import { ChevronLeft, ChevronRight, Check } from 'lucide-react'
 import VINInput from './VINInput'
 import { FormError } from './FormError'
+import { Stepper, Drawer, Button } from './ui'
 import type { VINDecodeResponse } from '../types/vin'
 import type { VehicleCreate } from '../types/vehicle'
 import { FUEL_TYPE_VALUES, FUEL_TYPE_LABELS, type FuelType } from '../constants/fuel'
@@ -203,485 +204,56 @@ export default function VehicleWizard({ onClose, onSuccess }: VehicleWizardProps
   }
 
   return (
-    <div className="fixed inset-0 modal-overlay flex items-center justify-center z-50 p-4">
-      <div className="bg-garage-surface rounded-lg shadow-xl max-w-3xl w-full max-h-[90vh] overflow-hidden flex flex-col">
-        {/* Header */}
-        <div className="flex items-center justify-between p-6 border-b border-garage-border">
-          <div>
-            <h2 className="text-2xl font-bold text-garage-text">{t('wizard.title')}</h2>
-            <p className="text-garage-text-muted mt-1">
-              {t('wizard.misc.stepProgress', {
-                current: currentStep,
-                total: steps.length,
-                description: steps[currentStep - 1].description,
-              })}
-            </p>
-          </div>
-          <button
-            onClick={onClose}
-            className="text-garage-text-muted hover:text-garage-text transition-colors"
-          >
-            <X className="w-6 h-6" />
-          </button>
-        </div>
-
-        {/* Progress Steps */}
-        <div className="flex items-center justify-between px-6 py-4 bg-garage-bg">
-          {steps.map((step, index) => (
-            <div key={step.number} className="flex items-center flex-1">
-              <div className="flex items-center">
-                <div
-                  className={`w-8 h-8 rounded-full flex items-center justify-center font-semibold ${
-                    currentStep > step.number
-                      ? 'bg-primary text-white'
-                      : currentStep === step.number
-                      ? 'bg-primary text-white'
-                      : 'bg-garage-surface text-garage-text-muted border-2 border-garage-border'
-                  }`}
-                >
-                  {currentStep > step.number ? <Check className="w-4 h-4" /> : step.number}
-                </div>
-                <div className="ml-3">
-                  <div className="text-sm font-medium text-garage-text">{step.title}</div>
-                </div>
-              </div>
-              {index < steps.length - 1 && (
-                <div className="flex-1 h-0.5 bg-garage-border mx-4" />
-              )}
-            </div>
-          ))}
-        </div>
-
-        {/* Content */}
-        <div className="flex-1 overflow-y-auto p-6">
-          {error && (
-            <div className="mb-4 p-4 bg-danger/10 border border-danger rounded-lg text-danger">
-              {error}
-            </div>
-          )}
-
-          {/* Step 1: VIN Entry */}
-          {currentStep === 1 && (
-            <div className="space-y-6">
-              <div>
-                <h3 className="text-lg font-semibold text-garage-text mb-4">
-                  {t('wizard.misc.enterVinHeading')}
-                </h3>
-                <VINInput
-                  value={vin}
-                  onChange={setVin}
-                  onDecode={handleVinDecode}
-                  autoValidate={true}
-                  checkDuplicate={true}
-                />
-              </div>
-            </div>
-          )}
-
-          {/* Step 2: Basic Info */}
-          {currentStep === 2 && (
-            <div className="space-y-6">
-              <h3 className="text-lg font-semibold text-garage-text mb-4">{t('edit.vehicleDetails')}</h3>
-
-              <div>
-                <label className="block text-sm font-medium text-garage-text mb-2">
-                  {t('wizard.nickname')} <span className="text-danger">*</span>
-                </label>
-                <input
-                  type="text"
-                  {...register('nickname')}
-                  className="w-full bg-garage-bg border border-garage-border rounded-lg px-4 py-2 text-garage-text focus:outline-none focus:border-primary"
-                  placeholder={t('wizard.misc.nicknamePlaceholder')}
-                />
-                <FormError error={errors.nickname} />
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-garage-text mb-2">
-                    {t('edit.vehicleType')} <span className="text-danger">*</span>
-                  </label>
-                  <select
-                    {...register('vehicle_type')}
-                    className="w-full bg-garage-bg border border-garage-border rounded-lg px-4 py-2 text-garage-text focus:outline-none focus:border-primary"
-                  >
-                    {VEHICLE_TYPES.map((type) => (
-                      <option key={type} value={type}>
-                        {type}
-                      </option>
-                    ))}
-                  </select>
-                  <FormError error={errors.vehicle_type} />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-garage-text mb-2">{t('wizard.year')}</label>
-                  <input
-                    type="number"
-                    {...register('year', { valueAsNumber: true })}
-                    className="w-full bg-garage-bg border border-garage-border rounded-lg px-4 py-2 text-garage-text focus:outline-none focus:border-primary"
-                    placeholder="2019"
-                  />
-                  <FormError error={errors.year} />
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-garage-text mb-2">{t('wizard.make')}</label>
-                  <input
-                    type="text"
-                    {...register('make')}
-                    className="w-full bg-garage-bg border border-garage-border rounded-lg px-4 py-2 text-garage-text focus:outline-none focus:border-primary"
-                    placeholder="MITSUBISHI"
-                  />
-                  <FormError error={errors.make} />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-garage-text mb-2">{t('wizard.model')}</label>
-                  <input
-                    type="text"
-                    {...register('model')}
-                    className="w-full bg-garage-bg border border-garage-border rounded-lg px-4 py-2 text-garage-text focus:outline-none focus:border-primary"
-                    placeholder={t('wizard.misc.modelPlaceholder')}
-                  />
-                  <FormError error={errors.model} />
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-garage-text mb-2">{t('wizard.color')}</label>
-                  <input
-                    type="text"
-                    {...register('color')}
-                    className="w-full bg-garage-bg border border-garage-border rounded-lg px-4 py-2 text-garage-text focus:outline-none focus:border-primary"
-                    placeholder={t('wizard.misc.colorPlaceholder')}
-                  />
-                  <FormError error={errors.color} />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-garage-text mb-2">
-                    {t('edit.licensePlate')}
-                  </label>
-                  <input
-                    type="text"
-                    {...register('license_plate')}
-                    className="w-full bg-garage-bg border border-garage-border rounded-lg px-4 py-2 text-garage-text focus:outline-none focus:border-primary"
-                    placeholder={t('wizard.misc.licensePlatePlaceholder')}
-                  />
-                  <FormError error={errors.license_plate} />
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-garage-text mb-2">
-                    {t('edit.purchaseDate')}
-                  </label>
-                  <input
-                    type="date"
-                    {...register('purchase_date')}
-                    className="w-full bg-garage-bg border border-garage-border rounded-lg px-4 py-2 text-garage-text focus:outline-none focus:border-primary"
-                  />
-                  <FormError error={errors.purchase_date} />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-garage-text mb-2">
-                    {t('edit.purchasePrice')}
-                  </label>
-                  <input
-                    type="number"
-                    step="0.01"
-                    {...register('purchase_price', { valueAsNumber: true })}
-                    className="w-full bg-garage-bg border border-garage-border rounded-lg px-4 py-2 text-garage-text focus:outline-none focus:border-primary"
-                    placeholder="15000.00"
-                  />
-                  <FormError error={errors.purchase_price} />
-                </div>
-              </div>
-
-              <h3 className="text-lg font-semibold text-garage-text mt-6 mb-4">{t('wizard.misc.vinDecodedInfoOptional')}</h3>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-garage-text mb-2">{t('wizard.trim')}</label>
-                  <input
-                    type="text"
-                    {...register('trim')}
-                    className="w-full bg-garage-bg border border-garage-border rounded-lg px-4 py-2 text-garage-text focus:outline-none focus:border-primary"
-                    placeholder={t('wizard.misc.trimPlaceholder')}
-                  />
-                  <FormError error={errors.trim} />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-garage-text mb-2">{t('edit.bodyClass')}</label>
-                  <input
-                    type="text"
-                    {...register('body_class')}
-                    className="w-full bg-garage-bg border border-garage-border rounded-lg px-4 py-2 text-garage-text focus:outline-none focus:border-primary"
-                    placeholder={t('wizard.misc.bodyClassPlaceholder')}
-                  />
-                  <FormError error={errors.body_class} />
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-garage-text mb-2">{t('edit.driveType')}</label>
-                  <input
-                    type="text"
-                    {...register('drive_type')}
-                    className="w-full bg-garage-bg border border-garage-border rounded-lg px-4 py-2 text-garage-text focus:outline-none focus:border-primary"
-                    placeholder={t('wizard.misc.driveTypePlaceholder')}
-                  />
-                  <FormError error={errors.drive_type} />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-garage-text mb-2">{t('edit.doors')}</label>
-                  <input
-                    type="number"
-                    {...register('doors', { valueAsNumber: true })}
-                    className="w-full bg-garage-bg border border-garage-border rounded-lg px-4 py-2 text-garage-text focus:outline-none focus:border-primary"
-                    placeholder="4"
-                  />
-                  <FormError error={errors.doors} />
-                </div>
-              </div>
-
-              <h3 className="text-lg font-semibold text-garage-text mt-6 mb-4">{t('wizard.misc.engineTransmissionOptional')}</h3>
-
-              <div className="grid grid-cols-3 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-garage-text mb-2">{t('edit.displacement')}</label>
-                  <input
-                    type="text"
-                    {...register('displacement_l')}
-                    className="w-full bg-garage-bg border border-garage-border rounded-lg px-4 py-2 text-garage-text focus:outline-none focus:border-primary"
-                    placeholder="2.0"
-                  />
-                  <FormError error={errors.displacement_l} />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-garage-text mb-2">{t('edit.cylinders')}</label>
-                  <input
-                    type="number"
-                    {...register('cylinders', { valueAsNumber: true })}
-                    className="w-full bg-garage-bg border border-garage-border rounded-lg px-4 py-2 text-garage-text focus:outline-none focus:border-primary"
-                    placeholder="4"
-                  />
-                  <FormError error={errors.cylinders} />
-                </div>
-
-                <div>
-                  <label
-                    htmlFor="wizard-fuel-type"
-                    className="block text-sm font-medium text-garage-text mb-2"
-                  >
-                    {t('wizard.fuelType')}
-                  </label>
-                  <select
-                    id="wizard-fuel-type"
-                    aria-label={t('wizard.fuelType')}
-                    {...register('fuel_type')}
-                    className="w-full bg-garage-bg border border-garage-border rounded-lg px-4 py-2 text-garage-text focus:outline-none focus:border-primary"
-                  >
-                    <option value="">—</option>
-                    {FUEL_TYPE_VALUES.map((value) => (
-                      <option key={value} value={value}>
-                        {FUEL_TYPE_LABELS[value]}
-                      </option>
-                    ))}
-                  </select>
-                  <FormError error={errors.fuel_type} />
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-garage-text mb-2">{t('edit.transmissionType')}</label>
-                  <input
-                    type="text"
-                    {...register('transmission_type')}
-                    className="w-full bg-garage-bg border border-garage-border rounded-lg px-4 py-2 text-garage-text focus:outline-none focus:border-primary"
-                    placeholder={t('wizard.misc.transmissionTypePlaceholder')}
-                  />
-                  <FormError error={errors.transmission_type} />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-garage-text mb-2">{t('edit.transmissionSpeeds')}</label>
-                  <input
-                    type="text"
-                    {...register('transmission_speeds')}
-                    className="w-full bg-garage-bg border border-garage-border rounded-lg px-4 py-2 text-garage-text focus:outline-none focus:border-primary"
-                    placeholder={t('wizard.misc.transmissionSpeedsPlaceholder')}
-                  />
-                  <FormError error={errors.transmission_speeds} />
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* Step 3: Photos */}
-          {currentStep === 3 && (
-            <div className="space-y-6">
-              <h3 className="text-lg font-semibold text-garage-text mb-4">
-                {t('wizard.misc.addPhotosOptional')}
-              </h3>
-
-              <div>
-                <label className="block text-sm font-medium text-garage-text mb-2">
-                  {t('wizard.misc.uploadPhotos')}
-                </label>
-                <input
-                  type="file"
-                  accept="image/*"
-                  multiple
-                  onChange={handlePhotoChange}
-                  className="w-full bg-garage-bg border border-garage-border rounded-lg px-4 py-2 text-garage-text focus:outline-none focus:border-primary file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:bg-primary file:text-white file:cursor-pointer"
-                />
-                <p className="text-sm text-garage-text-muted mt-2">
-                  {t('wizard.misc.photoUploadHelp')}
-                </p>
-              </div>
-
-              {photoFiles.length > 0 && (
-                <div>
-                  <p className="text-sm font-medium text-garage-text mb-2">
-                    {t('wizard.misc.selectedPhotos', { count: photoFiles.length })}
-                  </p>
-                  <ul className="space-y-1">
-                    {photoFiles.map((file, index) => (
-                      <li key={index} className="text-sm text-garage-text-muted">
-                        {t('wizard.misc.photoFileEntry', {
-                          name: file.name,
-                          size: (file.size / 1024 / 1024).toFixed(2),
-                        })}
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              )}
-            </div>
-          )}
-
-          {/* Step 4: Review */}
-          {currentStep === 4 && (
-            <div className="space-y-6">
-              <h3 className="text-lg font-semibold text-garage-text mb-4">{t('wizard.misc.reviewConfirm')}</h3>
-
-              <div className="bg-garage-bg rounded-lg p-6 space-y-4">
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <p className="text-sm text-garage-text-muted">{t('wizard.vin')}</p>
-                    <p className="text-garage-text font-mono">{vin}</p>
-                  </div>
-                  <div>
-                    <p className="text-sm text-garage-text-muted">{t('wizard.nickname')}</p>
-                    <p className="text-garage-text">{formData.nickname}</p>
-                  </div>
-                  <div>
-                    <p className="text-sm text-garage-text-muted">{t('detail.misc.type')}</p>
-                    <p className="text-garage-text">{formData.vehicle_type}</p>
-                  </div>
-                  <div>
-                    <p className="text-sm text-garage-text-muted">{t('wizard.year')}</p>
-                    <p className="text-garage-text">{formData.year || t('detail.notSpecified')}</p>
-                  </div>
-                  <div>
-                    <p className="text-sm text-garage-text-muted">{t('wizard.make')}</p>
-                    <p className="text-garage-text">{formData.make || t('detail.notSpecified')}</p>
-                  </div>
-                  <div>
-                    <p className="text-sm text-garage-text-muted">{t('wizard.model')}</p>
-                    <p className="text-garage-text">{formData.model || t('detail.notSpecified')}</p>
-                  </div>
-                  <div>
-                    <p className="text-sm text-garage-text-muted">{t('wizard.color')}</p>
-                    <p className="text-garage-text">{formData.color || t('detail.notSpecified')}</p>
-                  </div>
-                  <div>
-                    <p className="text-sm text-garage-text-muted">{t('edit.licensePlate')}</p>
-                    <p className="text-garage-text">{formData.license_plate || t('detail.notSpecified')}</p>
-                  </div>
-                  {formData.purchase_date && (
-                    <div>
-                      <p className="text-sm text-garage-text-muted">{t('edit.purchaseDate')}</p>
-                      <p className="text-garage-text">{formData.purchase_date}</p>
-                    </div>
-                  )}
-                  {formData.purchase_price && (
-                    <div>
-                      <p className="text-sm text-garage-text-muted">{t('edit.purchasePrice')}</p>
-                      <p className="text-garage-text">
-                        {formatCurrency(formData.purchase_price, {
-                          fallback: t('detail.notSpecified'),
-                        })}
-                      </p>
-                    </div>
-                  )}
-                </div>
-
-                {photoFiles.length > 0 && (
-                  <div>
-                    <p className="text-sm text-garage-text-muted mb-2">{t('wizard.misc.photosToUpload')}</p>
-                    <p className="text-garage-text">{t('wizard.misc.photoCount', { count: photoFiles.length })}</p>
-                  </div>
-                )}
-              </div>
-            </div>
-          )}
-        </div>
-
-        {/* Footer */}
-        <div className="flex items-center justify-between p-6 border-t border-garage-border bg-garage-bg">
-          <button
-            onClick={handlePrevious}
+    <Drawer
+      open
+      onClose={onClose}
+      title={t('wizard.title')}
+      width="lg"
+      closeLabel={t('common:close')}
+      footer={
+        <div className="flex w-full items-center justify-between">
+          <Button
+            variant="ghost"
+            icon={ChevronLeft}
             disabled={currentStep === 1}
-            className="flex items-center space-x-2 px-4 py-2 text-garage-text-muted hover:text-garage-text disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            onClick={handlePrevious}
           >
-            <ChevronLeft className="w-4 h-4" />
-            <span>{t('wizard.misc.previous')}</span>
-          </button>
+            {t('wizard.misc.previous')}
+          </Button>
 
-          <div className="flex space-x-3">
-            <button
-              onClick={onClose}
-              className="btn btn-secondary rounded-lg transition-colors"
-            >
+          <div className="flex items-center gap-3">
+            <Button variant="secondary" onClick={onClose}>
               {t('wizard.misc.cancel')}
-            </button>
+            </Button>
 
             {currentStep < 4 ? (
-              <button
-                onClick={handleNext}
+              <Button
+                variant="primary"
+                iconRight={ChevronRight}
                 disabled={!canProceed()}
-                className="flex items-center space-x-2 px-6 py-2 btn btn-primary rounded-lg disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                onClick={handleNext}
               >
-                <span>{t('wizard.next')}</span>
-                <ChevronRight className="w-4 h-4" />
-              </button>
+                {t('wizard.next')}
+              </Button>
             ) : (
+              // Bespoke success button (G4 (e)): no `success` Button variant, and
+              // it swaps BOTH the icon (Check<->spinner) and the label
+              // (createVehicle<->creating) on `loading`, which Button's icon-only
+              // `loading` prop cannot express.
               <button
+                type="button"
                 onClick={handleSubmit}
                 disabled={loading}
-                className="flex items-center space-x-2 px-6 py-2 bg-success text-white rounded-lg hover:bg-success/90 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                className="ui-focus-ring ui-motion inline-flex h-btn-md items-center gap-2 rounded-control bg-success px-4 text-sm font-semibold text-on-status hover:bg-success/90 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
               >
                 {loading ? (
                   <>
-                    <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                    <div className="h-4 w-4 animate-spin rounded-full border-2 border-on-status border-t-transparent" />
                     <span>{t('wizard.misc.creating')}</span>
                   </>
                 ) : (
                   <>
-                    <Check className="w-4 h-4" />
+                    <Check aria-hidden="true" className="h-4 w-4" />
                     <span>{t('wizard.misc.createVehicle')}</span>
                   </>
                 )}
@@ -689,7 +261,414 @@ export default function VehicleWizard({ onClose, onSuccess }: VehicleWizardProps
             )}
           </div>
         </div>
+      }
+    >
+      {/* First body row: step-progress subtitle (preserves e2e getByText('Enter VIN')) */}
+      <p className="text-sm text-text-mute">
+        {t('wizard.misc.stepProgress', {
+          current: currentStep,
+          total: steps.length,
+          description: steps[currentStep - 1].description,
+        })}
+      </p>
+
+      {/* Progress Steps */}
+      <div className="mt-4">
+        <Stepper
+          steps={steps}
+          current={currentStep}
+          label={t('wizard.misc.progressLabel')}
+          valueText={t('wizard.stepOf', { current: currentStep, total: steps.length })}
+        />
       </div>
-    </div>
+
+      {/* Content */}
+      <div className="mt-6">
+        {error && (
+          <div className="mb-4 p-4 bg-danger/10 border border-danger rounded-lg text-danger">
+            {error}
+          </div>
+        )}
+
+        {/* Step 1: VIN Entry */}
+        {currentStep === 1 && (
+          <div className="space-y-6">
+            <div>
+              <h3 className="text-lg font-semibold text-text mb-4">
+                {t('wizard.misc.enterVinHeading')}
+              </h3>
+              <VINInput
+                value={vin}
+                onChange={setVin}
+                onDecode={handleVinDecode}
+                autoValidate={true}
+                checkDuplicate={true}
+              />
+            </div>
+          </div>
+        )}
+
+        {/* Step 2: Basic Info */}
+        {currentStep === 2 && (
+          <div className="space-y-6">
+            <h3 className="text-lg font-semibold text-text mb-4">{t('edit.vehicleDetails')}</h3>
+
+            <div>
+              <label className="block text-sm font-medium text-text-mid mb-2">
+                {t('wizard.nickname')} <span className="text-danger">*</span>
+              </label>
+              <input
+                type="text"
+                {...register('nickname')}
+                className="w-full bg-surface border border-border rounded-control px-4 py-2 text-text focus:outline-none focus:border-(--accent-solid)"
+                placeholder={t('wizard.misc.nicknamePlaceholder')}
+              />
+              <FormError error={errors.nickname} />
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-text-mid mb-2">
+                  {t('edit.vehicleType')} <span className="text-danger">*</span>
+                </label>
+                <select
+                  {...register('vehicle_type')}
+                  className="w-full bg-surface border border-border rounded-control px-4 py-2 text-text focus:outline-none focus:border-(--accent-solid)"
+                >
+                  {VEHICLE_TYPES.map((type) => (
+                    <option key={type} value={type}>
+                      {type}
+                    </option>
+                  ))}
+                </select>
+                <FormError error={errors.vehicle_type} />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-text-mid mb-2">{t('wizard.year')}</label>
+                <input
+                  type="number"
+                  {...register('year', { valueAsNumber: true })}
+                  className="w-full bg-surface border border-border rounded-control px-4 py-2 text-text focus:outline-none focus:border-(--accent-solid)"
+                  placeholder="2019"
+                />
+                <FormError error={errors.year} />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-text-mid mb-2">{t('wizard.make')}</label>
+                <input
+                  type="text"
+                  {...register('make')}
+                  className="w-full bg-surface border border-border rounded-control px-4 py-2 text-text focus:outline-none focus:border-(--accent-solid)"
+                  placeholder="MITSUBISHI"
+                />
+                <FormError error={errors.make} />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-text-mid mb-2">{t('wizard.model')}</label>
+                <input
+                  type="text"
+                  {...register('model')}
+                  className="w-full bg-surface border border-border rounded-control px-4 py-2 text-text focus:outline-none focus:border-(--accent-solid)"
+                  placeholder={t('wizard.misc.modelPlaceholder')}
+                />
+                <FormError error={errors.model} />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-text-mid mb-2">{t('wizard.color')}</label>
+                <input
+                  type="text"
+                  {...register('color')}
+                  className="w-full bg-surface border border-border rounded-control px-4 py-2 text-text focus:outline-none focus:border-(--accent-solid)"
+                  placeholder={t('wizard.misc.colorPlaceholder')}
+                />
+                <FormError error={errors.color} />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-text-mid mb-2">
+                  {t('edit.licensePlate')}
+                </label>
+                <input
+                  type="text"
+                  {...register('license_plate')}
+                  className="w-full bg-surface border border-border rounded-control px-4 py-2 text-text focus:outline-none focus:border-(--accent-solid)"
+                  placeholder={t('wizard.misc.licensePlatePlaceholder')}
+                />
+                <FormError error={errors.license_plate} />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-text-mid mb-2">
+                  {t('edit.purchaseDate')}
+                </label>
+                <input
+                  type="date"
+                  {...register('purchase_date')}
+                  className="w-full bg-surface border border-border rounded-control px-4 py-2 text-text focus:outline-none focus:border-(--accent-solid)"
+                />
+                <FormError error={errors.purchase_date} />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-text-mid mb-2">
+                  {t('edit.purchasePrice')}
+                </label>
+                <input
+                  type="number"
+                  step="0.01"
+                  {...register('purchase_price', { valueAsNumber: true })}
+                  className="w-full bg-surface border border-border rounded-control px-4 py-2 text-text focus:outline-none focus:border-(--accent-solid)"
+                  placeholder="15000.00"
+                />
+                <FormError error={errors.purchase_price} />
+              </div>
+            </div>
+
+            <h3 className="text-lg font-semibold text-text mt-6 mb-4">{t('wizard.misc.vinDecodedInfoOptional')}</h3>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-text-mid mb-2">{t('wizard.trim')}</label>
+                <input
+                  type="text"
+                  {...register('trim')}
+                  className="w-full bg-surface border border-border rounded-control px-4 py-2 text-text focus:outline-none focus:border-(--accent-solid)"
+                  placeholder={t('wizard.misc.trimPlaceholder')}
+                />
+                <FormError error={errors.trim} />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-text-mid mb-2">{t('edit.bodyClass')}</label>
+                <input
+                  type="text"
+                  {...register('body_class')}
+                  className="w-full bg-surface border border-border rounded-control px-4 py-2 text-text focus:outline-none focus:border-(--accent-solid)"
+                  placeholder={t('wizard.misc.bodyClassPlaceholder')}
+                />
+                <FormError error={errors.body_class} />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-text-mid mb-2">{t('edit.driveType')}</label>
+                <input
+                  type="text"
+                  {...register('drive_type')}
+                  className="w-full bg-surface border border-border rounded-control px-4 py-2 text-text focus:outline-none focus:border-(--accent-solid)"
+                  placeholder={t('wizard.misc.driveTypePlaceholder')}
+                />
+                <FormError error={errors.drive_type} />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-text-mid mb-2">{t('edit.doors')}</label>
+                <input
+                  type="number"
+                  {...register('doors', { valueAsNumber: true })}
+                  className="w-full bg-surface border border-border rounded-control px-4 py-2 text-text focus:outline-none focus:border-(--accent-solid)"
+                  placeholder="4"
+                />
+                <FormError error={errors.doors} />
+              </div>
+            </div>
+
+            <h3 className="text-lg font-semibold text-text mt-6 mb-4">{t('wizard.misc.engineTransmissionOptional')}</h3>
+
+            <div className="grid grid-cols-3 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-text-mid mb-2">{t('edit.displacement')}</label>
+                <input
+                  type="text"
+                  {...register('displacement_l')}
+                  className="w-full bg-surface border border-border rounded-control px-4 py-2 text-text focus:outline-none focus:border-(--accent-solid)"
+                  placeholder="2.0"
+                />
+                <FormError error={errors.displacement_l} />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-text-mid mb-2">{t('edit.cylinders')}</label>
+                <input
+                  type="number"
+                  {...register('cylinders', { valueAsNumber: true })}
+                  className="w-full bg-surface border border-border rounded-control px-4 py-2 text-text focus:outline-none focus:border-(--accent-solid)"
+                  placeholder="4"
+                />
+                <FormError error={errors.cylinders} />
+              </div>
+
+              <div>
+                <label
+                  htmlFor="wizard-fuel-type"
+                  className="block text-sm font-medium text-text-mid mb-2"
+                >
+                  {t('wizard.fuelType')}
+                </label>
+                <select
+                  id="wizard-fuel-type"
+                  aria-label={t('wizard.fuelType')}
+                  {...register('fuel_type')}
+                  className="w-full bg-surface border border-border rounded-control px-4 py-2 text-text focus:outline-none focus:border-(--accent-solid)"
+                >
+                  <option value="">—</option>
+                  {FUEL_TYPE_VALUES.map((value) => (
+                    <option key={value} value={value}>
+                      {FUEL_TYPE_LABELS[value]}
+                    </option>
+                  ))}
+                </select>
+                <FormError error={errors.fuel_type} />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-text-mid mb-2">{t('edit.transmissionType')}</label>
+                <input
+                  type="text"
+                  {...register('transmission_type')}
+                  className="w-full bg-surface border border-border rounded-control px-4 py-2 text-text focus:outline-none focus:border-(--accent-solid)"
+                  placeholder={t('wizard.misc.transmissionTypePlaceholder')}
+                />
+                <FormError error={errors.transmission_type} />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-text-mid mb-2">{t('edit.transmissionSpeeds')}</label>
+                <input
+                  type="text"
+                  {...register('transmission_speeds')}
+                  className="w-full bg-surface border border-border rounded-control px-4 py-2 text-text focus:outline-none focus:border-(--accent-solid)"
+                  placeholder={t('wizard.misc.transmissionSpeedsPlaceholder')}
+                />
+                <FormError error={errors.transmission_speeds} />
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Step 3: Photos */}
+        {currentStep === 3 && (
+          <div className="space-y-6">
+            <h3 className="text-lg font-semibold text-text mb-4">
+              {t('wizard.misc.addPhotosOptional')}
+            </h3>
+
+            <div>
+              <label className="block text-sm font-medium text-text-mid mb-2">
+                {t('wizard.misc.uploadPhotos')}
+              </label>
+              <input
+                type="file"
+                accept="image/*"
+                multiple
+                onChange={handlePhotoChange}
+                className="w-full bg-surface border border-border rounded-control px-4 py-2 text-text focus:outline-none focus:border-(--accent-solid) file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:bg-(--accent-solid) file:text-(--accent-on-solid) file:cursor-pointer"
+              />
+              <p className="text-sm text-text-mute mt-2">
+                {t('wizard.misc.photoUploadHelp')}
+              </p>
+            </div>
+
+            {photoFiles.length > 0 && (
+              <div>
+                <p className="text-sm font-medium text-text-mid mb-2">
+                  {t('wizard.misc.selectedPhotos', { count: photoFiles.length })}
+                </p>
+                <ul className="space-y-1">
+                  {photoFiles.map((file, index) => (
+                    <li key={index} className="text-sm text-text-mute">
+                      {t('wizard.misc.photoFileEntry', {
+                        name: file.name,
+                        size: (file.size / 1024 / 1024).toFixed(2),
+                      })}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Step 4: Review */}
+        {currentStep === 4 && (
+          <div className="space-y-6">
+            <h3 className="text-lg font-semibold text-text mb-4">{t('wizard.misc.reviewConfirm')}</h3>
+
+            <div className="bg-surface border border-border rounded-panel p-6 space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <p className="text-sm text-text-mute">{t('wizard.vin')}</p>
+                  <p className="text-text font-mono">{vin}</p>
+                </div>
+                <div>
+                  <p className="text-sm text-text-mute">{t('wizard.nickname')}</p>
+                  <p className="text-text">{formData.nickname}</p>
+                </div>
+                <div>
+                  <p className="text-sm text-text-mute">{t('detail.misc.type')}</p>
+                  <p className="text-text">{formData.vehicle_type}</p>
+                </div>
+                <div>
+                  <p className="text-sm text-text-mute">{t('wizard.year')}</p>
+                  <p className="text-text">{formData.year || t('detail.notSpecified')}</p>
+                </div>
+                <div>
+                  <p className="text-sm text-text-mute">{t('wizard.make')}</p>
+                  <p className="text-text">{formData.make || t('detail.notSpecified')}</p>
+                </div>
+                <div>
+                  <p className="text-sm text-text-mute">{t('wizard.model')}</p>
+                  <p className="text-text">{formData.model || t('detail.notSpecified')}</p>
+                </div>
+                <div>
+                  <p className="text-sm text-text-mute">{t('wizard.color')}</p>
+                  <p className="text-text">{formData.color || t('detail.notSpecified')}</p>
+                </div>
+                <div>
+                  <p className="text-sm text-text-mute">{t('edit.licensePlate')}</p>
+                  <p className="text-text">{formData.license_plate || t('detail.notSpecified')}</p>
+                </div>
+                {formData.purchase_date && (
+                  <div>
+                    <p className="text-sm text-text-mute">{t('edit.purchaseDate')}</p>
+                    <p className="text-text">{formData.purchase_date}</p>
+                  </div>
+                )}
+                {formData.purchase_price && (
+                  <div>
+                    <p className="text-sm text-text-mute">{t('edit.purchasePrice')}</p>
+                    <p className="text-text">
+                      {formatCurrency(formData.purchase_price, {
+                        fallback: t('detail.notSpecified'),
+                      })}
+                    </p>
+                  </div>
+                )}
+              </div>
+
+              {photoFiles.length > 0 && (
+                <div>
+                  <p className="text-sm text-text-mute mb-2">{t('wizard.misc.photosToUpload')}</p>
+                  <p className="text-text">{t('wizard.misc.photoCount', { count: photoFiles.length })}</p>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+      </div>
+    </Drawer>
   )
 }

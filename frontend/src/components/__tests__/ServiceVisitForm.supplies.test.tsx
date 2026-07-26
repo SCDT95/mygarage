@@ -4,8 +4,12 @@ import { render } from '../../__tests__/test-utils'
 import ServiceVisitForm from '../ServiceVisitForm'
 import { useSupplies } from '../../hooks/queries/useSupplies'
 import { displayToCanonical, canonicalToDisplay } from '../../utils/supplyUnits'
+import { formatCurrency } from '../../utils/formatUtils'
 import type { Supply } from '../../types/supplies'
 import type { ServiceVisit } from '../../types/serviceVisit'
+
+const drawerForm = (): HTMLFormElement =>
+  screen.getByRole('dialog').querySelector('form') as HTMLFormElement
 
 const mockedApiGet = vi.fn().mockResolvedValue({ data: { items: [] } })
 const mockedApiPost = vi.fn().mockResolvedValue({ data: {} })
@@ -102,7 +106,7 @@ describe('ServiceVisitForm — supplies used (Task 17)', () => {
   })
 
   it('adds a supply to a line item, sends a CANONICAL quantity on create, and shows the breakdown line', async () => {
-    const { container } = render(<ServiceVisitForm {...DEFAULT_PROPS} />)
+    render(<ServiceVisitForm {...DEFAULT_PROPS} />)
 
     fillRequiredDescription()
 
@@ -112,15 +116,16 @@ describe('ServiceVisitForm — supplies used (Task 17)', () => {
     const quantityInput = screen.getByRole('spinbutton', { name: 'service.suppliesQuantity' })
     fireEvent.change(quantityInput, { target: { value: '2' } })
 
-    // Breakdown line: 2 display-unit (qt) -> canonical (L) * avg_unit_cost.
-    // (Subtotal is $0 here, so this happens to equal the grand total too —
-    // scope the query to the breakdown row itself rather than matching text.)
+    // The Total block now formats through the shared formatCurrency (SDQ-3), not a
+    // hardcoded `$`+toFixed. USD/en-US (the mocked currency prefs) → "$18.93"; the
+    // value is still derived from the canonical quantity, so it discriminates the
+    // parts+supplies cost (a dropped canonical conversion or a wrong unit-cost fails).
     const expectedCanonicalQty = displayToCanonical(2, 'volume', 'imperial')
-    const expectedPartsSuppliesCost = (10 * expectedCanonicalQty).toFixed(2)
+    const expectedPartsSuppliesCost = formatCurrency(10 * expectedCanonicalQty, { currencyCode: 'USD', locale: 'en-US' })
     const partsSuppliesRow = screen.getByText('service.partsSupplies:').closest('div')
-    expect(partsSuppliesRow).toHaveTextContent(`$${expectedPartsSuppliesCost}`)
+    expect(partsSuppliesRow).toHaveTextContent(expectedPartsSuppliesCost)
 
-    fireEvent.submit(container.querySelector('form') as HTMLFormElement)
+    fireEvent.submit(drawerForm())
 
     await waitFor(() => expect(mockedApiPost).toHaveBeenCalled())
     const body = mockedApiPost.mock.calls.at(-1)?.[1] as {
@@ -135,7 +140,7 @@ describe('ServiceVisitForm — supplies used (Task 17)', () => {
   })
 
   it('removes a supply usage row and sends an empty supplies_used array', async () => {
-    const { container } = render(<ServiceVisitForm {...DEFAULT_PROPS} />)
+    render(<ServiceVisitForm {...DEFAULT_PROPS} />)
 
     fillRequiredDescription()
     fireEvent.click(screen.getByRole('button', { name: /suppliesAddRow/ }))
@@ -145,7 +150,7 @@ describe('ServiceVisitForm — supplies used (Task 17)', () => {
     expect(screen.queryByRole('spinbutton', { name: 'service.suppliesQuantity' })).not.toBeInTheDocument()
     expect(screen.queryByText('service.partsSupplies:')).not.toBeInTheDocument()
 
-    fireEvent.submit(container.querySelector('form') as HTMLFormElement)
+    fireEvent.submit(drawerForm())
 
     await waitFor(() => expect(mockedApiPost).toHaveBeenCalled())
     const body = mockedApiPost.mock.calls.at(-1)?.[1] as {
@@ -222,7 +227,7 @@ describe('ServiceVisitForm — supplies used (Task 17)', () => {
     })
 
     it('resends the hydrated supplies_used (converted back to canonical) even when nothing else was touched — proves editing does not wipe usages', async () => {
-      const { container } = render(<ServiceVisitForm {...DEFAULT_PROPS} visit={MOCK_VISIT} />)
+      render(<ServiceVisitForm {...DEFAULT_PROPS} visit={MOCK_VISIT} />)
 
       // Wait for hydration before submitting, otherwise the still-empty [] would
       // race the effect and falsely appear to "work".
@@ -230,7 +235,7 @@ describe('ServiceVisitForm — supplies used (Task 17)', () => {
         expect(screen.getByRole('spinbutton', { name: 'service.suppliesQuantity' })).toBeInTheDocument()
       })
 
-      fireEvent.submit(container.querySelector('form') as HTMLFormElement)
+      fireEvent.submit(drawerForm())
 
       await waitFor(() => expect(mockedApiPut).toHaveBeenCalled())
       const body = mockedApiPut.mock.calls.at(-1)?.[1] as {
@@ -303,13 +308,13 @@ describe('ServiceVisitForm — supplies used (Task 17)', () => {
         ],
       }
 
-      const { container } = render(<ServiceVisitForm {...DEFAULT_PROPS} visit={visit} />)
+      render(<ServiceVisitForm {...DEFAULT_PROPS} visit={visit} />)
       await waitFor(() => {
         expect(
           screen.getByRole('spinbutton', { name: 'service.suppliesQuantity' }),
         ).toBeInTheDocument()
       })
-      fireEvent.submit(container.querySelector('form') as HTMLFormElement)
+      fireEvent.submit(drawerForm())
 
       await waitFor(() => expect(mockedApiPut).toHaveBeenCalled())
       const body = mockedApiPut.mock.calls.at(-1)?.[1] as {
@@ -318,5 +323,25 @@ describe('ServiceVisitForm — supplies used (Task 17)', () => {
       const lineItem = body.line_items.find((li) => li.id === 501)
       expect(lineItem?.supplies_used.map((u) => u.supply_id)).toContain(2)
     })
+  })
+})
+
+describe('ServiceVisitForm — footer lift (P3 Task 5)', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    vi.mocked(useSupplies).mockReturnValue({
+      data: { supplies: [MOCK_SUPPLY], total: 1 },
+      isSuccess: true,
+      isLoading: false,
+      isError: false,
+    } as unknown as ReturnType<typeof useSupplies>)
+  })
+
+  it('submits via the footer button (form= association, outside the <form>)', async () => {
+    render(<ServiceVisitForm {...DEFAULT_PROPS} />)
+    fillRequiredDescription()
+    // Create lives in the sticky footer, a sibling of the <form>, wired via form="service-visit-form".
+    fireEvent.click(screen.getByRole('button', { name: 'common:create' }))
+    await waitFor(() => expect(mockedApiPost).toHaveBeenCalled())
   })
 })

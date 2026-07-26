@@ -1,6 +1,8 @@
 """Vehicle CRUD API endpoints."""
 
 import logging
+from datetime import date
+from decimal import Decimal
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy import func, select
@@ -8,6 +10,12 @@ from sqlalchemy.exc import IntegrityError, OperationalError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_db
+from app.models import (
+    DEFRecord,
+    FuelRecord,
+    Reminder,
+    ServiceVisit,
+)
 from app.models.user import User
 from app.models.vehicle import TrailerDetails, Vehicle
 from app.schemas.vehicle import (
@@ -16,11 +24,18 @@ from app.schemas.vehicle import (
     TrailerDetailsUpdate,
     VehicleArchiveRequest,
     VehicleCreate,
+    VehicleDetailStats,
     VehicleListResponse,
     VehicleResponse,
     VehicleUpdate,
 )
-from app.services.auth import get_vehicle_for_owner_or_403, require_auth
+from app.services.auth import (
+    get_vehicle_for_owner_or_403,
+    get_vehicle_or_403,
+    require_auth,
+)
+from app.services.odometer_service import latest_odometer_km_and_date
+from app.services.service_visit_service import service_visit_cost_load_options
 from app.services.vehicle_service import VehicleService
 from app.utils.datetime_utils import utc_now
 from app.utils.logging_utils import sanitize_for_log
@@ -85,6 +100,151 @@ async def get_vehicle(
     vehicle = await service.get_vehicle(vin, current_user)
 
     return VehicleResponse.model_validate(vehicle)
+
+
+async def _vehicle_detail_stats(db: AsyncSession, vin: str) -> VehicleDetailStats:
+    """Aggregate the Vehicle Detail hero/key-facts stats for one vehicle.
+
+    Reuses the per-vehicle overdue/upcoming logic (dashboard.calculate_vehicle_stats)
+    and the YTD running-cost set (dashboard.calculate_fleet_health): service +
+    fuel + DEF dated year_start..today. All filters are Date-vs-Python-date
+    ranges (dialect-portable, no EXTRACT/strftime). Costs are Decimal, never
+    float. latest_odometer_km stays raw canonical km (converted at the API
+    boundary on the client).
+    """
+    today = date.today()
+    year = today.year
+    year_start = date(year, 1, 1)
+
+    # Latest odometer reading (km) + its date — ONE deterministic fetch via the
+    # SHARED helper (date DESC, id DESC), the SAME selection the dashboard's
+    # calculate_vehicle_stats now uses (R2-B1/B2), so the two routes agree on a
+    # same-date-reading vehicle. The model has no VIN/date uniqueness
+    # (app/models/odometer.py:21), hence the id.desc() tie-break inside the helper.
+    # current_odometer_km for the mileage-reminder evaluation is derived from THIS
+    # SAME returned row (reused, not a second query) so the displayed reading and
+    # the mileage-eval reading can never disagree.
+    latest_odometer_km, latest_odometer_date = await latest_odometer_km_and_date(db, vin)
+    current_odometer_km = latest_odometer_km  # one determination, reused below
+
+    # Last service / last fill-up dates (id.desc() secondary sort = dialect-stable).
+    last_service_date = await db.scalar(
+        select(ServiceVisit.date)
+        .where(ServiceVisit.vin == vin)
+        .order_by(ServiceVisit.date.desc(), ServiceVisit.id.desc())
+        .limit(1)
+    )
+    last_fillup_date = await db.scalar(
+        select(FuelRecord.date)
+        .where(FuelRecord.vin == vin)
+        .order_by(FuelRecord.date.desc(), FuelRecord.id.desc())
+        .limit(1)
+    )
+
+    # Overdue / upcoming — per-vehicle predicate identical to
+    # dashboard.calculate_vehicle_stats (G8). current_odometer_km reused from the
+    # single odometer fetch above (NO second query).
+    pending = (
+        (
+            await db.execute(
+                select(Reminder).where(Reminder.vin == vin, Reminder.status == "pending")
+            )
+        )
+        .scalars()
+        .all()
+    )
+    overdue_count = 0
+    upcoming_count = 0
+    for reminder in pending:
+        is_overdue = False
+        if reminder.due_date and reminder.due_date <= today:
+            is_overdue = True
+        if (
+            reminder.due_mileage_km
+            and current_odometer_km
+            and current_odometer_km >= reminder.due_mileage_km
+        ):
+            is_overdue = True
+        if is_overdue:
+            overdue_count += 1
+        else:
+            upcoming_count += 1
+
+    # Spent this year — service (property) + fuel + DEF, dated year_start..today.
+    service_visits = (
+        (
+            await db.execute(
+                select(ServiceVisit)
+                .options(*service_visit_cost_load_options())
+                .where(
+                    ServiceVisit.vin == vin,
+                    ServiceVisit.date >= year_start,
+                    ServiceVisit.date <= today,
+                )
+            )
+        )
+        .scalars()
+        .all()
+    )
+    service_spent = sum((v.calculated_total_cost for v in service_visits), Decimal("0.00"))
+
+    fuel_costs = (
+        (
+            await db.execute(
+                select(FuelRecord.cost).where(
+                    FuelRecord.vin == vin,
+                    FuelRecord.cost.isnot(None),
+                    FuelRecord.date >= year_start,
+                    FuelRecord.date <= today,
+                )
+            )
+        )
+        .scalars()
+        .all()
+    )
+    fuel_spent = sum((c for c in fuel_costs if c is not None), Decimal("0.00"))
+
+    def_costs = (
+        (
+            await db.execute(
+                select(DEFRecord.cost).where(
+                    DEFRecord.vin == vin,
+                    DEFRecord.cost.isnot(None),
+                    DEFRecord.date >= year_start,
+                    DEFRecord.date <= today,
+                )
+            )
+        )
+        .scalars()
+        .all()
+    )
+    def_spent = sum((c for c in def_costs if c is not None), Decimal("0.00"))
+
+    return VehicleDetailStats(
+        overdue_count=overdue_count,
+        upcoming_count=upcoming_count,
+        latest_odometer_km=latest_odometer_km,
+        latest_odometer_date=latest_odometer_date,
+        last_service_date=last_service_date,
+        last_fillup_date=last_fillup_date,
+        spent_this_year=service_spent + fuel_spent + def_spent,
+        year=year,
+    )
+
+
+@router.get("/{vin}/detail-stats", response_model=VehicleDetailStats)
+async def get_vehicle_detail_stats(
+    vin: str,
+    db: AsyncSession = Depends(get_db),
+    current_user: User | None = Depends(require_auth),
+) -> VehicleDetailStats:
+    """Read-aggregation for the Vehicle Detail hero + key-facts strip.
+
+    Requires READ access to the vehicle (owner, admin, or a read/write share).
+    Returns 404 if the vehicle does not exist, 403 if the caller lacks access.
+    """
+    await get_vehicle_or_403(vin, current_user, db)  # 404/403 gate before any vin-filtered query
+    return await _vehicle_detail_stats(db, vin)
 
 
 @router.post("", response_model=VehicleResponse, status_code=201)
@@ -190,7 +350,6 @@ async def get_trailer_details(
     - Users can only access trailer details for their own vehicles
     - Admin users can access all trailer details
     """
-    from app.services.auth import get_vehicle_or_403
 
     vin = vin.upper().strip()
 
@@ -219,7 +378,6 @@ async def create_trailer_details(
     - Users can only create trailer details for their own vehicles
     - Admin users can create trailer details for all vehicles
     """
-    from app.services.auth import get_vehicle_or_403
 
     vin = vin.upper().strip()
 
@@ -280,7 +438,6 @@ async def update_trailer_details(
     - Users can only update trailer details for their own vehicles
     - Admin users can update trailer details for all vehicles
     """
-    from app.services.auth import get_vehicle_or_403
 
     vin = vin.upper().strip()
 

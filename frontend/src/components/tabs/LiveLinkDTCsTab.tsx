@@ -18,6 +18,7 @@ import {
 import { livelinkService } from '@/services/livelinkService'
 import type { VehicleDTC, VehicleDTCListResponse } from '@/types/livelink'
 import { formatAPITimestamp } from '@/utils/parseAPITimestamp'
+import { Card, Chip, IconButton, Button, Input, Mono, EmptyState } from '../ui'
 
 interface LiveLinkDTCsTabProps {
   vin: string
@@ -80,22 +81,22 @@ export default function LiveLinkDTCsTab({ vin }: LiveLinkDTCsTabProps) {
   const getSeverityIcon = (severity: string) => {
     switch (severity) {
       case 'critical':
-        return <AlertTriangle className="w-5 h-5 text-red-500" />
+        return <AlertTriangle aria-hidden="true" className="w-5 h-5 text-danger" />
       case 'warning':
-        return <AlertCircle className="w-5 h-5 text-yellow-500" />
+        return <AlertCircle aria-hidden="true" className="w-5 h-5 text-warning" />
       default:
-        return <Info className="w-5 h-5 text-blue-500" />
+        return <Info aria-hidden="true" className="w-5 h-5 text-info" />
     }
   }
 
   const getSeverityColor = (severity: string) => {
     switch (severity) {
       case 'critical':
-        return 'border-red-500/30 bg-red-500/10'
+        return 'border-danger/30 bg-danger/10'
       case 'warning':
-        return 'border-yellow-500/30 bg-yellow-500/10'
+        return 'border-warning/30 bg-warning/10'
       default:
-        return 'border-blue-500/30 bg-blue-500/10'
+        return 'border-info/30 bg-info/10'
     }
   }
 
@@ -120,7 +121,7 @@ export default function LiveLinkDTCsTab({ vin }: LiveLinkDTCsTabProps) {
   if (loading) {
     return (
       <div className="flex items-center justify-center py-12">
-        <RefreshCw className="w-8 h-8 text-primary animate-spin" />
+        <RefreshCw className="w-8 h-8 text-text-mute animate-spin" />
       </div>
     )
   }
@@ -131,30 +132,19 @@ export default function LiveLinkDTCsTab({ vin }: LiveLinkDTCsTabProps) {
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
         <div className="flex gap-2">
           {(['active', 'cleared', 'all'] as const).map((f) => (
-            <button
-              key={f}
-              onClick={() => setFilter(f)}
-              className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
-                filter === f
-                  ? 'bg-primary text-white'
-                  : 'bg-garage-surface text-garage-text-muted hover:text-garage-text border border-garage-border'
-              }`}
-            >
+            <Chip key={f} onClick={() => setFilter(f)} selected={filter === f}>
               {filterLabels[f]}
               {f === 'active' && dtcs && (
-                <span className="ml-2 px-1.5 py-0.5 bg-white/20 rounded text-xs">
-                  {dtcs.active_count}
-                </span>
+                <span className="ml-1 rounded bg-(--accent-soft) px-1.5 py-0.5 text-[10px]">{dtcs.active_count}</span>
               )}
-            </button>
+            </Chip>
           ))}
         </div>
 
         {dtcs && dtcs.critical_count > 0 && (
-          <div className="flex items-center gap-2 text-red-500">
-            <AlertTriangle className="w-4 h-4" />
-            <span className="text-sm font-medium">{t('livelink.dtcs.criticalCount', { count: dtcs.critical_count })}</span>
-          </div>
+          <Chip tone="danger" icon={AlertTriangle}>
+            {t('livelink.dtcs.criticalCount', { count: dtcs.critical_count })}
+          </Chip>
         )}
       </div>
 
@@ -164,8 +154,8 @@ export default function LiveLinkDTCsTab({ vin }: LiveLinkDTCsTabProps) {
           {filteredDTCs.map((dtc) => (
             <div
               key={dtc.id}
-              className={`rounded-lg border p-4 ${
-                dtc.is_active ? getSeverityColor(dtc.severity) : 'border-garage-border bg-garage-surface opacity-75'
+              className={`rounded-card border p-4 ${
+                dtc.is_active ? getSeverityColor(dtc.severity) : 'border-border bg-surface opacity-75'
               }`}
             >
               <div className="flex items-start justify-between">
@@ -173,23 +163,29 @@ export default function LiveLinkDTCsTab({ vin }: LiveLinkDTCsTabProps) {
                   {getSeverityIcon(dtc.severity)}
                   <div>
                     <div className="flex items-center gap-2">
-                      <span className="font-mono font-bold text-garage-text">{dtc.code}</span>
+                      <Mono weight="bold">{dtc.code}</Mono>
                       {!dtc.is_active && (
-                        <span className="flex items-center gap-1 text-xs text-green-500">
-                          <CheckCircle className="w-3 h-3" />{t('livelink.dtcs.cleared')}</span>
+                        <Chip tone="success" icon={CheckCircle}>{t('livelink.dtcs.cleared')}</Chip>
                       )}
                       {dtc.is_emissions_related && (
-                        <span className="px-1.5 py-0.5 bg-yellow-500/20 text-yellow-500 text-xs rounded">{t('livelink.dtcs.emissions')}</span>
+                        <Chip tone="warning">{t('livelink.dtcs.emissions')}</Chip>
                       )}
                     </div>
-                    <p className="text-garage-text mt-1">
-                      {dtc.description || t('livelink.dtcs.unknownCode')}
-                    </p>
-                    <div className="flex flex-wrap gap-x-4 gap-y-1 mt-2 text-xs text-garage-text-muted">
-                      <span>{t('livelink.dtcs.firstSeen')}: {formatAPITimestamp(dtc.first_seen, (d) => d.toLocaleDateString())}</span>
-                      <span>{t('livelink.dtcs.lastSeen')}: {formatAPITimestamp(dtc.last_seen, (d) => d.toLocaleDateString())}</span>
+                    <p className="text-text mt-1">{dtc.description || t('livelink.dtcs.unknownCode')}</p>
+                    <div className="flex flex-wrap gap-x-4 gap-y-1 mt-2 text-xs text-text-mute">
+                      <span>
+                        {t('livelink.dtcs.firstSeen')}:{' '}
+                        <Mono size="xs">{formatAPITimestamp(dtc.first_seen, (d) => d.toLocaleDateString())}</Mono>
+                      </span>
+                      <span>
+                        {t('livelink.dtcs.lastSeen')}:{' '}
+                        <Mono size="xs">{formatAPITimestamp(dtc.last_seen, (d) => d.toLocaleDateString())}</Mono>
+                      </span>
                       {dtc.cleared_at && (
-                        <span>{t('livelink.dtcs.clearedAt')}: {formatAPITimestamp(dtc.cleared_at, (d) => d.toLocaleDateString())}</span>
+                        <span>
+                          {t('livelink.dtcs.clearedAt')}:{' '}
+                          <Mono size="xs">{formatAPITimestamp(dtc.cleared_at, (d) => d.toLocaleDateString())}</Mono>
+                        </span>
                       )}
                       {dtc.category && <span>{t('livelink.dtcs.category')}: {dtc.category}</span>}
                     </div>
@@ -197,94 +193,75 @@ export default function LiveLinkDTCsTab({ vin }: LiveLinkDTCsTabProps) {
                 </div>
 
                 <div className="flex items-center gap-2">
-                  <button
-                    onClick={() => openExternalSearch(dtc)}
-                    className="p-2 text-garage-text-muted hover:text-primary transition-colors"
-                    title={t('livelink.dtcs.searchOnline')}
-                  >
-                    <Search className="w-4 h-4" />
-                  </button>
+                  <IconButton icon={Search} label={t('livelink.dtcs.searchOnline')} onClick={() => openExternalSearch(dtc)} />
                   {dtc.is_active && (
-                    <button
+                    <IconButton
+                      icon={CheckCircle}
+                      label={t('livelink.dtcs.markAsCleared')}
                       onClick={() => handleClearDTC(dtc.id, dtc.code)}
-                      className="p-2 text-garage-text-muted hover:text-green-500 transition-colors"
-                      title={t('livelink.dtcs.markAsCleared')}
-                    >
-                      <CheckCircle className="w-4 h-4" />
-                    </button>
+                    />
                   )}
                 </div>
               </div>
 
               {/* User Notes */}
-              <div className="mt-3 pt-3 border-t border-garage-border/50">
+              <div className="mt-3 pt-3 border-t border-border">
                 {editingNotes === dtc.id ? (
                   <div className="flex gap-2">
-                    <input
+                    <Input
                       type="text"
                       value={notesValue}
                       onChange={(e) => setNotesValue(e.target.value)}
                       placeholder={t('livelink.dtcs.addNotesPlaceholder')}
-                      className="flex-1 px-3 py-1.5 bg-garage-bg border border-garage-border rounded text-sm text-garage-text"
                       autoFocus
+                      className="flex-1"
                     />
-                    <button
-                      onClick={() => handleSaveNotes(dtc)}
-                      className="px-3 py-1.5 bg-primary text-white rounded text-sm"
-                    >
-                      {t('livelinkDtcs.saveNotes')}
-                    </button>
-                    <button
-                      onClick={() => setEditingNotes(null)}
-                      className="px-3 py-1.5 text-garage-text-muted hover:text-garage-text rounded text-sm"
-                    >
+                    <Button size="sm" onClick={() => handleSaveNotes(dtc)}>{t('livelinkDtcs.saveNotes')}</Button>
+                    <Button size="sm" variant="ghost" onClick={() => setEditingNotes(null)}>
                       {t('livelinkDtcs.cancelNotes')}
-                    </button>
+                    </Button>
                   </div>
                 ) : (
-                  <button
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    icon={FileText}
                     onClick={() => {
                       setNotesValue(dtc.user_notes || '')
                       setEditingNotes(dtc.id)
                     }}
-                    className="flex items-center gap-2 text-sm text-garage-text-muted hover:text-garage-text"
                   >
-                    <FileText className="w-4 h-4" />
                     {dtc.user_notes || t('livelink.dtcs.addNotesPlaceholder')}
-                  </button>
+                  </Button>
                 )}
               </div>
             </div>
           ))}
         </div>
       ) : (
-        <div className="bg-garage-surface rounded-lg border border-garage-border p-8 text-center">
-          <CheckCircle className="w-12 h-12 mx-auto mb-3 text-green-500 opacity-50" />
-          <p className="text-garage-text">
-            {filter === 'active'
+        <EmptyState
+          icon={CheckCircle}
+          title={
+            filter === 'active'
               ? t('livelink.dtcs.noActive')
               : filter === 'cleared'
-              ? t('livelink.dtcs.noCleared')
-              : t('livelink.dtcs.noRecorded')}
-          </p>
-          <p className="text-sm text-garage-text-muted mt-2">
-            {t('livelink.dtcs.willAppear')}
-          </p>
-        </div>
+                ? t('livelink.dtcs.noCleared')
+                : t('livelink.dtcs.noRecorded')
+          }
+          description={t('livelink.dtcs.willAppear')}
+        />
       )}
 
       {/* External Search Link */}
-      <div className="bg-garage-surface rounded-lg border border-garage-border p-4">
+      <Card padding="sm">
         <div className="flex items-center gap-3">
-          <ExternalLink className="w-5 h-5 text-primary" />
+          <ExternalLink aria-hidden="true" className="w-5 h-5 text-text-mute" />
           <div>
-            <p className="text-sm text-garage-text font-medium">{t('livelink.dtcs.needMoreInfo')}</p>
-            <p className="text-xs text-garage-text-muted">
-              {t('livelink.dtcs.searchHint')}
-            </p>
+            <p className="text-sm text-text font-medium">{t('livelink.dtcs.needMoreInfo')}</p>
+            <p className="text-xs text-text-mute">{t('livelink.dtcs.searchHint')}</p>
           </div>
         </div>
-      </div>
+      </Card>
     </div>
   )
 }

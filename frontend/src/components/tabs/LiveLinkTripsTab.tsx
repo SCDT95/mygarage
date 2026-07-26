@@ -16,6 +16,7 @@ import { useUnitPreference } from '@/hooks/useUnitPreference'
 import { useTimeFormat } from '@/hooks/useTimeFormat'
 import { formatAPITimestamp, formatTime } from '@/utils/parseAPITimestamp'
 import { UnitFormatter } from '@/utils/units'
+import { Card, Toggle, Mono, EmptyState } from '../ui'
 
 // Lazy-load map component — keeps Leaflet's ~150KB out of the main bundle
 const TripRouteMap = lazy(() => import('@/components/maps/TripRouteMap'))
@@ -124,35 +125,17 @@ export default function LiveLinkTripsTab({ vin }: LiveLinkTripsTabProps) {
     setSelectedTripId(selectedTripId === sessionId ? null : sessionId)
   }
 
-  const locationTrackingToggle = (
-    <button
-      type="button"
-      role="switch"
-      aria-checked={locationTrackingEnabled ?? false}
-      disabled={locationTrackingEnabled === null || trackingSaving}
-      onClick={handleToggleLocationTracking}
-      title={t('livelink.trips.locationTracking')}
-      className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${
-        locationTrackingEnabled ? 'bg-primary' : 'bg-garage-border'
-      }`}
-    >
-      <span
-        className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
-          locationTrackingEnabled ? 'translate-x-6' : 'translate-x-1'
-        }`}
-      />
-    </button>
-  )
-
   const header = (
     <div className="flex items-center justify-between gap-4">
-      <span className="text-sm text-garage-text-muted">
+      <span className="text-sm text-text-mute">
         {trips ? t('livelink.trips.tripCount', { count: trips.trips?.length ?? 0 }) : ''}
       </span>
-      <div className="flex items-center gap-3">
-        <span className="text-sm text-garage-text">{t('livelink.trips.locationTracking')}</span>
-        {locationTrackingToggle}
-      </div>
+      <Toggle
+        label={t('livelink.trips.locationTracking')}
+        checked={locationTrackingEnabled ?? false}
+        onChange={handleToggleLocationTracking}
+        disabled={locationTrackingEnabled === null || trackingSaving}
+      />
     </div>
   )
 
@@ -161,7 +144,7 @@ export default function LiveLinkTripsTab({ vin }: LiveLinkTripsTabProps) {
       <div className="space-y-4">
         {header}
         <div className="flex items-center justify-center py-12">
-          <RefreshCw className="w-8 h-8 text-primary animate-spin" />
+          <RefreshCw aria-hidden="true" className="w-8 h-8 text-text-mute animate-spin" />
         </div>
       </div>
     )
@@ -173,11 +156,7 @@ export default function LiveLinkTripsTab({ vin }: LiveLinkTripsTabProps) {
     return (
       <div className="space-y-4">
         {header}
-        <div className="bg-garage-surface rounded-lg border border-garage-border p-8 text-center">
-          <Route className="w-12 h-12 mx-auto mb-3 text-garage-text-muted opacity-50" />
-          <p className="text-garage-text">{t('livelink.trips.noRecords')}</p>
-          <p className="text-sm text-garage-text-muted mt-2">{t('livelink.trips.autoDetected')}</p>
-        </div>
+        <EmptyState icon={Route} title={t('livelink.trips.noRecords')} description={t('livelink.trips.autoDetected')} />
       </div>
     )
   }
@@ -202,22 +181,19 @@ export default function LiveLinkTripsTab({ vin }: LiveLinkTripsTabProps) {
 
       {/* Route map — selected trip's GPS polyline */}
       {selectedTripId != null && (
-        <div className="bg-garage-surface rounded-lg border border-garage-border p-4">
+        <Card padding="sm">
           {pointsLoading ? (
             <div className="flex items-center justify-center py-12">
-              <RefreshCw className="w-8 h-8 text-primary animate-spin" />
+              <RefreshCw aria-hidden="true" className="w-8 h-8 text-text-mute animate-spin" />
             </div>
           ) : tripPoints.length === 0 ? (
-            <div className="text-center py-8">
-              <MapIcon className="w-12 h-12 mx-auto mb-3 text-garage-text-muted opacity-50" />
-              <p className="text-garage-text-muted">{t('livelink.trips.mapEmpty')}</p>
-            </div>
+            <EmptyState icon={MapIcon} size="sm" title={t('livelink.trips.mapEmpty')} />
           ) : (
-            <Suspense fallback={<div className="h-[400px] bg-garage-bg rounded-lg animate-pulse" />}>
+            <Suspense fallback={<div className="h-[400px] bg-surface-2 rounded-card animate-pulse" />}>
               <TripRouteMap points={tripPoints} />
             </Suspense>
           )}
-        </div>
+        </Card>
       )}
     </div>
   )
@@ -244,24 +220,21 @@ function TripCard({
     <button
       type="button"
       onClick={onSelect}
-      className={`w-full text-left bg-garage-surface rounded-lg border p-4 transition-colors hover:bg-garage-bg/50 ${
-        isSelected ? 'border-primary' : 'border-garage-border'
+      aria-pressed={isSelected}
+      className={`w-full text-left bg-surface rounded-card border p-4 ui-motion hover:bg-surface-2/50 ${
+        isSelected ? 'border-(--accent-line)' : 'border-border'
       }`}
     >
       <div className="flex items-center justify-between gap-4 flex-wrap">
         <div className="flex items-center gap-2">
-          <Calendar className="w-5 h-5 text-primary" />
+          <Calendar aria-hidden="true" className="w-5 h-5 text-text-mute" />
           <div>
-            <div className="text-garage-text font-medium">
+            <div className="text-text font-medium">
               {formatAPITimestamp(trip.started_at, (d) =>
-                d.toLocaleDateString(undefined, {
-                  weekday: 'short',
-                  month: 'short',
-                  day: 'numeric',
-                }),
+                d.toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' }),
               )}
             </div>
-            <div className="text-xs text-garage-text-muted">
+            <div className="text-xs text-text-mute">
               {formatTime(trip.started_at, timeFormat)}
               {trip.ended_at && (
                 <>
@@ -273,17 +246,17 @@ function TripCard({
           </div>
         </div>
 
-        <div className="flex items-center gap-6 text-sm text-garage-text-muted">
+        <div className="flex items-center gap-6 text-sm text-text-mute">
           <div className="flex items-center gap-1">
-            <Clock className="w-4 h-4" />
-            <span>{formatDuration(trip.duration_seconds)}</span>
+            <Clock aria-hidden="true" className="w-4 h-4" />
+            <Mono size="sm">{formatDuration(trip.duration_seconds)}</Mono>
           </div>
           <div className="flex items-center gap-1">
-            <MapPin className="w-4 h-4" />
-            <span>{formatDistance(trip.distance_km)}</span>
+            <MapPin aria-hidden="true" className="w-4 h-4" />
+            <Mono size="sm">{formatDistance(trip.distance_km)}</Mono>
           </div>
           <div className="flex items-center gap-1">
-            <Route className="w-4 h-4" />
+            <Route aria-hidden="true" className="w-4 h-4" />
             <span>{t('livelink.trips.pointCount', { count: trip.point_count })}</span>
           </div>
         </div>

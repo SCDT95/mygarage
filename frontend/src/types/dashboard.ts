@@ -8,6 +8,8 @@ import type { components } from './api.generated'
 
 export type VehicleStatistics = components['schemas']['VehicleStatistics']
 export type DashboardResponse = components['schemas']['DashboardResponse']
+export type FleetHealth = components['schemas']['FleetHealth']
+export type FleetNextDue = components['schemas']['FleetNextDue']
 
 // ============================================================================
 // Section B: Hand-maintained frontend-only types

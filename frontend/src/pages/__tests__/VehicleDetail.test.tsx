@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen, waitFor, fireEvent, within } from '@testing-library/react'
-import { MemoryRouter, Route, Routes } from 'react-router-dom'
+import { Link, MemoryRouter, Route, Routes } from 'react-router-dom'
 
 // Mock all tab components to avoid deep dependency trees
 vi.mock('../../components/tabs/ServiceTab', () => ({ default: () => <div>ServiceTab</div> }))
@@ -16,6 +16,8 @@ vi.mock('../../components/tabs/TollsTab', () => ({ default: () => <div>TollsTab<
 vi.mock('../../components/tabs/SafetyTab', () => ({ default: () => <div>SafetyTab</div> }))
 vi.mock('../../components/tabs/SpotRentalsTab', () => ({ default: () => <div>SpotRentalsTab</div> }))
 vi.mock('../../components/tabs/PropaneTab', () => ({ default: () => <div>PropaneTab</div> }))
+vi.mock('../../components/tabs/DEFTab', () => ({ default: () => <div>DEFTab</div> }))
+vi.mock('../../components/ReminderList', () => ({ default: () => <div>ReminderList</div> }))
 vi.mock('../../components/tabs/LiveLinkLiveTab', () => ({ default: () => <div>LiveLinkLiveTab</div> }))
 vi.mock('../../components/tabs/LiveLinkDTCsTab', () => ({ default: () => <div>LiveLinkDTCsTab</div> }))
 vi.mock('../../components/tabs/LiveLinkSessionsTab', () => ({ default: () => <div>LiveLinkSessionsTab</div> }))
@@ -52,6 +54,7 @@ vi.mock('sonner', () => ({
 vi.mock('../../services/vehicleService', () => ({
   default: {
     get: vi.fn(),
+    getDetailStats: vi.fn(),
   },
 }))
 vi.mock('../../services/livelinkService', () => ({
@@ -75,6 +78,9 @@ vi.mock('../../services/api', () => ({
 vi.mock('../../hooks/useOnlineStatus', () => ({
   useOnlineStatus: vi.fn(() => true),
 }))
+vi.mock('../../hooks/useUnitPreference', () => ({
+  useUnitPreference: () => ({ system: 'imperial' }),
+}))
 vi.mock('../../contexts/AuthContext', () => ({
   useAuth: vi.fn(() => ({
     user: { id: 1, username: 'testuser', email: 'test@test.com', is_admin: false },
@@ -95,7 +101,8 @@ vi.mock('../../contexts/AuthContext', () => ({
 import vehicleService from '../../services/vehicleService'
 import { livelinkService } from '../../services/livelinkService'
 import { useAuth } from '../../contexts/AuthContext'
-import type { Vehicle, VehicleType } from '../../types/vehicle'
+import type { Vehicle, VehicleDetailStats, VehicleType } from '../../types/vehicle'
+import { UnitFormatter } from '../../utils/units'
 import VehicleDetail from '../VehicleDetail'
 
 const mockedVehicleService = vi.mocked(vehicleService)
@@ -134,6 +141,7 @@ describe('VehicleDetail', () => {
     vi.clearAllMocks()
     localStorage.clear()
     mockedVehicleService.get.mockResolvedValue(mockVehicle)
+    mockedVehicleService.getDetailStats.mockRejectedValue(new Error('no stats'))
     mockedLivelinkService.hasLinkedDevice.mockResolvedValue(false)
   })
 
@@ -376,5 +384,197 @@ describe('VehicleDetail', () => {
     })
 
     expect(screen.getByTitle('detail.misc.transferTooltip')).toBeInTheDocument()
+  })
+
+  // --- Detail-stats fetch (P5 Task 3) ---
+
+  it('fetches detail-stats for the current vin', async () => {
+    renderVehicleDetail()
+    await waitFor(() => expect(screen.getByText('Test Car')).toBeInTheDocument())
+    expect(mockedVehicleService.getDetailStats).toHaveBeenCalledWith('TEST12345678901234')
+  })
+
+  it('does not let a stale A response overwrite B after navigating A->B (B3)', async () => {
+    // Distinguish A vs B by HERO-visible status only (both rendered in THIS task):
+    // A is overdue, B is upcoming. Under the key-returning t() mock the badge text
+    // is the i18n key, so A shows 'vehicleStats.overdue' and B shows
+    // 'vehicleStats.upcoming' — no key-facts strip (Task 5), no unit/currency
+    // formatting. A resolves LATE (deferred); B resolves immediately; B must win.
+    let resolveA: (value: VehicleDetailStats) => void = () => {}
+    const A_STATS: VehicleDetailStats = {
+      overdue_count: 3, upcoming_count: 0,
+      latest_odometer_km: null, latest_odometer_date: null,
+      last_service_date: null, last_fillup_date: null,
+      spent_this_year: '0.00', year: 2026,
+    }
+    const B_STATS: VehicleDetailStats = { ...A_STATS, overdue_count: 0, upcoming_count: 4 }
+    mockedVehicleService.getDetailStats.mockImplementation((vin: string) =>
+      vin === 'AAAAAAAAAAAAAAAAA'
+        ? new Promise<VehicleDetailStats>((res) => { resolveA = res })
+        : Promise.resolve(B_STATS),
+    )
+    render(
+      <MemoryRouter initialEntries={['/vehicles/AAAAAAAAAAAAAAAAA']}>
+        <Routes>
+          <Route path="/vehicles/:vin" element={<VehicleDetail />} />
+        </Routes>
+        <Link to="/vehicles/BBBBBBBBBBBBBBBBB">go B</Link>
+      </MemoryRouter>,
+    )
+    await waitFor(() => expect(screen.getByText('Test Car')).toBeInTheDocument())
+    // Navigate A -> B (same route element, useParams changes -> [vin] effect re-runs).
+    fireEvent.click(screen.getByText('go B'))
+    // B rendered: hero shows the UPCOMING badge (overdue 0), never overdue.
+    await waitFor(() => expect(screen.getByText('vehicleStats.upcoming')).toBeInTheDocument())
+    expect(screen.queryByText('vehicleStats.overdue')).not.toBeInTheDocument()
+    // The stale A response now arrives; the cancelled guard must swallow it.
+    resolveA(A_STATS)
+    // Meaningful flush: awaiting waitFor yields to the microtask queue so A's
+    // .then() runs (and no-ops under the guard). B's upcoming badge must still
+    // stand and A's overdue badge must never appear. Without the guard, A would
+    // overwrite B here -> the upcoming badge vanishes and this waitFor throws.
+    await waitFor(() => expect(screen.getByText('vehicleStats.upcoming')).toBeInTheDocument())
+    expect(screen.queryByText('vehicleStats.overdue')).not.toBeInTheDocument()
+  })
+
+  it('renders fetched nonzero stats end-to-end: hero badge + reading + key facts (B4)', async () => {
+    // Successful NONZERO page integration: fetch -> page state -> props ->
+    // mounted VehicleHero AND VehicleKeyFacts. A broken page mount, an omitted
+    // detailStats prop, or a missing VehicleKeyFacts mount all fail here.
+    mockedVehicleService.getDetailStats.mockResolvedValue({
+      overdue_count: 3, upcoming_count: 2,
+      latest_odometer_km: '160000.00', latest_odometer_date: '2026-07-01',
+      last_service_date: '2026-06-15', last_fillup_date: '2026-07-10',
+      spent_this_year: '1234.50', year: 2026,
+    })
+    renderVehicleDetail()
+    await waitFor(() => expect(screen.getByText('Test Car')).toBeInTheDocument())
+
+    // Hero: overdue badge (overdue 3 > 0) + the boundary-converted odometer
+    // reading chip + the reading date. `Jul 1, 2026` is hero-only (the strip
+    // renders Jun 15 / Jul 10).
+    expect(await screen.findByText('vehicleStats.overdue')).toBeInTheDocument()
+    expect(screen.getByText('detail.misc.odometer')).toBeInTheDocument()
+    // R3-B2: assert the CONVERTED odometer VALUE, not just its label — computed
+    // from the SAME UnitFormatter the hero uses, with the file-pinned imperial
+    // system, so it renders in the hero's `<Mono>{reading}</Mono>` node. This fails
+    // if the boundary conversion is removed or raw km leaks to the UI.
+    const expectedOdometer = UnitFormatter.formatDistance(160000, 'imperial')
+    expect(screen.getByText(expectedOdometer)).toBeInTheDocument()
+    expect(screen.getByText(/Jul 1, 2026/)).toBeInTheDocument()
+
+    // Key-facts strip mounted + label-bound (role="group" makes it swap-proof):
+    const service = screen.getByRole('group', { name: 'vehicleStats.lastService' })
+    expect(within(service).getByText(/Jun 15, 2026/)).toBeInTheDocument()
+    const fillup = screen.getByRole('group', { name: 'vehicleStats.lastFillUp' })
+    expect(within(fillup).getByText(/Jul 10, 2026/)).toBeInTheDocument()
+    const spent = screen.getByRole('group', { name: 'detail.keyFacts.spent' })
+    expect(within(spent).getByText(/1,234\.50/)).toBeInTheDocument()
+    const upcoming = screen.getByRole('group', { name: 'detail.keyFacts.upcoming' })
+    expect(within(upcoming).getByText('2')).toBeInTheDocument()  // upcoming_count, not overdue
+  })
+
+  // --- Actions row + equipment expand (P5 Task 4) ---
+
+  it('Log Service switches to Maintenance/service (SDQ-1)', async () => {
+    renderVehicleDetail()
+    await waitFor(() => expect(screen.getByText('Test Car')).toBeInTheDocument())
+    fireEvent.click(screen.getByRole('button', { name: 'detail.hero.logService' }))
+    expect(await screen.findByText('ServiceTab')).toBeInTheDocument()
+  })
+
+  it('Add Fuel on a motorized car opens Fuel/fuel (SDQ-1)', async () => {
+    renderVehicleDetail()
+    await waitFor(() => expect(screen.getByText('Test Car')).toBeInTheDocument())
+    fireEvent.click(screen.getByRole('button', { name: 'detail.hero.addFuel' }))
+    expect(await screen.findByText('FuelTab')).toBeInTheDocument()
+  })
+
+  it('Add Fuel on a fifth-wheel with DEF+propane opens DEF, not Propane (B6)', async () => {
+    // Non-motorized (FifthWheel) + diesel -> hasDEF && hasPropane. First visible
+    // fuel sub-tab is DEF (config order Fuel->DEF->Propane). Buggy propane-first
+    // ordering would render PropaneTab instead.
+    mockedVehicleService.get.mockResolvedValue({
+      ...mockVehicle, vehicle_type: 'FifthWheel', fuel_type: 'diesel',
+    })
+    renderVehicleDetail()
+    await waitFor(() => expect(screen.getByText('Test Car')).toBeInTheDocument())
+    fireEvent.click(screen.getByRole('button', { name: 'detail.hero.addFuel' }))
+    expect(await screen.findByText('DEFTab')).toBeInTheDocument()
+    expect(screen.queryByText('PropaneTab')).not.toBeInTheDocument()
+  })
+
+  it('Reminder switches the active primary tab to Tracking (SDQ-1)', async () => {
+    renderVehicleDetail()
+    await waitFor(() => expect(screen.getByText('Test Car')).toBeInTheDocument())
+    fireEvent.click(screen.getByRole('button', { name: 'detail.hero.reminder' }))
+    await waitFor(() =>
+      expect(
+        screen.getAllByRole('tab', { name: 'detail.tabs.tracking' })
+          .some((el) => el.getAttribute('aria-selected') === 'true'),
+      ).toBe(true),
+    )
+  })
+
+  it('Standard/Optional expand AND scroll the read-only equipment <details> (SDQ-2, M6)', async () => {
+    const scrollSpy = vi.fn()
+    const original = Element.prototype.scrollIntoView
+    Element.prototype.scrollIntoView = scrollSpy
+    try {
+      mockedVehicleService.get.mockResolvedValue({
+        ...mockVehicle,
+        standard_equipment: { items: ['ABS', 'Airbags'] },
+        optional_equipment: { items: ['Sunroof'] },
+      })
+      renderVehicleDetail()
+      await waitFor(() => expect(screen.getByText('Test Car')).toBeInTheDocument())
+      // Overview is the default tab, so both <details> are mounted with refs.
+
+      // Standard: opens its <details> AND scrolls it into view. Deleting the
+      // scrollIntoView(...) line from the Task-4 effect makes the count stay 0.
+      fireEvent.click(screen.getByRole('button', { name: 'detail.hero.standard' }))
+      await waitFor(() =>
+        expect(screen.getByText('detail.standardEquipment').closest('details')?.open).toBe(true),
+      )
+      await waitFor(() => expect(scrollSpy).toHaveBeenCalledTimes(1))
+
+      // Optional: opens + scrolls the SECOND, distinct target.
+      fireEvent.click(screen.getByRole('button', { name: 'detail.hero.optional' }))
+      await waitFor(() =>
+        expect(screen.getByText('detail.optionalEquipment').closest('details')?.open).toBe(true),
+      )
+      await waitFor(() => expect(scrollSpy).toHaveBeenCalledTimes(2))
+
+      // Repeat-click Standard: the new signal object (nonce) re-fires the effect,
+      // so a repeat click is NOT a silent no-op -> a third scroll.
+      fireEvent.click(screen.getByRole('button', { name: 'detail.hero.standard' }))
+      await waitFor(() => expect(scrollSpy).toHaveBeenCalledTimes(3))
+    } finally {
+      Element.prototype.scrollIntoView = original
+    }
+  })
+
+  it('with only optional equipment: Standard button hidden, Optional opens + scrolls (B7/M6)', async () => {
+    const scrollSpy = vi.fn()
+    const original = Element.prototype.scrollIntoView
+    Element.prototype.scrollIntoView = scrollSpy
+    try {
+      mockedVehicleService.get.mockResolvedValue({
+        ...mockVehicle,
+        standard_equipment: null,
+        optional_equipment: { items: ['Sunroof'] },
+      })
+      renderVehicleDetail()
+      await waitFor(() => expect(screen.getByText('Test Car')).toBeInTheDocument())
+      // No standard list -> no Standard button; Optional present and functional.
+      expect(screen.queryByRole('button', { name: 'detail.hero.standard' })).not.toBeInTheDocument()
+      fireEvent.click(screen.getByRole('button', { name: 'detail.hero.optional' }))
+      await waitFor(() =>
+        expect(screen.getByText('detail.optionalEquipment').closest('details')?.open).toBe(true),
+      )
+      await waitFor(() => expect(scrollSpy).toHaveBeenCalledTimes(1))
+    } finally {
+      Element.prototype.scrollIntoView = original
+    }
   })
 })

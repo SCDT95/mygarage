@@ -385,7 +385,7 @@ export default function FamilyManagementModal({ isOpen, onClose }: FamilyManagem
                 </p>
               </div>
             </div>
-            <button onClick={onClose} className="p-2 hover:bg-garage-muted rounded-lg transition-colors">
+            <button onClick={onClose} className="p-2 hover:bg-garage-surface-light rounded-lg transition-colors">
               <X className="w-5 h-5 text-garage-text-muted" />
             </button>
           </div>
@@ -487,7 +487,7 @@ export default function FamilyManagementModal({ isOpen, onClose }: FamilyManagem
                         </button>
                         <button
                           onClick={handleAddUser}
-                          className="flex items-center gap-2 px-3 py-2 bg-primary text-white rounded-lg hover:bg-primary/90 transition-colors text-sm"
+                          className="flex items-center gap-2 px-3 py-2 bg-primary text-(--accent-on-solid) rounded-lg hover:bg-primary/90 transition-colors text-sm"
                         >
                           <UserPlus className="w-4 h-4" />
                           {t('familyManagementModal.addUser')}

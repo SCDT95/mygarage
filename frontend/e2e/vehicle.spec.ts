@@ -41,8 +41,13 @@ test.describe('Vehicle Management', () => {
       timeout: 15000,
     })
 
-    // Click the vehicle card (contains the VIN text)
-    await page.getByText(TEST_VEHICLE.vin).click()
+    // The card shows the VIN in a display-only (pointer-events-none) overlay;
+    // navigation is the stretched-link "View Details" control whose ::after
+    // overlays the whole card, so a real click anywhere on the card routes
+    // through it. Playwright can't .click() the pointer-events-none VIN text,
+    // so drive the actual nav affordance (P4 reskin: article + stretched link).
+    await expect(page.getByText(TEST_VEHICLE.vin)).toBeVisible()
+    await page.getByRole('button', { name: /view details/i }).click()
 
     // Should navigate to vehicle detail
     await expect(page).toHaveURL(`/vehicles/${TEST_VEHICLE.vin}`, { timeout: 10000 })

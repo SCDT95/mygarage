@@ -438,8 +438,8 @@ export default function CalendarPage() {
             summary.overdue > 0 ? 'border-danger' : 'border-garage-border'
           }`}>
             <div className="flex items-center gap-2 mb-2">
-              <AlertCircle className={`w-5 h-5 ${summary.overdue > 0 ? 'text-danger' : 'text-garage-text-secondary'}`} />
-              <span className={`text-sm ${summary.overdue > 0 ? 'text-danger' : 'text-garage-text-secondary'}`}>{t('calendar.overdue')}</span>
+              <AlertCircle className={`w-5 h-5 ${summary.overdue > 0 ? 'text-danger' : 'text-garage-text-muted'}`} />
+              <span className={`text-sm ${summary.overdue > 0 ? 'text-danger' : 'text-garage-text-muted'}`}>{t('calendar.overdue')}</span>
             </div>
             <p className={`text-2xl font-bold ${summary.overdue > 0 ? 'text-danger' : 'text-garage-text'}`}>{summary.overdue}</p>
           </div>
@@ -475,7 +475,7 @@ export default function CalendarPage() {
                 onClick={() => setBulkMode(!bulkMode)}
                 className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm transition-colors ${
                   bulkMode
-                    ? 'bg-primary text-white'
+                    ? 'bg-primary text-(--accent-on-solid)'
                     : 'bg-garage-bg text-garage-text-muted border border-garage-border hover:border-primary'
                 }`}
               >
@@ -531,7 +531,7 @@ export default function CalendarPage() {
                   <button
                     onClick={handleBulkComplete}
                     disabled={selectedEvents.length === 0 || bulkCompleting}
-                    className="px-3 py-1 rounded-lg text-sm bg-success text-white hover:bg-success-dark disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                    className="px-3 py-1 rounded-lg text-sm bg-success text-white hover:bg-success-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                   >
                     {bulkCompleting ? t('calendar.completing') : t('calendar.completeSelected')}
                   </button>
@@ -557,7 +557,7 @@ export default function CalendarPage() {
                     onClick={() => toggleVehicle(vehicle.vin)}
                     className={`px-3 py-1 rounded-lg text-sm transition-colors ${
                       selectedVehicles.length === 0 || selectedVehicles.includes(vehicle.vin)
-                        ? 'bg-primary text-white'
+                        ? 'bg-primary text-(--accent-on-solid)'
                         : 'bg-garage-bg text-garage-text-muted border border-garage-border'
                     }`}
                   >
@@ -895,7 +895,7 @@ export default function CalendarPage() {
               <div className="mt-6 flex justify-end">
                 <button
                   onClick={() => setShowNotesModal(false)}
-                  className="px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary-dark transition-colors"
+                  className="px-4 py-2 bg-primary text-(--accent-on-solid) rounded-lg hover:bg-primary-600 transition-colors"
                 >
                   {t('calendar.misc.close')}
                 </button>

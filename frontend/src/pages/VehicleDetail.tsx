@@ -3,38 +3,28 @@
  * Tabs: Overview, Photos, Service, Fuel, Notes
  */
 
-import { useState, useEffect, useRef, useCallback, lazy, Suspense } from 'react'
+import { useState, useEffect, useRef, useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useParams, useNavigate, Link, useSearchParams } from 'react-router-dom'
 import { toast } from 'sonner'
 import {
   ArrowLeft,
-  ArrowRightLeft,
-  Edit,
-  Trash2,
-  Car,
   Image,
   Wrench,
   Fuel,
   Bell,
   FileText,
-  Calendar,
   DollarSign,
   Info,
   Gauge,
-  Download,
-  Upload,
   BarChart3,
   Shield,
   AlertTriangle,
   CreditCard,
   MapPin,
-  MoreVertical,
-  X,
   Radio,
   Activity,
   Clock,
-  Share2,
   Droplets,
   Package,
 } from 'lucide-react'
@@ -42,7 +32,7 @@ import type { LucideIcon } from 'lucide-react'
 import vehicleService from '../services/vehicleService'
 import api from '../services/api'
 import { withBase } from '../utils/basePath'
-import type { Vehicle } from '../types/vehicle'
+import type { Vehicle, VehicleDetailStats } from '../types/vehicle'
 import type { LastLocation } from '../types/trips'
 import { isDieselFuelType } from '../constants/fuel'
 import ServiceTab from '../components/tabs/ServiceTab'
@@ -68,26 +58,20 @@ import LiveLinkChartsTab from '../components/tabs/LiveLinkChartsTab'
 import LiveLinkTripsTab from '../components/tabs/LiveLinkTripsTab'
 import ReminderList from '../components/ReminderList'
 import SubTabNav from '../components/SubTabNav'
+import VehicleHero from '../components/vehicle-detail/VehicleHero'
+import VehicleActionsToolbar from '../components/vehicle-detail/VehicleActionsToolbar'
+import VehiclePrimaryTabs from '../components/vehicle-detail/VehiclePrimaryTabs'
+import VehicleOverviewTab from '../components/vehicle-detail/VehicleOverviewTab'
+import VehicleMobileActionsSheet from '../components/vehicle-detail/VehicleMobileActionsSheet'
+import VehicleKeyFacts from '../components/vehicle-detail/VehicleKeyFacts'
 import { livelinkService } from '../services/livelinkService'
 import WindowStickerUpload from '../components/WindowStickerUpload'
 import VehicleRemoveModal from '../components/modals/VehicleRemoveModal'
 import VehicleTransferWizard from '../components/modals/VehicleTransferWizard'
 import VehicleSharingModal from '../components/modals/VehicleSharingModal'
 import TorqueSourceModal from '../components/modals/TorqueSourceModal'
-import TransferHistorySection from '../components/TransferHistorySection'
 import { useOnlineStatus } from '../hooks/useOnlineStatus'
 import { useAuth } from '../contexts/AuthContext'
-import { formatCurrency } from '../utils/formatUtils'
-import { useUnitPreference } from '../hooks/useUnitPreference'
-import { UnitFormatter } from '../utils/units'
-import { formatDateForDisplay } from '../utils/dateUtils'
-import { useCurrencyPreference } from '../hooks/useCurrencyPreference'
-import { useDateLocale } from '../hooks/useDateLocale'
-import { useTimeFormat } from '../hooks/useTimeFormat'
-import { formatDateTime } from '../utils/parseAPITimestamp'
-
-// Lazy-load map component — keeps Leaflet's ~150KB out of the main bundle
-const LastLocationMap = lazy(() => import('../components/maps/LastLocationMap'))
 
 type ApiError = {
   response?: {
@@ -123,17 +107,21 @@ type ImportSectionResult = {
   error_count: number
 }
 
-type ModalType = 'remove' | 'transfer' | 'sharing' | 'windowSticker' | 'torqueSource' | null
-type PrimaryTabType = 'overview' | 'media' | 'maintenance' | 'fuel' | 'tracking' | 'financial' | 'livelink'
-type SubTabType = 'photos' | 'documents' | 'service' | 'fuel' | 'def' | 'propane' | 'odometer' | 'notes' | 'warranties' | 'insurance' | 'tax' | 'tolls' | 'spotrentals' | 'suppliesused' | 'recalls' | 'reports' | 'reminders' | 'live' | 'dtcs' | 'sessions' | 'charts' | 'trips'
+export type ModalType = 'remove' | 'transfer' | 'sharing' | 'windowSticker' | 'torqueSource' | null
+export type PrimaryTabType = 'overview' | 'media' | 'maintenance' | 'fuel' | 'tracking' | 'financial' | 'livelink'
+export type SubTabType = 'photos' | 'documents' | 'service' | 'fuel' | 'def' | 'propane' | 'odometer' | 'notes' | 'warranties' | 'insurance' | 'tax' | 'tolls' | 'spotrentals' | 'suppliesused' | 'recalls' | 'reports' | 'reminders' | 'live' | 'dtcs' | 'sessions' | 'charts' | 'trips'
+
+// Hero action buttons switch to the relevant tab + sub-tab (SDQ-1). The
+// Equipment pill (SDQ-2) signals VehicleOverviewTab to expand + scroll a
+// read-only equipment list; the nonce makes a repeat click re-trigger the
+// effect even when `which` is unchanged.
+export interface EquipmentExpandSignal { which: 'standard' | 'optional'; nonce: number }
 
 export default function VehicleDetail() {
   const { t } = useTranslation('vehicles')
   const { vin } = useParams<{ vin: string }>()
   const navigate = useNavigate()
   const { isAdmin } = useAuth()
-  const { system: unitSystem } = useUnitPreference()
-  const dateLocale = useDateLocale()
   const [searchParams] = useSearchParams()
   const [vehicle, setVehicle] = useState<Vehicle | null>(null)
   const [loading, setLoading] = useState(true)
@@ -147,10 +135,19 @@ export default function VehicleDetail() {
   const [showMobileMenu, setShowMobileMenu] = useState(false)
   const [hasLiveLinkDevice, setHasLiveLinkDevice] = useState(false)
   const [lastLocation, setLastLocation] = useState<LastLocation | null>(null)
+  const [detailStats, setDetailStats] = useState<VehicleDetailStats | null>(null)
+  const [expandEquipment, setExpandEquipment] = useState<EquipmentExpandSignal | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const isOnline = useOnlineStatus()
-  const { currencyCode, locale } = useCurrencyPreference()
-  const { timeFormat } = useTimeFormat()
+
+  // Kept out of loadVehicle's dependency array on purpose: the ref always
+  // reads the latest translator without destabilizing the callback,
+  // matching the established pattern in Dashboard.tsx.
+  const tRef = useRef(t)
+  useEffect(() => {
+    tRef.current = t
+  }, [t])
+
   const loadVehicle = useCallback(async () => {
     if (!vin) return
     const cacheKey = `vehicle-cache-${vin}`
@@ -176,11 +173,17 @@ export default function VehicleDetail() {
           }
         }
       }
-      setError(getApiErrorMessage(error, t('detail.misc.loadError')))
+      setError(getApiErrorMessage(error, tRef.current('detail.misc.loadError')))
     } finally {
       setLoading(false)
     }
-  }, [vin, t])
+    // `t` intentionally excluded: react-i18next's mock (and some real setups)
+    // hand back a fresh function identity per render. Depending on it here
+    // re-fires this effect — and therefore refetches + remounts the whole
+    // page — on every unrelated state update (e.g. a tab click), which is
+    // both wasteful and, under jsdom, indistinguishable from a real remount
+    // for any test asserting exact side-effect call counts (P5 Task 4).
+  }, [vin])
 
   useEffect(() => {
     loadVehicle()
@@ -217,6 +220,29 @@ export default function VehicleDetail() {
       }
     }
     fetchLastLocation()
+  }, [vin])
+
+  // Fetch the hero/key-facts read-aggregation (overdue/upcoming/reading/last-service/
+  // last-fill-up/spent-YTD). Independent secondary fetch — the detail page never
+  // blocks on it (the hero renders without the reading/badge and the key-facts
+  // strip is omitted entirely until it resolves; no layout is reserved).
+  // B3: clear stats on vin change so B never shows A's numbers, and ignore a
+  // stale A response that resolves after we've navigated to B.
+  useEffect(() => {
+    if (!vin) return
+    let cancelled = false
+    setDetailStats(null)
+    vehicleService
+      .getDetailStats(vin)
+      .then((stats) => {
+        if (!cancelled) setDetailStats(stats)
+      })
+      .catch(() => {
+        if (!cancelled) setDetailStats(null)
+      })
+    return () => {
+      cancelled = true
+    }
   }, [vin])
 
   // Handle URL tab parameter from calendar navigation
@@ -362,27 +388,6 @@ export default function VehicleDetail() {
     }
   }
 
-  const formatDate = (dateString?: string | null) => {
-    if (!dateString) return t('detail.notSpecified')
-    return formatDateForDisplay(dateString, { year: 'numeric', month: 'long', day: 'numeric' }, dateLocale)
-  }
-
-  /**
-   * Render a window-sticker detail value.
-   *
-   * Option prices arrive as plain decimal strings and get the user's currency
-   * (a hardcoded "$" was wrong for the 15 non-USD currencies). Package entries
-   * hold contents rather than prices (e.g. ["358 miles"]), so anything that is
-   * not a bare number renders verbatim instead of being coerced into money.
-   */
-  const formatStickerValue = (raw: unknown): string | null => {
-    const text = Array.isArray(raw) ? raw.join(', ') : typeof raw === 'string' ? raw : null
-    if (!text) return null
-    return /^\d+(\.\d+)?$/.test(text)
-      ? formatCurrency(text, { currencyCode, locale, zeroIsValid: true })
-      : text
-  }
-
   // Handle primary tab click
   const handlePrimaryTabClick = (tabId: PrimaryTabType) => {
     setActivePrimaryTab(tabId)
@@ -397,8 +402,9 @@ export default function VehicleDetail() {
         break
       case 'fuel':
         // Fuel group is fuel/def/propane; pick the first sub-tab visible for this
-        // vehicle (propane-only trailers aren't motorized, so 'fuel' would be hidden)
-        setActiveSubTab(isMotorized ? 'fuel' : hasPropane ? 'propane' : hasDEF ? 'def' : 'fuel')
+        // vehicle (propane-only trailers aren't motorized, so 'fuel' would be hidden).
+        // Order matches the Add Fuel hero button (config order Fuel -> DEF -> Propane).
+        setActiveSubTab(isMotorized ? 'fuel' : hasDEF ? 'def' : hasPropane ? 'propane' : 'fuel')
         break
       case 'tracking':
         setActiveSubTab('notes')
@@ -418,6 +424,22 @@ export default function VehicleDetail() {
   // Handle sub-tab click
   const handleSubTabClick = (subTabId: string) => {
     setActiveSubTab(subTabId as SubTabType)
+  }
+
+  // Hero action buttons switch to the relevant tab + sub-tab (SDQ-1) — pure
+  // navigation, no P6-owned drawer state lifted into P5.
+  const goToSection = (primary: PrimaryTabType, sub: SubTabType) => {
+    setActivePrimaryTab(primary)
+    setActiveSubTab(sub)
+  }
+
+  // Equipment pill (SDQ-2): switch to Overview, then signal the Overview tab to
+  // expand + scroll the requested read-only equipment list. The nonce makes a
+  // repeat click re-trigger the effect.
+  const handleEquipmentClick = (which: 'standard' | 'optional') => {
+    setActivePrimaryTab('overview')
+    setActiveSubTab(null)
+    setExpandEquipment({ which, nonce: Date.now() })
   }
 
   // Download window sticker with authentication
@@ -443,6 +465,24 @@ export default function VehicleDetail() {
   // RVs ARE motorized and keep fuel/odometer tabs
   const isMotorized = vehicle?.vehicle_type &&
     !['Trailer', 'FifthWheel', 'TravelTrailer'].includes(vehicle.vehicle_type)
+
+  // Equipment-presence flags (B7) — the actions toolbar hides an Equipment
+  // button when its <details> target (below, in VehicleOverviewTab) is absent.
+  // Optional-chained into a local so no `vehicle.standard_equipment` non-null
+  // deref is written (B5 — strict-clean); `vehicle` is still `Vehicle | null`
+  // here, before the `!vehicle` early return.
+  const standardEquipment = vehicle?.standard_equipment
+  const hasStandardEquipment = Boolean(
+    standardEquipment &&
+    typeof standardEquipment === 'object' &&
+    Object.keys(standardEquipment).length > 0,
+  )
+  const optionalEquipment = vehicle?.optional_equipment
+  const hasOptionalEquipment = Boolean(
+    optionalEquipment &&
+    typeof optionalEquipment === 'object' &&
+    Object.keys(optionalEquipment).length > 0,
+  )
 
   // Check if vehicle is a fifth wheel, travel trailer, or RV (for propane tracking)
   const hasPropane = vehicle?.vehicle_type &&
@@ -551,7 +591,7 @@ export default function VehicleDetail() {
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-screen" role="status" aria-label={t('detail.loading')}>
-        <div className="w-12 h-12 border-4 border-primary border-t-transparent rounded-full animate-spin" />
+        <div className="h-12 w-12 rounded-full border-4 border-[color:var(--accent-solid)] border-t-transparent animate-spin" />
         <span className="sr-only">{t('detail.loading')}</span>
       </div>
     )
@@ -559,14 +599,14 @@ export default function VehicleDetail() {
 
   if (error || !vehicle) {
     return (
-      <div className="container mx-auto px-4 py-8">
-        <div className="bg-danger/10 border border-danger rounded-lg p-6 text-center">
-          <p className="text-danger mb-4">{error || t('detail.vehicleNotFound')}</p>
+      <div className="mx-auto max-w-[1120px] px-[clamp(16px,3vw,30px)] py-8">
+        <div className="rounded-panel border border-danger bg-danger/10 p-6 text-center">
+          <p className="mb-4 text-danger">{error || t('detail.vehicleNotFound')}</p>
           <Link
             to="/"
-            className="inline-flex items-center space-x-2 px-4 py-2 bg-garage-surface border border-garage-border rounded-lg hover:bg-garage-bg transition-colors"
+            className="inline-flex items-center gap-2 rounded-control border border-border bg-surface px-4 py-2 hover:bg-surface-2 transition-colors"
           >
-            <ArrowLeft className="w-4 h-4" />
+            <ArrowLeft className="h-4 w-4" />
             <span>{t('detail.backToDashboard')}</span>
           </Link>
         </div>
@@ -579,202 +619,49 @@ export default function VehicleDetail() {
     : null
 
   return (
-    <div className="min-h-screen bg-garage-bg pb-8">
-      {/* Header */}
-      <div className="bg-garage-surface border-b border-garage-border">
-        <div className="container mx-auto px-4 py-6">
-          {/* Header: relative container so mobile MoreVertical can be absolute-positioned */}
-          <div className="relative md:flex md:items-start md:justify-between">
-            <div className="flex items-start space-x-3 md:space-x-4 pr-12 md:pr-0">
-              {/* Vehicle Photo */}
-              <div className="w-16 h-16 md:w-24 md:h-24 bg-garage-bg rounded-lg overflow-hidden flex-shrink-0">
-                {photoUrl ? (
-                  <img
-                    src={photoUrl}
-                    alt={vehicle.nickname}
-                    className="w-full h-full object-cover"
-                  />
-                ) : (
-                  <div className="w-full h-full flex items-center justify-center">
-                    <Car className="w-10 h-10 md:w-12 md:h-12 text-garage-text-muted opacity-20" />
-                  </div>
-                )}
-              </div>
+    <div className="min-h-screen bg-bg pb-8">
+      <div className="mx-auto max-w-[1120px] px-[clamp(16px,3vw,30px)] pt-6">
+        {/* Back link (prototype dc.html:243) */}
+        <Link
+          to="/"
+          className="mb-4 inline-flex items-center gap-1.5 text-sm text-text-mute hover:text-text transition-colors"
+        >
+          <ArrowLeft className="h-4 w-4" />
+          <span>{t('detail.backToGarage')}</span>
+        </Link>
 
-              {/* Vehicle Info */}
-              <div className="min-w-0">
-                <Link
-                  to="/"
-                  className="inline-flex items-center space-x-1 text-sm text-garage-text-muted hover:text-garage-text transition-colors mb-2"
-                >
-                  <ArrowLeft className="w-3 h-3" />
-                  <span>{t('detail.backToGarage')}</span>
-                </Link>
-                <h1 className="text-2xl md:text-3xl font-bold text-garage-text mb-1">{vehicle.nickname}</h1>
-                <p className="text-garage-text-muted mb-2">
-                  {[vehicle.year, vehicle.make, vehicle.model].filter(Boolean).join(' ')}
-                </p>
-                <div className="flex flex-wrap items-center gap-2 text-sm">
-                  <span className="text-garage-text-muted font-mono text-xs [overflow-wrap:anywhere]">{vehicle.vin}</span>
-                  <span className="px-2 py-1 bg-garage-bg text-garage-text text-xs font-medium rounded flex-shrink-0">
-                    {vehicle.vehicle_type}
-                  </span>
-                  {vehicle.sold_date && (
-                    <span className="px-2 py-1 bg-warning/10 text-warning text-xs font-medium rounded flex-shrink-0">
-                      {t('vehicleCard.sold')}
-                    </span>
-                  )}
-                </div>
-                {fromCache && (
-                  <div className="mt-2 flex items-center gap-2 text-xs text-amber-500">
-                    <AlertTriangle className="w-4 h-4" />
-                    <span>{t('detail.offlineCachedData')}</span>
-                  </div>
-                )}
-              </div>
-            </div>
+        {/* Hero */}
+        <VehicleHero vehicle={vehicle} photoUrl={photoUrl} fromCache={fromCache} detailStats={detailStats} />
 
-            {/* Hidden file input for import */}
-            <input
-              ref={fileInputRef}
-              type="file"
-              accept=".json"
-              onChange={handleImportJSON}
-              className="hidden"
-            />
+        {/* Hidden file input for import */}
+        <input ref={fileInputRef} type="file" accept=".json" onChange={handleImportJSON} className="hidden" />
 
-              {/* Desktop buttons - hidden on mobile */}
-              <div className="hidden md:flex items-center space-x-2">
-                <button
-                  onClick={handleImportClick}
-                  disabled={importing || !isOnline}
-                  className="flex items-center space-x-2 px-5 py-3 btn btn-primary rounded-lg disabled:opacity-50"
-                  title={t('detail.misc.importTooltip')}
-                >
-                  <Upload className="w-4 h-4" />
-                  <span>{importing ? t('detail.importing') : t('detail.import')}</span>
-                </button>
-                <button
-                  onClick={handleExportJSON}
-                  disabled={exporting || !isOnline}
-                  className="flex items-center space-x-2 px-5 py-3 btn btn-primary rounded-lg disabled:opacity-50"
-                  title={t('detail.exportTooltip')}
-                >
-                  <Download className="w-4 h-4" />
-                  <span>{exporting ? t('detail.exporting') : t('detail.export')}</span>
-                </button>
-                <button
-                  onClick={() => navigate(`/vehicles/${vin}/analytics`)}
-                  className="flex items-center space-x-2 px-5 py-3 btn btn-primary rounded-lg"
-                  title={t('detail.analyticsTooltip')}
-                >
-                  <BarChart3 className="w-4 h-4" />
-                  <span>{t('detail.analytics')}</span>
-                </button>
-                <button
-                  onClick={() => setOpenModal('sharing')}
-                  className="flex items-center space-x-2 px-5 py-3 btn btn-primary rounded-lg"
-                  title={t('detail.shareTooltip')}
-                >
-                  <Share2 className="w-4 h-4" />
-                  <span>{t('detail.share')}</span>
-                </button>
-                <button
-                  onClick={() => navigate(`/vehicles/${vin}/edit`)}
-                  className="flex items-center space-x-2 px-5 py-3 btn btn-primary rounded-lg"
-                >
-                  <Edit className="w-4 h-4" />
-                  <span>{t('common:edit')}</span>
-                </button>
-                {isAdmin && (
-                  <button
-                    onClick={() => setOpenModal('transfer')}
-                    className="flex items-center space-x-2 px-5 py-3 bg-amber-900/30 border border-amber-700 text-amber-400 rounded-lg hover:bg-amber-800/50 transition-colors"
-                    title={t('detail.misc.transferTooltip')}
-                  >
-                    <ArrowRightLeft className="w-4 h-4" />
-                    <span>{t('detail.transfer')}</span>
-                  </button>
-                )}
-                <button
-                  onClick={() => setOpenModal('remove')}
-                  className="flex items-center space-x-2 px-5 py-3 bg-red-900/30 border border-red-700 text-red-400 rounded-lg hover:bg-red-800/50 transition-colors"
-                >
-                  <Trash2 className="w-4 h-4" />
-                  <span>{t('detail.remove')}</span>
-                </button>
-              </div>
+        {/* Actions row + secondary toolbar (Task 4 restyle) */}
+        <VehicleActionsToolbar
+          isAdmin={isAdmin}
+          importing={importing}
+          exporting={exporting}
+          isOnline={isOnline}
+          showFuelAction={Boolean(isMotorized || hasDEF || hasPropane)}
+          hasStandardEquipment={hasStandardEquipment}
+          hasOptionalEquipment={hasOptionalEquipment}
+          onLogService={() => goToSection('maintenance', 'service')}
+          onAddFuel={() => goToSection('fuel', isMotorized ? 'fuel' : hasDEF ? 'def' : hasPropane ? 'propane' : 'fuel')}
+          onReminder={() => goToSection('tracking', 'reminders')}
+          onExpandEquipment={handleEquipmentClick}
+          onEdit={() => navigate(`/vehicles/${vin}/edit`)}
+          onAnalytics={() => navigate(`/vehicles/${vin}/analytics`)}
+          onImport={handleImportClick}
+          onExport={handleExportJSON}
+          onOpenModal={setOpenModal}
+          onOpenMobileMenu={() => setShowMobileMenu(true)}
+        />
 
-            {/* Mobile overflow menu button — absolute so it stays top-right without affecting layout */}
-            <button
-              onClick={() => setShowMobileMenu(true)}
-              className="md:hidden absolute top-0 right-0 p-2 text-garage-text-muted hover:text-garage-text rounded-lg transition-colors"
-              title={t('detail.misc.moreActions')}
-            >
-              <MoreVertical className="w-5 h-5" />
-            </button>
-          </div>
+        {/* Key-facts strip (P5 Task 5) */}
+        {detailStats && <VehicleKeyFacts stats={detailStats} />}
 
-          {/* Primary Tabs — Mobile: 3-column icon grid */}
-          <div
-            role="tablist"
-            aria-label={t('detail.misc.vehicleSections')}
-            className="md:hidden grid grid-cols-3 gap-2 mt-4"
-          >
-            {primaryTabs.map((tab) => {
-              const Icon = tab.icon
-              const isActive = activePrimaryTab === tab.id
-              return (
-                <button
-                  key={tab.id}
-                  role="tab"
-                  aria-selected={isActive}
-                  aria-controls={isActive ? `panel-${tab.id}` : undefined}
-                  id={`tab-mobile-${tab.id}`}
-                  onClick={() => handlePrimaryTabClick(tab.id)}
-                  className={`flex flex-col items-center justify-center gap-1 min-h-[60px] py-3 px-2 rounded-lg border text-center leading-tight transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-garage-bg ${
-                    isActive
-                      ? 'bg-primary/10 border-primary text-primary'
-                      : 'bg-garage-surface border-garage-border text-garage-text-muted hover:text-garage-text hover:bg-garage-surface-light'
-                  }`}
-                >
-                  <Icon className="w-5 h-5 flex-shrink-0" />
-                  <span className="text-xs font-medium leading-tight">{tab.label}</span>
-                </button>
-              )
-            })}
-          </div>
-
-          {/* Primary Tabs — Desktop: horizontal scroll bar */}
-          <div
-            role="tablist"
-            aria-label={t('detail.misc.vehicleSections')}
-            className="hidden md:flex items-center space-x-1 mt-6 border-b border-garage-border -mb-px overflow-x-auto scrollbar-hide"
-          >
-            {primaryTabs.map((tab) => {
-              const Icon = tab.icon
-              const isActive = activePrimaryTab === tab.id
-              return (
-                <button
-                  key={tab.id}
-                  role="tab"
-                  aria-selected={isActive}
-                  aria-controls={isActive ? `panel-${tab.id}` : undefined}
-                  id={`tab-desktop-${tab.id}`}
-                  onClick={() => handlePrimaryTabClick(tab.id)}
-                  className={`flex items-center space-x-2 px-4 py-3 border-b-2 transition-colors whitespace-nowrap focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-1 focus-visible:ring-offset-garage-surface ${
-                    isActive
-                      ? 'border-primary text-primary'
-                      : 'border-transparent text-garage-text-muted hover:text-garage-text hover:border-garage-border'
-                  }`}
-                >
-                  <Icon className="w-4 h-4" />
-                  <span>{tab.label}</span>
-                </button>
-              )
-            })}
-          </div>
-        </div>
+        {/* Primary tabs */}
+        <VehiclePrimaryTabs tabs={primaryTabs} activeTab={activePrimaryTab} onTabClick={handlePrimaryTabClick} />
       </div>
 
       {/* Sub-tabs (if applicable) */}
@@ -783,6 +670,7 @@ export default function VehicleDetail() {
           tabs={subTabsConfig[activePrimaryTab]}
           activeTab={activeSubTab || ''}
           onTabChange={handleSubTabClick}
+          label={t('detail.misc.subSections')}
         />
       )}
 
@@ -794,521 +682,14 @@ export default function VehicleDetail() {
         className="container mx-auto px-4 py-8"
       >
         {activePrimaryTab === 'overview' && (
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            {/* Basic Information */}
-            <div className="bg-garage-surface rounded-lg border border-garage-border p-6 break-inside-avoid">
-              <h2 className="text-xl font-semibold text-garage-text mb-4">{t('detail.basicInformation')}</h2>
-              <div className="space-y-3">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <p className="text-sm text-garage-text-muted">{t('edit.year')}</p>
-                    <p className="text-garage-text font-medium">{vehicle.year || t('detail.notSpecified')}</p>
-                  </div>
-                  <div>
-                    <p className="text-sm text-garage-text-muted">{t('edit.make')}</p>
-                    <p className="text-garage-text font-medium">{vehicle.make || t('detail.notSpecified')}</p>
-                  </div>
-                  <div>
-                    <p className="text-sm text-garage-text-muted">{t('edit.model')}</p>
-                    <p className="text-garage-text font-medium">{vehicle.model || t('detail.notSpecified')}</p>
-                  </div>
-                  <div>
-                    <p className="text-sm text-garage-text-muted">{t('detail.misc.exteriorColor')}</p>
-                    <p className="text-garage-text font-medium">{vehicle.exterior_color || vehicle.color || t('detail.notSpecified')}</p>
-                  </div>
-                  {vehicle.interior_color && (
-                    <div>
-                      <p className="text-sm text-garage-text-muted">{t('detail.misc.interiorColor')}</p>
-                      <p className="text-garage-text font-medium">{vehicle.interior_color}</p>
-                    </div>
-                  )}
-                  <div>
-                    <p className="text-sm text-garage-text-muted">{t('edit.licensePlate')}</p>
-                    <p className="text-garage-text font-medium">{vehicle.license_plate || t('detail.notSpecified')}</p>
-                  </div>
-                  <div>
-                    <p className="text-sm text-garage-text-muted">{t('wizard.vin')}</p>
-                    <p className="text-garage-text font-mono text-sm">{vehicle.vin}</p>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* Purchase Information */}
-            <div className="bg-garage-surface rounded-lg border border-garage-border p-6 break-inside-avoid">
-              <h2 className="text-xl font-semibold text-garage-text mb-4">{t('detail.purchaseInformation')}</h2>
-              <div className="space-y-3">
-                <div>
-                  <p className="text-sm text-garage-text-muted flex items-center space-x-2">
-                    <Calendar className="w-4 h-4" />
-                    <span>{t('edit.purchaseDate')}</span>
-                  </p>
-                  <p className="text-garage-text font-medium mt-1">{formatDate(vehicle.purchase_date)}</p>
-                </div>
-                <div>
-                  <p className="text-sm text-garage-text-muted">
-                    <span>{t('edit.purchasePrice')}</span>
-                  </p>
-                  <p className="text-garage-text font-medium mt-1">{formatCurrency(vehicle.purchase_price, { currencyCode, locale, fallback: t('detail.notSpecified') })}</p>
-                </div>
-              </div>
-            </div>
-
-            {/* Sale Information (if sold) */}
-            {vehicle.sold_date && (
-              <div className="bg-garage-surface rounded-lg border border-warning p-6 break-inside-avoid">
-                <h2 className="text-xl font-semibold text-garage-text mb-4">{t('detail.saleInformation')}</h2>
-                <div className="space-y-3">
-                  <div>
-                    <p className="text-sm text-garage-text-muted flex items-center space-x-2">
-                      <Calendar className="w-4 h-4" />
-                      <span>{t('detail.misc.saleDate')}</span>
-                    </p>
-                    <p className="text-garage-text font-medium mt-1">{formatDate(vehicle.sold_date)}</p>
-                  </div>
-                  <div>
-                    <p className="text-sm text-garage-text-muted">
-                      <span>{t('detail.misc.salePrice')}</span>
-                    </p>
-                    <p className="text-garage-text font-medium mt-1">{formatCurrency(vehicle.sold_price, { currencyCode, locale, fallback: t('detail.notSpecified') })}</p>
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {/* Connected Devices — owner-reachable Torque Pro source registration (R1-H6).
-                Lives here (not the admin-gated LiveLinkSettingsModal, and not inside the
-                LiveLink primary tab, which stays hidden until a device exists) so an owner
-                can register a source before any device is linked. */}
-            <div className="bg-garage-surface rounded-lg border border-garage-border p-6 break-inside-avoid">
-              <h2 className="text-xl font-semibold text-garage-text mb-4">{t('detail.connectedDevices')}</h2>
-              <div className="flex items-center justify-between gap-4">
-                <div>
-                  <p className="text-sm text-garage-text-muted">
-                    {t('forms:modal.torque.description')}
-                  </p>
-                </div>
-                <button
-                  onClick={() => setOpenModal('torqueSource')}
-                  className="flex items-center gap-2 px-4 py-2 btn btn-primary rounded-lg shrink-0"
-                  title={t('forms:modal.torque.launchButtonTooltip')}
-                >
-                  <Radio className="w-4 h-4" />
-                  <span>{t('forms:modal.torque.launchButton')}</span>
-                </button>
-              </div>
-            </div>
-
-            {/* Last Known Location — "Last seen here" mini-map (Task 16). Gated on a
-                last location existing. This is the one place a Torque Pro last-location
-                shows even before the LiveLink primary tab exists (it stays hidden until
-                a device is linked), since the Overview tab is always present. */}
-            {lastLocation != null && (
-              <div className="bg-garage-surface rounded-lg border border-garage-border p-6 break-inside-avoid">
-                <h2 className="text-xl font-semibold text-garage-text mb-4">{t('detail.lastLocation')}</h2>
-                <Suspense fallback={<div className="h-[220px] bg-garage-bg rounded-lg animate-pulse" />}>
-                  <LastLocationMap latitude={lastLocation.latitude} longitude={lastLocation.longitude} />
-                </Suspense>
-                <p className="text-sm text-garage-text-muted mt-3">
-                  {t('detail.lastLocationSeenAt', {
-                    time: formatDateTime(lastLocation.timestamp, timeFormat),
-                  })}
-                </p>
-              </div>
-            )}
-
-            {/* Transfer History */}
-            <TransferHistorySection vin={vehicle.vin} />
-
-            {/* VIN Decoded Information */}
-            {(vehicle.trim || vehicle.body_class || vehicle.drive_type || vehicle.doors || vehicle.gvwr_class || vehicle.wheel_specs || vehicle.tire_specs || (!isMotorized && vehicle.fuel_type)) && (
-              <div className="bg-garage-surface rounded-lg border border-garage-border p-6 break-inside-avoid">
-                <h2 className="text-xl font-semibold text-garage-text mb-4">{t('detail.vehicleDetails')}</h2>
-                <div className="space-y-3">
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    {vehicle.trim && (
-                      <div>
-                        <p className="text-sm text-garage-text-muted">{t('edit.trim')}</p>
-                        <p className="text-garage-text font-medium">{vehicle.trim}</p>
-                      </div>
-                    )}
-                    {vehicle.body_class && (
-                      <div>
-                        <p className="text-sm text-garage-text-muted">{t('edit.bodyClass')}</p>
-                        <p className="text-garage-text font-medium">{vehicle.body_class}</p>
-                      </div>
-                    )}
-                    {vehicle.drive_type && (
-                      <div>
-                        <p className="text-sm text-garage-text-muted">{t('edit.driveType')}</p>
-                        <p className="text-garage-text font-medium">{vehicle.drive_type}</p>
-                      </div>
-                    )}
-                    {vehicle.doors && (
-                      <div>
-                        <p className="text-sm text-garage-text-muted">{t('edit.doors')}</p>
-                        <p className="text-garage-text font-medium">{vehicle.doors}</p>
-                      </div>
-                    )}
-                    {vehicle.gvwr_class && (
-                      <div>
-                        <p className="text-sm text-garage-text-muted">{t('detail.misc.gvwrClass')}</p>
-                        <p className="text-garage-text font-medium">{vehicle.gvwr_class}</p>
-                      </div>
-                    )}
-                    {vehicle.wheel_specs && (
-                      <div>
-                        <p className="text-sm text-garage-text-muted">{t('detail.misc.wheels')}</p>
-                        <p className="text-garage-text font-medium">{vehicle.wheel_specs}</p>
-                      </div>
-                    )}
-                    {vehicle.tire_specs && (
-                      <div>
-                        <p className="text-sm text-garage-text-muted">{t('detail.misc.tires')}</p>
-                        <p className="text-garage-text font-medium">{vehicle.tire_specs}</p>
-                      </div>
-                    )}
-                    {/* Show fuel type in Vehicle Details for non-motorized vehicles (e.g., propane for fifth wheels) */}
-                    {!isMotorized && vehicle.fuel_type && (
-                      <div>
-                        <p className="text-sm text-garage-text-muted">{t('edit.fuelType')}</p>
-                        <p className="text-garage-text font-medium">{vehicle.fuel_type}</p>
-                      </div>
-                    )}
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {/* Powertrain (Engine & Transmission) - Only show for motorized vehicles */}
-            {isMotorized && (vehicle.displacement_l || vehicle.cylinders || vehicle.fuel_type || vehicle.sticker_engine_description || vehicle.transmission_type || vehicle.transmission_speeds || vehicle.sticker_transmission_description || vehicle.sticker_drivetrain) && (
-              <div className="bg-garage-surface rounded-lg border border-garage-border p-6 break-inside-avoid">
-                <h2 className="text-xl font-semibold text-garage-text mb-4">{t('detail.powertrain')}</h2>
-                <div className="space-y-3">
-                  {/* Engine Section */}
-                  {(vehicle.displacement_l || vehicle.cylinders || vehicle.fuel_type || vehicle.sticker_engine_description) && (
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      {vehicle.sticker_engine_description && (
-                        <div className="md:col-span-2">
-                          <p className="text-sm text-garage-text-muted">{t('detail.misc.engine')}</p>
-                          <p className="text-garage-text font-medium">{vehicle.sticker_engine_description}</p>
-                        </div>
-                      )}
-                      {vehicle.displacement_l && (
-                        <div>
-                          <p className="text-sm text-garage-text-muted">{t('detail.misc.displacement')}</p>
-                          <p className="text-garage-text font-medium">{t('detail.misc.displacementLiters', { value: vehicle.displacement_l })}</p>
-                        </div>
-                      )}
-                      {vehicle.cylinders && (
-                        <div>
-                          <p className="text-sm text-garage-text-muted">{t('edit.cylinders')}</p>
-                          <p className="text-garage-text font-medium">{vehicle.cylinders}</p>
-                        </div>
-                      )}
-                      {vehicle.fuel_type && (
-                        <div>
-                          <p className="text-sm text-garage-text-muted">{t('edit.fuelType')}</p>
-                          <p className="text-garage-text font-medium">{vehicle.fuel_type}</p>
-                        </div>
-                      )}
-                    </div>
-                  )}
-
-                  {/* Transmission Section */}
-                  {(vehicle.transmission_type || vehicle.transmission_speeds || vehicle.sticker_transmission_description) && (
-                    <div className={(vehicle.displacement_l || vehicle.cylinders || vehicle.fuel_type || vehicle.sticker_engine_description) ? 'pt-3 border-t border-garage-border' : ''}>
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        {vehicle.sticker_transmission_description && (
-                          <div className="md:col-span-2">
-                            <p className="text-sm text-garage-text-muted">{t('detail.misc.transmission')}</p>
-                            <p className="text-garage-text font-medium">{vehicle.sticker_transmission_description}</p>
-                          </div>
-                        )}
-                        {vehicle.transmission_type && (
-                          <div>
-                            <p className="text-sm text-garage-text-muted">{t('detail.misc.type')}</p>
-                            <p className="text-garage-text font-medium">{vehicle.transmission_type}</p>
-                          </div>
-                        )}
-                        {vehicle.transmission_speeds && (
-                          <div>
-                            <p className="text-sm text-garage-text-muted">{t('detail.misc.speeds')}</p>
-                            <p className="text-garage-text font-medium">{vehicle.transmission_speeds}</p>
-                          </div>
-                        )}
-                        {vehicle.sticker_drivetrain && (
-                          <div>
-                            <p className="text-sm text-garage-text-muted">{t('detail.misc.drivetrain')}</p>
-                            <p className="text-garage-text font-medium">{vehicle.sticker_drivetrain}</p>
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  )}
-                </div>
-              </div>
-            )}
-
-            {/* MSRP & Pricing */}
-            {(vehicle.msrp_base || vehicle.msrp_options || vehicle.msrp_total || vehicle.destination_charge) && (
-              <div className="bg-garage-surface rounded-lg border border-garage-border p-6 break-inside-avoid">
-                <h2 className="text-xl font-semibold text-garage-text mb-4">{t('detail.msrpPricing')}</h2>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {vehicle.msrp_base && (
-                    <div>
-                      <p className="text-sm text-garage-text-muted">{t('detail.misc.basePrice')}</p>
-                      <p className="text-garage-text font-medium">{formatCurrency(vehicle.msrp_base, { currencyCode, locale })}</p>
-                    </div>
-                  )}
-                  {vehicle.msrp_options && (
-                    <div>
-                      <p className="text-sm text-garage-text-muted">{t('detail.misc.options')}</p>
-                      <p className="text-garage-text font-medium">{formatCurrency(vehicle.msrp_options, { currencyCode, locale })}</p>
-                    </div>
-                  )}
-                  {vehicle.destination_charge && (
-                    <div>
-                      <p className="text-sm text-garage-text-muted">{t('detail.misc.destination')}</p>
-                      <p className="text-garage-text font-medium">{formatCurrency(vehicle.destination_charge, { currencyCode, locale })}</p>
-                    </div>
-                  )}
-                  {vehicle.msrp_total && (
-                    <div>
-                      <p className="text-sm text-garage-text-muted">{t('detail.misc.totalMsrp')}</p>
-                      <p className="text-garage-text font-medium text-lg">{formatCurrency(vehicle.msrp_total, { currencyCode, locale })}</p>
-                    </div>
-                  )}
-                </div>
-              </div>
-            )}
-
-            {/* Fuel Economy */}
-            {(vehicle.fuel_economy_city_l_per_100km || vehicle.fuel_economy_highway_l_per_100km || vehicle.fuel_economy_combined_l_per_100km) && (
-              <div className="bg-garage-surface rounded-lg border border-garage-border p-6 break-inside-avoid">
-                <h2 className="text-xl font-semibold text-garage-text mb-4">{t('detail.fuelEconomy')}</h2>
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                  {vehicle.fuel_economy_city_l_per_100km && (
-                    <div>
-                      <p className="text-sm text-garage-text-muted">{t('detail.misc.city')}</p>
-                      <p className="text-garage-text font-medium">{UnitFormatter.formatFuelEconomy(parseFloat(vehicle.fuel_economy_city_l_per_100km), unitSystem)}</p>
-                    </div>
-                  )}
-                  {vehicle.fuel_economy_highway_l_per_100km && (
-                    <div>
-                      <p className="text-sm text-garage-text-muted">{t('detail.misc.highway')}</p>
-                      <p className="text-garage-text font-medium">{UnitFormatter.formatFuelEconomy(parseFloat(vehicle.fuel_economy_highway_l_per_100km), unitSystem)}</p>
-                    </div>
-                  )}
-                  {vehicle.fuel_economy_combined_l_per_100km && (
-                    <div>
-                      <p className="text-sm text-garage-text-muted">{t('detail.misc.combined')}</p>
-                      <p className="text-garage-text font-medium">{UnitFormatter.formatFuelEconomy(parseFloat(vehicle.fuel_economy_combined_l_per_100km), unitSystem)}</p>
-                    </div>
-                  )}
-                </div>
-              </div>
-            )}
-
-            {/* Warranty */}
-            {(vehicle.warranty_powertrain || vehicle.warranty_basic) && (
-              <div className="bg-garage-surface rounded-lg border border-garage-border p-6 break-inside-avoid">
-                <h2 className="text-xl font-semibold text-garage-text mb-4">{t('detail.warranty')}</h2>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {vehicle.warranty_basic && (
-                    <div>
-                      <p className="text-sm text-garage-text-muted">{t('detail.misc.basic')}</p>
-                      <p className="text-garage-text font-medium">{vehicle.warranty_basic}</p>
-                    </div>
-                  )}
-                  {vehicle.warranty_powertrain && (
-                    <div>
-                      <p className="text-sm text-garage-text-muted">{t('detail.powertrain')}</p>
-                      <p className="text-garage-text font-medium">{vehicle.warranty_powertrain}</p>
-                    </div>
-                  )}
-                </div>
-              </div>
-            )}
-
-            {/* Environmental Ratings */}
-            {(vehicle.environmental_rating_ghg || vehicle.environmental_rating_smog) && (
-              <div className="bg-garage-surface rounded-lg border border-garage-border p-6 break-inside-avoid">
-                <h2 className="text-xl font-semibold text-garage-text mb-4">{t('detail.environmentalRatings')}</h2>
-                <div className="grid grid-cols-2 gap-4">
-                  {vehicle.environmental_rating_ghg && (
-                    <div>
-                      <p className="text-sm text-garage-text-muted">{t('detail.misc.ghgRating')}</p>
-                      <p className="text-garage-text font-medium">{vehicle.environmental_rating_ghg}</p>
-                    </div>
-                  )}
-                  {vehicle.environmental_rating_smog && (
-                    <div>
-                      <p className="text-sm text-garage-text-muted">{t('detail.misc.smogRating')}</p>
-                      <p className="text-garage-text font-medium">{vehicle.environmental_rating_smog}</p>
-                    </div>
-                  )}
-                </div>
-              </div>
-            )}
-
-            {/* Assembly Location */}
-            {vehicle.assembly_location && (
-              <div className="bg-garage-surface rounded-lg border border-garage-border p-6 break-inside-avoid">
-                <h2 className="text-xl font-semibold text-garage-text mb-4">{t('detail.manufacturing')}</h2>
-                <div>
-                  <p className="text-sm text-garage-text-muted">{t('detail.misc.assemblyLocation')}</p>
-                  <p className="text-garage-text font-medium">{vehicle.assembly_location}</p>
-                </div>
-              </div>
-            )}
-
-            {/* Standard Equipment - Collapsible */}
-            {vehicle.standard_equipment && typeof vehicle.standard_equipment === 'object' && Object.keys(vehicle.standard_equipment).length > 0 && (
-              <details className="bg-garage-surface rounded-lg border border-garage-border p-6 break-inside-avoid group">
-                <summary className="text-xl font-semibold text-garage-text cursor-pointer list-none flex items-center justify-between">
-                  <span>{t('detail.standardEquipment')}</span>
-                  <span className="text-sm font-normal text-garage-text-muted group-open:rotate-180 transition-transform">▼</span>
-                </summary>
-                <div className="space-y-3 mt-4">
-                  {Object.entries(vehicle.standard_equipment).map(([category, items]) => (
-                    <div key={category}>
-                      {/* Hide "items" category header - it's just a container */}
-                      {category !== 'items' && (
-                        <p className="text-sm font-medium text-primary mb-2">{category}</p>
-                      )}
-                      {Array.isArray(items) ? (
-                        <ul className="list-disc list-inside space-y-1">
-                          {items.map((item, idx) => (
-                            <li key={idx} className="text-sm text-garage-text">{item}</li>
-                          ))}
-                        </ul>
-                      ) : (
-                        <p className="text-sm text-garage-text">{String(items)}</p>
-                      )}
-                    </div>
-                  ))}
-                </div>
-              </details>
-            )}
-
-            {/* Optional Equipment with Pricing - Collapsible */}
-            {vehicle.optional_equipment && typeof vehicle.optional_equipment === 'object' && Object.keys(vehicle.optional_equipment).length > 0 && (
-              <details className="bg-garage-surface rounded-lg border border-garage-border p-6 break-inside-avoid group">
-                <summary className="text-xl font-semibold text-garage-text cursor-pointer list-none flex items-center justify-between">
-                  <span>{t('detail.optionalEquipment')}</span>
-                  <span className="text-sm font-normal text-garage-text-muted group-open:rotate-180 transition-transform">▼</span>
-                </summary>
-                <div className="space-y-2 mt-4">
-                  {Object.entries(vehicle.optional_equipment).map(([category, items]) => (
-                    <div key={category}>
-                      {/* Hide "items" category header - it's just a container */}
-                      {category !== 'items' && (
-                        <p className="text-sm font-medium text-primary mb-2">{category}</p>
-                      )}
-                      {Array.isArray(items) ? (
-                        <ul className="space-y-1">
-                          {(items as string[]).map((item, idx) => {
-                            const price = formatStickerValue(vehicle.window_sticker_options_detail?.[item])
-                            return (
-                              <li key={idx} className="text-sm text-garage-text flex justify-between">
-                                <span>{item}</span>
-                                {price && <span className="text-garage-text-muted">{price}</span>}
-                              </li>
-                            )
-                          })}
-                        </ul>
-                      ) : (
-                        <p className="text-sm text-garage-text">{String(items)}</p>
-                      )}
-                    </div>
-                  ))}
-                </div>
-              </details>
-            )}
-
-            {/* Packages */}
-            {vehicle.window_sticker_packages && typeof vehicle.window_sticker_packages === 'object' && Object.keys(vehicle.window_sticker_packages).length > 0 && (
-              <div className="bg-garage-surface rounded-lg border border-garage-border p-6 break-inside-avoid">
-                <h2 className="text-xl font-semibold text-garage-text mb-4">{t('detail.packages')}</h2>
-                <div className="space-y-2">
-                  {Object.entries(vehicle.window_sticker_packages).map(([packageName, rawValue]) => {
-                    const value = formatStickerValue(rawValue)
-                    return (
-                      <div key={packageName} className="flex justify-between items-center">
-                        <span className="text-sm text-garage-text">{packageName}</span>
-                        {value && <span className="text-sm text-garage-text-muted">{value}</span>}
-                      </div>
-                    )
-                  })}
-                </div>
-              </div>
-            )}
-
-            {/* Window Sticker - Only show for cars/trucks */}
-            {vehicle.vehicle_type && ['Car', 'Truck', 'SUV'].includes(vehicle.vehicle_type) && (
-              <div className="bg-garage-surface rounded-lg border border-garage-border p-6 break-inside-avoid">
-                <div className="flex items-center justify-between mb-4">
-                  <h2 className="text-xl font-semibold text-garage-text">{t('detail.windowSticker')}</h2>
-                  <Link
-                    to={`/vehicles/${vin}/window-sticker-test`}
-                    className="text-xs px-2 py-1 bg-garage-bg rounded text-garage-text-muted hover:text-primary transition-colors"
-                  >
-                    {t('detail.misc.testOcr')}
-                  </Link>
-                </div>
-                {vehicle.window_sticker_file_path ? (
-                  <div className="space-y-3">
-                    <button
-                      onClick={handleDownloadWindowSticker}
-                      className="w-full group cursor-pointer"
-                    >
-                      <div className="h-20 bg-garage-bg rounded-lg border border-garage-border overflow-hidden flex items-center justify-center gap-3 hover:bg-garage-border/30 transition-colors">
-                        <FileText className="w-8 h-8 text-primary" />
-                        <div className="text-left">
-                          <p className="text-sm font-medium text-garage-text">{t('detail.viewWindowSticker')}</p>
-                          <p className="text-xs text-garage-text-muted">{t('detail.clickToOpenPDF')}</p>
-                        </div>
-                      </div>
-                    </button>
-                    {/* OCR Metadata */}
-                    <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-garage-text-muted">
-                      {vehicle.window_sticker_parser_used && (
-                        <span>{t('detail.misc.parser', { parser: vehicle.window_sticker_parser_used })}</span>
-                      )}
-                      {vehicle.window_sticker_confidence_score && (
-                        <span>{t('detail.misc.confidence', { score: Number(vehicle.window_sticker_confidence_score).toFixed(0) })}</span>
-                      )}
-                      {vehicle.window_sticker_extracted_vin && (
-                        <span className={vehicle.window_sticker_extracted_vin === vehicle.vin ? 'text-success' : 'text-warning'}>
-                          {vehicle.window_sticker_extracted_vin === vehicle.vin
-                            ? `✓ ${t('detail.misc.vinVerified')}`
-                            : `⚠ ${t('detail.misc.vinMismatch')}`}
-                        </span>
-                      )}
-                    </div>
-                    <button
-                      onClick={() => setOpenModal('windowSticker')}
-                      className="text-sm text-garage-text-muted hover:text-garage-text transition-colors"
-                    >
-                      {t('detail.replaceSticker')}
-                    </button>
-                  </div>
-                ) : (
-                  <div className="text-center py-4">
-                    <FileText className="w-10 h-10 text-garage-text-muted mx-auto mb-2 opacity-50" />
-                    <p className="text-sm text-garage-text-muted mb-3">{t('detail.noWindowSticker')}</p>
-                    <button
-                      onClick={() => setOpenModal('windowSticker')}
-                      className="px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary/90 transition-colors text-sm"
-                    >
-                      {t('detail.uploadWindowSticker')}
-                    </button>
-                  </div>
-                )}
-              </div>
-            )}
-          </div>
+          <VehicleOverviewTab
+            vin={vin!}
+            vehicle={vehicle}
+            lastLocation={lastLocation}
+            expandEquipment={expandEquipment}
+            onOpenModal={setOpenModal}
+            onDownloadWindowSticker={handleDownloadWindowSticker}
+          />
         )}
 
         {/* Media Sub-tabs */}
@@ -1387,95 +768,17 @@ export default function VehicleDetail() {
 
       {/* Mobile Actions Menu */}
       {showMobileMenu && (
-        <div className="fixed inset-0 bg-black/50 flex items-end justify-center z-50 md:hidden" onClick={() => setShowMobileMenu(false)}>
-          <div className="bg-garage-surface rounded-t-2xl w-full max-w-lg max-h-[70vh] overflow-y-auto pb-safe" onClick={(e) => e.stopPropagation()}>
-            <div className="flex items-center justify-between p-4 border-b border-garage-border">
-              <h3 className="text-lg font-semibold text-garage-text">{t('detail.actions')}</h3>
-              <button
-                onClick={() => setShowMobileMenu(false)}
-                className="p-2 text-garage-text-muted hover:text-garage-text rounded-lg transition-colors"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-            <div className="p-2">
-              <button
-                onClick={() => {
-                  handleImportClick()
-                  setShowMobileMenu(false)
-                }}
-                disabled={importing || !isOnline}
-                className="w-full flex items-center space-x-3 px-4 py-3 text-left text-garage-text hover:bg-garage-bg rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                <Upload className="w-5 h-5" />
-                <span>{importing ? t('detail.importing') : t('detail.importData')}</span>
-              </button>
-              <button
-                onClick={() => {
-                  handleExportJSON()
-                  setShowMobileMenu(false)
-                }}
-                disabled={exporting || !isOnline}
-                className="w-full flex items-center space-x-3 px-4 py-3 text-left text-garage-text hover:bg-garage-bg rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                <Download className="w-5 h-5" />
-                <span>{exporting ? t('detail.exporting') : t('detail.exportData')}</span>
-              </button>
-              <button
-                onClick={() => {
-                  navigate(`/vehicles/${vin}/analytics`)
-                  setShowMobileMenu(false)
-                }}
-                className="w-full flex items-center space-x-3 px-4 py-3 text-left text-garage-text hover:bg-garage-bg rounded-lg transition-colors"
-              >
-                <BarChart3 className="w-5 h-5" />
-                <span>{t('detail.viewAnalytics')}</span>
-              </button>
-              <button
-                onClick={() => {
-                  setShowMobileMenu(false)
-                  setOpenModal('sharing')
-                }}
-                className="w-full flex items-center space-x-3 px-4 py-3 text-left text-garage-text hover:bg-garage-bg rounded-lg transition-colors"
-              >
-                <Share2 className="w-5 h-5" />
-                <span>{t('detail.shareVehicle')}</span>
-              </button>
-              <button
-                onClick={() => {
-                  navigate(`/vehicles/${vin}/edit`)
-                  setShowMobileMenu(false)
-                }}
-                className="w-full flex items-center space-x-3 px-4 py-3 text-left text-garage-text hover:bg-garage-bg rounded-lg transition-colors"
-              >
-                <Edit className="w-5 h-5" />
-                <span>{t('detail.editVehicle')}</span>
-              </button>
-              {isAdmin && (
-                <button
-                  onClick={() => {
-                    setShowMobileMenu(false)
-                    setOpenModal('transfer')
-                  }}
-                  className="w-full flex items-center space-x-3 px-4 py-3 text-left text-amber-400 hover:bg-amber-900/20 rounded-lg transition-colors"
-                >
-                  <ArrowRightLeft className="w-5 h-5" />
-                  <span>{t('detail.transferVehicle')}</span>
-                </button>
-              )}
-              <button
-                onClick={() => {
-                  setShowMobileMenu(false)
-                  setOpenModal('remove')
-                }}
-                className="w-full flex items-center space-x-3 px-4 py-3 text-left text-red-400 hover:bg-red-900/20 rounded-lg transition-colors"
-              >
-                <Trash2 className="w-5 h-5" />
-                <span>{t('detail.removeVehicle')}</span>
-              </button>
-            </div>
-          </div>
-        </div>
+        <VehicleMobileActionsSheet
+          vin={vin!}
+          isAdmin={isAdmin}
+          importing={importing}
+          exporting={exporting}
+          isOnline={isOnline}
+          onImportClick={handleImportClick}
+          onExport={handleExportJSON}
+          onOpenModal={setOpenModal}
+          onClose={() => setShowMobileMenu(false)}
+        />
       )}
 
       {/* Window Sticker Upload Modal */}

@@ -596,7 +596,7 @@ export default function SettingsSystemTab() {
               className={`flex-1 flex items-center justify-center gap-2 px-4 py-3 rounded-lg border-2 transition-all ${
                 theme === 'dark'
                   ? 'border-primary bg-primary/10 text-primary'
-                  : 'border-garage-border bg-garage-bg text-garage-text hover:border-garage-border-light'
+                  : 'border-garage-border bg-garage-bg text-garage-text hover:border-garage-border'
               }`}
             >
               <Moon className="w-5 h-5" />
@@ -607,7 +607,7 @@ export default function SettingsSystemTab() {
               className={`flex-1 flex items-center justify-center gap-2 px-4 py-3 rounded-lg border-2 transition-all ${
                 theme === 'light'
                   ? 'border-primary bg-primary/10 text-primary'
-                  : 'border-garage-border bg-garage-bg text-garage-text hover:border-garage-border-light'
+                  : 'border-garage-border bg-garage-bg text-garage-text hover:border-garage-border'
               }`}
             >
               <Sun className="w-5 h-5" />
@@ -631,7 +631,7 @@ export default function SettingsSystemTab() {
               className={`flex-1 flex items-center justify-center gap-2 px-4 py-3 rounded-lg border-2 transition-all ${
                 unitPreference === 'imperial'
                   ? 'border-primary bg-primary/10 text-primary'
-                  : 'border-garage-border bg-garage-bg text-garage-text hover:border-garage-border-light'
+                  : 'border-garage-border bg-garage-bg text-garage-text hover:border-garage-border'
               } ${unitPreferenceSaving ? 'opacity-50 cursor-not-allowed' : ''}`}
             >
               <Ruler className="w-5 h-5" />
@@ -643,7 +643,7 @@ export default function SettingsSystemTab() {
               className={`flex-1 flex items-center justify-center gap-2 px-4 py-3 rounded-lg border-2 transition-all ${
                 unitPreference === 'metric'
                   ? 'border-primary bg-primary/10 text-primary'
-                  : 'border-garage-border bg-garage-bg text-garage-text hover:border-garage-border-light'
+                  : 'border-garage-border bg-garage-bg text-garage-text hover:border-garage-border'
               } ${unitPreferenceSaving ? 'opacity-50 cursor-not-allowed' : ''}`}
             >
               <Ruler className="w-5 h-5" />
@@ -692,7 +692,7 @@ export default function SettingsSystemTab() {
               className={`flex-1 flex items-center justify-center gap-2 px-4 py-3 rounded-lg border-2 transition-all ${
                 timeFormat === '12h'
                   ? 'border-primary bg-primary/10 text-primary'
-                  : 'border-garage-border bg-garage-bg text-garage-text hover:border-garage-border-light'
+                  : 'border-garage-border bg-garage-bg text-garage-text hover:border-garage-border'
               } ${timeFormatSaving ? 'opacity-50 cursor-not-allowed' : ''}`}
             >
               <Clock className="w-5 h-5" />
@@ -704,7 +704,7 @@ export default function SettingsSystemTab() {
               className={`flex-1 flex items-center justify-center gap-2 px-4 py-3 rounded-lg border-2 transition-all ${
                 timeFormat === '24h'
                   ? 'border-primary bg-primary/10 text-primary'
-                  : 'border-garage-border bg-garage-bg text-garage-text hover:border-garage-border-light'
+                  : 'border-garage-border bg-garage-bg text-garage-text hover:border-garage-border'
               } ${timeFormatSaving ? 'opacity-50 cursor-not-allowed' : ''}`}
             >
               <Clock className="w-5 h-5" />
@@ -793,7 +793,7 @@ export default function SettingsSystemTab() {
                 </button>
                 <button
                   onClick={handleCurrencyConfirm}
-                  className="px-4 py-2 text-sm bg-primary text-white rounded-lg hover:bg-primary/90 transition-colors font-medium"
+                  className="px-4 py-2 text-sm bg-primary text-(--accent-on-solid) rounded-lg hover:bg-primary/90 transition-colors font-medium"
                 >
                   {t('currency.confirmAction')}
                 </button>
@@ -968,7 +968,7 @@ export default function SettingsSystemTab() {
           </div>
           <button
             onClick={() => setShowFamilyManagement(true)}
-            className="w-full px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary/90 transition-colors font-medium"
+            className="w-full px-4 py-2 bg-primary text-(--accent-on-solid) rounded-lg hover:bg-primary/90 transition-colors font-medium"
           >
             {t('family.manage')}
           </button>
@@ -1086,7 +1086,7 @@ export default function SettingsSystemTab() {
                     </p>
                     <button
                       onClick={() => setShowFamilyManagement(true)}
-                      className="mt-3 inline-flex items-center gap-2 px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary/90 transition-colors text-sm font-medium"
+                      className="mt-3 inline-flex items-center gap-2 px-4 py-2 bg-primary text-(--accent-on-solid) rounded-lg hover:bg-primary/90 transition-colors text-sm font-medium"
                     >
                       {t('auth.manageAuth')}
                     </button>
@@ -1111,7 +1111,7 @@ export default function SettingsSystemTab() {
                     </p>
                     <button
                       onClick={() => setShowOIDCModal(true)}
-                      className="mt-3 inline-flex items-center gap-2 px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary/90 transition-colors text-sm font-medium"
+                      className="mt-3 inline-flex items-center gap-2 px-4 py-2 bg-primary text-(--accent-on-solid) rounded-lg hover:bg-primary/90 transition-colors text-sm font-medium"
                     >
                       {t('auth.configureOIDC')}
                     </button>

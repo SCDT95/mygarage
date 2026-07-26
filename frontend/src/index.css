@@ -1,69 +1,183 @@
 @import "tailwindcss";
 
 @theme {
-  /* Theme-aware colors - these change based on light/dark mode */
-  --color-garage-bg: #0a0e14;
-  --color-garage-surface: #1a1f28;
-  --color-garage-surface-light: #2a3040;
-  --color-garage-border: #3a4050;
-  --color-garage-text: #e4e6eb;
-  --color-garage-text-muted: #9ca3af;
+  /* ---------------------------------------------------------------------
+   * Semantic palette — the prototype's vocabulary. Dark is the default;
+   * html.light overrides these same names further down.
+   * ------------------------------------------------------------------- */
+  --color-bg:          #07090c;
+  --color-nav:         rgba(11, 14, 19, .9);
+  --color-surface:     #0f1319;
+  --color-surface-2:   #141922;
+  --color-surface-3:   #12161d;
+  --color-border:      rgba(255, 255, 255, .08);
+  --color-border-soft: rgba(255, 255, 255, .06);
+  --color-hair:        rgba(255, 255, 255, .07);
+  --color-text:        #e8eaed;
+  --color-text-dim:    #cbd0d8;
+  --color-text-mid:    #aeb4be;
+  --color-text-mute:   #8b93a0;
+  --color-text-faint:  #7b828e;
 
-  /*
-   * The bare `primary` token. Without it Tailwind never generates the
-   * `bg-primary` / `text-primary` / `border-primary` utilities at all, so the
-   * ~560 places using them rendered with no colour and failed silently — there
-   * is no error for a class that was never emitted.
+  /* ---------------------------------------------------------------------
+   * Back-compat aliases. `bg-garage-surface` alone is 385 occurrences across
+   * 94 files; aliasing re-points every one of them with zero edits. Removed
+   * in P12 only if every consumer has migrated.
+   * ------------------------------------------------------------------- */
+  --color-garage-bg:            var(--color-bg);
+  --color-garage-surface:       var(--color-surface);
+  --color-garage-surface-light: var(--color-surface-2);
+  --color-garage-border:        var(--color-border);
+  --color-garage-text:          var(--color-text);
+  --color-garage-text-muted:    var(--color-text-mute);
+
+  /* ---------------------------------------------------------------------
+   * Accent. --accent/-soft/-line are written to documentElement at runtime by
+   * AccentContext (see src/contexts/AccentContext.tsx). Pointing the primary
+   * ramp at them makes ~589 existing bg-primary/text-primary/border-primary
+   * sites follow the accent with no edits.
    *
-   * Aliased to the 500 step rather than duplicating the hex, so the accent has
-   * one source of truth. Matches --color-garage-primary, which is the same
-   * blue reached by a different name.
-   */
-  --color-primary: var(--color-primary-500);
+   * Do NOT declare --color-accent-soft here: it would generate an *opaque*
+   * bg-accent-soft, the opposite of every consumer. --accent-soft and
+   * --accent-line are consumed as raw vars.
+   * ------------------------------------------------------------------- */
+  --color-primary:     var(--accent);
+  --color-primary-50:  color-mix(in oklab, var(--accent) 10%, white);
+  --color-primary-100: color-mix(in oklab, var(--accent) 20%, white);
+  --color-primary-200: color-mix(in oklab, var(--accent) 40%, white);
+  --color-primary-300: color-mix(in oklab, var(--accent) 60%, white);
+  --color-primary-400: color-mix(in oklab, var(--accent) 78%, white);
+  --color-primary-500: var(--accent);
+  --color-primary-600: color-mix(in oklab, var(--accent) 85%, black);
+  --color-primary-700: color-mix(in oklab, var(--accent) 70%, black);
+  --color-primary-800: color-mix(in oklab, var(--accent) 55%, black);
+  --color-primary-900: color-mix(in oklab, var(--accent) 40%, black);
 
-  --color-primary-50: #eff6ff;
-  --color-primary-100: #dbeafe;
-  --color-primary-200: #bfdbfe;
-  --color-primary-300: #93c5fd;
-  --color-primary-400: #60a5fa;
-  --color-primary-500: #3b82f6;
-  --color-primary-600: #2563eb;
-  --color-primary-700: #1d4ed8;
-  --color-primary-800: #1e40af;
-  --color-primary-900: #1e3a8a;
+  /* These two are live in 6 places. Omitting them makes those utilities vanish;
+   * pinning them to literal blue breaks accent switching. */
+  --color-garage-primary:      var(--accent);
+  --color-garage-primary-dark: color-mix(in oklab, var(--accent) 85%, black);
 
-  --color-success-500: #10b981;
-  --color-success-600: #059669;
-  --color-success-700: #047857;
+  /* ---------------------------------------------------------------------
+   * Status — fixed, never themed, never accent-derived. 607 utility uses.
+   * Without re-pointing these the app is a two-palette hybrid after P0,
+   * worst on overdue badges, alerts and delete buttons.
+   * ------------------------------------------------------------------- */
+  --color-success-500: #34d399;
+  --color-success-600: #2bb98a;
+  --color-success-700: #229a72;
+  --color-success:     #34d399;
 
-  --color-warning-500: #f59e0b;
-  --color-warning-600: #d97706;
-  --color-warning-700: #b45309;
+  --color-warning-500: #f0a53a;
+  --color-warning-600: #d98d24;
+  --color-warning-700: #b8741b;
+  /* Bare alias. Its absence made `bg-warning`/`text-warning` — 103 sites across
+   * 29 files — silent no-ops on main. Task 2 restored it; keep it. */
+  --color-warning:     #f0a53a;
 
-  --color-danger-500: #ef4444;
-  --color-danger-600: #dc2626;
-  --color-danger-700: #b91c1c;
+  --color-danger-500:  #f0503a;
+  --color-danger-600:  #d63d29;
+  --color-danger-700:  #b32f1e;
+  --color-danger:      #f0503a;
 
-  /* Garage theme action colors */
-  --color-garage-primary: #3b82f6;
-  --color-garage-primary-dark: #2563eb;
-  --color-success: #10b981;
-  --color-danger: #ef4444;
+  /* Bare alias, same omission as --color-warning: `bg-info`/`text-info` is live
+   * at 12 sites across 5 files and was a silent no-op on main. Task 2 restored it. */
+  --color-info:        #22d3ee;
 
-  /* Custom screens */
+  /* Foreground for the FIXED status fills (success/warning/danger/info).
+     Deliberately not theme-dependent: those fills do not change between
+     themes, so a foreground that did would invert against them. Not white —
+     white on --color-danger #f0503a is 3.55:1, below AA for small text.
+     Measured against this near-black: danger 5.9:1, success 10.9:1,
+     warning 10.1:1, info 11.6:1. */
+  --color-on-status: #0b0e13;
+
+  /* ---------------------------------------------------------------------
+   * Photo placeholder + scrim + neutral badge (prototype vocabulary)
+   * ------------------------------------------------------------------- */
+  --color-photo-a: #1a1f27;
+  --color-photo-b: #161a21;
+  --color-badge-bg: rgba(255, 255, 255, .1);
+  --color-badge-tx: #c3c9d2;
+
+  /* ---------------------------------------------------------------------
+   * Radii — one value per role. The prototype drifts 1-2px on identical
+   * components; these are the dominant values.
+   * ------------------------------------------------------------------- */
+  --radius-card:    16px;
+  --radius-panel:   14px;
+  --radius-row:     12px;
+  --radius-tile:    11px;
+  --radius-control: 10px;
+  --radius-icon:     9px;
+  --radius-chip:     8px;
+  --radius-pill:   999px;
+
+  /* Shadows — the only elevation anything gets. */
+  --shadow-accent:     0 6px 18px -6px var(--accent-line);
+  --shadow-card-hover: 0 14px 34px -18px rgba(0, 0, 0, .65);
+  --shadow-menu:       0 20px 44px -18px rgba(0, 0, 0, .6);
+  --shadow-drawer:     -24px 0 60px -24px rgba(0, 0, 0, .7);
+
+  /* Control heights — design §4.9. The --height-* namespace generates h-*
+     utilities (h-btn-md). Verified by probe build 2026-07-21: the --h-*
+     naming the design doc uses generates NOTHING. */
+  --height-btn-sm:   34px;
+  --height-btn-md:   38px;
+  --height-btn-lg:   42px;
+  --height-input-sm: 36px;
+  --height-input-md: 42px;
+  --height-input-lg: 46px;
+  --height-icon-sm:  30px;
+  --height-icon-md:  34px;
+  --height-icon-lg:  38px;
+
+  /* z-index ladder — design §4.9, matching the prototype exactly
+     (40/44/45/55/60 are the only z values it uses). --z-index-* generates
+     z-* utilities; --z-* does not. Nested overlays add +10 per level at the
+     call site (§4.6). Toasts sit at sonner's default 999999 and are
+     deliberately above everything (§4.10). */
+  --z-index-nav:              40;
+  --z-index-dropdown-catcher: 44;
+  --z-index-dropdown:         45;
+  --z-index-drawer-backdrop:  55;
+  --z-index-drawer:           60;
+  --z-index-drawer-nested-backdrop: 65;
+  --z-index-drawer-nested:          70;
+
+  /* Motion — design §4.8. --ease-* generates ease-standard. --duration-*
+     does NOT generate a named utility despite being a documented namespace
+     (probe build 2026-07-21), so callers write duration-(--duration-fast). */
+  --ease-standard:   cubic-bezier(0, 0, .2, 1);
+  --duration-fast:   .15s;
+  --duration-toggle: .18s;
+  --duration-drawer: .2s;
+
+  /* Fonts — v4 token names. The old --font-family-* names were inert, which is
+   * why font-mono fell through to Tailwind's default ui-monospace stack. */
+  --font-sans: 'Inter Variable', Inter, system-ui, sans-serif;
+  --font-mono: 'JetBrains Mono Variable', 'JetBrains Mono', ui-monospace, monospace;
+
+  /* Toggle switch. The knob is a fixed near-white in both themes; the OFF
+     track needs its own token rather than reusing --color-border, because in
+     light theme that is rgba(15, 23, 42, .12) — about #dfe2e6 over the
+     surface — and a white knob on it is very nearly invisible. */
+  --color-toggle-knob:      #ffffff;
+  --color-toggle-track-off: #3f4650;
+
   --breakpoint-xs: 475px;
 
-  /* Custom spacing for safe areas */
-  --spacing-safe-top: env(safe-area-inset-top);
+  /* Nav collapse threshold — design §590-597 / LOCKED responsive model. Tailwind
+     v4 generates `nav:` (min-width) and `max-nav:` (max-width) variants from a
+     --breakpoint-* token. Verified by probe build 2026-07-22: without this token
+     `nav:flex` / `md:max-nav:inline-flex` emit NO css, silently. */
+  --breakpoint-nav: 56.25rem;
+
+  --spacing-safe-top:    env(safe-area-inset-top);
   --spacing-safe-bottom: env(safe-area-inset-bottom);
-  --spacing-safe-left: env(safe-area-inset-left);
-  --spacing-safe-right: env(safe-area-inset-right);
+  --spacing-safe-left:   env(safe-area-inset-left);
+  --spacing-safe-right:  env(safe-area-inset-right);
 
-  /* Custom fonts */
-  --font-family-sans: Inter, system-ui, sans-serif;
-  --font-family-mono: JetBrains Mono, monospace;
-
-  /* Custom animations */
   --animate-slide-up: slideUp 0.3s ease-out;
 }
 
@@ -90,22 +204,57 @@
   }
   body {
     @apply bg-garage-bg text-garage-text;
-    font-family: Inter, system-ui, Avenir, Helvetica, Arial, sans-serif;
-    /* Mobile optimizations */
+    font-family: var(--font-sans);
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
     -webkit-tap-highlight-color: transparent;
     touch-action: manipulation;
   }
 
-  /* Light theme - override CSS variables */
+  /* Default accent. AccentContext overwrites these on documentElement at
+   * runtime; this is the value used before React mounts and the fallback when
+   * localStorage is empty. Kept in sync with DEFAULT_ACCENT in
+   * src/constants/accents.ts by src/__tests__/accent-contrast.test.ts. */
+  :root {
+    --accent:          #4f8cff;
+    --accent-solid:    #2f6fe4;
+    --accent-on-solid: #ffffff;
+    --accent-fg:       #7aa8ff;
+    --accent-soft:     rgba(79, 140, 255, .15);
+    --accent-line:     rgba(79, 140, 255, .45);
+  }
+
+  /* Light theme — overrides the semantic tokens on documentElement, which is
+   * the same element AccentContext writes the accent vars to. Nothing may
+   * declare these on a descendant: an inline custom property on a child beats
+   * this rule for its whole subtree and would kill light mode. */
   html.light {
-    --color-garage-bg: #f3f4f6;
-    --color-garage-surface: #ffffff;
-    --color-garage-surface-light: #f9fafb;
-    --color-garage-border: #e5e7eb;
-    --color-garage-text: #111827;
-    --color-garage-text-muted: #6b7280;
+    --color-bg:          #eef1f6;
+    --color-nav:         rgba(255, 255, 255, .92);
+    --color-surface:     #ffffff;
+    --color-surface-2:   #f6f8fb;
+    --color-surface-3:   #f1f4f9;
+    --color-border:      rgba(15, 23, 42, .12);
+    --color-border-soft: rgba(15, 23, 42, .08);
+    --color-hair:        rgba(15, 23, 42, .09);
+    --color-text:        #0f172a;
+    --color-text-dim:    #334155;
+    --color-text-mid:    #475569;
+    --color-text-mute:   #64748b;
+    --color-text-faint:  #94a3b8;
+    --color-photo-a:     #dbe1ea;
+    --color-photo-b:     #e6ebf2;
+    --color-badge-bg:    rgba(15, 23, 42, .06);
+    --color-badge-tx:    #475569;
+
+    /* Accent foreground only — the base hue is identical across themes, only
+     * the text-on-surface role needs a darker variant for AA on white. Kept
+     * in sync with DEFAULT_ACCENT.fgLight by accent-contrast.test.ts. */
+    --accent-fg:         #1d4ed8;
+
+    /* White knob on this measures 4.8:1 — comfortably past the 3:1 a
+       non-text UI boundary needs. On the dark-theme track it is 9.5:1. */
+    --color-toggle-track-off: #64748b;
   }
 
   /* Better touch targets for mobile */
@@ -117,47 +266,35 @@
 
 @layer components {
   .btn {
-    @apply px-4 py-2 rounded-lg font-medium transition-colors duration-200;
+    @apply px-4 py-2 font-medium transition-colors duration-200;
+    border-radius: var(--radius-control);
   }
 
+  /* Live in 47 files / 114 call sites. Re-pointed onto the accent here; the
+   * call sites migrate to <Button> per phase and this rule is deleted in P12. */
   .btn-primary {
-    @apply bg-gray-700 border border-gray-600 hover:bg-gray-800 text-white;
+    background: var(--accent-solid);
+    color: var(--accent-on-solid);
+    border: 1px solid transparent;
+    box-shadow: var(--shadow-accent);
+  }
+
+  .btn-primary:hover {
+    background: color-mix(in oklab, var(--accent-solid) 88%, black);
   }
 
   .btn-secondary {
     @apply bg-garage-surface hover:bg-garage-surface-light text-garage-text border border-garage-border;
   }
 
-  .btn-danger {
-    @apply bg-danger-600 hover:bg-danger-700 text-white;
-  }
-
   .input {
-    @apply w-full px-3 py-2 bg-garage-surface border border-garage-border rounded-lg text-garage-text placeholder-garage-text-muted focus:outline-none focus:ring-2 focus:ring-primary-500;
+    @apply w-full px-3 py-2 bg-surface border border-garage-border text-garage-text placeholder-garage-text-muted focus:outline-none;
+    border-radius: var(--radius-control);
   }
 
-  .card {
-    @apply bg-garage-surface border border-garage-border rounded-lg p-6;
-  }
-
-  .badge {
-    @apply inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium;
-  }
-
-  .badge-success {
-    @apply bg-success-600/20 text-success-500;
-  }
-
-  .badge-warning {
-    @apply bg-warning-600/20 text-warning-500;
-  }
-
-  .badge-danger {
-    @apply bg-danger-600/20 text-danger-500;
-  }
-
-  .badge-neutral {
-    @apply bg-gray-700/30 text-gray-300;
+  .input:focus {
+    border-color: var(--accent-line);
+    box-shadow: 0 0 0 3px var(--accent-soft);
   }
 
   /* Modal overlay - theme aware */
@@ -166,14 +303,6 @@
   }
 
   /* Light theme component overrides */
-  html.light .btn-primary {
-    @apply bg-gray-100 border-gray-300 hover:bg-gray-200 text-gray-900;
-  }
-
-  html.light .badge-neutral {
-    @apply bg-gray-200 text-gray-700;
-  }
-
   html.light .modal-overlay {
     @apply bg-black/30 backdrop-blur-sm;
   }
@@ -228,9 +357,104 @@
 
 /* Schedule-X Calendar — fill container height */
 .sx-calendar-wrapper {
-  font-family: Inter, system-ui, Avenir, Helvetica, Arial, sans-serif;
+  font-family: var(--font-sans);
 }
 
 .sx-calendar-wrapper .sx-react-calendar-wrapper {
   height: 100%;
+}
+
+/* --- Interaction layer (design §4.8) ---------------------------------
+   The prototype supplies no focus, hover or disabled states. These are
+   invented once here; primitives compose them rather than re-deriving a
+   focus ring 26 times. Every colour routes through --accent so all six
+   accents get correct affordances for free.
+
+   Declared with @utility, NOT @layer components. Tailwind v4's layer order
+   is theme, base, components, utilities, so a rule in `components` is
+   outranked by every competing utility on the same element. That failure is
+   silent and partial: on a focused input .ui-focus-input's box-shadow lands
+   (nothing competes with it) while its border-color is discarded by
+   border-border, and the result reads as "the focus ring looks weak" rather
+   than as a broken rule. @utility emits these in the utilities layer, where
+   .ui-hover-line:hover (0,2,0) correctly outranks .border-border (0,1,0). */
+
+/* Buttons, tabs, chips, links: a ring outside the box. */
+@utility ui-focus-ring {
+  &:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+  }
+}
+
+/* Inputs: the border itself moves, plus a soft halo. Distinct from
+   ui-focus-ring because an outline-offset ring around a 42px input collides
+   with adjacent fields in a two-column form. */
+@utility ui-focus-input {
+  &:focus-visible,
+  &:focus-within {
+    border-color: var(--accent-line);
+    box-shadow: 0 0 0 3px var(--accent-soft);
+    outline: none;
+  }
+}
+
+@utility ui-disabled {
+  &:disabled,
+  &[aria-disabled='true'] {
+    opacity: .45;
+    cursor: not-allowed;
+  }
+}
+
+@utility ui-hover-surface {
+  &:hover:not(:disabled) {
+    background: var(--color-surface-2);
+  }
+}
+
+/* Solid accent surfaces: the §4.8 "color-mix lift". Mixing toward white
+   brightens the solid in both themes without introducing a second token. */
+@utility ui-hover-solid {
+  &:hover:not(:disabled) {
+    background: color-mix(in oklab, var(--accent-solid) 88%, white);
+  }
+}
+
+/* Rows and cards: the border picks up the accent on hover. */
+@utility ui-hover-line {
+  &:hover {
+    border-color: var(--accent-line);
+  }
+}
+
+/* WARNING: never pair ui-motion or ui-motion-toggle with a native Tailwind
+   transition-*, duration-*, or ease-* utility on the same element. Neither
+   motion utility is state-scoped, so each is a plain (0,1,0) rule in the
+   utilities layer — the same specificity as those native utilities. Two
+   equal-specificity rules writing the same `transition` shorthand have no
+   deterministic winner; which one wins is decided by Tailwind's internal
+   emission order, not by design intent. That's the same cascade-collision
+   bug class this whole section exists to eliminate, just for `transition`
+   instead of `border-color`. */
+@utility ui-motion {
+  transition:
+    border-color var(--duration-fast) var(--ease-standard),
+    background-color var(--duration-fast) var(--ease-standard),
+    box-shadow var(--duration-fast) var(--ease-standard),
+    transform var(--duration-fast) var(--ease-standard);
+
+  @media (prefers-reduced-motion: reduce) {
+    transition: none;
+  }
+}
+
+@utility ui-motion-toggle {
+  transition:
+    background-color var(--duration-toggle) var(--ease-standard),
+    transform var(--duration-toggle) var(--ease-standard);
+
+  @media (prefers-reduced-motion: reduce) {
+    transition: none;
+  }
 }

@@ -13,6 +13,7 @@ import {
   TrendingUp,
   AlertCircle,
   Share2,
+  ChevronRight,
 } from 'lucide-react'
 import type { VehicleStatistics } from '../types/dashboard'
 import { formatDateForDisplay } from '../utils/dateUtils'
@@ -20,6 +21,7 @@ import { useUnitPreference } from '../hooks/useUnitPreference'
 import { UnitFormatter } from '../utils/units'
 import { withBase } from '../utils/basePath'
 import VehicleLiveLinkWidget from './livelink/VehicleLiveLinkWidget'
+import { ListRow, Tile, Badge, Mono } from './ui'
 
 interface VehicleStatisticsCardProps {
   stats: VehicleStatistics
@@ -48,119 +50,128 @@ function VehicleStatisticsCard({ stats }: VehicleStatisticsCardProps) {
     stats.total_fuel_records > 0 ||
     stats.total_odometer_records > 0
 
+  const typeLabels: Record<string, string> = {
+    Car: t('vehicleTypeLabels.Car'),
+    SUV: t('vehicleTypeLabels.SUV'),
+    Truck: t('vehicleTypeLabels.Truck'),
+    Motorcycle: t('vehicleTypeLabels.Motorcycle'),
+    RV: t('vehicleTypeLabels.RV'),
+    Trailer: t('vehicleTypeLabels.Trailer'),
+    FifthWheel: t('vehicleTypeLabels.FifthWheel'),
+    TravelTrailer: t('vehicleTypeLabels.TravelTrailer'),
+    Electric: t('vehicleTypeLabels.Electric'),
+    Hybrid: t('vehicleTypeLabels.Hybrid'),
+  }
+  const typeLabel = stats.vehicle_type
+    ? (typeLabels[stats.vehicle_type] ?? stats.vehicle_type)
+    : null
+
   return (
-    <div
-      onClick={handleClick}
-      className="bg-garage-surface border border-garage-border rounded-lg overflow-hidden hover:border-primary transition-all cursor-pointer group"
-    >
-      {/* Vehicle Header */}
-      <div className="relative h-48 bg-gradient-to-br from-primary/20 to-primary/5">
+    <article className="group relative isolate overflow-hidden rounded-card border border-border bg-surface ui-motion hover:shadow-card-hover">
+      {/* Image header — real photo or diagonal-stripe placeholder */}
+      <div className="relative h-[172px] overflow-hidden [background:repeating-linear-gradient(135deg,var(--color-photo-a)_0_13px,var(--color-photo-b)_13px_26px)]">
         {stats.main_photo_url ? (
           <img
             src={withBase(stats.main_photo_url)}
             alt={`${stats.year} ${stats.make} ${stats.model}`}
-            className="w-full h-full object-cover"
+            className="pointer-events-none h-full w-full object-cover"
           />
         ) : (
-          <div className="flex items-center justify-center h-full">
-            <Car className="w-16 h-16 text-garage-text-muted opacity-50" />
+          <div className="pointer-events-none flex h-full items-center justify-center">
+            <Car aria-hidden="true" className="h-16 w-16 text-text-mute opacity-40" />
           </div>
         )}
-        <div className="absolute inset-0 bg-gradient-to-t from-garage-bg/90 via-garage-bg/50 to-transparent" />
-        <div className="absolute bottom-0 left-0 right-0 p-4">
-          <h3 className="text-xl font-bold text-white">
-            {stats.year} {stats.make} {stats.model}
-          </h3>
-          <p className="text-sm text-garage-text-muted">{stats.vin}</p>
+        {/* Scrim — bg-derived, theme-aware */}
+        <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-bg via-bg/55 to-transparent" />
+
+        {/* Name + type chip + VIN overlay (display-only) */}
+        <div className="pointer-events-none absolute inset-x-4 bottom-3">
+          <div className="flex flex-wrap items-center gap-2">
+            <h3 className="text-[19px] font-bold tracking-[-.01em] text-text">
+              {stats.year} {stats.make} {stats.model}
+            </h3>
+            {typeLabel ? <Badge>{typeLabel}</Badge> : null}
+          </div>
+          <Mono size="sm" tone="muted" variant="vin" className="mt-1 block">
+            {stats.vin}
+          </Mono>
         </div>
 
-        {/* Shared badge */}
+        {/* Shared badge (display-only). The wrapper is pointer-events-none
+            (overlay chrome), so a `title` here can never fire on hover — the
+            can-edit/view-only distinction goes in an sr-only span inside the
+            Badge instead, which stays in the accessibility tree regardless
+            of pointer-events. Badge has no aria-label passthrough, so this
+            is the reliably-exposed option without touching the primitive. */}
         {stats.is_shared_with_me && (
-          <div
-            className="absolute top-3 left-3 bg-info text-white px-2 py-1 rounded-md text-xs font-semibold flex items-center gap-1"
-            title={
-              stats.share_permission === 'write'
-                ? t('vehicleStatisticsCardExtra.sharedByCanEdit', { username: stats.shared_by_username })
-                : t('vehicleStatisticsCardExtra.sharedByViewOnly', { username: stats.shared_by_username })
-            }
-          >
-            <Share2 className="w-3 h-3" />
-            {t('vehicleStatisticsCardExtra.sharedBadge')}
+          <div className="pointer-events-none absolute left-3 top-3">
+            <Badge tone="info" icon={Share2}>
+              {t('vehicleStatisticsCardExtra.sharedBadge')}
+              <span className="sr-only">
+                {' '}
+                {stats.share_permission === 'write'
+                  ? t('vehicleStatisticsCardExtra.sharedByCanEdit', { username: stats.shared_by_username })
+                  : t('vehicleStatisticsCardExtra.sharedByViewOnly', { username: stats.shared_by_username })}
+              </span>
+            </Badge>
           </div>
         )}
 
-        {/* Maintenance badges */}
+        {/* Overdue badge (danger, top-right, only when applicable) */}
         {stats.overdue_maintenance_count > 0 && (
-          <div className="absolute top-3 right-3 bg-danger text-white px-2 py-1 rounded-md text-xs font-semibold flex items-center gap-1">
-            <AlertCircle className="w-3 h-3" />
-            {t('vehicleStats.overdue', { count: stats.overdue_maintenance_count })}
+          <div className="pointer-events-none absolute right-3 top-3">
+            <Badge tone="danger" icon={AlertCircle}>
+              {t('vehicleStats.overdue', { count: stats.overdue_maintenance_count })}
+            </Badge>
           </div>
         )}
         {stats.overdue_maintenance_count === 0 && stats.upcoming_maintenance_count > 0 && (
-          <div className="absolute top-3 right-3 bg-warning text-white px-2 py-1 rounded-md text-xs font-semibold flex items-center gap-1">
-            <Bell className="w-3 h-3" />
-            {t('vehicleStats.upcoming', { count: stats.upcoming_maintenance_count })}
+          <div className="pointer-events-none absolute right-3 top-3">
+            <Badge tone="warning" icon={Bell}>
+              {t('vehicleStats.upcoming', { count: stats.upcoming_maintenance_count })}
+            </Badge>
           </div>
         )}
 
         {/* Archived watermark */}
         {stats.archived_at && (
-          <div className="absolute inset-0 pointer-events-none overflow-hidden">
-            <div className="absolute top-8 right-0 transform rotate-45 translate-x-1/4 -translate-y-1/4 bg-red-600/20 text-red-600 font-bold text-2xl px-16 py-2 border-y-2 border-red-600 shadow-lg">
+          <div className="pointer-events-none absolute inset-0 overflow-hidden">
+            <div className="absolute right-0 top-8 translate-x-1/4 -translate-y-1/4 rotate-45 border-y-2 border-danger bg-danger/15 px-16 py-2 text-2xl font-bold text-danger shadow-lg">
               {t('vehicleStatisticsCardExtra.archivedWatermark')}
             </div>
           </div>
         )}
       </div>
 
-      {/* Statistics Grid */}
-      <div className="p-4 space-y-3">
-        {/* Quick Stats */}
+      {/* Body */}
+      <div className="space-y-3 p-4">
+        {/* Four metric tiles */}
         <div className="grid grid-cols-4 gap-2">
-          <StatBadge
-            icon={<Wrench className="w-3 h-3" />}
-            count={stats.total_service_records}
-            label={t('vehicleStats.service')}
-          />
-          <StatBadge
-            icon={<Fuel className="w-3 h-3" />}
-            count={stats.total_fuel_records}
-            label={t('vehicleStats.fuel')}
-          />
-          <StatBadge
-            icon={<Bell className="w-3 h-3" />}
-            count={stats.total_maintenance_items}
+          <Tile icon={Wrench} value={stats.total_service_records} label={t('vehicleStats.service')} />
+          <Tile icon={Fuel} value={stats.total_fuel_records} label={t('vehicleStats.fuel')} />
+          <Tile
+            icon={Bell}
+            value={stats.total_maintenance_items}
             label={t('vehicleStats.maintenance')}
+            tone={stats.overdue_maintenance_count > 0 ? 'danger' : 'default'}
           />
-          <StatBadge
-            icon={<FileText className="w-3 h-3" />}
-            count={stats.total_documents}
-            label={t('vehicleStats.docs')}
-          />
+          <Tile icon={FileText} value={stats.total_documents} label={t('vehicleStats.docs')} />
         </div>
 
-        {/* Recent Activity */}
+        {/* Recent activity */}
         {hasActivity && (
-          <div className="border-t border-garage-border pt-3 space-y-2">
-            <h4 className="text-xs font-semibold text-garage-text-muted uppercase">{t('vehicleStats.recentActivity')}</h4>
+          <div className="space-y-2 border-t border-border pt-3">
+            <h4 className="text-xs font-semibold uppercase text-text-mute">{t('vehicleStats.recentActivity')}</h4>
             <div className="space-y-1.5 text-sm">
               {stats.latest_service_date && (
-                <ActivityRow
-                  icon={<Wrench className="w-3.5 h-3.5" />}
-                  label={t('vehicleStats.lastService')}
-                  value={formatDate(stats.latest_service_date)}
-                />
+                <ListRow icon={Wrench} label={t('vehicleStats.lastService')} value={formatDate(stats.latest_service_date)} />
               )}
               {stats.latest_fuel_date && (
-                <ActivityRow
-                  icon={<Fuel className="w-3.5 h-3.5" />}
-                  label={t('vehicleStats.lastFillUp')}
-                  value={formatDate(stats.latest_fuel_date)}
-                />
+                <ListRow icon={Fuel} label={t('vehicleStats.lastFillUp')} value={formatDate(stats.latest_fuel_date)} />
               )}
               {stats.latest_odometer_km && (
-                <ActivityRow
-                  icon={<Gauge className="w-3.5 h-3.5" />}
+                <ListRow
+                  icon={Gauge}
                   label={t('vehicleStats.latestOdometer')}
                   value={UnitFormatter.formatDistance(parseFloat(String(stats.latest_odometer_km)), system, false)}
                 />
@@ -169,92 +180,64 @@ function VehicleStatisticsCard({ stats }: VehicleStatisticsCardProps) {
           </div>
         )}
 
-        {/* Fuel Economy */}
+        {/* Highlight strip — average fuel economy (accent) */}
         {stats.average_l_per_100km && (
-          <div className="border-t border-garage-border pt-3">
+          <div className="border-t border-border pt-3">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
-                <TrendingUp className="w-4 h-4 text-primary" />
-                <span className="text-sm text-garage-text-muted">
+                <TrendingUp aria-hidden="true" className="h-4 w-4 text-(--accent-fg)" />
+                <span className="text-sm text-text-mute">
                   {t('vehicleStatisticsCardExtra.averageFuelEconomy', {
                     unit: UnitFormatter.getFuelEconomyUnit(system),
                   })}
                 </span>
               </div>
-              <span className="text-lg font-bold text-garage-text">
+              <Mono size="lg" weight="bold" tone="accent">
                 {UnitFormatter.formatFuelEconomy(parseFloat(String(stats.average_l_per_100km)), system, false)}
-              </span>
+              </Mono>
             </div>
             {stats.recent_l_per_100km && stats.recent_l_per_100km !== stats.average_l_per_100km && (
-              <div className="text-xs text-garage-text-muted mt-1">
+              <div className="mt-1 text-xs text-text-mute">
                 {t('vehicleStats.recent')}: {UnitFormatter.formatFuelEconomy(parseFloat(String(stats.recent_l_per_100km)), system, false)}
               </div>
             )}
           </div>
         )}
 
-        {/* Content Counts */}
-        <div className="border-t border-garage-border pt-3">
-          <div className="flex items-center justify-between text-xs text-garage-text-muted">
-            <div className="flex items-center gap-1">
-              <Camera className="w-3 h-3" />
-              <span>{t('vehicleStats.photoCount', { count: stats.total_photos })}</span>
-            </div>
-            <div className="flex items-center gap-1">
-              <StickyNote className="w-3 h-3" />
-              <span>{t('vehicleStats.noteCount', { count: stats.total_notes })}</span>
-            </div>
-          </div>
-        </div>
-
-        {/* LiveLink Widget - shows only if vehicle has a linked device */}
+        {/* LiveLink widget (telemetry, out of P4 reskin scope) — its own root
+            carries `relative z-10` (Step 4c) so it sits ABOVE the footer button's
+            stretched pseudo-element and stays independently clickable + keyboard-
+            operable. */}
         <VehicleLiveLinkWidget vin={stats.vin} />
 
-        {/* View Details Button */}
-        <button
-          onClick={handleClick}
-          className="w-full py-2 mt-2 bg-primary/10 text-primary rounded-md hover:bg-primary hover:text-white transition-colors font-medium text-sm"
-        >
-          {t('vehicleStatisticsCardExtra.viewDetails')}
-        </button>
+        {/* Footer — counts (non-interactive) + the stretched-link nav button.
+            The button is STATIC (no `relative`/`z`), so its `after:inset-0`
+            anchors to the `relative` <article> root and overlays the WHOLE card:
+            a click anywhere on the card navigates, and the button is natively
+            keyboard-operable. It is the only interactive nav target (a11y model
+            above); LiveLink's `z-10` keeps it above this pseudo-element. */}
+        <div className="flex items-center justify-between border-t border-border pt-3">
+          <div className="flex items-center gap-4 text-[11.5px] text-text-faint">
+            <span className="flex items-center gap-1">
+              <Camera aria-hidden="true" className="h-3 w-3" />
+              {t('vehicleStats.photoCount', { count: stats.total_photos })}
+            </span>
+            <span className="flex items-center gap-1">
+              <StickyNote aria-hidden="true" className="h-3 w-3" />
+              {t('vehicleStats.noteCount', { count: stats.total_notes })}
+            </span>
+          </div>
+          <button
+            type="button"
+            onClick={handleClick}
+            className="ui-focus-ring flex cursor-pointer items-center gap-1 rounded-control text-[12.5px] font-semibold text-(--accent-fg) after:absolute after:inset-0 after:content-['']"
+          >
+            {t('vehicleStatisticsCardExtra.viewDetails')}
+            <ChevronRight aria-hidden="true" className="h-4 w-4" />
+          </button>
+        </div>
       </div>
-    </div>
-  )
-}
-
-interface StatBadgeProps {
-  icon: React.ReactNode
-  count: number
-  label: string
-}
-
-function StatBadge({ icon, count, label }: StatBadgeProps) {
-  return (
-    <div className="flex flex-col items-center p-2 bg-garage-bg rounded-md">
-      <div className="flex items-center gap-1 text-garage-text-muted mb-0.5">
-        {icon}
-      </div>
-      <div className="text-lg font-bold text-garage-text">{count}</div>
-      <div className="text-xs text-garage-text-muted">{label}</div>
-    </div>
-  )
-}
-
-interface ActivityRowProps {
-  icon: React.ReactNode
-  label: string
-  value: string
-}
-
-function ActivityRow({ icon, label, value }: ActivityRowProps) {
-  return (
-    <div className="flex items-center justify-between text-garage-text">
-      <div className="flex items-center gap-2">
-        <div className="text-garage-text-muted">{icon}</div>
-        <span className="text-garage-text-muted">{label}</span>
-      </div>
-      <span className="font-medium">{value}</span>
-    </div>
+    </article>
   )
 }
 

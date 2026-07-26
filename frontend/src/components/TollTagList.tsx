@@ -4,6 +4,7 @@ import { CreditCard, Plus, Trash2, Edit3, CheckCircle, XCircle } from 'lucide-re
 import { toast } from 'sonner'
 import type { TollTag } from '../types/toll'
 import { useTollTags, useDeleteTollTag } from '../hooks/queries/useTollRecords'
+import { Button, IconButton, Mono, Chip, EmptyState } from './ui'
 
 /**
  * Toll tag status -> translation key.
@@ -48,7 +49,7 @@ export default function TollTagList({ vin, onAddClick, onEditClick }: TollTagLis
   if (isLoading) {
     return (
       <div className="flex justify-center items-center min-h-[200px]">
-        <div className="text-garage-text-muted">{t('tollTagList.loading')}</div>
+        <div className="text-text-mute">{t('tollTagList.loading')}</div>
       </div>
     )
   }
@@ -65,86 +66,67 @@ export default function TollTagList({ vin, onAddClick, onEditClick }: TollTagLis
     <div>
       <div className="flex justify-between items-center mb-6">
         <div>
-          <h2 className="text-2xl font-bold text-garage-text">{t('tollTagList.title')}</h2>
-          <p className="text-sm text-garage-text-muted">
-            {t('tollTagList.tagCount', { count: tollTags.length })}
-          </p>
+          <h2 className="text-2xl font-bold text-text">{t('tollTagList.title')}</h2>
+          <p className="text-sm text-text-mute">{t('tollTagList.tagCount', { count: tollTags.length })}</p>
         </div>
-        <button
-          onClick={onAddClick}
-          className="flex items-center gap-2 btn btn-primary rounded-lg transition-colors"
-        >
-          <Plus size={20} />
-          {t('tollTagList.addTollTag')}
-        </button>
+        <Button variant="primary" icon={Plus} onClick={onAddClick}>{t('tollTagList.addTollTag')}</Button>
       </div>
 
       {tollTags.length === 0 ? (
-        <div className="text-center py-12 bg-garage-surface rounded-lg border border-garage-border">
-          <CreditCard size={48} className="mx-auto text-garage-text-muted mb-4" />
-          <p className="text-garage-text-muted mb-4">{t('tollTagList.noRecords')}</p>
-          <button onClick={onAddClick} className="inline-flex items-center gap-2 btn btn-primary rounded-lg transition-colors">
-            {t('tollTagList.addFirstTollTag')}
-          </button>
-        </div>
+        <EmptyState
+          icon={CreditCard}
+          title={t('tollTagList.noRecords')}
+          action={<Button variant="primary" icon={Plus} onClick={onAddClick}>{t('tollTagList.addFirstTollTag')}</Button>}
+        />
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {tollTags.map((tag) => (
             <div
               key={tag.id}
-              className={`bg-garage-surface rounded-lg p-6 border ${
-                tag.status === 'inactive' ? 'border-garage-border opacity-60' : 'border-garage-border'
+              className={`bg-surface rounded-card p-6 border border-border ${
+                tag.status === 'inactive' ? 'opacity-60' : ''
               }`}
             >
               <div className="flex justify-between items-start mb-4">
                 <div className="flex items-start gap-3">
                   <CreditCard
-                    className={tag.status === 'active' ? 'text-primary mt-1' : 'text-garage-text-muted mt-1'}
+                    aria-hidden="true"
                     size={20}
+                    className={tag.status === 'active' ? 'text-(--accent-fg) mt-1' : 'text-text-mute mt-1'}
                   />
                   <div>
-                    <h3 className="text-lg font-semibold text-garage-text">{tag.toll_system}</h3>
-                    <p className="text-sm text-garage-text-muted font-mono">{tag.tag_number}</p>
+                    <h3 className="text-lg font-semibold text-text">{tag.toll_system}</h3>
+                    <Mono size="sm" tabular={false} className="text-text-mute">{tag.tag_number}</Mono>
                   </div>
                 </div>
                 <div className="flex gap-2">
-                  <button
-                    onClick={() => onEditClick(tag)}
-                    className="btn btn-ghost btn-sm"
-                    title={t('common:edit')}
-                  >
-                    <Edit3 size={16} />
-                  </button>
-                  <button
-                    onClick={() => handleDelete(tag.id)}
-                    className="btn btn-ghost btn-sm text-danger"
+                  <IconButton icon={Edit3} label={t('common:edit')} variant="ghost" size="sm" onClick={() => onEditClick(tag)} />
+                  <IconButton
+                    icon={Trash2}
+                    label={t('common:delete')}
+                    variant="danger"
+                    size="sm"
                     disabled={deleteMutation.isPending && deleteMutation.variables === tag.id}
-                    title={t('common:delete')}
-                  >
-                    {deleteMutation.isPending && deleteMutation.variables === tag.id ? '...' : <Trash2 size={16} />}
-                  </button>
+                    onClick={() => handleDelete(tag.id)}
+                  />
                 </div>
               </div>
 
               <div className="space-y-2">
                 <div>
-                  <p className="text-xs text-garage-text-muted mb-1">{t('tollTagList.status')}</p>
-                  <span className="inline-flex items-center gap-1">
-                    {tag.status === 'active' ? (
-                      <CheckCircle size={14} className="text-success-500" />
-                    ) : (
-                      <XCircle size={14} className="text-danger-500" />
-                    )}
-                    <span className="text-sm text-garage-text">
-                      {t(TOLL_STATUS_KEYS[tag.status] ?? TOLL_STATUS_FALLBACK_KEY)}
-                    </span>
-                  </span>
+                  <p className="text-xs text-text-mute mb-1">{t('tollTagList.status')}</p>
+                  <Chip
+                    tone={tag.status === 'active' ? 'success' : 'muted'}
+                    icon={tag.status === 'active' ? CheckCircle : XCircle}
+                  >
+                    {t(TOLL_STATUS_KEYS[tag.status] ?? TOLL_STATUS_FALLBACK_KEY)}
+                  </Chip>
                 </div>
 
                 {tag.notes && (
                   <div>
-                    <p className="text-xs text-garage-text-muted mb-1">{t('tollTagList.notes')}</p>
-                    <p className="text-sm text-garage-text whitespace-pre-wrap">{tag.notes}</p>
+                    <p className="text-xs text-text-mute mb-1">{t('tollTagList.notes')}</p>
+                    <p className="text-sm text-text whitespace-pre-wrap">{tag.notes}</p>
                   </div>
                 )}
               </div>

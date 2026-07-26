@@ -1,9 +1,12 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { screen, waitFor, fireEvent } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { render } from '../../__tests__/test-utils'
 import FuelRecordForm from '../FuelRecordForm'
 import type { Vehicle } from '../../types/vehicle'
+
+const drawerForm = (): HTMLFormElement =>
+  screen.getByRole('dialog').querySelector('form') as HTMLFormElement
 
 const mockedApiGet = vi.fn()
 const mockedApiPost = vi.fn().mockResolvedValue({ data: {} })
@@ -18,8 +21,11 @@ vi.mock('../../services/api', () => ({
 }))
 
 // Requires AuthProvider otherwise — same mock pattern as ServiceVisitForm.test.tsx
+// Hoisted + MUTABLE so one describe block (B9, below) can flip to imperial
+// without affecting every other test in this file, which stays on metric.
+const unitPrefMock = vi.hoisted(() => ({ system: 'metric' as 'metric' | 'imperial', showBoth: false }))
 vi.mock('../../hooks/useUnitPreference', () => ({
-  useUnitPreference: () => ({ system: 'metric', showBoth: false }),
+  useUnitPreference: () => unitPrefMock,
 }))
 
 vi.mock('../../contexts/AuthContext', () => ({
@@ -112,14 +118,14 @@ describe('FuelRecordForm — fill-up time (issue #109 / time-format)', () => {
   it('24h: submits filled_at=<record date>T<time> from a RAW, never-blurred time', async () => {
     const user = userEvent.setup()
     mockedApiGet.mockResolvedValue({ data: mockVehicle({ fuel_type: 'gasoline' }) })
-    const { container } = render(<FuelRecordForm {...DEFAULT_PROPS} />)
+    render(<FuelRecordForm {...DEFAULT_PROPS} />)
     await waitFor(() => expect(mockedApiGet).toHaveBeenCalled())
 
     fireEvent.change(dateInput('date'), { target: { value: '2026-04-30' } }) // required top field
     await openMoreDetails(user)
     // Raw compact value, NO blur — the field still holds "2200" at submit time.
     fireEvent.change(timeInput(), { target: { value: '2200' } })
-    fireEvent.submit(container.querySelector('form') as HTMLFormElement)
+    fireEvent.submit(drawerForm())
 
     await waitFor(() => expect(mockedApiPost).toHaveBeenCalled())
     const body = mockedApiPost.mock.calls.at(-1)?.[1] as Record<string, unknown>
@@ -130,14 +136,14 @@ describe('FuelRecordForm — fill-up time (issue #109 / time-format)', () => {
     timeFormatMock.value = '12h'
     const user = userEvent.setup()
     mockedApiGet.mockResolvedValue({ data: mockVehicle({ fuel_type: 'gasoline' }) })
-    const { container } = render(<FuelRecordForm {...DEFAULT_PROPS} />)
+    render(<FuelRecordForm {...DEFAULT_PROPS} />)
     await waitFor(() => expect(mockedApiGet).toHaveBeenCalled())
 
     fireEvent.change(dateInput('date'), { target: { value: '2026-04-30' } })
     await openMoreDetails(user)
     fireEvent.change(timeInput(), { target: { value: '2:30' } })
     fireEvent.click(screen.getByRole('button', { name: 'PM' }))
-    fireEvent.submit(container.querySelector('form') as HTMLFormElement)
+    fireEvent.submit(drawerForm())
 
     await waitFor(() => expect(mockedApiPost).toHaveBeenCalled())
     const body = mockedApiPost.mock.calls.at(-1)?.[1] as Record<string, unknown>
@@ -148,14 +154,14 @@ describe('FuelRecordForm — fill-up time (issue #109 / time-format)', () => {
     timeFormatMock.value = '12h'
     const user = userEvent.setup()
     mockedApiGet.mockResolvedValue({ data: mockVehicle({ fuel_type: 'gasoline' }) })
-    const { container } = render(<FuelRecordForm {...DEFAULT_PROPS} />)
+    render(<FuelRecordForm {...DEFAULT_PROPS} />)
     await waitFor(() => expect(mockedApiGet).toHaveBeenCalled())
 
     fireEvent.change(dateInput('date'), { target: { value: '2026-04-30' } })
     await openMoreDetails(user)
     fireEvent.change(timeInput(), { target: { value: '12:00' } })
     fireEvent.click(screen.getByRole('button', { name: 'AM' }))
-    fireEvent.submit(container.querySelector('form') as HTMLFormElement)
+    fireEvent.submit(drawerForm())
 
     await waitFor(() => expect(mockedApiPost).toHaveBeenCalled())
     const body = mockedApiPost.mock.calls.at(-1)?.[1] as Record<string, unknown>
@@ -165,12 +171,12 @@ describe('FuelRecordForm — fill-up time (issue #109 / time-format)', () => {
   it('sends filled_at=null when clearing an existing timestamp (so the clear persists)', async () => {
     const user = userEvent.setup()
     mockedApiGet.mockResolvedValue({ data: mockVehicle({ fuel_type: 'gasoline' }) })
-    const { container } = render(<FuelRecordForm {...DEFAULT_PROPS} record={REC as never} />)
+    render(<FuelRecordForm {...DEFAULT_PROPS} record={REC as never} />)
     await waitFor(() => expect(mockedApiGet).toHaveBeenCalled())
 
     await openMoreDetails(user)
     fireEvent.change(timeInput(), { target: { value: '' } })
-    fireEvent.submit(container.querySelector('form') as HTMLFormElement)
+    fireEvent.submit(drawerForm())
 
     await waitFor(() => expect(mockedApiPut).toHaveBeenCalled())
     const body = mockedApiPut.mock.calls.at(-1)?.[1] as Record<string, unknown>
@@ -180,12 +186,12 @@ describe('FuelRecordForm — fill-up time (issue #109 / time-format)', () => {
   it('preserves the stored filled_at verbatim on edit when the time is untouched (R1-H2)', async () => {
     const user = userEvent.setup()
     mockedApiGet.mockResolvedValue({ data: mockVehicle({ fuel_type: 'gasoline' }) })
-    const { container } = render(<FuelRecordForm {...DEFAULT_PROPS} record={REC as never} />)
+    render(<FuelRecordForm {...DEFAULT_PROPS} record={REC as never} />)
     await waitFor(() => expect(mockedApiGet).toHaveBeenCalled())
 
     await openMoreDetails(user)
     // Do NOT touch the time; submit. The exact stored timestamp must survive.
-    fireEvent.submit(container.querySelector('form') as HTMLFormElement)
+    fireEvent.submit(drawerForm())
 
     await waitFor(() => expect(mockedApiPut).toHaveBeenCalled())
     const body = mockedApiPut.mock.calls.at(-1)?.[1] as Record<string, unknown>
@@ -195,12 +201,12 @@ describe('FuelRecordForm — fill-up time (issue #109 / time-format)', () => {
   it('blocks submission (no API call) on an invalid non-empty time — visible input not silently lost (Codex R1-H1)', async () => {
     const user = userEvent.setup()
     mockedApiGet.mockResolvedValue({ data: mockVehicle({ fuel_type: 'gasoline' }) })
-    const { container } = render(<FuelRecordForm {...DEFAULT_PROPS} />)
+    render(<FuelRecordForm {...DEFAULT_PROPS} />)
     await waitFor(() => expect(mockedApiGet).toHaveBeenCalled())
     fireEvent.change(dateInput('date'), { target: { value: '2026-04-30' } })
     await openMoreDetails(user)
     fireEvent.change(timeInput(), { target: { value: '25:00' } }) // invalid, non-empty
-    fireEvent.submit(container.querySelector('form') as HTMLFormElement)
+    fireEvent.submit(drawerForm())
     // Error surfaces (the i18n test mock renders the KEY) and no create fires.
     await screen.findByText('fuel.invalidFilledTime')
     expect(mockedApiPost).not.toHaveBeenCalled()
@@ -278,10 +284,10 @@ describe('FuelRecordForm — station round-trip (issue #108)', () => {
   })
 
   it('drops the stale FK when the user retypes over a picked station', async () => {
-    const { container } = await renderWithRecord(PICKED)
+    await renderWithRecord(PICKED)
 
     fireEvent.change(stationInput(), { target: { value: 'Shell Highway 6' } })
-    fireEvent.submit(container.querySelector('form') as HTMLFormElement)
+    fireEvent.submit(drawerForm())
 
     await waitFor(() => expect(mockedApiPut).toHaveBeenCalled())
     expect(putPayload().station_name_freetext).toBe('Shell Highway 6')
@@ -291,23 +297,61 @@ describe('FuelRecordForm — station round-trip (issue #108)', () => {
   it('restores the link when the typed text returns to the station name', async () => {
     // Otherwise a stray keystroke, corrected, still submits a cleared FK and
     // silently re-creates the station on save.
-    const { container } = await renderWithRecord(PICKED)
+    await renderWithRecord(PICKED)
 
     fireEvent.change(stationInput(), { target: { value: 'Exxon Mobil #4' } })
     fireEvent.change(stationInput(), { target: { value: 'Exxon Mobil #42' } })
-    fireEvent.submit(container.querySelector('form') as HTMLFormElement)
+    fireEvent.submit(drawerForm())
 
     await waitFor(() => expect(mockedApiPut).toHaveBeenCalled())
     expect(putPayload().station_address_book_id).toBe(7)
   })
 
   it('keeps the FK when the user edits an unrelated field', async () => {
-    const { container } = await renderWithRecord(PICKED)
+    await renderWithRecord(PICKED)
 
     fireEvent.change(dateInput('date'), { target: { value: '2026-05-01' } })
-    fireEvent.submit(container.querySelector('form') as HTMLFormElement)
+    fireEvent.submit(drawerForm())
 
     await waitFor(() => expect(mockedApiPut).toHaveBeenCalled())
     expect(putPayload().station_address_book_id).toBe(7)
+  })
+})
+
+describe('FuelRecordForm — footer lift (P3 Task 4)', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+  })
+
+  it('submits via the footer button (form= association, outside the <form>)', async () => {
+    mockedApiGet.mockResolvedValue({ data: mockVehicle({ fuel_type: 'gasoline' }) })
+    render(<FuelRecordForm {...DEFAULT_PROPS} />)
+    await waitFor(() => expect(mockedApiGet).toHaveBeenCalled())
+
+    fireEvent.change(dateInput('date'), { target: { value: '2026-04-30' } }) // only hard-required field
+    // Create lives in the sticky footer, a sibling of the <form>, wired via form="fuel-record-form".
+    fireEvent.click(screen.getByRole('button', { name: 'common:create' }))
+
+    await waitFor(() => expect(mockedApiPost).toHaveBeenCalled())
+  })
+})
+
+describe('FuelRecordForm — OBC fields stay canonical-labeled in imperial (B9)', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    localStorage.clear()                 // moreDetailsOpen persists in localStorage
+    unitPrefMock.system = 'imperial'     // US units
+    mockedApiGet.mockResolvedValue({ data: mockVehicle({ fuel_type: 'gasoline' }) })
+  })
+  afterEach(() => { unitPrefMock.system = 'metric' })   // restore for the rest of the file
+
+  it('labels OBC consumption/speed with the FIXED canonical unit even for imperial (fails if the restyle converted them to mpg/mph)', async () => {
+    const user = userEvent.setup()
+    render(<FuelRecordForm {...DEFAULT_PROPS} />)
+    await waitFor(() => expect(mockedApiGet).toHaveBeenCalled())
+    await user.click(screen.getByText('fuel.moreDetails'))  // open the More-details panel (collapsed by default)
+    // Field renders the unit inside the <label> as "(L/100km)"; getByLabelText matches the whole label text.
+    expect(screen.getByLabelText('fuel.obcConsumption (L/100km)')).toHaveAttribute('id', 'obc_l_per_100km')
+    expect(screen.getByLabelText('fuel.obcAvgSpeed (km/h)')).toHaveAttribute('id', 'obc_avg_speed_kmh')
   })
 })

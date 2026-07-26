@@ -5,12 +5,63 @@ Tests dashboard aggregation and statistics endpoints.
 """
 
 from datetime import date, timedelta
+from decimal import Decimal
 
 import pytest
 from httpx import AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.models import Reminder
+from app.models import DEFRecord, FuelRecord, Reminder, ServiceVisit, Vehicle
+
+
+async def _isolated_fleet(db_session: AsyncSession) -> tuple[str, dict[str, str]]:
+    """Create a throwaway non-admin owner + one vehicle and return
+    ``(vin, auth_headers)`` whose ``/api/dashboard`` fleet is EXACTLY that vehicle.
+
+    The integration test DB is session-scoped and accumulates rows across files
+    (e.g. ``test_calendar`` seeds an "Overdue Brake Check" reminder), so the
+    admin fleet (all vehicles) and the shared ``non_admin_user`` fleet are both
+    polluted for whichever test runs later. A fresh, uniquely-named owner with a
+    single vehicle isolates the fleet to this test's seeded rows, which is what
+    keeps the exact fleet-wide assertions (Upcoming count, Next-due winner) both
+    valid and discriminating.
+    """
+    import uuid
+
+    from app.models.user import User
+    from app.services.auth import create_access_token
+
+    suffix = uuid.uuid4().hex[:12]
+    # Pre-computed argon2id hash (same constant the conftest user fixtures use).
+    password_hash = (
+        "$argon2id$v=19$m=102400,t=2,p=8$NNbLa8SMLODWY2Es68EvLw$"
+        "hiGLA+DtO213EMAMi8D8gXvvyjP8EVMFIHWp7SlUVnI"
+    )
+    user = User(
+        username=f"fleet_{suffix}",
+        email=f"fleet_{suffix}@example.com",
+        hashed_password=password_hash,
+        is_active=True,
+        is_admin=False,
+    )
+    db_session.add(user)
+    await db_session.commit()
+    await db_session.refresh(user)
+
+    # "FLEET" + 12 hex chars = exactly 17 chars, no I/O/Q -> a valid unique VIN.
+    vin = f"FLEET{suffix.upper()}"
+    db_session.add(
+        Vehicle(
+            vin=vin,
+            user_id=user.id,
+            nickname=f"Fleet {suffix}",
+            vehicle_type="Car",
+        )
+    )
+    await db_session.commit()
+
+    token = create_access_token(data={"sub": str(user.id), "username": user.username})
+    return vin, {"Authorization": f"Bearer {token}"}
 
 
 @pytest.mark.integration
@@ -308,3 +359,315 @@ class TestDashboardRoutes:
             assert "is_shared_with_me" in vehicle
             assert "shared_by_username" in vehicle
             assert "share_permission" in vehicle
+
+    async def test_dashboard_fleet_health_structure(
+        self, client: AsyncClient, auth_headers, test_vehicle
+    ):
+        """fleet_health carries the full contract, the current year, JSON types."""
+        response = await client.get("/api/dashboard", headers=auth_headers)
+        assert response.status_code == 200
+        fh = response.json()["fleet_health"]
+
+        assert set(fh.keys()) == {
+            "overdue_count",
+            "upcoming_30d_count",
+            "year",
+            "spent_this_year",
+            "next_due",
+        }
+        assert isinstance(fh["overdue_count"], int)
+        assert isinstance(fh["upcoming_30d_count"], int)
+        assert fh["year"] == date.today().year
+        # Decimal serializes to a JSON string.
+        assert isinstance(fh["spent_this_year"], str)
+
+    async def test_dashboard_vehicle_type_is_exact(
+        self, client: AsyncClient, auth_headers, test_vehicle
+    ):
+        """Each vehicle stat carries the EXACT vehicle_type, not merely the key."""
+        response = await client.get("/api/dashboard", headers=auth_headers)
+        assert response.status_code == 200
+        stat = next(v for v in response.json()["vehicles"] if v["vin"] == test_vehicle["vin"])
+        # test_vehicle is created with vehicle_type="Car" (conftest). A default
+        # None would fail here, so the field is genuinely populated.
+        assert stat["vehicle_type"] == "Car"
+
+    async def test_fleet_health_spent_this_year_is_ytd_scoped(
+        self, client: AsyncClient, auth_headers, test_vehicle, db_session: AsyncSession
+    ):
+        """Spent = service + fuel + DEF dated year_start..today; prior-year AND
+        later-this-year records are both excluded (true YTD)."""
+        vin = test_vehicle["vin"]
+        today = date.today()
+
+        before = Decimal(
+            (await client.get("/api/dashboard", headers=auth_headers)).json()["fleet_health"][
+                "spent_this_year"
+            ]
+        )
+
+        db_session.add_all(
+            [
+                # In range (dated today): service 100 + fuel 40 + DEF 20 = 160.
+                ServiceVisit(
+                    vin=vin,
+                    date=today,
+                    service_category="Maintenance",
+                    shop_supplies=Decimal("100.00"),
+                ),
+                FuelRecord(vin=vin, date=today, cost=Decimal("40.00")),
+                DEFRecord(vin=vin, date=today, cost=Decimal("20.00")),
+                # Prior calendar year — excluded.
+                FuelRecord(vin=vin, date=date(today.year - 1, 6, 1), cost=Decimal("999.00")),
+                # Later THIS year (future) — excluded by the `<= today` upper
+                # bound. This is the record the old `< next_year_start` range
+                # wrongly counted (review finding 5).
+                ServiceVisit(
+                    vin=vin,
+                    date=today + timedelta(days=1),
+                    service_category="Maintenance",
+                    shop_supplies=Decimal("777.00"),
+                ),
+            ]
+        )
+        await db_session.commit()
+
+        response = await client.get("/api/dashboard", headers=auth_headers)
+        assert response.status_code == 200
+        after = Decimal(response.json()["fleet_health"]["spent_this_year"])
+
+        assert after - before == Decimal("160.00")
+
+    async def test_fleet_health_upcoming_excludes_today_and_far(
+        self, client: AsyncClient, db_session: AsyncSession
+    ):
+        """upcoming_30d_count = strictly-future within 30 days; a due-today
+        reminder is Overdue only, never double-counted (review finding 6)."""
+        vin, headers = await _isolated_fleet(db_session)
+        today = date.today()
+        db_session.add_all(
+            [
+                Reminder(
+                    vin=vin,
+                    title="Due today",
+                    reminder_type="date",
+                    due_date=today,
+                    status="pending",
+                ),  # overdue, NOT upcoming
+                Reminder(
+                    vin=vin,
+                    title="In 10 days",
+                    reminder_type="date",
+                    due_date=today + timedelta(days=10),
+                    status="pending",
+                ),  # upcoming
+                Reminder(
+                    vin=vin,
+                    title="In 30 days",
+                    reminder_type="date",
+                    due_date=today + timedelta(days=30),
+                    status="pending",
+                ),  # upcoming (boundary)
+                Reminder(
+                    vin=vin,
+                    title="In 31 days",
+                    reminder_type="date",
+                    due_date=today + timedelta(days=31),
+                    status="pending",
+                ),  # excluded
+                Reminder(
+                    vin=vin,
+                    title="Overdue 3d",
+                    reminder_type="date",
+                    due_date=today - timedelta(days=3),
+                    status="pending",
+                ),  # overdue
+            ]
+        )
+        await db_session.commit()
+
+        response = await client.get("/api/dashboard", headers=headers)
+        assert response.status_code == 200
+        data = response.json()
+        fh = data["fleet_health"]
+
+        # 10d + 30d only — not today, not 31d, not the 90-day trap of the old test.
+        assert fh["upcoming_30d_count"] == 2
+        # due-today + overdue-3d => exactly 2 overdue; equals the per-card sum, so
+        # due-today is counted once (Overdue), never also Upcoming.
+        assert fh["overdue_count"] == sum(v["overdue_maintenance_count"] for v in data["vehicles"])
+        assert fh["overdue_count"] == 2
+
+    async def test_fleet_health_next_due_picks_soonest_dated(
+        self, client: AsyncClient, db_session: AsyncSession
+    ):
+        """next_due is the pending dated reminder with the earliest due_date."""
+        vin, headers = await _isolated_fleet(db_session)
+        today = date.today()
+        db_session.add_all(
+            [
+                Reminder(
+                    vin=vin,
+                    title="Oil change soon",
+                    reminder_type="date",
+                    due_date=today + timedelta(days=5),
+                    status="pending",
+                ),
+                Reminder(
+                    vin=vin,
+                    title="Tire rotation later",
+                    reminder_type="date",
+                    due_date=today + timedelta(days=40),
+                    status="pending",
+                ),
+            ]
+        )
+        await db_session.commit()
+
+        response = await client.get("/api/dashboard", headers=headers)
+        assert response.status_code == 200
+        next_due = response.json()["fleet_health"]["next_due"]
+        assert next_due is not None
+        assert next_due["label"] == "Oil change soon"
+        assert next_due["vin"] == vin
+        assert next_due["due_date"] == (today + timedelta(days=5)).isoformat()
+
+    async def test_fleet_health_next_due_excludes_completed_and_undated(
+        self, client: AsyncClient, db_session: AsyncSession
+    ):
+        """Completed reminders and reminders with neither date nor mileage never
+        win Next-due (review finding 7)."""
+        vin, headers = await _isolated_fleet(db_session)
+        today = date.today()
+        db_session.add_all(
+            [
+                # Earliest date but completed -> ignored.
+                Reminder(
+                    vin=vin,
+                    title="Done early",
+                    reminder_type="date",
+                    due_date=today + timedelta(days=1),
+                    status="completed",
+                ),
+                # No due_date and no due_mileage -> not a candidate at all.
+                Reminder(
+                    vin=vin,
+                    title="No schedule",
+                    reminder_type="date",
+                    due_date=None,
+                    due_mileage_km=None,
+                    status="pending",
+                ),
+                # The real soonest pending dated reminder.
+                Reminder(
+                    vin=vin,
+                    title="Real next",
+                    reminder_type="date",
+                    due_date=today + timedelta(days=7),
+                    status="pending",
+                ),
+            ]
+        )
+        await db_session.commit()
+
+        response = await client.get("/api/dashboard", headers=headers)
+        assert response.status_code == 200
+        next_due = response.json()["fleet_health"]["next_due"]
+        assert next_due is not None
+        assert next_due["label"] == "Real next"
+
+    async def test_fleet_health_next_due_mileage_only_fallback(
+        self, client: AsyncClient, db_session: AsyncSession
+    ):
+        """With no dated pending reminder, a mileage-only reminder surfaces,
+        ordered by due_mileage_km when the vehicle has no odometer (OQ1/finding 9)."""
+        vin, headers = await _isolated_fleet(db_session)
+        db_session.add_all(
+            [
+                Reminder(
+                    vin=vin,
+                    title="Brakes at 100k",
+                    reminder_type="mileage",
+                    due_date=None,
+                    due_mileage_km=Decimal("100000.00"),
+                    status="pending",
+                ),
+                Reminder(
+                    vin=vin,
+                    title="Belt at 160k",
+                    reminder_type="mileage",
+                    due_date=None,
+                    due_mileage_km=Decimal("160000.00"),
+                    status="pending",
+                ),
+            ]
+        )
+        await db_session.commit()
+
+        response = await client.get("/api/dashboard", headers=headers)
+        assert response.status_code == 200
+        next_due = response.json()["fleet_health"]["next_due"]
+        assert next_due is not None
+        assert next_due["due_date"] is None
+        # The isolated vehicle has no odometer record -> tier-2 ranks by
+        # due_mileage_km ASC.
+        assert next_due["label"] == "Brakes at 100k"
+        assert next_due["due_mileage_km"] == "100000.00"
+
+    async def test_fleet_health_excludes_out_of_scope_vehicles(
+        self,
+        client: AsyncClient,
+        non_admin_headers,
+        non_admin_user,
+        test_vehicle,
+        db_session: AsyncSession,
+    ):
+        """A non-admin's fleet_health never includes a vehicle they neither own
+        nor have shared to them (review finding 7 — authorization scope)."""
+        today = date.today()
+        owned_vin = "5NPE24AF0FH000123"
+        db_session.add(
+            Vehicle(
+                vin=owned_vin,
+                user_id=non_admin_user["id"],
+                nickname="Mine",
+                vehicle_type="Car",
+                year=2021,
+                make="Hyundai",
+                model="Sonata",
+            )
+        )
+        db_session.add(
+            Reminder(
+                vin=owned_vin,
+                title="Mine due later",
+                reminder_type="date",
+                due_date=today + timedelta(days=20),
+                status="pending",
+            )
+        )
+        # Out of scope: test_vehicle belongs to the ADMIN test_user, not shared
+        # with the non-admin. Its EARLIER reminder must not leak into the fleet.
+        db_session.add(
+            Reminder(
+                vin=test_vehicle["vin"],
+                title="Not mine due sooner",
+                reminder_type="date",
+                due_date=today + timedelta(days=1),
+                status="pending",
+            )
+        )
+        await db_session.commit()
+
+        response = await client.get("/api/dashboard", headers=non_admin_headers)
+        assert response.status_code == 200
+        data = response.json()
+        vins = {v["vin"] for v in data["vehicles"]}
+        assert owned_vin in vins
+        assert test_vehicle["vin"] not in vins
+
+        next_due = data["fleet_health"]["next_due"]
+        assert next_due is not None
+        # If scope leaked, the day+1 out-of-scope reminder (earlier) would win.
+        assert next_due["vin"] == owned_vin
+        assert next_due["label"] == "Mine due later"

@@ -67,7 +67,7 @@ export default function TripRouteMap({ points }: Props): ReactElement | null {
         attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
         url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
       />
-      <Polyline positions={positions} pathOptions={{ color: '#3b82f6', weight: 4 }} />
+      <Polyline positions={positions} pathOptions={{ color: 'var(--accent)', weight: 4 }} />
       <Marker position={start}>
         <Popup>{t('livelink.trips.mapStart')}</Popup>
       </Marker>

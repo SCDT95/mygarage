@@ -115,12 +115,13 @@ export default function OIDCModal({
       title={t('modal.oidcAuth')}
       onClose={handleClose}
       isOpen={isOpen}
-      icon={<Shield className="w-6 h-6 text-primary" />}
+      width="md"
+      icon={Shield}
       footer={
         <div className="flex justify-end">
           <button
             onClick={handleClose}
-            className="px-4 py-2 text-sm font-medium text-garage-text bg-garage-bg border border-garage-border rounded-lg hover:bg-garage-muted transition-colors"
+            className="px-4 py-2 text-sm font-medium text-garage-text bg-garage-bg border border-garage-border rounded-lg hover:bg-garage-surface-light transition-colors"
           >
             {t('modal.oidc.close')}
           </button>

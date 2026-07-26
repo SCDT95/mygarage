@@ -1,9 +1,12 @@
-import { useState, useEffect, useMemo, useCallback } from 'react'
+import { useState, useEffect, useMemo, useCallback, useRef } from 'react'
 import { useLocation } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { Plus, Car as CarIcon, SlidersHorizontal, Filter, RefreshCw } from 'lucide-react'
+import { Plus, Car as CarIcon, RefreshCw, ChevronDown, AlertCircle } from 'lucide-react'
 import VehicleStatisticsCard from '../components/VehicleStatisticsCard'
 import VehicleWizard from '../components/VehicleWizard'
+import FleetHealthStrip from '../components/FleetHealthStrip'
+import { PageHeader, Dropdown, Button, EmptyState, Card } from '../components/ui'
+import type { DropdownItem } from '../components/ui'
 import type { DashboardResponse } from '../types/dashboard'
 import api from '../services/api'
 
@@ -20,17 +23,28 @@ export default function Dashboard() {
   const [sortBy, setSortBy] = useState<SortOption>('name')
   const [filterBy, setFilterBy] = useState<FilterOption>('all')
 
+  // Kept out of loadDashboard's dependency array on purpose: useTranslation()
+  // can hand back a new `t` identity on re-render (the vitest i18n mock does
+  // this on every render), and loadDashboard sitting in the mount/navigation
+  // effect's deps would otherwise re-fire the fetch every time `t` churns.
+  // The ref always reads the latest translator without destabilizing the
+  // callback.
+  const tRef = useRef(t)
+  useEffect(() => {
+    tRef.current = t
+  }, [t])
+
   const loadDashboard = useCallback(async () => {
     setError(null)
     try {
       const response = await api.get('/dashboard')
       setDashboard(response.data)
     } catch {
-      setError(t('dashboard.loadError'))
+      setError(tRef.current('dashboard.loadError'))
     } finally {
       setLoading(false)
     }
-  }, [t])
+  }, [])
 
   useEffect(() => {
     // Load dashboard data when component mounts or navigation occurs
@@ -83,121 +97,105 @@ export default function Dashboard() {
     return sorted
   }, [dashboard?.vehicles, sortBy, filterBy])
 
+  const sortItems: DropdownItem[] = [
+    { id: 'name', label: t('dashboard.sortByName'), checked: sortBy === 'name', onSelect: () => setSortBy('name') },
+    { id: 'year-new', label: t('dashboard.newestFirst'), checked: sortBy === 'year-new', onSelect: () => setSortBy('year-new') },
+    { id: 'year-old', label: t('dashboard.oldestFirst'), checked: sortBy === 'year-old', onSelect: () => setSortBy('year-old') },
+    { id: 'maintenance', label: t('dashboard.byMaintenance'), checked: sortBy === 'maintenance', onSelect: () => setSortBy('maintenance') },
+  ]
+  const sortLabel = sortItems.find((i) => i.checked)?.label ?? ''
+
+  const filterItems: DropdownItem[] = [
+    { id: 'all', label: t('dashboard.allVehicles'), checked: filterBy === 'all', onSelect: () => setFilterBy('all') },
+    { id: 'owned', label: t('dashboard.myVehicles'), checked: filterBy === 'owned', onSelect: () => setFilterBy('owned') },
+    { id: 'shared', label: t('dashboard.sharedWithMe'), checked: filterBy === 'shared', onSelect: () => setFilterBy('shared') },
+  ]
+  const filterLabel = filterItems.find((i) => i.checked)?.label ?? ''
+
   const vehicleCount = dashboard?.total_vehicles || 0
 
   return (
     <>
       <div className="container mx-auto px-4 py-8">
-        {/* Header */}
-        <div className="flex flex-col gap-4 mb-8 sm:flex-row sm:items-center sm:justify-between">
-          <div>
-            <h1 className="text-3xl font-bold mb-2 text-garage-text">{t('dashboard.title')}</h1>
-            <p className="text-garage-text-muted">
-              {vehicleCount > 0
-                ? t('dashboard.managingCount', { count: vehicleCount })
-                : t('dashboard.subtitle')}
-            </p>
-          </div>
-          <div className="flex flex-wrap items-center gap-3">
-            {/* Filter - only show if there are shared vehicles */}
-            {vehicleCount > 0 && hasSharedVehicles && (
-              <div className="relative">
-                <select
-                  value={filterBy}
-                  onChange={(e) => setFilterBy(e.target.value as FilterOption)}
-                  aria-label={t('dashboard.filterVehicles')}
-                  className="pl-3 pr-10 py-2 border border-garage-border rounded-md focus:outline-none focus:ring-2 focus:ring-primary bg-garage-bg text-garage-text appearance-none cursor-pointer"
-                >
-                  <option value="all" className="bg-garage-bg text-garage-text">
-                    {t('dashboard.allVehicles')}
-                  </option>
-                  <option value="owned" className="bg-garage-bg text-garage-text">
-                    {t('dashboard.myVehicles')}
-                  </option>
-                  <option value="shared" className="bg-garage-bg text-garage-text">
-                    {t('dashboard.sharedWithMe')}
-                  </option>
-                </select>
-                <Filter className="absolute right-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-garage-text-muted pointer-events-none" />
-              </div>
-            )}
-            {/* Sort */}
-            {vehicleCount > 0 && (
-              <div className="relative">
-                <select
-                  value={sortBy}
-                  onChange={(e) => setSortBy(e.target.value as SortOption)}
-                  aria-label={t('dashboard.sortVehicles')}
-                  className="pl-3 pr-10 py-2 border border-garage-border rounded-md focus:outline-none focus:ring-2 focus:ring-primary bg-garage-bg text-garage-text appearance-none cursor-pointer"
-                >
-                  <option value="name" className="bg-garage-bg text-garage-text">
-                    {t('dashboard.sortByName')}
-                  </option>
-                  <option value="year-new" className="bg-garage-bg text-garage-text">
-                    {t('dashboard.newestFirst')}
-                  </option>
-                  <option value="year-old" className="bg-garage-bg text-garage-text">
-                    {t('dashboard.oldestFirst')}
-                  </option>
-                  <option value="maintenance" className="bg-garage-bg text-garage-text">
-                    {t('dashboard.byMaintenance')}
-                  </option>
-                </select>
-                <SlidersHorizontal className="absolute right-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-garage-text-muted pointer-events-none" />
-              </div>
-            )}
-            <button
-              onClick={() => setShowWizard(true)}
-              className="flex items-center gap-2 px-5 py-3 btn btn-primary rounded-lg"
-            >
-              <Plus className="w-5 h-5" />
-              <span>{t('dashboard.addVehicle')}</span>
-            </button>
-          </div>
-        </div>
+        <PageHeader
+          title={t('dashboard.title')}
+          actions={
+            <>
+              {vehicleCount > 0 && hasSharedVehicles && (
+                <Dropdown
+                  label={t('dashboard.filterVehicles')}
+                  align="right"
+                  items={filterItems}
+                  trigger={
+                    <>
+                      {t('dashboard.filterTrigger', { label: filterLabel })}
+                      <ChevronDown aria-hidden="true" className="h-4 w-4" />
+                    </>
+                  }
+                />
+              )}
+              {vehicleCount > 0 && (
+                <Dropdown
+                  label={t('dashboard.sortVehicles')}
+                  align="right"
+                  items={sortItems}
+                  trigger={
+                    <>
+                      {t('dashboard.sortTrigger', { label: sortLabel })}
+                      <ChevronDown aria-hidden="true" className="h-4 w-4" />
+                    </>
+                  }
+                />
+              )}
+              <Button variant="primary" icon={Plus} onClick={() => setShowWizard(true)}>
+                {t('dashboard.addVehicle')}
+              </Button>
+            </>
+          }
+        />
 
         {/* Vehicles Grid */}
         {loading ? (
           <div className="flex items-center justify-center py-16" role="status" aria-label={t('dashboard.loading')}>
-            <div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin" />
+            <div className="h-8 w-8 animate-spin rounded-full border-4 border-[color:var(--accent-solid)] border-t-transparent" />
             <span className="sr-only">{t('dashboard.loading')}</span>
           </div>
         ) : error ? (
-          <div className="bg-garage-surface rounded-lg border border-garage-border text-center py-16">
-            <p className="text-red-500 mb-4">{error}</p>
-            <button
-              onClick={loadDashboard}
-              className="inline-flex items-center gap-2 btn btn-primary rounded-lg"
-            >
-              <RefreshCw className="w-4 h-4" />
-              <span>{t('common:retry')}</span>
-            </button>
-          </div>
+          <Card padding="none">
+            <EmptyState
+              icon={AlertCircle}
+              title={error}
+              action={
+                <Button variant="secondary" icon={RefreshCw} onClick={loadDashboard}>
+                  {t('common:retry')}
+                </Button>
+              }
+            />
+          </Card>
         ) : dashboard && vehicleCount > 0 ? (
           <div>
+            {dashboard.fleet_health && <FleetHealthStrip fleet={dashboard.fleet_health} />}
 
             {/* Vehicles Grid */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            <div className="grid grid-cols-[repeat(auto-fill,minmax(340px,1fr))] gap-[22px]">
               {sortedVehicles.map((vehicleStats) => (
                 <VehicleStatisticsCard key={vehicleStats.vin} stats={vehicleStats} />
               ))}
             </div>
           </div>
         ) : (
-          <div className="bg-garage-surface rounded-lg border border-garage-border text-center py-16">
-            <CarIcon className="w-16 h-16 text-garage-text-muted mx-auto mb-4 opacity-50" />
-            <h3 className="text-xl font-semibold mb-2 text-garage-text">{t('dashboard.noVehiclesYet')}</h3>
-            <p className="text-garage-text-muted mb-6">
-              {t('dashboard.getStarted')}
-            </p>
-            <button
-              onClick={() => setShowWizard(true)}
-              className="inline-flex items-center gap-2 btn btn-primary rounded-lg"
-            >
-              <Plus className="w-5 h-5" />
-              <span>{t('dashboard.addFirstVehicle')}</span>
-            </button>
-          </div>
+          <Card padding="none">
+            <EmptyState
+              icon={CarIcon}
+              title={t('dashboard.noVehiclesYet')}
+              description={t('dashboard.getStarted')}
+              action={
+                <Button variant="primary" icon={Plus} onClick={() => setShowWizard(true)}>
+                  {t('dashboard.addFirstVehicle')}
+                </Button>
+              }
+            />
+          </Card>
         )}
       </div>
 

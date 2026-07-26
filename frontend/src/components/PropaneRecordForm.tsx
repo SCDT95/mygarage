@@ -6,13 +6,13 @@ import { Save } from 'lucide-react'
 import FormModalWrapper from './FormModalWrapper'
 import type { FuelRecord, FuelRecordCreate, FuelRecordUpdate } from '../types/fuel'
 import { propaneRecordSchema, type PropaneRecordFormData } from '../schemas/propane'
-import { FormError } from './FormError'
 import { useCreatePropaneRecord, useUpdatePropaneRecord } from '../hooks/queries/usePropaneRecords'
 import { useUnitPreference } from '../hooks/useUnitPreference'
 import { UnitConverter, UnitFormatter } from '../utils/units'
 import { toCanonicalKg, toCanonicalLiters, priceToDisplay, priceToCanonical } from '../utils/decimalSafe'
 import { formatDateForInput } from '../utils/dateUtils'
 import CurrencyInputPrefix from './common/CurrencyInputPrefix'
+import { Button, Field, Input, Textarea } from './ui'
 
 // Propane density: 1 kg ≈ 1.968 L (1 gal ≈ 1.923 kg, 1 gal = 3.78541 L).
 const KG_TO_LITERS = 1.968
@@ -196,8 +196,22 @@ export default function PropaneRecordForm({
   }
 
   return (
-    <FormModalWrapper title={isEdit ? t('propane.editTitle') : t('propane.createTitle')} onClose={onClose} maxWidth="max-w-lg">
-        <form onSubmit={handleSubmit(onSubmit)} className="p-6 space-y-4">
+    <FormModalWrapper
+      title={isEdit ? t('propane.editTitle') : t('propane.createTitle')}
+      onClose={onClose}
+      width="md"
+      footer={
+        <>
+          <Button variant="secondary" onClick={onClose} disabled={isSubmitting}>
+            {t('common:cancel')}
+          </Button>
+          <Button type="submit" form="propane-record-form" variant="primary" icon={Save} loading={isSubmitting}>
+            {isSubmitting ? t('common:saving') : isEdit ? t('common:update') : t('common:create')}
+          </Button>
+        </>
+      }
+    >
+        <form id="propane-record-form" onSubmit={handleSubmit(onSubmit)} className="p-6 space-y-4">
           {error && (
             <div className="bg-danger/10 border border-danger rounded-lg p-3">
               <p className="text-sm text-danger">{error}</p>
@@ -205,224 +219,80 @@ export default function PropaneRecordForm({
           )}
 
           <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label htmlFor="date" className="block text-sm font-medium text-garage-text mb-1">
-                {t('common:date')} <span className="text-danger">*</span>
-              </label>
-              <input
-                type="date"
-                id="date"
-                {...register('date')}
-                className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-primary bg-garage-bg text-garage-text ${
-                  errors.date ? 'border-red-500' : 'border-garage-border'
-                }`}
-                disabled={isSubmitting}
-              />
-              <FormError error={errors.date} />
-            </div>
+            <Field id="date" label={t('common:date')} required error={errors.date}>
+              <Input type="date" id="date" {...register('date')} invalid={!!errors.date} disabled={isSubmitting} />
+            </Field>
           </div>
 
           {/* Tank Information Section */}
-          <div className="border-t border-garage-border pt-4 mt-4">
-            <h3 className="text-sm font-medium text-garage-text mb-3">
-              {t('propane.tankInfo')}
-            </h3>
+          <div className="border-t border-border pt-4 mt-4">
+            <h3 className="text-sm font-medium text-text mb-3">{t('propane.tankInfo')}</h3>
 
             <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label htmlFor="tank_size_kg" className="block text-sm font-medium text-garage-text mb-1">
-                  {t('propane.tankSize')} ({UnitFormatter.getWeightUnit(system)})
-                </label>
+              <Field id="tank_size_kg" label={t('propane.tankSize')} unit={UnitFormatter.getWeightUnit(system)}>
                 <select
                   id="tank_size_kg"
                   {...register('tank_size_kg', { valueAsNumber: true })}
-                  className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-primary bg-garage-bg text-garage-text border-garage-border"
+                  className="ui-focus-input ui-motion w-full rounded-control border border-border bg-surface-2 px-3 py-2 text-sm text-text"
                   disabled={isSubmitting}
                 >
-                  <option value="">  {t('propane.selectTankSize')}  </option>
-                  {TANK_SIZES.map(tank => {
-                    const value = system === 'imperial'
-                      ? Math.round(UnitConverter.kgToLbs(tank.kg) ?? 0)
-                      : tank.kg
+                  <option value="">{t('propane.selectTankSize')}</option>
+                  {TANK_SIZES.map((tank) => {
+                    const value = system === 'imperial' ? Math.round(UnitConverter.kgToLbs(tank.kg) ?? 0) : tank.kg
                     const label = t('propaneRecordForm.tankSizeOption', {
                       size: system === 'imperial' ? tank.sizeImperial : tank.sizeMetric,
                       unit: UnitFormatter.getWeightUnit(system),
-                      kind: t(
-                        tank.kind === 'rv'
-                          ? 'propaneRecordForm.tankKindRv'
-                          : 'propaneRecordForm.tankKindPortable'
-                      ),
+                      kind: t(tank.kind === 'rv' ? 'propaneRecordForm.tankKindRv' : 'propaneRecordForm.tankKindPortable'),
                     })
-                    return (
-                      <option key={tank.kg} value={value}>
-                        {label}
-                      </option>
-                    )
+                    return (<option key={tank.kg} value={value}>{label}</option>)
                   })}
                 </select>
-              </div>
+              </Field>
 
-              {/* Tank Quantity */}
-              <div>
-                <label htmlFor="tank_quantity" className="block text-sm font-medium text-garage-text mb-1">
-                  {t('propane.numberOfTanks')}
-                </label>
-                <input
-                  type="number"
-                  id="tank_quantity"
-                  {...register('tank_quantity', { valueAsNumber: true })}
-                  min="1"
-                  step="1"
-                  className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-primary bg-garage-bg text-garage-text ${
-                    errors.tank_quantity ? 'border-red-500' : 'border-garage-border'
-                  }`}
-                  disabled={isSubmitting}
-                />
-                <FormError error={errors.tank_quantity} />
-              </div>
+              <Field id="tank_quantity" label={t('propane.numberOfTanks')} error={errors.tank_quantity}>
+                <Input type="number" id="tank_quantity" mono {...register('tank_quantity', { valueAsNumber: true })} min="1" step="1" invalid={!!errors.tank_quantity} disabled={isSubmitting} />
+              </Field>
             </div>
 
-            {/* Calculated volume hint */}
             {tankSizeDisplay && tankQuantity && (() => {
               const tankNum = parseFloat(tankSizeDisplay.toString())
               const kg = system === 'imperial' ? (UnitConverter.lbsToKg(tankNum) ?? tankNum) : tankNum
               const totalLiters = kg * tankQuantity * KG_TO_LITERS
-              const display = system === 'imperial'
-                ? UnitConverter.litersToGallons(totalLiters)
-                : totalLiters
+              const display = system === 'imperial' ? UnitConverter.litersToGallons(totalLiters) : totalLiters
               return (
-                <p className="text-xs text-garage-text-muted mt-2">
-                  {t('propaneRecordForm.autoCalculatedVolume', {
-                    value: display?.toFixed(2) ?? '',
-                    unit: UnitFormatter.getVolumeUnit(system),
-                  })}
+                <p className="text-xs text-text-mute mt-2">
+                  {t('propaneRecordForm.autoCalculatedVolume', { value: display?.toFixed(2) ?? '', unit: UnitFormatter.getVolumeUnit(system) })}
                 </p>
               )
             })()}
           </div>
 
-          {/* Propane volume field */}
-          <div>
-            <label htmlFor="propane_liters" className="block text-sm font-medium text-garage-text mb-1">
-              {t('propaneRecordForm.propaneVolume')} ({UnitFormatter.getVolumeUnit(system)})
-            </label>
-            <input
-              type="number"
-              id="propane_liters"
-              {...register('propane_liters', { valueAsNumber: true })}
-              min="0"
-              step="0.001"
-              placeholder={system === 'imperial' ? '10.500' : '39.750'}
-              className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-primary bg-garage-bg text-garage-text ${
-                errors.propane_liters ? 'border-red-500' : 'border-garage-border'
-              }`}
-              disabled={isSubmitting}
-            />
-            <FormError error={errors.propane_liters} />
-          </div>
+          <Field id="propane_liters" label={t('propaneRecordForm.propaneVolume')} unit={UnitFormatter.getVolumeUnit(system)} error={errors.propane_liters}>
+            <Input type="number" id="propane_liters" mono {...register('propane_liters', { valueAsNumber: true })} min="0" step="0.001" placeholder={system === 'imperial' ? '10.500' : '39.750'} invalid={!!errors.propane_liters} disabled={isSubmitting} />
+          </Field>
 
           <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label htmlFor="price_per_unit" className="block text-sm font-medium text-garage-text mb-1">
-                {t('fuel.pricePer')} {UnitFormatter.getVolumeUnit(system)}
-              </label>
+            <Field id="price_per_unit" label={`${t('fuel.pricePer')} ${UnitFormatter.getVolumeUnit(system)}`} error={errors.price_per_unit}>
               <div className="relative">
                 <CurrencyInputPrefix />
-                <input
-                  type="number"
-                  id="price_per_unit"
-                  {...register('price_per_unit', { valueAsNumber: true })}
-                  min="0"
-                  step="0.001"
-                  placeholder={system === 'imperial' ? '2.899' : '0.766'}
-                  className={`w-full pl-7 pr-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-primary bg-garage-bg text-garage-text ${
-                    errors.price_per_unit ? 'border-red-500' : 'border-garage-border'
-                  }`}
-                  disabled={isSubmitting}
-                />
+                <input type="number" id="price_per_unit" {...register('price_per_unit', { valueAsNumber: true })} min="0" step="0.001" placeholder={system === 'imperial' ? '2.899' : '0.766'} className={`ui-focus-input ui-motion w-full rounded-control border bg-surface-2 pl-7 pr-3 py-2 text-sm text-text font-mono tabular-nums ${errors.price_per_unit ? 'border-danger' : 'border-border'}`} disabled={isSubmitting} />
               </div>
-              <FormError error={errors.price_per_unit} />
-            </div>
-
-            <div>
-              <label htmlFor="cost" className="block text-sm font-medium text-garage-text mb-1">
-                {t('common:totalCost')}
-              </label>
+            </Field>
+            <Field id="cost" label={t('common:totalCost')} error={errors.cost} hint={t('fuel.autoCalculatedHint')}>
               <div className="relative">
                 <CurrencyInputPrefix />
-                <input
-                  type="number"
-                  id="cost"
-                  {...register('cost', { valueAsNumber: true })}
-                  min="0"
-                  step="0.01"
-                  placeholder="30.44"
-                  className={`w-full pl-7 pr-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-primary bg-garage-bg text-garage-text ${
-                    errors.cost ? 'border-red-500' : 'border-garage-border'
-                  }`}
-                  disabled={isSubmitting}
-                />
+                <input type="number" id="cost" {...register('cost', { valueAsNumber: true })} min="0" step="0.01" placeholder="30.44" className={`ui-focus-input ui-motion w-full rounded-control border bg-surface-2 pl-7 pr-3 py-2 text-sm text-text font-mono tabular-nums ${errors.cost ? 'border-danger' : 'border-border'}`} disabled={isSubmitting} />
               </div>
-              <FormError error={errors.cost} />
-              <p className="text-xs text-garage-text-muted mt-1">
-                {t('fuel.autoCalculatedHint')}
-              </p>
-            </div>
+            </Field>
           </div>
 
-          <div>
-            <label htmlFor="vendor" className="block text-sm font-medium text-garage-text mb-1">
-              {t('propane.vendorLocation')}
-            </label>
-            <input
-              type="text"
-              id="vendor"
-              {...register('vendor')}
-              placeholder={t('propaneRecordForm.vendorPlaceholder')}
-              className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-primary bg-garage-bg text-garage-text ${
-                errors.vendor ? 'border-red-500' : 'border-garage-border'
-              }`}
-              disabled={isSubmitting}
-            />
-            <FormError error={errors.vendor} />
-          </div>
+          <Field id="vendor" label={t('propane.vendorLocation')} error={errors.vendor}>
+            <Input type="text" id="vendor" {...register('vendor')} placeholder={t('propaneRecordForm.vendorPlaceholder')} invalid={!!errors.vendor} disabled={isSubmitting} />
+          </Field>
 
-          <div>
-            <label htmlFor="notes" className="block text-sm font-medium text-garage-text mb-1">
-              {t('common:notes')}
-            </label>
-            <textarea
-              id="notes"
-              rows={3}
-              {...register('notes')}
-              placeholder={t('common:additionalNotes')}
-              className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-primary bg-garage-bg text-garage-text ${
-                errors.notes ? 'border-red-500' : 'border-garage-border'
-              }`}
-              disabled={isSubmitting}
-            />
-            <FormError error={errors.notes} />
-          </div>
-
-          <div className="flex gap-3 pt-4">
-            <button
-              type="submit"
-              disabled={isSubmitting}
-              className="flex items-center gap-2 btn btn-primary rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              <Save className="w-4 h-4" />
-              <span>{isSubmitting ? t('common:saving') : isEdit ? t('common:update') : t('common:create')}</span>
-            </button>
-
-            <button
-              type="button"
-              onClick={onClose}
-              className="btn btn-primary rounded-lg transition-colors"
-              disabled={isSubmitting}
-            >
-              {t('common:cancel')}
-            </button>
-          </div>
+          <Field id="notes" label={t('common:notes')} error={errors.notes}>
+            <Textarea id="notes" rows={3} {...register('notes')} placeholder={t('common:additionalNotes')} invalid={!!errors.notes} disabled={isSubmitting} />
+          </Field>
         </form>
     </FormModalWrapper>
   )

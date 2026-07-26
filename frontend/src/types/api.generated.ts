@@ -3632,6 +3632,29 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/vehicles/{vin}/detail-stats": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Vehicle Detail Stats
+         * @description Read-aggregation for the Vehicle Detail hero + key-facts strip.
+         *
+         *     Requires READ access to the vehicle (owner, admin, or a read/write share).
+         *     Returns 404 if the vehicle does not exist, 403 if the caller lacks access.
+         */
+        get: operations["get_vehicle_detail_stats_api_vehicles__vin__detail_stats_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/vehicles/{vin}/documents": {
         parameters: {
             query?: never;
@@ -7103,6 +7126,7 @@ export interface components {
          * @description Complete dashboard data
          */
         DashboardResponse: {
+            fleet_health: components["schemas"]["FleetHealth"];
             /** Total Documents */
             total_documents: number;
             /** Total Fuel Records */
@@ -7675,6 +7699,35 @@ export interface components {
          * @enum {string}
          */
         FirmwareTrack: "obd" | "pro";
+        /**
+         * FleetHealth
+         * @description Fleet-wide health summary for the dashboard strip (read aggregation).
+         */
+        FleetHealth: {
+            next_due?: components["schemas"]["FleetNextDue"] | null;
+            /** Overdue Count */
+            overdue_count: number;
+            /** Spent This Year */
+            spent_this_year: string;
+            /** Upcoming 30D Count */
+            upcoming_30d_count: number;
+            /** Year */
+            year: number;
+        };
+        /**
+         * FleetNextDue
+         * @description Soonest pending reminder across the visible fleet.
+         */
+        FleetNextDue: {
+            /** Due Date */
+            due_date?: string | null;
+            /** Due Mileage Km */
+            due_mileage_km?: string | null;
+            /** Label */
+            label: string;
+            /** Vin */
+            vin: string;
+        };
         /**
          * FuelEconomyDataPoint
          * @description Single fuel economy data point (metric canonical).
@@ -13143,6 +13196,31 @@ export interface components {
             user_notes?: string | null;
         };
         /**
+         * VehicleDetailStats
+         * @description Read-aggregation for the Vehicle Detail hero + key-facts strip (P5).
+         *
+         *     Metric-canonical: latest_odometer_km is raw km (frontend converts at the
+         *     boundary). spent_this_year is currency (Decimal -> JSON string).
+         */
+        VehicleDetailStats: {
+            /** Last Fillup Date */
+            last_fillup_date: string | null;
+            /** Last Service Date */
+            last_service_date: string | null;
+            /** Latest Odometer Date */
+            latest_odometer_date: string | null;
+            /** Latest Odometer Km */
+            latest_odometer_km: string | null;
+            /** Overdue Count */
+            overdue_count: number;
+            /** Spent This Year */
+            spent_this_year: string;
+            /** Upcoming Count */
+            upcoming_count: number;
+            /** Year */
+            year: number;
+        };
+        /**
          * VehicleListResponse
          * @description Schema for vehicle list response.
          * @example {
@@ -13573,6 +13651,8 @@ export interface components {
             total_service_records: number;
             /** Upcoming Maintenance Count */
             upcoming_maintenance_count: number;
+            /** Vehicle Type */
+            vehicle_type?: string | null;
             /** Vin */
             vin: string;
             /** Year */
@@ -19773,6 +19853,37 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_vehicle_detail_stats_api_vehicles__vin__detail_stats_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                vin: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["VehicleDetailStats"];
+                };
             };
             /** @description Validation Error */
             422: {

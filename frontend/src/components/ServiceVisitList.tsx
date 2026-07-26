@@ -28,6 +28,8 @@ import { withBase } from '../utils/basePath'
 import { useUnitPreference } from '../hooks/useUnitPreference'
 import { UnitFormatter } from '../utils/units'
 import { useServiceVisits, useDeleteServiceVisit } from '../hooks/queries/useServiceVisits'
+import { Button, Card, IconButton, Chip, Mono, SearchField, EmptyState } from './ui'
+import type { Tone } from './ui'
 
 /**
  * Backend inspection result -> translation key.
@@ -49,6 +51,16 @@ const INSPECTION_RESULT_KEYS: Record<string, string> = {
   needs_attention: 'inspectionResult.resultNeedsAttention',
 }
 const INSPECTION_RESULT_FALLBACK_KEY = 'inspectionResult.resultUnknown'
+
+// SDQ-B2: off-accent semantic tones, label always shown (colour never sole channel).
+const SERVICE_CATEGORY_TONE: Record<string, Tone> = {
+  Inspection: 'info',
+  Collision: 'danger',
+  Detailing: 'success',
+  Maintenance: 'default',
+  Upgrades: 'muted',
+}
+const getServiceCategoryTone = (category?: string): Tone => SERVICE_CATEGORY_TONE[category ?? ''] ?? 'default'
 
 interface ServiceVisitListProps {
   vin: string
@@ -143,23 +155,6 @@ export default function ServiceVisitList({
     return formatDateForDisplay(dateString)
   }
 
-  const getServiceCategoryColor = (category?: string) => {
-    switch (category) {
-      case 'Maintenance':
-        return 'bg-blue-500/20 text-blue-400 border-blue-500/30'
-      case 'Inspection':
-        return 'bg-orange-500/20 text-orange-400 border-orange-500/30'
-      case 'Collision':
-        return 'bg-red-500/20 text-red-400 border-red-500/30'
-      case 'Upgrades':
-        return 'bg-purple-500/20 text-purple-400 border-purple-500/30'
-      case 'Detailing':
-        return 'bg-green-500/20 text-green-400 border-green-500/30'
-      default:
-        return 'bg-garage-bg text-garage-text-muted border-garage-border'
-    }
-  }
-
   const getInspectionResultIcon = (result?: string) => {
     switch (result) {
       case 'passed':
@@ -182,7 +177,7 @@ export default function ServiceVisitList({
       case 'red':
         return 'text-danger'
       default:
-        return 'text-garage-text-muted'
+        return 'text-text-mute'
     }
   }
 
@@ -203,56 +198,40 @@ export default function ServiceVisitList({
 
   const renderLineItem = (item: ServiceLineItem, index: number) => {
     return (
-      <div
-        key={item.id || index}
-        className="flex items-start gap-3 py-2 px-3 bg-garage-bg/50 rounded-md"
-      >
-        {/* Icon */}
+      <Card key={item.id || index} padding="sm" className="flex items-start gap-3 bg-surface-2/50">
         <div className="flex-shrink-0 mt-0.5">
-          {item.is_inspection ? (
-            <Clipboard className="w-4 h-4 text-primary" />
-          ) : (
-            <Wrench className="w-4 h-4 text-garage-text-muted" />
-          )}
+          {item.is_inspection
+            ? <Clipboard aria-hidden="true" className="w-4 h-4 text-info" />
+            : <Wrench aria-hidden="true" className="w-4 h-4 text-text-mute" />}
         </div>
-
-        {/* Content */}
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2">
-            <span className="text-sm text-garage-text font-medium">{item.description}</span>
+            <span className="text-sm text-text font-medium">{item.description}</span>
             {item.is_inspection && (
-              <span className="px-1.5 py-0.5 text-xs bg-primary/20 text-primary rounded">
-                {t('serviceList.inspection')}
-              </span>
+              <Chip tone="info">{t('serviceList.inspection')}</Chip>
             )}
             {item.is_inspection && item.inspection_result && (
               <span className="flex items-center gap-1">
                 {getInspectionResultIcon(item.inspection_result)}
-                <span
-                  className={`text-xs ${getInspectionSeverityColor(item.inspection_severity)}`}
-                >
+                <span className={`text-xs ${getInspectionSeverityColor(item.inspection_severity)}`}>
                   {t(INSPECTION_RESULT_KEYS[item.inspection_result] ?? INSPECTION_RESULT_FALLBACK_KEY)}
                 </span>
               </span>
             )}
           </div>
-          {item.notes && (
-            <p className="text-xs text-garage-text-muted mt-1">{item.notes}</p>
-          )}
+          {item.notes && <p className="text-xs text-text-mute mt-1">{item.notes}</p>}
         </div>
-
-        {/* Cost */}
-        <div className="flex-shrink-0 text-sm text-garage-text">
-          {item.cost ? formatCurrency(item.cost, { currencyCode, locale }) : '-'}
+        <div className="flex-shrink-0 text-sm text-text">
+          {item.cost ? <Mono size="sm">{formatCurrency(item.cost, { currencyCode, locale })}</Mono> : '-'}
         </div>
-      </div>
+      </Card>
     )
   }
 
   if (isLoading) {
     return (
       <div className="flex justify-center items-center min-h-[200px]">
-        <div className="text-garage-text-muted">{t('serviceList.loading')}</div>
+        <div className="text-text-mute">{t('serviceList.loading')}</div>
       </div>
     )
   }
@@ -270,62 +249,41 @@ export default function ServiceVisitList({
       {/* Header */}
       <div className="flex flex-wrap justify-between items-center gap-4">
         <div className="flex items-center gap-2">
-          <Wrench className="w-5 h-5 text-garage-text-muted" />
-          <h3 className="text-lg font-semibold text-garage-text">{t('serviceList.title')}</h3>
-          <span className="text-sm text-garage-text-muted">({t('serviceList.visitCount', { count: visits.length })})</span>
+          <Wrench aria-hidden="true" className="w-5 h-5 text-text-mute" />
+          <h3 className="text-lg font-semibold text-text">{t('serviceList.title')}</h3>
+          <span className="text-sm text-text-mute">({t('serviceList.visitCount', { count: visits.length })})</span>
         </div>
         <div className="flex items-center gap-2">
-          {/* Search */}
           {visits.length > 0 && (
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-garage-text-muted" />
-              <input
-                type="text"
-                placeholder={t('serviceList.searchPlaceholder')}
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="pl-10 pr-4 py-2 border border-garage-border rounded-md focus:outline-none focus:ring-2 focus:ring-primary bg-garage-bg text-garage-text w-full sm:w-56"
-              />
-            </div>
+            <SearchField
+              label={t('serviceList.searchPlaceholder')}
+              placeholder={t('serviceList.searchPlaceholder')}
+              value={searchQuery}
+              onChange={setSearchQuery}
+              className="w-full sm:w-56"
+            />
           )}
-          <button
-            onClick={onAddClick}
-            className="flex items-center gap-2 btn btn-primary rounded-lg transition-colors"
-          >
-            <Plus className="w-4 h-4" />
-            <span>{t('serviceList.logVisit')}</span>
-          </button>
+          <Button variant="primary" icon={Plus} onClick={onAddClick}>{t('serviceList.logVisit')}</Button>
         </div>
       </div>
 
       {/* Search results count */}
       {searchQuery && (
-        <div className="text-sm text-garage-text-muted">
+        <div className="text-sm text-text-mute">
           {t('serviceList.showingResults', { shown: filteredVisits.length, total: visits.length })}
         </div>
       )}
 
       {/* Empty state */}
       {visits.length === 0 ? (
-        <div className="bg-garage-surface border border-garage-border rounded-lg p-8 text-center">
-          <Wrench className="w-12 h-12 text-garage-text-muted opacity-50 mx-auto mb-3" />
-          <p className="text-garage-text mb-2">{t('serviceList.noRecords')}</p>
-          <p className="text-sm text-garage-text-muted mb-4">
-            {t('serviceList.noRecordsDesc')}
-          </p>
-          <button
-            onClick={onAddClick}
-            className="inline-flex items-center gap-2 btn btn-primary rounded-lg transition-colors"
-          >
-            <Plus className="w-4 h-4" />
-            <span>{t('serviceList.logFirstVisit')}</span>
-          </button>
-        </div>
+        <EmptyState
+          icon={Wrench}
+          title={t('serviceList.noRecords')}
+          description={t('serviceList.noRecordsDesc')}
+          action={<Button variant="primary" icon={Plus} onClick={onAddClick}>{t('serviceList.logFirstVisit')}</Button>}
+        />
       ) : filteredVisits.length === 0 ? (
-        <div className="bg-garage-surface border border-garage-border rounded-lg p-8 text-center">
-          <Search className="w-8 h-8 text-garage-text-muted opacity-50 mx-auto mb-2" />
-          <p className="text-garage-text-muted">{t('serviceList.noMatchingVisits')}</p>
-        </div>
+        <EmptyState size="sm" icon={Search} title={t('serviceList.noMatchingVisits')} />
       ) : (
         /* Visit list */
         <div className="space-y-3">
@@ -343,133 +301,100 @@ export default function ServiceVisitList({
             return (
               <div
                 key={visit.id}
-                className={`bg-garage-surface border rounded-lg overflow-hidden transition-colors ${
-                  hasFailedInspections ? 'border-warning' : 'border-garage-border'
+                className={`overflow-hidden rounded-card border bg-surface transition-colors ${
+                  hasFailedInspections ? 'border-warning' : 'border-border'
                 }`}
               >
                 {/* Visit header */}
-                <div
-                  className="flex items-center flex-wrap gap-2 sm:gap-4 p-4 cursor-pointer hover:bg-garage-bg/50"
-                  onClick={() => toggleExpanded(visit.id)}
-                >
-                  {/* Expand/collapse */}
-                  <button className="flex-shrink-0 text-garage-text-muted">
-                    {isExpanded ? (
-                      <ChevronUp className="w-5 h-5" />
-                    ) : (
-                      <ChevronDown className="w-5 h-5" />
-                    )}
-                  </button>
-
-                  {/* Date */}
-                  <div className="flex items-center gap-2 min-w-[90px] sm:min-w-[120px]">
-                    <Calendar className="w-4 h-4 text-garage-text-muted" />
-                    <span className="text-sm text-garage-text font-medium">
-                      {formatDate(visit.date)}
+                <div className="flex items-center flex-wrap gap-2 sm:gap-4 p-4">
+                  <button
+                    type="button"
+                    className="flex flex-1 items-center flex-wrap gap-2 sm:gap-4 text-left cursor-pointer rounded-row ui-focus-ring hover:bg-surface-2/50"
+                    onClick={() => toggleExpanded(visit.id)}
+                    aria-expanded={isExpanded}
+                  >
+                    <span aria-hidden="true" className="flex-shrink-0 text-text-mute">
+                      {isExpanded ? <ChevronUp className="w-5 h-5" /> : <ChevronDown className="w-5 h-5" />}
                     </span>
-                  </div>
 
-                  {/* Category badge */}
-                  {visit.service_category && (
-                    <span
-                      className={`px-2 py-0.5 text-xs font-medium rounded border ${getServiceCategoryColor(visit.service_category)}`}
-                    >
-                      {visit.service_category}
-                    </span>
-                  )}
-
-                  {/* Line items summary */}
-                  <div className="flex-1 min-w-0">
-                    <div className="text-sm text-garage-text truncate">
-                      {lineItemCount === 1
-                        ? visit.line_items?.[0]?.description
-                        : t('serviceList.serviceCount', { count: lineItemCount })}
+                    <div className="flex items-center gap-2 min-w-[90px] sm:min-w-[120px]">
+                      <Calendar aria-hidden="true" className="w-4 h-4 text-text-mute" />
+                      <Mono size="sm">{formatDate(visit.date)}</Mono>
                     </div>
-                    {visit.vendor && (
-                      <div className="flex items-center gap-1 text-xs text-garage-text-muted mt-0.5">
-                        <Store className="w-3 h-3" />
-                        <span>{visit.vendor.name}</span>
+
+                    {visit.service_category && (
+                      <Chip tone={getServiceCategoryTone(visit.service_category)}>{visit.service_category}</Chip>
+                    )}
+
+                    <div className="flex-1 min-w-0">
+                      <div className="text-sm text-text truncate">
+                        {lineItemCount === 1 ? visit.line_items?.[0]?.description : t('serviceList.serviceCount', { count: lineItemCount })}
+                      </div>
+                      {visit.vendor && (
+                        <div className="flex items-center gap-1 text-xs text-text-mute mt-0.5">
+                          <Store aria-hidden="true" className="w-3 h-3" />
+                          <span>{visit.vendor.name}</span>
+                        </div>
+                      )}
+                    </div>
+
+                    {visit.odometer_km != null && (
+                      <div className="flex items-center gap-1 text-sm text-text-mute">
+                        <Gauge aria-hidden="true" className="w-4 h-4" />
+                        <Mono size="sm">{UnitFormatter.formatDistance(parseFloat(String(visit.odometer_km)), system, showBoth)}</Mono>
                       </div>
                     )}
-                  </div>
 
-                  {/* Odometer */}
-                  {visit.odometer_km != null && (
-                    <div className="flex items-center gap-1 text-sm text-garage-text-muted">
-                      <Gauge className="w-4 h-4" />
-                      <span>{UnitFormatter.formatDistance(parseFloat(String(visit.odometer_km)), system, showBoth)}</span>
+                    <div className="min-w-[80px] text-right">
+                      {totalCost > 0
+                        ? <Mono size="sm" weight="semibold">{formatCurrency(totalCost, { currencyCode, locale })}</Mono>
+                        : <span className="text-sm text-text-mute">-</span>}
                     </div>
-                  )}
 
-                  {/* Total cost */}
-                  <div className="text-sm text-garage-text font-medium min-w-[80px] text-right">
-                    <span>{totalCost > 0 ? formatCurrency(totalCost, { currencyCode, locale }) : '-'}</span>
-                  </div>
+                    {hasFailedInspections && <AlertTriangle aria-hidden="true" className="w-4 h-4 text-warning flex-shrink-0" />}
+                  </button>
 
-                  {/* Warning indicator for failed inspections */}
-                  {hasFailedInspections && (
-                    <AlertTriangle className="w-4 h-4 text-warning flex-shrink-0" />
-                  )}
-
-                  {/* Actions */}
-                  <div
-                    className="flex items-center gap-2 flex-shrink-0"
-                    onClick={(e) => e.stopPropagation()}
-                  >
-                    <button
-                      onClick={() => onEditClick(visit)}
-                      className="p-2 text-garage-text-muted hover:text-primary hover:bg-primary/10 rounded-full transition-colors"
-                      title={t('common:edit')}
-                    >
-                      <Edit className="w-4 h-4" />
-                    </button>
-                    <button
-                      onClick={() => handleDelete(visit.id)}
+                  {/* Actions are SIBLINGS of the disclosure <button> (B7) — never nested
+                      inside it — so the header stays a single keyboard-operable control
+                      with no button-in-button, and no stopPropagation is needed. */}
+                  <div className="flex items-center gap-2 flex-shrink-0">
+                    <IconButton icon={Edit} label={t('common:edit')} variant="ghost" size="sm" onClick={() => onEditClick(visit)} />
+                    <IconButton
+                      icon={Trash2}
+                      label={t('common:delete')}
+                      variant="danger"
+                      size="sm"
                       disabled={deleteMutation.isPending && deleteMutation.variables === visit.id}
-                      className="p-2 text-garage-text-muted hover:text-danger hover:bg-danger/10 rounded-full transition-colors disabled:opacity-50"
-                      title={t('common:delete')}
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </button>
+                      onClick={() => handleDelete(visit.id)}
+                    />
                   </div>
                 </div>
 
                 {/* Expanded content */}
                 {isExpanded && (
-                  <div className="border-t border-garage-border px-4 py-3 space-y-3">
-                    {/* Visit notes */}
+                  <div className="border-t border-border px-4 py-3 space-y-3">
                     {visit.notes && (
-                      <div className="text-sm text-garage-text-muted bg-garage-bg/50 rounded-md p-3">
-                        {visit.notes}
-                      </div>
+                      <div className="text-sm text-text-mute bg-surface-2/50 rounded-md p-3">{visit.notes}</div>
                     )}
 
-                    {/* Insurance claim */}
                     {visit.insurance_claim_number && (
-                      <div className="text-sm text-garage-text-muted">
-                        <span className="font-medium">{t('serviceList.insuranceClaim')}:</span>{' '}
-                        {visit.insurance_claim_number}
+                      <div className="text-sm text-text-mute">
+                        <span className="font-medium">{t('serviceList.insuranceClaim')}:</span> {visit.insurance_claim_number}
                       </div>
                     )}
 
-                    {/* Line items */}
                     {visit.line_items && visit.line_items.length > 0 && (
                       <div className="space-y-2">
-                        <h4 className="text-xs font-medium text-garage-text-muted uppercase tracking-wide">
-                          {t('serviceList.servicesPerformed')}
-                        </h4>
+                        <h4 className="text-xs font-medium text-text-mute uppercase tracking-wide">{t('serviceList.servicesPerformed')}</h4>
                         <div className="space-y-1">
                           {visit.line_items.map((item, index) => renderLineItem(item, index))}
                         </div>
                       </div>
                     )}
 
-                    {/* Attachment thumbnails */}
                     {visitAttachments[visit.id] && visitAttachments[visit.id].length > 0 && (
                       <div className="space-y-2">
-                        <h4 className="text-xs font-medium text-garage-text-muted uppercase tracking-wide">
-                          {t('serviceList.attachments')}
-                        </h4>
+                        <h4 className="text-xs font-medium text-text-mute uppercase tracking-wide">{t('serviceList.attachments')}</h4>
                         <div className="flex flex-wrap gap-2">
                           {visitAttachments[visit.id].map((attachment) => (
                             <a
@@ -478,18 +403,14 @@ export default function ServiceVisitList({
                               target="_blank"
                               rel="noopener noreferrer"
                               title={attachment.file_name}
-                              className="relative w-16 h-16 rounded-lg border border-garage-border hover:border-primary overflow-hidden bg-garage-bg transition-colors"
+                              className="relative w-16 h-16 rounded-lg border border-border hover:border-(--accent-line) overflow-hidden bg-surface-2 transition-colors"
                             >
                               {attachment.file_type?.startsWith('image/') ? (
-                                <img
-                                  src={withBase(attachment.view_url || attachment.download_url)}
-                                  alt={attachment.file_name}
-                                  className="w-full h-full object-cover"
-                                />
+                                <img src={withBase(attachment.view_url || attachment.download_url)} alt={attachment.file_name} className="w-full h-full object-cover" />
                               ) : (
                                 <div className="w-full h-full flex flex-col items-center justify-center p-1">
-                                  <FileText className="w-5 h-5 text-garage-text-muted" />
-                                  <span className="text-[10px] text-garage-text-muted truncate w-full text-center mt-0.5">
+                                  <FileText aria-hidden="true" className="w-5 h-5 text-text-mute" />
+                                  <span className="text-[10px] text-text-mute truncate w-full text-center mt-0.5">
                                     {attachment.file_name.split('.').pop()?.toUpperCase()}
                                   </span>
                                 </div>
@@ -500,53 +421,47 @@ export default function ServiceVisitList({
                       </div>
                     )}
 
-                    {/* Cost breakdown (only show if there are tax/fees) */}
                     {(visit.tax_amount || visit.shop_supplies || visit.misc_fees) && (
                       <div className="space-y-2">
-                        <h4 className="text-xs font-medium text-garage-text-muted uppercase tracking-wide">
-                          {t('serviceList.costBreakdown')}
-                        </h4>
-                        <div className="bg-garage-bg/50 rounded-md p-3 space-y-1 text-sm max-w-xs">
-                          <div className="flex justify-between text-garage-text-muted">
+                        <h4 className="text-xs font-medium text-text-mute uppercase tracking-wide">{t('serviceList.costBreakdown')}</h4>
+                        <div className="bg-surface-2/50 rounded-md p-3 space-y-1 text-sm max-w-xs">
+                          <div className="flex justify-between text-text-mute">
                             <span>{t('serviceList.subtotal')}:</span>
-                            <span>{formatCurrency(visit.subtotal, { currencyCode, locale })}</span>
+                            <Mono size="sm">{formatCurrency(visit.subtotal, { currencyCode, locale })}</Mono>
                           </div>
                           {visit.tax_amount && (
-                            <div className="flex justify-between text-garage-text-muted">
+                            <div className="flex justify-between text-text-mute">
                               <span>{t('serviceList.tax')}:</span>
-                              <span>{formatCurrency(visit.tax_amount, { currencyCode, locale })}</span>
+                              <Mono size="sm">{formatCurrency(visit.tax_amount, { currencyCode, locale })}</Mono>
                             </div>
                           )}
                           {visit.shop_supplies && (
-                            <div className="flex justify-between text-garage-text-muted">
+                            <div className="flex justify-between text-text-mute">
                               <span>{t('serviceList.shopSupplies')}:</span>
-                              <span>{formatCurrency(visit.shop_supplies, { currencyCode, locale })}</span>
+                              <Mono size="sm">{formatCurrency(visit.shop_supplies, { currencyCode, locale })}</Mono>
                             </div>
                           )}
                           {visit.misc_fees && (
-                            <div className="flex justify-between text-garage-text-muted">
+                            <div className="flex justify-between text-text-mute">
                               <span>{t('serviceList.miscFees')}:</span>
-                              <span>{formatCurrency(visit.misc_fees, { currencyCode, locale })}</span>
+                              <Mono size="sm">{formatCurrency(visit.misc_fees, { currencyCode, locale })}</Mono>
                             </div>
                           )}
-                          <div className="flex justify-between font-medium text-garage-text border-t border-garage-border pt-1 mt-1">
+                          <div className="flex justify-between font-medium text-text border-t border-border pt-1 mt-1">
                             <span>{t('serviceList.total')}:</span>
-                            <span>{formatCurrency(visit.calculated_total_cost, { currencyCode, locale })}</span>
+                            <Mono size="sm" weight="semibold">{formatCurrency(visit.calculated_total_cost, { currencyCode, locale })}</Mono>
                           </div>
                         </div>
                       </div>
                     )}
 
-                    {/* Vendor details */}
                     {visit.vendor && (
                       <div className="flex items-start gap-2 text-sm">
-                        <Store className="w-4 h-4 text-garage-text-muted mt-0.5" />
+                        <Store aria-hidden="true" className="w-4 h-4 text-text-mute mt-0.5" />
                         <div>
-                          <div className="text-garage-text font-medium">{visit.vendor.name}</div>
+                          <div className="text-text font-medium">{visit.vendor.name}</div>
                           {(visit.vendor.city || visit.vendor.state) && (
-                            <div className="text-garage-text-muted text-xs">
-                              {[visit.vendor.city, visit.vendor.state].filter(Boolean).join(', ')}
-                            </div>
+                            <div className="text-text-mute text-xs">{[visit.vendor.city, visit.vendor.state].filter(Boolean).join(', ')}</div>
                           )}
                         </div>
                       </div>

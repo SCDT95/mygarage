@@ -10,6 +10,7 @@ import { useTranslation } from 'react-i18next'
 import { useState, type SyntheticEvent } from 'react'
 import { Save, AlertTriangle } from 'lucide-react'
 import FormModalWrapper from './FormModalWrapper'
+import { Button, Field, Input, Textarea } from './ui'
 import { toast } from 'sonner'
 import { useCreateReminder, useUpdateReminder } from '../hooks/useReminders'
 import type { Reminder, ReminderType } from '../types/reminder'
@@ -139,33 +140,40 @@ export default function ReminderForm({ vin, reminder, currentMileage, onClose, o
     <FormModalWrapper
       title={isEdit ? t('reminder.editTitle') : t('reminder.createTitle')}
       onClose={onClose}
-      maxWidth="max-w-lg"
+      width="sm"
+      footer={
+        <>
+          <Button variant="secondary" onClick={onClose} disabled={submitting}>
+            {t('common:cancel')}
+          </Button>
+          <Button type="submit" form="reminder-form" icon={Save} loading={submitting} disabled={submitting}>
+            {submitting ? t('common:saving') : isEdit ? t('common:update') : t('common:create')}
+          </Button>
+        </>
+      }
     >
-      <form onSubmit={handleSubmit} className="p-6 space-y-4">
+      <form id="reminder-form" onSubmit={handleSubmit} className="p-6 space-y-4">
         {error && (
           <div className="bg-danger/10 border border-danger rounded-lg p-3 flex items-center gap-2">
-            <AlertTriangle className="w-5 h-5 text-danger" />
+            <AlertTriangle aria-hidden="true" className="w-5 h-5 text-danger" />
             <p className="text-sm text-danger">{error}</p>
           </div>
         )}
 
-        <div>
-          <label className="block text-sm font-medium text-garage-text mb-1">
-            {t('common:title')} <span className="text-danger">*</span>
-          </label>
-          <input
+        <Field id="reminder-title" label={t('common:title')} required>
+          <Input
+            id="reminder-title"
             type="text"
             value={title}
             onChange={(e) => setTitle(e.target.value)}
             placeholder={t('reminder.titlePlaceholder')}
             maxLength={200}
             disabled={submitting}
-            className="w-full px-3 py-2 border border-garage-border rounded-md focus:outline-none focus:ring-2 focus:ring-primary bg-garage-bg text-garage-text"
           />
-        </div>
+        </Field>
 
         <div>
-          <label className="block text-sm font-medium text-garage-text mb-1">
+          <label className="block text-sm font-medium text-text mb-1">
             {t('reminder.reminderType')}
           </label>
           <div className="grid grid-cols-2 gap-2">
@@ -177,54 +185,55 @@ export default function ReminderForm({ vin, reminder, currentMileage, onClose, o
                 disabled={submitting}
                 className={`text-left p-3 rounded-lg border transition-colors ${
                   reminderType === type.value
-                    ? 'border-primary bg-primary/10 text-primary'
-                    : 'border-garage-border bg-garage-bg text-garage-text hover:border-primary/50'
+                    ? 'border-(--accent-line) bg-(--accent-soft) text-(--accent-fg)'
+                    : 'border-border bg-surface-2 text-text hover:border-(--accent-line)'
                 }`}
               >
                 <div className="text-sm font-medium">{t(type.labelKey)}</div>
-                <div className="text-xs text-garage-text-muted mt-0.5">{t(type.descriptionKey)}</div>
+                <div className="text-xs text-text-mute mt-0.5">{t(type.descriptionKey)}</div>
               </button>
             ))}
           </div>
         </div>
 
         {['date', 'both', 'smart'].includes(reminderType) && (
-          <div>
-            <label className="block text-sm font-medium text-garage-text mb-1">
-              {t('reminder.dueDate')} <span className="text-danger">*</span>
-            </label>
-            <input
+          <Field id="reminder-due-date" label={t('reminder.dueDate')} required>
+            <Input
+              id="reminder-due-date"
               type="date"
               value={dueDate}
               onChange={(e) => setDueDate(e.target.value)}
               disabled={submitting}
-              className="w-full px-3 py-2 border border-garage-border rounded-md focus:outline-none focus:ring-2 focus:ring-primary bg-garage-bg text-garage-text"
             />
-          </div>
+          </Field>
         )}
 
         {['mileage', 'both', 'smart'].includes(reminderType) && (
           <div>
-            <label className="block text-sm font-medium text-garage-text mb-1">
-              {hasMileage ? t('reminder.milesUntilDue') : t('reminder.dueMileage')} ({UnitFormatter.getDistanceUnit(system)}) <span className="text-danger">*</span>
-            </label>
-            <input
-              type="number"
-              value={mileageInterval ?? ''}
-              onChange={(e) => setMileageInterval(e.target.value ? parseInt(e.target.value) : undefined)}
-              min="1"
-              placeholder={
-                hasMileage
-                  ? t('reminderForm.mileageIntervalPlaceholder')
-                  : system === 'imperial'
-                    ? t('reminderForm.mileageAbsolutePlaceholderImperial')
-                    : t('reminderForm.mileageAbsolutePlaceholderMetric')
-              }
-              disabled={submitting}
-              className="w-full px-3 py-2 border border-garage-border rounded-md focus:outline-none focus:ring-2 focus:ring-primary bg-garage-bg text-garage-text"
-            />
+            <Field
+              id="reminder-mileage"
+              label={hasMileage ? t('reminder.milesUntilDue') : t('reminder.dueMileage')}
+              unit={UnitFormatter.getDistanceUnit(system)}
+              required
+            >
+              <Input
+                id="reminder-mileage"
+                type="number"
+                value={mileageInterval ?? ''}
+                onChange={(e) => setMileageInterval(e.target.value ? parseInt(e.target.value) : undefined)}
+                min="1"
+                placeholder={
+                  hasMileage
+                    ? t('reminderForm.mileageIntervalPlaceholder')
+                    : system === 'imperial'
+                      ? t('reminderForm.mileageAbsolutePlaceholderImperial')
+                      : t('reminderForm.mileageAbsolutePlaceholderMetric')
+                }
+                disabled={submitting}
+              />
+            </Field>
             {hasMileage && mileageInterval && currentDisplay != null ? (
-              <p className="text-xs text-garage-text-muted mt-1">
+              <p className="text-xs text-text-mute mt-1">
                 {t('reminderForm.mileageTargetHint', {
                   current: Math.round(currentDisplay).toLocaleString(getActiveLocale()),
                   interval: mileageInterval.toLocaleString(getActiveLocale()),
@@ -244,43 +253,23 @@ export default function ReminderForm({ vin, reminder, currentMileage, onClose, o
         )}
 
         {reminderType === 'smart' && (
-          <div className="bg-primary/5 border border-primary/20 rounded-lg p-3">
-            <p className="text-xs text-garage-text-muted">
+          <div className="bg-(--accent-soft) border border-(--accent-line) rounded-lg p-3">
+            <p className="text-xs text-text-mute">
               {t('reminder.smartModeDescription')}
             </p>
           </div>
         )}
 
-        <div>
-          <label className="block text-sm font-medium text-garage-text mb-1">{t('common:notes')}</label>
-          <textarea
+        <Field id="reminder-notes" label={t('common:notes')}>
+          <Textarea
+            id="reminder-notes"
             value={notes}
             onChange={(e) => setNotes(e.target.value)}
             placeholder={t('reminder.optionalNotes')}
             rows={2}
             disabled={submitting}
-            className="w-full px-3 py-2 border border-garage-border rounded-md focus:outline-none focus:ring-2 focus:ring-primary bg-garage-bg text-garage-text"
           />
-        </div>
-
-        <div className="flex gap-3 pt-2">
-          <button
-            type="submit"
-            disabled={submitting}
-            className="flex items-center gap-2 btn btn-primary rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            <Save className="w-4 h-4" />
-            <span>{submitting ? t('common:saving') : isEdit ? t('common:update') : t('common:create')}</span>
-          </button>
-          <button
-            type="button"
-            onClick={onClose}
-            disabled={submitting}
-            className="btn btn-primary rounded-lg transition-colors"
-          >
-            {t('common:cancel')}
-          </button>
-        </div>
+        </Field>
       </form>
     </FormModalWrapper>
   )

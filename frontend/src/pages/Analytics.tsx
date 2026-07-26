@@ -57,6 +57,7 @@ import type {
 } from '../types/analytics'
 import AnalyticsHelpModal from '../components/AnalyticsHelpModal'
 import ExportMenu from '../components/ExportMenu'
+import { Badge } from '../components/ui'
 import { formatCurrencyZero as formatCurrency } from '../utils/formatUtils'
 import { formatDateForDisplay } from '../utils/dateUtils'
 import { useCurrencyPreference } from '../hooks/useCurrencyPreference'
@@ -344,16 +345,23 @@ export default function Analytics() {
   }
 
   const getConfidenceBadge = (confidence: string) => {
+    const label = t(CONFIDENCE_LEVEL_KEYS[confidence] ?? CONFIDENCE_FALLBACK_KEY)
+    // high/medium keep the prototype's raw Tailwind colours (out of scope
+    // for P1 Task 25 — swept in the P12 raw-palette purge). low and any
+    // unrecognised value re-point the deleted .badge-neutral rule onto
+    // <Badge>, matching the old `|| colors.low` fallback.
     const colors = {
       high: 'bg-green-100 text-green-800 border-green-300',
       medium: 'bg-yellow-100 text-yellow-800 border-yellow-300',
-      low: 'badge-neutral border-gray-300',
     }
-    return (
-      <span className={`px-2 py-1 text-xs font-medium uppercase rounded border ${colors[confidence as keyof typeof colors] || colors.low}`}>
-        {t(CONFIDENCE_LEVEL_KEYS[confidence] ?? CONFIDENCE_FALLBACK_KEY)}
-      </span>
-    )
+    if (confidence === 'high' || confidence === 'medium') {
+      return (
+        <span className={`px-2 py-1 text-xs font-medium uppercase rounded border ${colors[confidence]}`}>
+          {label}
+        </span>
+      )
+    }
+    return <Badge className="uppercase">{label}</Badge>
   }
 
   if (loading) {
@@ -395,7 +403,7 @@ export default function Analytics() {
       <div className="mb-6">
         <Link
           to={`/vehicles/${vin}`}
-          className="inline-flex items-center space-x-2 text-primary hover:text-primary-dark mb-4"
+          className="inline-flex items-center space-x-2 text-primary hover:text-primary-600 mb-4"
         >
           <ArrowLeft className="w-4 h-4" />
           <span>{t('vehicle.backToVehicle')}</span>
@@ -1671,7 +1679,7 @@ export default function Analytics() {
           </div>
           <button
             onClick={() => setShowComparison(!showComparison)}
-            className="px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary-dark transition-colors"
+            className="px-4 py-2 bg-primary text-(--accent-on-solid) rounded-lg hover:bg-primary-600 transition-colors"
           >
             {showComparison ? t('vehicle.hide') : t('vehicle.comparePeriods')}
           </button>
@@ -1745,7 +1753,7 @@ export default function Analytics() {
               <button
                 onClick={handleCompare}
                 disabled={comparisonLoading}
-                className="px-6 py-3 bg-primary text-white rounded-lg hover:bg-primary-dark transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                className="px-6 py-3 bg-primary text-(--accent-on-solid) rounded-lg hover:bg-primary-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {comparisonLoading ? t('vehicle.comparing') : t('vehicle.runComparison')}
               </button>

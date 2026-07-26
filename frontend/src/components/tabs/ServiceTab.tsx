@@ -64,8 +64,8 @@ export default function ServiceTab({ vin }: ServiceTabProps) {
 
       {showVisitForm && !vehicleReady && (
         <div className="fixed inset-0 modal-overlay backdrop-blur-xs flex items-center justify-center z-50">
-          <div className="bg-garage-surface rounded-lg border border-garage-border p-8">
-            <div className="text-garage-text-muted text-sm">{t('common:loading')}</div>
+          <div className="bg-surface rounded-lg border border-border p-8">
+            <div className="text-text-mute text-sm">{t('common:loading')}</div>
           </div>
         </div>
       )}
