@@ -4,6 +4,7 @@ import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { Save } from 'lucide-react'
 import FormModalWrapper from './FormModalWrapper'
+import { Button, Field, Input, Textarea } from './ui'
 import type { TollTag, TollTagCreate, TollTagUpdate } from '../types/toll'
 import {
   makeTollTagSchema,
@@ -11,7 +12,6 @@ import {
   type TollSystemValue,
   TOLL_SYSTEM_OPTIONS,
 } from '../schemas/tollTag'
-import { FormError } from './FormError'
 import { useCreateTollTag, useUpdateTollTag } from '../hooks/queries/useTollRecords'
 
 interface TollTagFormProps {
@@ -82,23 +82,12 @@ export default function TollTagForm({ vin, tag, onClose, onSuccess }: TollTagFor
       width="sm"
       footer={
         <>
-          <button
-            type="button"
-            onClick={onClose}
-            className="btn btn-primary rounded-lg transition-colors"
-            disabled={isSubmitting}
-          >
+          <Button variant="secondary" onClick={onClose} disabled={isSubmitting}>
             {t('tollTagForm.cancel')}
-          </button>
-          <button
-            type="submit"
-            form="toll-tag-form"
-            className="flex items-center gap-2 btn btn-primary rounded-lg transition-colors disabled:opacity-50"
-            disabled={isSubmitting}
-          >
-            <Save className="w-4 h-4" />
+          </Button>
+          <Button type="submit" form="toll-tag-form" variant="primary" icon={Save} loading={isSubmitting} disabled={isSubmitting}>
             {isSubmitting ? t('common:saving') : isEdit ? t('toll.updateTag') : t('toll.addTag')}
-          </button>
+          </Button>
         </>
       }
     >
@@ -110,79 +99,40 @@ export default function TollTagForm({ vin, tag, onClose, onSuccess }: TollTagFor
           )}
 
           <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label htmlFor="toll_system" className="block text-sm font-medium text-garage-text mb-1">
-                {t('toll.tollSystem')} <span className="text-danger">*</span>
-              </label>
+            <Field id="toll_system" label={t('toll.tollSystem')} required error={errors.toll_system}>
               <select
                 id="toll_system"
                 {...register('toll_system')}
-                className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-primary bg-garage-bg text-garage-text ${
-                  errors.toll_system ? 'border-red-500' : 'border-garage-border'
-                }`}
                 disabled={isSubmitting}
+                className={`ui-focus-input ui-motion w-full rounded-control border bg-surface-2 px-3 py-2 text-sm text-text ${errors.toll_system ? 'border-danger' : 'border-border'}`}
               >
                 <option value="">{t('toll.selectTollSystem')}</option>
                 {TOLL_SYSTEM_OPTIONS.map((system) => (
                   <option key={system.value} value={system.value}>{t(system.labelKey)}</option>
                 ))}
               </select>
-              <FormError error={errors.toll_system} />
-            </div>
+            </Field>
 
-            <div>
-              <label htmlFor="tag_number" className="block text-sm font-medium text-garage-text mb-1">
-                {t('toll.tagNumber')} <span className="text-danger">*</span>
-              </label>
-              <input
-                type="text"
-                id="tag_number"
-                {...register('tag_number')}
-                className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-primary bg-garage-bg text-garage-text font-mono ${
-                  errors.tag_number ? 'border-red-500' : 'border-garage-border'
-                }`}
-                placeholder="e.g., 0012345678"
-                disabled={isSubmitting}
-              />
-              <FormError error={errors.tag_number} />
-            </div>
+            <Field id="tag_number" label={t('toll.tagNumber')} required error={errors.tag_number}>
+              <Input id="tag_number" type="text" mono {...register('tag_number')} placeholder="e.g., 0012345678" invalid={!!errors.tag_number} disabled={isSubmitting} />
+            </Field>
           </div>
 
-          <div>
-            <label htmlFor="status" className="block text-sm font-medium text-garage-text mb-1">
-              {t('common:status')}
-            </label>
+          <Field id="status" label={t('common:status')} error={errors.status}>
             <select
               id="status"
               {...register('status')}
-              className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-primary bg-garage-bg text-garage-text ${
-                errors.status ? 'border-red-500' : 'border-garage-border'
-              }`}
               disabled={isSubmitting}
+              className={`ui-focus-input ui-motion w-full rounded-control border bg-surface-2 px-3 py-2 text-sm text-text ${errors.status ? 'border-danger' : 'border-border'}`}
             >
               <option value="active">{t('common:active')}</option>
               <option value="inactive">{t('common:inactive')}</option>
             </select>
-            <FormError error={errors.status} />
-          </div>
+          </Field>
 
-          <div>
-            <label htmlFor="notes" className="block text-sm font-medium text-garage-text mb-1">
-              {t('common:notes')}
-            </label>
-            <textarea
-              id="notes"
-              {...register('notes')}
-              className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-primary bg-garage-bg text-garage-text ${
-                errors.notes ? 'border-red-500' : 'border-garage-border'
-              }`}
-              rows={3}
-              placeholder={t('toll.tagNotesPlaceholder')}
-              disabled={isSubmitting}
-            />
-            <FormError error={errors.notes} />
-          </div>
-
+          <Field id="notes" label={t('common:notes')} error={errors.notes}>
+            <Textarea id="notes" rows={3} {...register('notes')} placeholder={t('toll.tagNotesPlaceholder')} invalid={!!errors.notes} disabled={isSubmitting} />
+          </Field>
         </form>
     </FormModalWrapper>
   )
