@@ -47,11 +47,15 @@ interface BandRow {
 }
 
 // The band truth table (brief). 767/768 and 899/900 are the exact off-by-one
-// boundaries where `max-md`/`md` and `max-nav`/`nav` flip — the danger
+// boundaries where `max-md`/`max-nav` and `md`/`nav` flip — the danger
 // points, so all six widths are tested, not just four.
+//
+// The gear (Quick Settings) is visible at EVERY width: it is the only path to
+// the per-account accent picker and logout below 768px, so it must not drop on
+// phone (P10 mobile account access — see the logout reachability test below).
 const BAND_TABLE: BandRow[] = [
-  { width: 375, inlineNav: false, hamburger: false, search: false, gear: false, bottomBar: true },
-  { width: 767, inlineNav: false, hamburger: false, search: false, gear: false, bottomBar: true },
+  { width: 375, inlineNav: false, hamburger: false, search: false, gear: true, bottomBar: true },
+  { width: 767, inlineNav: false, hamburger: false, search: false, gear: true, bottomBar: true },
   { width: 768, inlineNav: false, hamburger: true, search: false, gear: true, bottomBar: false },
   { width: 899, inlineNav: false, hamburger: true, search: false, gear: true, bottomBar: false },
   { width: 900, inlineNav: true, hamburger: false, search: true, gear: true, bottomBar: false },
@@ -114,6 +118,29 @@ test.describe('P2 band model', () => {
         })`,
       ).toBe(1)
     }
+  })
+})
+
+test.describe('P10 mobile account access', () => {
+  // The Quick Settings gear is visible at phone width (band table above), and it is the
+  // ONLY route to logout and the accent picker below 768px. Prove the full logout path
+  // works there — a jsdom unit test can assert the drawer's row but never that the gear
+  // is reachable at 375px. e2e auth is local + signed in (seed.ts), so the row renders.
+  test('logout is reachable via Quick Settings at phone width', async ({ page }) => {
+    await page.setViewportSize({ width: 375, height: 900 })
+    await page.goto('/')
+    await page.waitForSelector('header')
+
+    const gear = page.getByRole('button', { name: 'Quick settings' })
+    await expect(gear).toBeVisible()
+    await gear.click()
+
+    await expect(page.getByRole('dialog', { name: 'Quick settings' })).toBeVisible()
+    const logout = page.getByRole('button', { name: 'Logout' })
+    await expect(logout).toBeVisible()
+    await logout.click()
+
+    await expect(page).toHaveURL(/\/login/)
   })
 })
 

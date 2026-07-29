@@ -1,6 +1,6 @@
 import { useState } from 'react'
-import { Link } from 'react-router-dom'
-import { Info, Settings } from 'lucide-react'
+import { Link, useNavigate } from 'react-router-dom'
+import { Info, LogOut, Settings } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
 import { Drawer, IconButton } from '../ui'
@@ -23,14 +23,25 @@ const ROW =
  * via page.goto('/settings'), so the gear being a button breaks nothing.
  *
  * Content: the Appearance accent picker (per-account; see below) + an About row
- * (Jamey's decision — About lives here) + a one-tap "All settings" link. The
- * dark/light theme is a standalone toggle in RightCluster, not duplicated here.
+ * (Jamey's decision — About lives here) + a one-tap "All settings" link + a
+ * logout row (auth-enabled + signed-in only). The dark/light theme is a
+ * standalone toggle in RightCluster, not duplicated here. The gear is reachable
+ * on every viewport (RightCluster no longer hides it below md), so phone users
+ * reach the accent picker and logout here — the standalone logout button in
+ * RightCluster is a desktop-only shortcut.
  */
 export default function QuickSettingsDrawer({ className = '' }: QuickSettingsDrawerProps) {
   const { t } = useTranslation('nav')
   const [open, setOpen] = useState(false)
   const { accent, setAccent } = useAccent()
-  const { isAuthenticated, refreshUser } = useAuth()
+  const { isAuthenticated, refreshUser, logout, authMode } = useAuth()
+  const navigate = useNavigate()
+
+  const handleLogout = (): void => {
+    logout()
+    setOpen(false)
+    navigate('/login')
+  }
 
   // Apply the accent immediately (CSS custom props + localStorage), then persist
   // it to the account so the choice follows the user across devices. Logged-out
@@ -96,6 +107,15 @@ export default function QuickSettingsDrawer({ className = '' }: QuickSettingsDra
             <Settings aria-hidden="true" className="h-4 w-4" />
             {t('allSettings')}
           </Link>
+
+          {authMode !== 'none' && isAuthenticated ? (
+            <div className="border-t border-border pt-4">
+              <button type="button" onClick={handleLogout} className={`${ROW} w-full text-left`}>
+                <LogOut aria-hidden="true" className="h-4 w-4" />
+                {t('logout')}
+              </button>
+            </div>
+          ) : null}
         </div>
       </Drawer>
     </>

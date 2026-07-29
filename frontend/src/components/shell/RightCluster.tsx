@@ -10,13 +10,15 @@ import { useAuth } from '../../contexts/AuthContext'
 
 /**
  * The nav right cluster (LOCKED responsive model). Search collapses below 900px
- * (max-nav:hidden); the gear (QuickSettingsDrawer) drops on phone (max-md:hidden,
- * visible via IconButton's base inline-flex) where Settings lives in the bottom
- * bar. The theme toggle is a
- * standalone icon; the gear is a button that opens the quick-settings drawer
- * (I2) — there is no separate /settings link (About + full Settings live inside
- * the drawer). Auth behaviour preserved: cluster gated on authMode !== 'none'
- * (from useAuth, replacing Layout's duplicate /settings/public fetch).
+ * (max-nav:hidden). The gear (QuickSettingsDrawer) is reachable on every
+ * viewport so phone users can reach the per-account accent picker and logout,
+ * which live inside the drawer. The theme toggle is a standalone icon; the gear
+ * opens the quick-settings drawer (I2) — there is no separate /settings link
+ * (About + full Settings live inside the drawer). The standalone logout
+ * IconButton is a desktop-only one-tap shortcut (max-md:hidden); on phone,
+ * logout is in the drawer. Auth behaviour preserved: cluster gated on
+ * authMode !== 'none' (from useAuth, replacing Layout's duplicate
+ * /settings/public fetch).
  */
 export default function RightCluster() {
   const { t } = useTranslation('nav')
@@ -39,7 +41,7 @@ export default function RightCluster() {
         onClick={toggleTheme}
       />
       <NotificationBell />
-      <QuickSettingsDrawer className="max-md:hidden" />
+      <QuickSettingsDrawer />
       {authMode !== 'none' &&
         (isAuthenticated && user ? (
           <div className="flex items-center gap-2 border-l border-border pl-2">

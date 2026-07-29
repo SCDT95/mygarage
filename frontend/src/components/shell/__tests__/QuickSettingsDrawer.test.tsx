@@ -9,16 +9,28 @@ import { ACCENT_KEYS } from '../../../constants/accents'
 const h = vi.hoisted(() => ({
   setAccent: vi.fn(),
   refreshUser: vi.fn(),
+  logout: vi.fn(),
+  navigate: vi.fn(),
   put: vi.fn(),
   toastError: vi.fn(),
-  state: { accent: 'blue', authed: true },
+  state: { accent: 'blue', authed: true, authMode: 'local' },
 }))
 
 vi.mock('../../../contexts/AccentContext', () => ({
   useAccent: () => ({ accent: h.state.accent, setAccent: h.setAccent }),
 }))
 vi.mock('../../../contexts/AuthContext', () => ({
-  useAuth: () => ({ isAuthenticated: h.state.authed, refreshUser: h.refreshUser }),
+  useAuth: () => ({
+    isAuthenticated: h.state.authed,
+    refreshUser: h.refreshUser,
+    logout: h.logout,
+    authMode: h.state.authMode,
+  }),
+}))
+// Keep MemoryRouter + Link real; stub only useNavigate so logout routing is observable.
+vi.mock('react-router-dom', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('react-router-dom')>()),
+  useNavigate: () => h.navigate,
 }))
 vi.mock('../../../services/api', () => ({ default: { put: h.put } }))
 vi.mock('sonner', () => ({ toast: { error: h.toastError } }))
@@ -38,6 +50,7 @@ beforeEach(() => {
   vi.clearAllMocks()
   h.state.accent = 'blue'
   h.state.authed = true
+  h.state.authMode = 'local'
   h.put.mockResolvedValue({})
 })
 
@@ -104,5 +117,26 @@ describe('QuickSettingsDrawer', () => {
     fireEvent.click(await screen.findByRole('button', { name: 'accents.green' }))
     await waitFor(() => expect(h.toastError).toHaveBeenCalledWith('accentError'))
     expect(h.setAccent.mock.calls).toStrictEqual([['green']])
+  })
+
+  it('shows a logout row that logs out and routes to /login when authed', async () => {
+    openDrawer()
+    fireEvent.click(await screen.findByRole('button', { name: 'logout' }))
+    expect(h.logout).toHaveBeenCalledOnce()
+    expect(h.navigate.mock.calls).toStrictEqual([['/login']])
+  })
+
+  it('hides the logout row when auth is disabled (authMode none)', async () => {
+    h.state.authMode = 'none'
+    openDrawer()
+    await screen.findByRole('dialog', { name: 'quickSettings' })
+    expect(screen.queryByRole('button', { name: 'logout' })).toBeNull()
+  })
+
+  it('hides the logout row when signed out', async () => {
+    h.state.authed = false
+    openDrawer()
+    await screen.findByRole('dialog', { name: 'quickSettings' })
+    expect(screen.queryByRole('button', { name: 'logout' })).toBeNull()
   })
 })
