@@ -78,15 +78,16 @@ test.describe('Vehicle Detail — Tab Navigation', () => {
     }
     const subTabs = ['Service', 'Odometer', 'Recalls']
     for (const tabName of subTabs) {
+      // Service and Recalls are unconditional; Odometer is isMotorized-gated and the seeded
+      // TEST_VEHICLE is a Car (motorized), so all three are present. Assert visibility rather
+      // than skipping via `if (await tab.isVisible())` — a removed/renamed sub-tab must FAIL.
       const tab = page.getByRole('tab', { name: tabName })
-      // Tab might not exist for non-motorized vehicles — skip if not visible
-      if (await tab.isVisible()) {
-        await tab.click()
-        // The body actually rendered (survives loading), not an empty fallback:
-        await expect(page.getByRole('heading', { name: bodyHeading[tabName] })).toBeVisible({ timeout: 5000 })
-        // ...and no error toast.
-        await expect(page.locator('[data-sonner-toast][data-type="error"]')).not.toBeVisible({ timeout: 2000 })
-      }
+      await expect(tab).toBeVisible({ timeout: 5000 })
+      await tab.click()
+      // The body actually rendered (survives loading), not an empty fallback:
+      await expect(page.getByRole('heading', { name: bodyHeading[tabName] })).toBeVisible({ timeout: 5000 })
+      // ...and no error toast.
+      await expect(page.locator('[data-sonner-toast][data-type="error"]')).not.toBeVisible({ timeout: 2000 })
     }
 
     // No uncaught page error surfaced during the whole cycle.
@@ -94,24 +95,28 @@ test.describe('Vehicle Detail — Tab Navigation', () => {
   })
 
   test('Fuel tab — loads fuel/DEF/propane sub-tabs', async ({ page }) => {
+    const pageErrors: string[] = []
+    page.on('pageerror', (err) => pageErrors.push(err.message))
+
     // Primary "Fuel" tab and the "Fuel" sub-tab share a name — scope the primary
     // click to the primary tablist to avoid a strict-mode collision.
     const primaryTabs = page.getByRole('tablist', { name: 'Vehicle sections' })
     await primaryTabs.getByRole('tab', { name: 'Fuel', exact: true }).click()
 
-    // Default Fuel sub-tab content loads
+    // Fuel sub-tab is isMotorized-gated; the seeded TEST_VEHICLE is a Car (motorized),
+    // so it is present and its body renders.
     await expect(page.getByText('Fuel History')).toBeVisible({ timeout: 10000 })
     await expect(page.locator('[data-sonner-toast][data-type="error"]')).not.toBeVisible({ timeout: 2000 })
 
-    // DEF / Propane appear only for diesel / propane-equipped vehicles — click if present
-    for (const tabName of ['DEF', 'Propane']) {
-      const tab = page.getByRole('tab', { name: tabName, exact: true })
-      if (await tab.isVisible()) {
-        await tab.click()
-        await page.waitForTimeout(500)
-        await expect(page.locator('[data-sonner-toast][data-type="error"]')).not.toBeVisible({ timeout: 2000 })
-      }
-    }
+    // DEF / Propane are fuel-type-gated (hasDEF / hasPropane) and SubTabNav omits gated
+    // sub-tabs from the DOM entirely (Tabs.tsx filters visible !== false). The seeded Car is
+    // neither diesel nor propane-equipped, so both sub-tabs must be ABSENT — a positive proof
+    // the gating holds, rather than an `if (isVisible)` no-op that skips silently.
+    await expect(page.getByRole('tab', { name: 'DEF', exact: true })).toHaveCount(0)
+    await expect(page.getByRole('tab', { name: 'Propane', exact: true })).toHaveCount(0)
+
+    // No uncaught page error surfaced during the whole cycle.
+    expect(pageErrors, pageErrors.join('\n')).toEqual([])
   })
 
   test('Tracking tab — cycles through sub-tabs', async ({ page }) => {
@@ -154,33 +159,37 @@ test.describe('Vehicle Detail — Tab Navigation', () => {
 
     // Each Financial sub-tab body renders a stable English heading (verified in
     // en/vehicles.json + en/common.json). Body-level render proof, not just "no toast".
+    // Warranties, Insurance, Tax & Registration, Tolls, Supplies are unconditional; Spot
+    // Rentals is isRVOrFifthWheel-gated. The seeded TEST_VEHICLE is a Car, so the five
+    // always-present tabs must render and Spot Rentals must be ABSENT.
     const bodyHeading: Record<string, string> = {
       Warranties: 'Warranties',
       Insurance: 'Insurance Policies',
       'Tax & Registration': 'Tax & Registration Records',
       Tolls: 'Toll Tags',
-      'Spot Rentals': 'Spot Rentals',
       Supplies: 'Supplies Used',
     }
-    const subTabs = ['Warranties', 'Insurance', 'Tax & Registration', 'Tolls', 'Spot Rentals', 'Supplies']
+    const subTabs = ['Warranties', 'Insurance', 'Tax & Registration', 'Tolls', 'Supplies']
     for (const tabName of subTabs) {
       const tab = page.getByRole('tab', { name: tabName })
-      // Spot Rentals only shows for RV/fifth-wheel vehicles — skip if not visible.
-      if (await tab.isVisible()) {
-        await tab.click()
-        // The body actually rendered (survives loading), not an empty fallback. exact: true
-        // disambiguates from each body's own EmptyState fallback title, which — for a
-        // freshly seeded test vehicle with zero records in every Financial category —
-        // case-insensitively contains the tab title as a substring (e.g. Warranties'
-        // "Warranties" section heading vs its EmptyState "No warranties recorded yet";
-        // same for Insurance/"Insurance Policies" and Tolls/"Toll Tags"). Without exact,
-        // getByRole('heading', { name }) resolves to 2 elements and throws a strict-mode
-        // violation — a locator ambiguity, not an empty-fallback failure.
-        await expect(page.getByRole('heading', { name: bodyHeading[tabName], exact: true })).toBeVisible({ timeout: 5000 })
-        // ...and no error toast.
-        await expect(page.locator('[data-sonner-toast][data-type="error"]')).not.toBeVisible({ timeout: 2000 })
-      }
+      await expect(tab).toBeVisible({ timeout: 5000 })
+      await tab.click()
+      // The body actually rendered (survives loading), not an empty fallback. exact: true
+      // disambiguates from each body's own EmptyState fallback title, which — for a
+      // freshly seeded test vehicle with zero records in every Financial category —
+      // case-insensitively contains the tab title as a substring (e.g. Warranties'
+      // "Warranties" section heading vs its EmptyState "No warranties recorded yet";
+      // same for Insurance/"Insurance Policies" and Tolls/"Toll Tags"). Without exact,
+      // getByRole('heading', { name }) resolves to 2 elements and throws a strict-mode
+      // violation — a locator ambiguity, not an empty-fallback failure.
+      await expect(page.getByRole('heading', { name: bodyHeading[tabName], exact: true })).toBeVisible({ timeout: 5000 })
+      // ...and no error toast.
+      await expect(page.locator('[data-sonner-toast][data-type="error"]')).not.toBeVisible({ timeout: 2000 })
     }
+
+    // Spot Rentals only shows for RV / fifth-wheel / travel-trailer vehicles; the seeded Car
+    // must not expose it (SubTabNav omits gated sub-tabs from the DOM).
+    await expect(page.getByRole('tab', { name: 'Spot Rentals', exact: true })).toHaveCount(0)
 
     // No uncaught page error surfaced during the whole cycle.
     expect(pageErrors, pageErrors.join('\n')).toEqual([])
