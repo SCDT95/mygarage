@@ -659,6 +659,7 @@ export default function VehicleEdit() {
                   type="number"
                   id="purchase_price"
                   {...register('purchase_price', { valueAsNumber: true })}
+                  aria-invalid={errors.purchase_price ? true : undefined}
                   className="w-full pl-7 pr-3 py-2 bg-garage-bg border border-garage-border rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500 text-garage-text"
                   placeholder="25000.00"
                   step="0.01"
@@ -697,6 +698,7 @@ export default function VehicleEdit() {
                   type="number"
                   id="sold_price"
                   {...register('sold_price', { valueAsNumber: true })}
+                  aria-invalid={errors.sold_price ? true : undefined}
                   className="w-full pl-7 pr-3 py-2 bg-garage-bg border border-garage-border rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500 text-garage-text"
                   placeholder="20000.00"
                   step="0.01"

@@ -545,6 +545,7 @@ export default function FuelRecordForm({ vin, record, onClose, onSuccess }: Fuel
                   min="0"
                   step="0.001"
                   placeholder={isElectric ? '0.130' : (system === 'imperial' ? '3.499' : '0.924')}
+                  aria-invalid={errors.price_per_unit ? true : undefined}
                   className={`ui-focus-input ui-motion w-full rounded-control border bg-surface-2 pl-7 pr-3 py-2 text-sm text-text font-mono tabular-nums ${errors.price_per_unit ? 'border-danger' : 'border-border'}`}
                   disabled={isSubmitting}
                 />
@@ -574,13 +575,13 @@ export default function FuelRecordForm({ vin, record, onClose, onSuccess }: Fuel
             <Field id="rebate" label={t('fuel.rebate')} error={errors.rebate} hint={t('fuel.rebateHint')}>
               <div className="relative">
                 <CurrencyInputPrefix />
-                <input type="number" id="rebate" {...register('rebate', { valueAsNumber: true })} min="0" step="0.01" placeholder="0.00" className={`ui-focus-input ui-motion w-full rounded-control border bg-surface-2 pl-7 pr-3 py-2 text-sm text-text font-mono tabular-nums ${errors.rebate ? 'border-danger' : 'border-border'}`} disabled={isSubmitting} />
+                <input type="number" id="rebate" {...register('rebate', { valueAsNumber: true })} min="0" step="0.01" placeholder="0.00" aria-invalid={errors.rebate ? true : undefined} className={`ui-focus-input ui-motion w-full rounded-control border bg-surface-2 pl-7 pr-3 py-2 text-sm text-text font-mono tabular-nums ${errors.rebate ? 'border-danger' : 'border-border'}`} disabled={isSubmitting} />
               </div>
             </Field>
             <Field id="cost" label={t('common:totalCost')} error={errors.cost} hint={t('fuel.autoCalculatedHint')}>
               <div className="relative">
                 <CurrencyInputPrefix />
-                <input type="number" id="cost" {...register('cost', { valueAsNumber: true })} min="0" step="0.01" placeholder="42.99" className={`ui-focus-input ui-motion w-full rounded-control border bg-surface-2 pl-7 pr-3 py-2 text-sm text-text font-mono tabular-nums ${errors.cost ? 'border-danger' : 'border-border'}`} disabled={isSubmitting} />
+                <input type="number" id="cost" {...register('cost', { valueAsNumber: true })} min="0" step="0.01" placeholder="42.99" aria-invalid={errors.cost ? true : undefined} className={`ui-focus-input ui-motion w-full rounded-control border bg-surface-2 pl-7 pr-3 py-2 text-sm text-text font-mono tabular-nums ${errors.cost ? 'border-danger' : 'border-border'}`} disabled={isSubmitting} />
               </div>
             </Field>
           </div>

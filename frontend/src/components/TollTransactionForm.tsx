@@ -110,6 +110,7 @@ export default function TollTransactionForm({ vin, tollTags, transaction, onClos
                   step="0.01"
                   {...register('amount', { valueAsNumber: true })}
                   placeholder="0.00"
+                  aria-invalid={errors.amount ? true : undefined}
                   className={`ui-focus-input ui-motion w-full rounded-control border bg-surface-2 pl-7 pr-3 py-2 text-sm text-text font-mono tabular-nums ${errors.amount ? 'border-danger' : 'border-border'}`}
                   disabled={isSubmitting}
                 />

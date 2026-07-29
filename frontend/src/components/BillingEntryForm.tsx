@@ -155,6 +155,7 @@ export default function BillingEntryForm({
                 step="0.01"
                 {...register('monthly_rate', { valueAsNumber: true })}
                 placeholder="0.00"
+                aria-invalid={errors.monthly_rate ? true : undefined}
                 className={`ui-focus-input ui-motion w-full rounded-control border bg-surface-2 pl-7 pr-3 py-2 text-sm text-text font-mono tabular-nums ${errors.monthly_rate ? 'border-danger' : 'border-border'}`}
                 disabled={isSubmitting}
               />
@@ -172,6 +173,7 @@ export default function BillingEntryForm({
                   step="0.01"
                   {...register('electric', { valueAsNumber: true })}
                   placeholder="0.00"
+                  aria-invalid={errors.electric ? true : undefined}
                   className={`ui-focus-input ui-motion w-full rounded-control border bg-surface-2 pl-7 pr-3 py-2 text-sm text-text font-mono tabular-nums ${errors.electric ? 'border-danger' : 'border-border'}`}
                   disabled={isSubmitting}
                 />
@@ -188,6 +190,7 @@ export default function BillingEntryForm({
                   step="0.01"
                   {...register('water', { valueAsNumber: true })}
                   placeholder="0.00"
+                  aria-invalid={errors.water ? true : undefined}
                   className={`ui-focus-input ui-motion w-full rounded-control border bg-surface-2 pl-7 pr-3 py-2 text-sm text-text font-mono tabular-nums ${errors.water ? 'border-danger' : 'border-border'}`}
                   disabled={isSubmitting}
                 />
@@ -204,6 +207,7 @@ export default function BillingEntryForm({
                   step="0.01"
                   {...register('waste', { valueAsNumber: true })}
                   placeholder="0.00"
+                  aria-invalid={errors.waste ? true : undefined}
                   className={`ui-focus-input ui-motion w-full rounded-control border bg-surface-2 pl-7 pr-3 py-2 text-sm text-text font-mono tabular-nums ${errors.waste ? 'border-danger' : 'border-border'}`}
                   disabled={isSubmitting}
                 />
