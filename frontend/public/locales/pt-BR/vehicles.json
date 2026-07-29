@@ -60,7 +60,6 @@
     "getStarted": "Primeiros passos",
     "loadError": "Erro ao carregar",
     "loading": "Carregando...",
-    "managingCount": "Gerenciando {{count}} veículo(s)",
     "myVehicles": "Meus veículos",
     "newestFirst": "Mais novos primeiro",
     "noVehiclesYet": "Nenhum veículo",
@@ -68,7 +67,6 @@
     "sharedWithMe": "Compartilhados comigo",
     "sortByName": "Ordenar por nome",
     "sortVehicles": "Ordenar veículos",
-    "subtitle": "Gerencie seus veículos e acompanhe as manutenções",
     "title": "Minha Garagem"
   },
   "defList": {

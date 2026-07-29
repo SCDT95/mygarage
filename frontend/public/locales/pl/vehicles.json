@@ -60,7 +60,6 @@
     "getStarted": "Zaczynajmy",
     "loadError": "Błąd ładowania",
     "loading": "Ładowanie...",
-    "managingCount": "Zarządzanie {{count}} pojazdem(-ami)",
     "myVehicles": "Moje pojazdy",
     "newestFirst": "Najpierw najnowsze",
     "noVehiclesYet": "Brak pojazdów",
@@ -68,7 +67,6 @@
     "sharedWithMe": "Udostępnione dla mnie",
     "sortByName": "Sortuj po nazwie",
     "sortVehicles": "Sortuj pojazdy",
-    "subtitle": "Podtytuł",
     "title": "Tytuł"
   },
   "defList": {

@@ -100,7 +100,6 @@
     "getStarted": "Get started by adding your first vehicle",
     "loadError": "Failed to load dashboard. Please try again.",
     "loading": "Loading dashboard...",
-    "managingCount": "Managing {{count}} vehicle(s)",
     "myVehicles": "My Vehicles",
     "newestFirst": "Newest First",
     "noVehiclesYet": "No Vehicles Yet",
@@ -109,7 +108,6 @@
     "sortByName": "Sort by Name",
     "sortTrigger": "Sort: {{label}}",
     "sortVehicles": "Sort vehicles",
-    "subtitle": "Manage your vehicles and track maintenance",
     "title": "My Garage"
   },
   "defList": {

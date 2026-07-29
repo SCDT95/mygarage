@@ -92,7 +92,6 @@
     "getStarted": "Lege los, indem du dein erstes Fahrzeug hinzufügst",
     "loadError": "Dashboard konnte nicht geladen werden. Bitte versuche es erneut.",
     "loading": "Dashboard wird geladen...",
-    "managingCount": "{{count}} Fahrzeug(e) werden verwaltet",
     "myVehicles": "Meine Fahrzeuge",
     "newestFirst": "Neueste zuerst",
     "noVehiclesYet": "Noch keine Fahrzeuge",
@@ -100,7 +99,6 @@
     "sharedWithMe": "Für mich freigegeben",
     "sortByName": "Nach Name sortieren",
     "sortVehicles": "Fahrzeuge sortieren",
-    "subtitle": "Verwalte deine Fahrzeuge und verfolge Wartungsarbeiten",
     "title": "Meine Garage"
   },
   "defList": {

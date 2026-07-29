@@ -100,7 +100,6 @@
     "getStarted": "Commencez par ajouter votre premier véhicule",
     "loadError": "Impossible de charger le tableau de bord. Veuillez réessayer.",
     "loading": "Chargement du tableau de bord...",
-    "managingCount": "Gestion de {{count}} véhicule(s)",
     "myVehicles": "Mes véhicules",
     "newestFirst": "Les plus récents d'abord",
     "noVehiclesYet": "Aucun véhicule pour le moment",
@@ -109,7 +108,6 @@
     "sortByName": "Trier par nom",
     "sortTrigger": "Sort: {{label}}",
     "sortVehicles": "Trier les véhicules",
-    "subtitle": "Gérez vos véhicules et suivez la maintenance",
     "title": "Mon garage"
   },
   "defList": {
