@@ -74,9 +74,9 @@ export default function ServiceVisitAttachmentList({
   }
 
   const getFileIcon = (fileType?: string | null) => {
-    if (!fileType) return <FileText className="w-4 h-4" />
-    if (fileType.startsWith('image/')) return <Image className="w-4 h-4" />
-    return <FileText className="w-4 h-4" />
+    if (!fileType) return <FileText aria-hidden="true" className="w-4 h-4" />
+    if (fileType.startsWith('image/')) return <Image aria-hidden="true" className="w-4 h-4" />
+    return <FileText aria-hidden="true" className="w-4 h-4" />
   }
 
   const formatFileSize = (bytes?: number | null): string => {

@@ -286,7 +286,7 @@ export default function VehicleWizard({ onClose, onSuccess }: VehicleWizardProps
       {/* Content */}
       <div className="mt-6">
         {error && (
-          <div className="mb-4 p-4 bg-danger/10 border border-danger rounded-lg text-danger">
+          <div className="mb-4 p-4 bg-danger/10 border border-danger rounded-control text-danger">
             {error}
           </div>
         )}

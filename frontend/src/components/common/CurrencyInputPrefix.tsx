@@ -11,7 +11,7 @@ interface Props {
   className?: string
 }
 
-const DEFAULT_CLASS = 'absolute left-3 top-2 text-garage-text-muted'
+const DEFAULT_CLASS = 'absolute left-3 top-2 text-text-mute'
 
 export default function CurrencyInputPrefix({ className }: Props) {
   const symbol = useCurrencySymbol()

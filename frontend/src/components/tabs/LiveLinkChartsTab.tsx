@@ -244,6 +244,7 @@ export default function LiveLinkChartsTab({ vin }: LiveLinkChartsTabProps) {
               <button
                 key={param.param_key}
                 type="button"
+                aria-pressed={isSelected}
                 onClick={() => toggleParam(param.param_key)}
                 className={`ui-focus-ring ui-motion rounded-chip px-3 py-1.5 text-sm font-medium ${
                   isSelected ? 'text-(--accent-on-solid)' : 'bg-surface-2 text-text-mute hover:text-text border border-border'

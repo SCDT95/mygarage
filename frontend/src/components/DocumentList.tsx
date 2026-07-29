@@ -201,7 +201,7 @@ export default function DocumentList({ vin, onAddClick }: DocumentListProps) {
                 </div>
               ) : (
                 <div className="flex items-start gap-4">
-                  <div className="text-3xl flex-shrink-0">
+                  <div aria-hidden="true" className="text-3xl flex-shrink-0">
                     {getFileIcon(doc.mime_type)}
                   </div>
                   <div className="flex-1 min-w-0">
