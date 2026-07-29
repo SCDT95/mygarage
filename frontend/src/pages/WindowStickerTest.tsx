@@ -20,6 +20,7 @@ import {
   Download,
 } from 'lucide-react'
 import api from '../services/api'
+import { Select } from '../components/ui'
 import { formatCurrency } from '../utils/formatUtils'
 import { useCurrencyPreference } from '../hooks/useCurrencyPreference'
 import { getActiveLocale } from '@/constants/i18n'
@@ -228,18 +229,15 @@ export default function WindowStickerTest() {
               <label className="block text-sm text-garage-text-muted mb-2">
                 {t('windowSticker.test.parserSelectLabel')}
               </label>
-              <select
+              <Select
                 value={selectedParser}
                 onChange={(e) => setSelectedParser(e.target.value)}
-                className="w-full px-3 py-2 bg-garage-bg border border-garage-border rounded-lg text-garage-text focus:outline-none focus:ring-2 focus:ring-primary"
-              >
-                <option value="">{t('windowSticker.test.autoDetect')}</option>
-                {parsers.map((p) => (
-                  <option key={p.manufacturer} value={p.manufacturer}>
-                    {p.parser_class} ({p.supported_makes.join(', ') || t('windowSticker.test.genericParser')})
-                  </option>
-                ))}
-              </select>
+                placeholder={t('windowSticker.test.autoDetect')}
+                options={parsers.map((p) => ({
+                  value: p.manufacturer,
+                  label: `${p.parser_class} (${p.supported_makes.join(', ') || t('windowSticker.test.genericParser')})`,
+                }))}
+              />
             </div>
 
             {/* Test Button */}

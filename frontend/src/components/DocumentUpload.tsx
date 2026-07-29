@@ -2,7 +2,7 @@ import { useState, useRef, type SyntheticEvent } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Upload, X, FileText } from 'lucide-react'
 import { useUploadDocument } from '../hooks/queries/useDocuments'
-import { Button, IconButton, Mono, Field, Input, Textarea } from './ui'
+import { Button, IconButton, Mono, Field, Input, Select, Textarea } from './ui'
 
 interface DocumentUploadProps {
   vin: string
@@ -194,20 +194,20 @@ export default function DocumentUpload({ vin, onSuccess, onClose }: DocumentUplo
               </Field>
 
               <Field id="document_type" label={t('documentUpload.misc.documentTypeLabel')}>
-                <select
+                <Select
                   id="document_type"
                   value={documentType}
                   onChange={(e) => setDocumentType(e.target.value)}
-                  className="ui-focus-input ui-motion w-full rounded-control border border-border bg-surface-2 px-3 py-2 text-sm text-text"
-                >
-                  <option value="">{t('documentList.selectType')}</option>
-                  <option value="Insurance">{t('documentUpload.misc.typeInsurance')}</option>
-                  <option value="Registration">{t('documentUpload.misc.typeRegistration')}</option>
-                  <option value="Manual">{t('documentUpload.misc.typeManual')}</option>
-                  <option value="Receipt">{t('documentUpload.misc.typeReceipt')}</option>
-                  <option value="Inspection">{t('documentUpload.misc.typeInspection')}</option>
-                  <option value="Other">{t('documentUpload.misc.typeOther')}</option>
-                </select>
+                  placeholder={t('documentList.selectType')}
+                  options={[
+                    { value: 'Insurance', label: t('documentUpload.misc.typeInsurance') },
+                    { value: 'Registration', label: t('documentUpload.misc.typeRegistration') },
+                    { value: 'Manual', label: t('documentUpload.misc.typeManual') },
+                    { value: 'Receipt', label: t('documentUpload.misc.typeReceipt') },
+                    { value: 'Inspection', label: t('documentUpload.misc.typeInspection') },
+                    { value: 'Other', label: t('documentUpload.misc.typeOther') },
+                  ]}
+                />
               </Field>
 
               <Field id="description" label={t('documentList.descriptionLabel')}>

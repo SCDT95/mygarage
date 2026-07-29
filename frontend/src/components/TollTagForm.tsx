@@ -4,7 +4,7 @@ import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { Save } from 'lucide-react'
 import FormModalWrapper from './FormModalWrapper'
-import { Button, Field, Input, Textarea } from './ui'
+import { Button, Field, Input, Select, Textarea } from './ui'
 import type { TollTag, TollTagCreate, TollTagUpdate } from '../types/toll'
 import {
   makeTollTagSchema,
@@ -100,17 +100,14 @@ export default function TollTagForm({ vin, tag, onClose, onSuccess }: TollTagFor
 
           <div className="grid grid-cols-2 gap-4">
             <Field id="toll_system" label={t('toll.tollSystem')} required error={errors.toll_system}>
-              <select
+              <Select
                 id="toll_system"
                 {...register('toll_system')}
                 disabled={isSubmitting}
-                className={`ui-focus-input ui-motion w-full rounded-control border bg-surface-2 px-3 py-2 text-sm text-text ${errors.toll_system ? 'border-danger' : 'border-border'}`}
-              >
-                <option value="">{t('toll.selectTollSystem')}</option>
-                {TOLL_SYSTEM_OPTIONS.map((system) => (
-                  <option key={system.value} value={system.value}>{t(system.labelKey)}</option>
-                ))}
-              </select>
+                invalid={!!errors.toll_system}
+                placeholder={t('toll.selectTollSystem')}
+                options={TOLL_SYSTEM_OPTIONS.map((system) => ({ value: system.value, label: t(system.labelKey) }))}
+              />
             </Field>
 
             <Field id="tag_number" label={t('toll.tagNumber')} required error={errors.tag_number}>
@@ -119,15 +116,16 @@ export default function TollTagForm({ vin, tag, onClose, onSuccess }: TollTagFor
           </div>
 
           <Field id="status" label={t('common:status')} error={errors.status}>
-            <select
+            <Select
               id="status"
               {...register('status')}
               disabled={isSubmitting}
-              className={`ui-focus-input ui-motion w-full rounded-control border bg-surface-2 px-3 py-2 text-sm text-text ${errors.status ? 'border-danger' : 'border-border'}`}
-            >
-              <option value="active">{t('common:active')}</option>
-              <option value="inactive">{t('common:inactive')}</option>
-            </select>
+              invalid={!!errors.status}
+              options={[
+                { value: 'active', label: t('common:active') },
+                { value: 'inactive', label: t('common:inactive') },
+              ]}
+            />
           </Field>
 
           <Field id="notes" label={t('common:notes')} error={errors.notes}>

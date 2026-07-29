@@ -7,6 +7,7 @@ import type { Supply } from '../types/supplies'
 import InspectionResult from './InspectionResult'
 import CurrencyInputPrefix from './common/CurrencyInputPrefix'
 import SupplyUsedPicker from './SupplyUsedPicker'
+import { Select } from './ui'
 import { useCurrencyPreference } from '../hooks/useCurrencyPreference'
 import { useUnitPreference } from '../hooks/useUnitPreference'
 import { UnitConverter, UnitFormatter } from '../utils/units'
@@ -153,17 +154,13 @@ export default function LineItemEditor({
               <label className="block text-sm font-medium text-garage-text mb-1">
                 {t('lineItemEditor.misc.categoryLabel')}
               </label>
-              <select
+              <Select
                 value={item.category}
                 onChange={(e) => onChange(index, 'category', e.target.value)}
                 disabled={disabled}
-                className="w-full px-3 py-2 border border-garage-border rounded-md focus:outline-none focus:ring-2 focus:ring-primary bg-garage-bg text-garage-text"
-              >
-                <option value="">{t('lineItemEditor.misc.selectPlaceholder')}</option>
-                {categories.map((cat) => (
-                  <option key={cat} value={cat}>{cat}</option>
-                ))}
-              </select>
+                placeholder={t('lineItemEditor.misc.selectPlaceholder')}
+                options={categories.map((cat) => ({ value: cat, label: cat }))}
+              />
             </div>
 
             <div className="md:col-span-2 relative">
@@ -264,21 +261,18 @@ export default function LineItemEditor({
               <label className="block text-sm font-medium text-garage-text mb-1">
                 {t('lineItemEditor.misc.triggeredByFailedInspection')}
               </label>
-              <select
+              <Select
                 value={item.triggered_by_inspection_id ?? ''}
                 onChange={(e) =>
                   onChange(index, 'triggered_by_inspection_id', e.target.value ? parseInt(e.target.value) : undefined)
                 }
                 disabled={disabled}
-                className="w-full px-3 py-2 border border-garage-border rounded-md focus:outline-none focus:ring-2 focus:ring-primary bg-garage-bg text-garage-text"
-              >
-                <option value="">{t('lineItemEditor.misc.notTriggeredByInspection')}</option>
-                {failedInspections.map((inspection) => (
-                  <option key={inspection.refId} value={inspection.refId}>
-                    {inspection.description}
-                  </option>
-                ))}
-              </select>
+                placeholder={t('lineItemEditor.misc.notTriggeredByInspection')}
+                options={failedInspections.map((inspection) => ({
+                  value: String(inspection.refId),
+                  label: inspection.description,
+                }))}
+              />
             </div>
           )}
 
@@ -339,17 +333,17 @@ export default function LineItemEditor({
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
                     <div>
                       <label className="block text-xs font-medium text-garage-text mb-1">{t('lineItemEditor.misc.reminderTypeLabel')}</label>
-                      <select
+                      <Select
                         value={item.reminderDraft.reminder_type}
                         onChange={(e) => handleReminderFieldChange('reminder_type', e.target.value)}
                         disabled={disabled}
-                        className="w-full px-2 py-1.5 text-sm border border-garage-border rounded-md focus:outline-none focus:ring-2 focus:ring-primary bg-garage-surface text-garage-text"
-                      >
-                        <option value="date">{t('lineItemEditor.misc.reminderTypeDate')}</option>
-                        <option value="mileage">{t('lineItemEditor.misc.reminderTypeMileage')}</option>
-                        <option value="both">{t('lineItemEditor.misc.reminderTypeBoth')}</option>
-                        <option value="smart">{t('lineItemEditor.misc.reminderTypeSmart')}</option>
-                      </select>
+                        options={[
+                          { value: 'date', label: t('lineItemEditor.misc.reminderTypeDate') },
+                          { value: 'mileage', label: t('lineItemEditor.misc.reminderTypeMileage') },
+                          { value: 'both', label: t('lineItemEditor.misc.reminderTypeBoth') },
+                          { value: 'smart', label: t('lineItemEditor.misc.reminderTypeSmart') },
+                        ]}
+                      />
                     </div>
                     {['date', 'both', 'smart'].includes(item.reminderDraft.reminder_type) && (
                       <div>

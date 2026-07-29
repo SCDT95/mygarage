@@ -12,6 +12,7 @@ import { useState } from 'react'
 import { Archive, Trash2, AlertTriangle, Eye, EyeOff } from 'lucide-react'
 import { toast } from 'sonner'
 import api from '@/services/api'
+import { Select } from '@/components/ui'
 import type { Vehicle } from '@/types/vehicle'
 
 interface VehicleRemoveModalProps {
@@ -213,17 +214,17 @@ export default function VehicleRemoveModal({ isOpen, onClose, vehicle, onConfirm
                 <label className="block text-sm font-medium text-garage-text mb-2">
                   {t('modal.reason')} <span className="text-danger">*</span>
                 </label>
-                <select
+                <Select
                   value={archiveReason}
                   onChange={(e) => setArchiveReason(e.target.value as ArchiveReason)}
-                  className="w-full px-3 py-2 bg-garage-bg border border-garage-border rounded-lg text-garage-text focus:outline-none focus:ring-2 focus:ring-primary"
-                >
-                  <option value="Sold">{t('modal.remove.reasonSold')}</option>
-                  <option value="Totaled">{t('modal.remove.reasonTotaled')}</option>
-                  <option value="Gifted">{t('modal.remove.reasonGifted')}</option>
-                  <option value="Trade-in">{t('modal.remove.reasonTradeIn')}</option>
-                  <option value="Other">{t('modal.remove.reasonOther')}</option>
-                </select>
+                  options={[
+                    { value: 'Sold', label: t('modal.remove.reasonSold') },
+                    { value: 'Totaled', label: t('modal.remove.reasonTotaled') },
+                    { value: 'Gifted', label: t('modal.remove.reasonGifted') },
+                    { value: 'Trade-in', label: t('modal.remove.reasonTradeIn') },
+                    { value: 'Other', label: t('modal.remove.reasonOther') },
+                  ]}
+                />
               </div>
 
               {/* Sale Price (conditional) */}

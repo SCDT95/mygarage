@@ -5,7 +5,7 @@ import { zodResolver } from '@hookform/resolvers/zod'
 import { Save } from 'lucide-react'
 import FormModalWrapper from './FormModalWrapper'
 import CurrencyInputPrefix from './common/CurrencyInputPrefix'
-import { Button, Field, Input, Textarea } from './ui'
+import { Button, Field, Input, Select, Textarea } from './ui'
 import type { TollTransaction, TollTransactionCreate, TollTransactionUpdate, TollTag } from '../types/toll'
 import { tollTransactionSchema, type TollTransactionFormData } from '../schemas/tollTransaction'
 import { useCreateTollTransaction, useUpdateTollTransaction } from '../hooks/queries/useTollRecords'
@@ -123,19 +123,14 @@ export default function TollTransactionForm({ vin, tollTags, transaction, onClos
           </Field>
 
           <Field id="toll_tag_id" label={t('toll.tollTag')} error={errors.toll_tag_id}>
-            <select
+            <Select
               id="toll_tag_id"
               {...register('toll_tag_id', { valueAsNumber: true })}
               disabled={isSubmitting}
-              className={`ui-focus-input ui-motion w-full rounded-control border bg-surface-2 px-3 py-2 text-sm text-text ${errors.toll_tag_id ? 'border-danger' : 'border-border'}`}
-            >
-              <option value="">{t('toll.noneManualPayment')}</option>
-              {activeTollTags.map((tag) => (
-                <option key={tag.id} value={tag.id}>
-                  {tag.toll_system} - {tag.tag_number}
-                </option>
-              ))}
-            </select>
+              invalid={!!errors.toll_tag_id}
+              placeholder={t('toll.noneManualPayment')}
+              options={activeTollTags.map((tag) => ({ value: String(tag.id), label: `${tag.toll_system} - ${tag.tag_number}` }))}
+            />
             {activeTollTags.length === 0 && (
               <p className="text-xs text-text-mute mt-1">{t('toll.noActiveTollTags')}</p>
             )}

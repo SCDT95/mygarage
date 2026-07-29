@@ -17,6 +17,7 @@ import { useCurrencyPreference } from '@/hooks/useCurrencyPreference'
 import { canonicalToDisplay, supplyUnitLabel } from '@/utils/supplyUnits'
 import { makeSupplySchema, SUPPLY_UNIT_TYPES, type SupplyFormData } from '@/schemas/supplies'
 import { FormError } from '@/components/FormError'
+import { Select } from '@/components/ui'
 import FormModalWrapper from '@/components/FormModalWrapper'
 import SupplyHistoryModal from '@/components/SupplyHistoryModal'
 import type { Supply, SupplyCreate, SupplyUpdate } from '@/types/supplies'
@@ -356,20 +357,16 @@ export function SupplyForm({ supply, onClose, onSuccess }: SupplyFormProps) {
               <label htmlFor="unit_type" className="block text-sm font-medium text-garage-text mb-1">
                 {t('supplies.unitType')} <span className="text-danger">*</span>
               </label>
-              <select
+              <Select
                 id="unit_type"
                 {...register('unit_type')}
-                className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-primary bg-garage-bg text-garage-text ${
-                  errors.unit_type ? 'border-red-500' : 'border-garage-border'
-                } disabled:opacity-50 disabled:cursor-not-allowed`}
                 disabled={isSubmitting || isEdit}
-              >
-                {SUPPLY_UNIT_TYPES.map((unitType) => (
-                  <option key={unitType} value={unitType}>
-                    {unitType === 'volume' ? t('supplies.unitTypeVolume') : t('supplies.unitTypeCount')}
-                  </option>
-                ))}
-              </select>
+                invalid={!!errors.unit_type}
+                options={SUPPLY_UNIT_TYPES.map((unitType) => ({
+                  value: unitType,
+                  label: unitType === 'volume' ? t('supplies.unitTypeVolume') : t('supplies.unitTypeCount'),
+                }))}
+              />
               <FormError error={errors.unit_type} />
               {isEdit && (
                 <p className="text-xs text-garage-text-muted mt-1">{t('supplies.unitTypeImmutable')}</p>
@@ -416,21 +413,14 @@ export function SupplyForm({ supply, onClose, onSuccess }: SupplyFormProps) {
             <label htmlFor="vin" className="block text-sm font-medium text-garage-text mb-1">
               {t('supplies.vehicle')}
             </label>
-            <select
+            <Select
               id="vin"
               {...register('vin')}
-              className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-primary bg-garage-bg text-garage-text ${
-                errors.vin ? 'border-red-500' : 'border-garage-border'
-              }`}
               disabled={isSubmitting}
-            >
-              <option value="">{t('supplies.sharedAcrossVehicles')}</option>
-              {vehicles.map((v) => (
-                <option key={v.vin} value={v.vin}>
-                  {vehicleLabel(v)}
-                </option>
-              ))}
-            </select>
+              invalid={!!errors.vin}
+              placeholder={t('supplies.sharedAcrossVehicles')}
+              options={vehicles.map((v) => ({ value: v.vin, label: vehicleLabel(v) }))}
+            />
             <FormError error={errors.vin} />
           </div>
 

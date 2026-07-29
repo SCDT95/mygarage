@@ -10,6 +10,7 @@ import AddProviderModal from '../modals/AddProviderModal'
 import EditProviderModal from '../modals/EditProviderModal'
 import LiveLinkSettingsModal from '../modals/LiveLinkSettingsModal'
 import WidgetKeysPanel from '../settings/WidgetKeysPanel'
+import { Select } from '../ui'
 
 // Sample VIN for testing NHTSA API connection
 const TEST_VIN = '1HGCM82633A123456'
@@ -299,19 +300,19 @@ export default function SettingsIntegrationsTab() {
             <label htmlFor="recall_interval" className="block text-sm font-medium text-garage-text mb-2">
               {t('integrationsTab.recallCheckInterval')}
             </label>
-            <select
+            <Select
               id="recall_interval"
               value={formData.nhtsa_recall_check_interval}
               disabled={formData.nhtsa_enabled === 'false' || formData.nhtsa_auto_check === 'false'}
               onChange={(e) => setFormData({ ...formData, nhtsa_recall_check_interval: e.target.value })}
-              className="w-full px-3 py-2 bg-garage-bg border border-garage-border rounded-lg text-garage-text focus:outline-none focus:ring-2 focus:ring-primary disabled:opacity-50"
-            >
-              <option value="1">{t('integrations.daily')}</option>
-              <option value="7">{t('integrations.weeklyRecommended')}</option>
-              <option value="14">{t('integrations.biWeekly')}</option>
-              <option value="30">{t('integrations.monthly')}</option>
-              <option value="90">{t('integrations.quarterly')}</option>
-            </select>
+              options={[
+                { value: '1', label: t('integrations.daily') },
+                { value: '7', label: t('integrations.weeklyRecommended') },
+                { value: '14', label: t('integrations.biWeekly') },
+                { value: '30', label: t('integrations.monthly') },
+                { value: '90', label: t('integrations.quarterly') },
+              ]}
+            />
             <p className="mt-1 text-sm text-garage-text-muted">
               {t('integrations.recallCheckIntervalDesc')}
             </p>

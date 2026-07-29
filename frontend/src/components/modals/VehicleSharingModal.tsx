@@ -10,7 +10,7 @@ import { useTranslation } from 'react-i18next'
 import { useState, useEffect } from 'react'
 import { UserPlus, Trash2, Loader2, Share2, User } from 'lucide-react'
 import { toast } from 'sonner'
-import { Drawer } from '@/components/ui'
+import { Drawer, Select } from '@/components/ui'
 import { familyService } from '@/services/familyService'
 import type { ShareableUser, VehicleShareResponse, PermissionType } from '@/types/family'
 import { formatRelationship } from '@/types/family'
@@ -202,17 +202,17 @@ export default function VehicleSharingModal({
                         )}
                       </div>
                     </div>
-                    <select
+                    <Select
                       value={share.permission}
                       onChange={(e) =>
                         handleUpdatePermission(share.id, e.target.value as PermissionType)
                       }
                       disabled={updatingShareId === share.id}
-                      className="px-2 py-1 bg-garage-surface border border-garage-border rounded text-sm text-garage-text focus:outline-none focus:ring-2 focus:ring-primary disabled:opacity-50"
-                    >
-                      <option value="read">{t('modal.read')}</option>
-                      <option value="write">{t('modal.write')}</option>
-                    </select>
+                      options={[
+                        { value: 'read', label: t('modal.read') },
+                        { value: 'write', label: t('modal.write') },
+                      ]}
+                    />
                     <button
                       onClick={() => handleRevokeShare(share.id)}
                       disabled={revokingShareId === share.id}
@@ -238,32 +238,28 @@ export default function VehicleSharingModal({
               <div className="space-y-3">
                 <div>
                   <label className="block text-sm text-garage-text-muted mb-1">{t('common:user')}</label>
-                  <select
+                  <Select
                     value={selectedUserId}
                     onChange={(e) =>
                       setSelectedUserId(e.target.value === '' ? '' : parseInt(e.target.value))
                     }
-                    className="w-full px-3 py-2 bg-garage-bg border border-garage-border rounded-lg text-garage-text focus:outline-none focus:ring-2 focus:ring-primary"
-                  >
-                    <option value="">{t('modal.selectUser')}</option>
-                    {availableUsers.map((user) => (
-                      <option key={user.id} value={user.id}>
-                        {user.display_name}
-                        {user.relationship ? ` (${formatRelationship(user.relationship, null, t)})` : ''}
-                      </option>
-                    ))}
-                  </select>
+                    placeholder={t('modal.selectUser')}
+                    options={availableUsers.map((user) => ({
+                      value: String(user.id),
+                      label: `${user.display_name}${user.relationship ? ` (${formatRelationship(user.relationship, null, t)})` : ''}`,
+                    }))}
+                  />
                 </div>
                 <div>
                   <label className="block text-sm text-garage-text-muted mb-1">{t('modal.permission')}</label>
-                  <select
+                  <Select
                     value={selectedPermission}
                     onChange={(e) => setSelectedPermission(e.target.value as PermissionType)}
-                    className="w-full px-3 py-2 bg-garage-bg border border-garage-border rounded-lg text-garage-text focus:outline-none focus:ring-2 focus:ring-primary"
-                  >
-                    <option value="read">{t('modal.readDescription')}</option>
-                    <option value="write">{t('modal.writeDescription')}</option>
-                  </select>
+                    options={[
+                      { value: 'read', label: t('modal.readDescription') },
+                      { value: 'write', label: t('modal.writeDescription') },
+                    ]}
+                  />
                 </div>
                 <div className="flex gap-2">
                   <button

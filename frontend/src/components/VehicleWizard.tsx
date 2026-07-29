@@ -14,7 +14,7 @@ import { zodResolver } from '@hookform/resolvers/zod'
 import { ChevronLeft, ChevronRight, Check } from 'lucide-react'
 import VINInput from './VINInput'
 import { FormError } from './FormError'
-import { Stepper, Drawer, Button } from './ui'
+import { Stepper, Drawer, Button, Select } from './ui'
 import type { VINDecodeResponse } from '../types/vin'
 import type { VehicleCreate } from '../types/vehicle'
 import { FUEL_TYPE_VALUES, FUEL_TYPE_LABELS, type FuelType } from '../constants/fuel'
@@ -332,16 +332,14 @@ export default function VehicleWizard({ onClose, onSuccess }: VehicleWizardProps
                 <label className="block text-sm font-medium text-text-mid mb-2">
                   {t('edit.vehicleType')} <span className="text-danger">*</span>
                 </label>
-                <select
+                <Select
                   {...register('vehicle_type')}
-                  className="w-full bg-surface border border-border rounded-control px-4 py-2 text-text focus:outline-none focus:border-(--accent-solid)"
-                >
-                  {VEHICLE_TYPES.map((type) => (
-                    <option key={type} value={type}>
-                      {t(`vehicleTypeLabels.${type}`, { defaultValue: type })}
-                    </option>
-                  ))}
-                </select>
+                  invalid={!!errors.vehicle_type}
+                  options={VEHICLE_TYPES.map((type) => ({
+                    value: type,
+                    label: t(`vehicleTypeLabels.${type}`, { defaultValue: type }),
+                  }))}
+                />
                 <FormError error={errors.vehicle_type} />
               </div>
 
@@ -517,19 +515,17 @@ export default function VehicleWizard({ onClose, onSuccess }: VehicleWizardProps
                 >
                   {t('wizard.fuelType')}
                 </label>
-                <select
+                <Select
                   id="wizard-fuel-type"
                   aria-label={t('wizard.fuelType')}
                   {...register('fuel_type')}
-                  className="w-full bg-surface border border-border rounded-control px-4 py-2 text-text focus:outline-none focus:border-(--accent-solid)"
-                >
-                  <option value="">—</option>
-                  {FUEL_TYPE_VALUES.map((value) => (
-                    <option key={value} value={value}>
-                      {t(`forms:fuel.fuelTypes.${value}`, { defaultValue: FUEL_TYPE_LABELS[value] })}
-                    </option>
-                  ))}
-                </select>
+                  invalid={!!errors.fuel_type}
+                  placeholder="—"
+                  options={FUEL_TYPE_VALUES.map((value) => ({
+                    value,
+                    label: t(`forms:fuel.fuelTypes.${value}`, { defaultValue: FUEL_TYPE_LABELS[value] }),
+                  }))}
+                />
                 <FormError error={errors.fuel_type} />
               </div>
             </div>

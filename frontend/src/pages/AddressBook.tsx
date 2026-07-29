@@ -7,6 +7,7 @@ import { toast } from 'sonner'
 import type { AddressBookEntry, AddressBookEntryCreate } from '../types/addressBook'
 import { addressBookSchema, type AddressBookFormData, ADDRESS_BOOK_CATEGORIES } from '../schemas/addressBook'
 import { FormError } from '../components/FormError'
+import { Select } from '../components/ui'
 import api from '../services/api'
 
 export default function AddressBook() {
@@ -94,18 +95,18 @@ export default function AddressBook() {
             />
           </div>
 
-          <select
+          <Select
             value={categoryFilter}
             onChange={(e) => setCategoryFilter(e.target.value)}
-            className="px-4 py-2 border border-garage-border rounded-lg bg-garage-surface text-garage-text focus:outline-none focus:ring-2 focus:ring-primary"
-          >
-            <option value="">{t('addressBook.allCategories')}</option>
-            <option value="Service">{t('addressBook.categoryService')}</option>
-            <option value="Parts">{t('addressBook.categoryParts')}</option>
-            <option value="Dealer">{t('addressBook.categoryDealer')}</option>
-            <option value="Insurance">{t('addressBook.categoryInsurance')}</option>
-            <option value="Other">{t('addressBook.categoryOther')}</option>
-          </select>
+            placeholder={t('addressBook.allCategories')}
+            options={[
+              { value: 'Service', label: t('addressBook.categoryService') },
+              { value: 'Parts', label: t('addressBook.categoryParts') },
+              { value: 'Dealer', label: t('addressBook.categoryDealer') },
+              { value: 'Insurance', label: t('addressBook.categoryInsurance') },
+              { value: 'Other', label: t('addressBook.categoryOther') },
+            ]}
+          />
 
           {/* Gas Stations filter (issue #69) */}
           <button
@@ -394,19 +395,14 @@ export function AddressBookForm({ entry, onClose, onSuccess }: AddressBookFormPr
             <label htmlFor="category" className="block text-sm font-medium text-garage-text mb-1">
               {t('addressBook.category')}
             </label>
-            <select
+            <Select
               id="category"
               {...register('category')}
-              className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-primary bg-garage-bg text-garage-text ${
-                errors.category ? 'border-red-500' : 'border-garage-border'
-              }`}
               disabled={isSubmitting}
-            >
-              <option value="">{t('addressBook.selectCategory')}</option>
-              {ADDRESS_BOOK_CATEGORIES.map((cat) => (
-                <option key={cat.value} value={cat.value}>{t(cat.labelKey)}</option>
-              ))}
-            </select>
+              invalid={!!errors.category}
+              placeholder={t('addressBook.selectCategory')}
+              options={ADDRESS_BOOK_CATEGORIES.map((cat) => ({ value: cat.value, label: t(cat.labelKey) }))}
+            />
             <FormError error={errors.category} />
           </div>
 

@@ -4,7 +4,7 @@ import { useForm, type Resolver } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { Save } from 'lucide-react'
 import FormModalWrapper from './FormModalWrapper'
-import { Button, Drawer, Field, Input, Textarea } from './ui'
+import { Button, Drawer, Field, Input, Select, Textarea } from './ui'
 import CurrencyInputPrefix from './common/CurrencyInputPrefix'
 import type { SpotRental, SpotRentalCreate, SpotRentalUpdate } from '../types/spotRental'
 import type { AddressBookEntry } from '../types/addressBook'
@@ -257,7 +257,7 @@ export default function SpotRentalForm({ vin, rental, onClose, onSuccess }: Spot
 
           <div className="grid grid-cols-2 gap-4">
             <Field id="rate_type" label={t('spotRental.rateType')}>
-              <select
+              <Select
                 id="rate_type"
                 value={rateType}
                 onChange={(e) => {
@@ -275,12 +275,12 @@ export default function SpotRentalForm({ vin, rental, onClose, onSuccess }: Spot
                   }
                 }}
                 disabled={isSubmitting}
-                className="ui-focus-input ui-motion w-full rounded-control border border-border bg-surface-2 px-3 py-2 text-sm text-text"
-              >
-                <option value="nightly">{t('spotRental.nightly')}</option>
-                <option value="weekly">{t('spotRental.weekly')}</option>
-                <option value="monthly">{t('spotRental.monthly')}</option>
-              </select>
+                options={[
+                  { value: 'nightly', label: t('spotRental.nightly') },
+                  { value: 'weekly', label: t('spotRental.weekly') },
+                  { value: 'monthly', label: t('spotRental.monthly') },
+                ]}
+              />
             </Field>
 
             <Field

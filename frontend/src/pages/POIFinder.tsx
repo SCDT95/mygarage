@@ -10,7 +10,7 @@ import { useTranslation } from 'react-i18next'
 import { MapPin, Loader2, Navigation, AlertTriangle, Search } from 'lucide-react'
 import { toast } from 'sonner'
 import api from '@/services/api'
-import { Toggle } from '@/components/ui'
+import { Select, Toggle } from '@/components/ui'
 import POICard from '@/components/POICard'
 import MapDisplay from '@/components/MapDisplay'
 import { useUnitPreference } from '@/hooks/useUnitPreference'
@@ -304,21 +304,19 @@ export default function POIFinder() {
               <label htmlFor="search_radius" className="block text-sm font-medium text-garage-text mb-2">
                 {t('poiFinder.searchRadius')}
               </label>
-              <select
+              <Select
                 id="search_radius"
                 value={searchRadius}
                 onChange={(e) => setSearchRadius(Number(e.target.value))}
-                className="w-full md:w-64 px-3 py-2 bg-garage-bg border border-garage-border rounded-lg text-garage-text focus:outline-none focus:ring-2 focus:ring-primary"
-              >
-                {(system === 'imperial'
+                className="w-full md:w-64"
+                options={(system === 'imperial'
                   ? [5, 10, 25, 50, 100]
                   : [10, 25, 50, 100, 200]
-                ).map((value) => (
-                  <option key={value} value={value}>
-                    {value} {UnitFormatter.getDistanceUnit(system)}
-                  </option>
-                ))}
-              </select>
+                ).map((value) => ({
+                  value: String(value),
+                  label: `${value} ${UnitFormatter.getDistanceUnit(system)}`,
+                }))}
+              />
             </div>
           </div>
 

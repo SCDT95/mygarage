@@ -10,7 +10,7 @@ import { useDateLocale } from '../hooks/useDateLocale'
 import { useCurrencyPreference } from '../hooks/useCurrencyPreference'
 import { useTollTransactions, useTollTags, useTollTransactionSummary, useDeleteTollTransaction } from '../hooks/queries/useTollRecords'
 import api from '../services/api'
-import { Button, IconButton, Card, Mono, EmptyState, DataTable } from './ui'
+import { Button, IconButton, Card, Mono, EmptyState, DataTable, Select } from './ui'
 import type { DataTableColumn } from './ui'
 
 interface TollTransactionListProps {
@@ -129,16 +129,12 @@ export default function TollTransactionList({ vin, onAddClick, onEditClick }: To
           <p className="text-sm text-text-mute">{t('tollList.transactionCount', { count: transactions.length })}</p>
         </div>
         <div className="flex flex-wrap gap-2">
-          <select
+          <Select
             value={selectedTagFilter}
             onChange={(e) => setSelectedTagFilter(e.target.value ? parseInt(e.target.value) : '')}
-            className="ui-focus-input ui-motion rounded-control border border-border bg-surface-2 px-3 py-2 text-sm text-text"
-          >
-            <option value="">{t('tollList.allTags')}</option>
-            {tollTags.filter(tag => tag.status === 'active').map((tag) => (
-              <option key={tag.id} value={tag.id}>{tag.toll_system} - {tag.tag_number}</option>
-            ))}
-          </select>
+            placeholder={t('tollList.allTags')}
+            options={tollTags.filter(tag => tag.status === 'active').map((tag) => ({ value: String(tag.id), label: `${tag.toll_system} - ${tag.tag_number}` }))}
+          />
           <Button variant="secondary" icon={Download} onClick={handleExportCSV} loading={exporting} disabled={transactions.length === 0} title={t('tollTransactionList.exportToCSV')}>
             {exporting ? t('tollList.exporting') : t('tollList.export')}
           </Button>

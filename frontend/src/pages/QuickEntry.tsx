@@ -7,6 +7,7 @@ import { toast } from 'sonner'
 import FuelRecordForm from '../components/FuelRecordForm'
 import ServiceVisitForm from '../components/ServiceVisitForm'
 import OdometerRecordForm from '../components/OdometerRecordForm'
+import { Select } from '../components/ui'
 import { useQuickEntryVehicles } from '../hooks/queries/useQuickEntryVehicles'
 import { vehicleLabel } from '../utils/vehicleLabel'
 import { withBase } from '../utils/basePath'
@@ -121,18 +122,12 @@ export default function QuickEntry() {
                   <span className="font-medium text-garage-text">{vehicleLabel(vehicles[0])}</span>
                 </div>
               ) : (
-                <select
+                <Select
                   value={selectedVin}
                   onChange={e => setSelectedVin(e.target.value)}
-                  className="w-full px-4 py-3 bg-garage-surface border border-garage-border rounded-lg text-garage-text focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
-                >
-                  <option value="">{t('quickEntry.selectVehicle')}</option>
-                  {vehicles.map(v => (
-                    <option key={v.vin} value={v.vin}>
-                      {vehicleLabel(v)}
-                    </option>
-                  ))}
-                </select>
+                  placeholder={t('quickEntry.selectVehicle')}
+                  options={vehicles.map(v => ({ value: v.vin, label: vehicleLabel(v) }))}
+                />
               )}
             </div>
 

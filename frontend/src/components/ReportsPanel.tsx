@@ -4,7 +4,7 @@ import { FileText, Download, Calendar, FileSpreadsheet } from 'lucide-react'
 import { toast } from 'sonner'
 import api from '../services/api'
 import { useCurrencyPreference } from '../hooks/useCurrencyPreference'
-import { Button, Field, Input, Card } from './ui'
+import { Button, Field, Input, Select, Card } from './ui'
 
 interface ReportsPanelProps {
   vin: string
@@ -138,16 +138,12 @@ export default function ReportsPanel({ vin }: ReportsPanelProps) {
                 {t('reports.annualCostDesc')}
               </p>
               <div className="mt-2">
-                <select
+                <Select
                   value={selectedYear}
                   onChange={(e) => setSelectedYear(Number(e.target.value))}
                   aria-label={t('reports.selectYear')}
-                  className="ui-focus-input ui-motion rounded-control border border-border bg-surface-2 px-3 py-1 text-sm text-text"
-                >
-                  {years.map(year => (
-                    <option key={year} value={year}>{year}</option>
-                  ))}
-                </select>
+                  options={years.map((year) => ({ value: String(year), label: String(year) }))}
+                />
               </div>
             </div>
             <Button variant="primary" icon={Download} onClick={() => handleDownloadPDF('cost-summary')} disabled={isGenerating} aria-label={t('reports.downloadPdf')} className="ml-4">
@@ -163,16 +159,12 @@ export default function ReportsPanel({ vin }: ReportsPanelProps) {
                 {t('reports.taxDeductionDesc')}
               </p>
               <div className="mt-2">
-                <select
+                <Select
                   value={selectedYear}
                   onChange={(e) => setSelectedYear(Number(e.target.value))}
                   aria-label={t('reports.selectYear')}
-                  className="ui-focus-input ui-motion rounded-control border border-border bg-surface-2 px-3 py-1 text-sm text-text"
-                >
-                  {years.map(year => (
-                    <option key={year} value={year}>{year}</option>
-                  ))}
-                </select>
+                  options={years.map((year) => ({ value: String(year), label: String(year) }))}
+                />
               </div>
             </div>
             <Button variant="primary" icon={Download} onClick={() => handleDownloadPDF('tax-deduction')} disabled={isGenerating} aria-label={t('reports.downloadPdf')} className="ml-4">
@@ -211,17 +203,13 @@ export default function ReportsPanel({ vin }: ReportsPanelProps) {
                 {t('reports.allRecordsCsvDesc')}
               </p>
               <div className="mt-2">
-                <select
+                <Select
                   value={selectedYear}
                   onChange={(e) => setSelectedYear(Number(e.target.value))}
                   aria-label={t('reports.selectYear')}
-                  className="ui-focus-input ui-motion rounded-control border border-border bg-surface-2 px-3 py-1 text-sm text-text"
-                >
-                  <option value="">{t('reports.allYears')}</option>
-                  {years.map(year => (
-                    <option key={year} value={year}>{year}</option>
-                  ))}
-                </select>
+                  placeholder={t('reports.allYears')}
+                  options={years.map((year) => ({ value: String(year), label: String(year) }))}
+                />
               </div>
             </div>
             <Button variant="primary" icon={Download} onClick={() => handleDownloadCSV('all-records')} disabled={isGenerating} aria-label={t('reports.exportCsv')} className="ml-4">

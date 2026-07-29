@@ -21,6 +21,7 @@ import { formatDateForDisplay, formatDateForInput } from '@/utils/dateUtils'
 import { FormError } from '@/components/FormError'
 import FormModalWrapper from '@/components/FormModalWrapper'
 import CurrencyInputPrefix from '@/components/common/CurrencyInputPrefix'
+import { Select } from '@/components/ui'
 import type { Supply } from '@/types/supplies'
 import type { AddressBookEntry } from '@/types/addressBook'
 import type { UnitSystem } from '@/utils/units'
@@ -517,19 +518,16 @@ function PurchaseForm({
           <label htmlFor="purchase-supplier" className="block text-xs font-medium text-garage-text mb-1">
             {t('supplies.history.supplier')}
           </label>
-          <select
+          <Select
             id="purchase-supplier"
             {...register('supplier_id')}
-            className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-primary bg-garage-bg text-garage-text border-garage-border"
             disabled={isSubmitting}
-          >
-            <option value="">{t('supplies.history.noSupplier')}</option>
-            {addressBookEntries.map((entry) => (
-              <option key={entry.id} value={entry.id}>
-                {supplierLabel(entry)}
-              </option>
-            ))}
-          </select>
+            placeholder={t('supplies.history.noSupplier')}
+            options={addressBookEntries.map((entry) => ({
+              value: String(entry.id),
+              label: supplierLabel(entry),
+            }))}
+          />
         </div>
       </div>
 

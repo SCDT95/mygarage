@@ -10,6 +10,7 @@ import { useTranslation } from 'react-i18next'
 import { MapPin, Loader2, Navigation, Star, Phone, Globe, Save, Check,  AlertTriangle } from 'lucide-react'
 import { toast } from 'sonner'
 import api from '@/services/api'
+import { Select } from '@/components/ui'
 import { useUnitPreference } from '@/hooks/useUnitPreference'
 import { UnitConverter, UnitFormatter } from '@/utils/units'
 import type { PlaceResult, ShopRecommendation, ShopSearchResponse, ShopRecommendationsResponse } from '@/types/shopDiscovery'
@@ -211,18 +212,15 @@ export default function ShopFinder() {
                 <label htmlFor="search_radius" className="block text-sm font-medium text-garage-text mb-2">
                   {t('shopFinder.searchRadius')}
                 </label>
-                <select
+                <Select
                   id="search_radius"
                   value={radiusOptions.includes(searchRadius) ? searchRadius : radiusOptions[0]}
                   onChange={(e) => setSearchRadius(Number(e.target.value))}
-                  className="w-full px-3 py-2 bg-garage-bg border border-garage-border rounded-lg text-garage-text focus:outline-none focus:ring-2 focus:ring-primary"
-                >
-                  {radiusOptions.map((r) => (
-                    <option key={r} value={r}>
-                      {r} {UnitFormatter.getDistanceUnit(system)}
-                    </option>
-                  ))}
-                </select>
+                  options={radiusOptions.map((r) => ({
+                    value: String(r),
+                    label: `${r} ${UnitFormatter.getDistanceUnit(system)}`,
+                  }))}
+                />
               </div>
 
               {/* Shop Type */}
@@ -230,15 +228,15 @@ export default function ShopFinder() {
                 <label htmlFor="shop_type" className="block text-sm font-medium text-garage-text mb-2">
                   {t('shopFinder.shopType')}
                 </label>
-                <select
+                <Select
                   id="shop_type"
                   value={shopType}
                   onChange={(e) => setShopType(e.target.value as 'auto' | 'rv')}
-                  className="w-full px-3 py-2 bg-garage-bg border border-garage-border rounded-lg text-garage-text focus:outline-none focus:ring-2 focus:ring-primary"
-                >
-                  <option value="auto">{t('shopFinder.autoRepair')}</option>
-                  <option value="rv">{t('shopFinder.rvRepair')}</option>
-                </select>
+                  options={[
+                    { value: 'auto', label: t('shopFinder.autoRepair') },
+                    { value: 'rv', label: t('shopFinder.rvRepair') },
+                  ]}
+                />
               </div>
             </div>
           </div>

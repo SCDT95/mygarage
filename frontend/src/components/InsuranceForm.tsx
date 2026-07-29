@@ -4,7 +4,7 @@ import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { Save, FileUp } from 'lucide-react'
 import FormModalWrapper from './FormModalWrapper'
-import { Button, Field, Input, Textarea } from './ui'
+import { Button, Field, Input, Select, Textarea } from './ui'
 import { toast } from 'sonner'
 import type { InsurancePolicy, InsurancePolicyCreate, InsurancePolicyUpdate } from '../types/insurance'
 import { insuranceSchema, type InsuranceFormData, POLICY_TYPES, PREMIUM_FREQUENCIES } from '../schemas/insurance'
@@ -145,17 +145,14 @@ export default function InsuranceForm({ vin, record, onClose, onSuccess }: Insur
           </div>
 
           <Field id="policy_type" label={t('insurance.policyType')} required error={errors.policy_type}>
-            <select
+            <Select
               id="policy_type"
               {...register('policy_type')}
               disabled={isSubmitting}
-              className={`ui-focus-input ui-motion w-full rounded-control border bg-surface-2 px-3 py-2 text-sm text-text ${errors.policy_type ? 'border-danger' : 'border-border'}`}
-            >
-              <option value="">{t('common:selectType')}</option>
-              {POLICY_TYPES.map((option) => (
-                <option key={option.value} value={option.value}>{t(option.labelKey)}</option>
-              ))}
-            </select>
+              invalid={!!errors.policy_type}
+              placeholder={t('common:selectType')}
+              options={POLICY_TYPES.map((option) => ({ value: option.value, label: t(option.labelKey) }))}
+            />
           </Field>
 
           <div className="grid grid-cols-2 gap-4">
@@ -172,17 +169,13 @@ export default function InsuranceForm({ vin, record, onClose, onSuccess }: Insur
               <Input id="premium_amount" type="text" {...register('premium_amount')} placeholder={t('insuranceForm.premiumAmountPlaceholder')} disabled={isSubmitting} />
             </Field>
             <Field id="premium_frequency" label={t('insurance.premiumFrequency')} error={errors.premium_frequency}>
-              <select
+              <Select
                 id="premium_frequency"
                 {...register('premium_frequency')}
                 disabled={isSubmitting}
-                className="ui-focus-input ui-motion w-full rounded-control border border-border bg-surface-2 px-3 py-2 text-sm text-text"
-              >
-                <option value="">{t('insurance.selectFrequency')}</option>
-                {PREMIUM_FREQUENCIES.map((option) => (
-                  <option key={option.value} value={option.value}>{t(option.labelKey)}</option>
-                ))}
-              </select>
+                placeholder={t('insurance.selectFrequency')}
+                options={PREMIUM_FREQUENCIES.map((option) => ({ value: option.value, label: t(option.labelKey) }))}
+              />
             </Field>
           </div>
 

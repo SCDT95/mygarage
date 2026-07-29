@@ -12,6 +12,7 @@ import { SUPPORTED_LANGUAGES, SUPPORTED_CURRENCIES, languageToLocale } from '@/c
 import OIDCModal from '@/components/modals/OIDCModal'
 import FamilyManagementModal from '@/components/modals/FamilyManagementModal'
 import ArchivedVehiclesList from '@/components/ArchivedVehiclesList'
+import { Select } from '../ui'
 
 type RawSetting = {
   key: string
@@ -540,16 +541,13 @@ export default function SettingsSystemTab() {
           <label htmlFor="timezone" className="block text-sm font-medium text-garage-text mb-2">
             {t('timezone.label')}
           </label>
-          <select
+          <Select
             id="timezone"
             value={formData.timezone}
             onChange={(e) => setFormData({ ...formData, timezone: e.target.value })}
-            className="w-full md:w-96 px-3 py-2 bg-garage-bg border border-garage-border rounded-lg text-garage-text focus:outline-none focus:ring-2 focus:ring-primary"
-          >
-            {timezones.map((tz) => (
-              <option key={tz} value={tz}>{tz}</option>
-            ))}
-          </select>
+            className="md:w-96"
+            options={timezones.map((tz) => ({ value: tz, label: tz }))}
+          />
           <p className="mt-2 text-sm text-garage-text-muted">
             {t('timezone.description')}
           </p>
@@ -724,18 +722,16 @@ export default function SettingsSystemTab() {
               {t('language.label')}
             </div>
           </label>
-          <select
+          <Select
             value={selectedLanguage}
             onChange={(e) => handleLanguageChange(e.target.value)}
             disabled={languageSaving}
-            className={`w-full md:w-96 px-3 py-2 bg-garage-bg border border-garage-border rounded-lg text-garage-text focus:outline-none focus:ring-2 focus:ring-primary ${languageSaving ? 'opacity-50 cursor-not-allowed' : ''}`}
-          >
-            {SUPPORTED_LANGUAGES.map((lang) => (
-              <option key={lang.code} value={lang.code}>
-                {lang.nativeName} ({lang.name})
-              </option>
-            ))}
-          </select>
+            className="md:w-96"
+            options={SUPPORTED_LANGUAGES.map((lang) => ({
+              value: lang.code,
+              label: `${lang.nativeName} (${lang.name})`,
+            }))}
+          />
           <p className="mt-2 text-sm text-garage-text-muted">
             {t('language.description')}
           </p>
@@ -749,18 +745,16 @@ export default function SettingsSystemTab() {
               {t('currency.label')}
             </div>
           </label>
-          <select
+          <Select
             value={selectedCurrency}
             onChange={(e) => handleCurrencyRequest(e.target.value)}
             disabled={currencySaving}
-            className={`w-full md:w-96 px-3 py-2 bg-garage-bg border border-garage-border rounded-lg text-garage-text focus:outline-none focus:ring-2 focus:ring-primary ${currencySaving ? 'opacity-50 cursor-not-allowed' : ''}`}
-          >
-            {SUPPORTED_CURRENCIES.map((curr) => (
-              <option key={curr.code} value={curr.code}>
-                {curr.code} — {curr.name}
-              </option>
-            ))}
-          </select>
+            className="md:w-96"
+            options={SUPPORTED_CURRENCIES.map((curr) => ({
+              value: curr.code,
+              label: `${curr.code} — ${curr.name}`,
+            }))}
+          />
           <p className="mt-2 text-sm text-garage-text-muted">
             {t('currency.description')}
           </p>
@@ -881,7 +875,7 @@ export default function SettingsSystemTab() {
               <label htmlFor="default_payment_method" className="block text-sm font-medium text-garage-text mb-1">
                 {t('fuel.defaultPaymentMethod')}
               </label>
-              <select
+              <Select
                 id="default_payment_method"
                 value={defaultPaymentMethod}
                 onChange={async (e) => {
@@ -902,23 +896,23 @@ export default function SettingsSystemTab() {
                   }
                 }}
                 disabled={fuelDefaultsSaving}
-                className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-primary bg-garage-bg text-garage-text border-garage-border"
-              >
-                <option value="">—</option>
-                <option value="cash">{t('forms:fuel.paymentMethods.cash')}</option>
-                <option value="credit">{t('forms:fuel.paymentMethods.credit')}</option>
-                <option value="debit">{t('forms:fuel.paymentMethods.debit')}</option>
-                <option value="fleet_card">{t('forms:fuel.paymentMethods.fleet_card')}</option>
-                <option value="app">{t('forms:fuel.paymentMethods.app')}</option>
-                <option value="other">{t('forms:fuel.paymentMethods.other')}</option>
-              </select>
+                placeholder="—"
+                options={[
+                  { value: 'cash', label: t('forms:fuel.paymentMethods.cash') },
+                  { value: 'credit', label: t('forms:fuel.paymentMethods.credit') },
+                  { value: 'debit', label: t('forms:fuel.paymentMethods.debit') },
+                  { value: 'fleet_card', label: t('forms:fuel.paymentMethods.fleet_card') },
+                  { value: 'app', label: t('forms:fuel.paymentMethods.app') },
+                  { value: 'other', label: t('forms:fuel.paymentMethods.other') },
+                ]}
+              />
             </div>
 
             <div>
               <label htmlFor="default_trip_type" className="block text-sm font-medium text-garage-text mb-1">
                 {t('fuel.defaultTripType')}
               </label>
-              <select
+              <Select
                 id="default_trip_type"
                 value={defaultTripType}
                 onChange={async (e) => {
@@ -939,14 +933,14 @@ export default function SettingsSystemTab() {
                   }
                 }}
                 disabled={fuelDefaultsSaving}
-                className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-primary bg-garage-bg text-garage-text border-garage-border"
-              >
-                <option value="">—</option>
-                <option value="private">{t('forms:fuel.tripTypes.private')}</option>
-                <option value="business">{t('forms:fuel.tripTypes.business')}</option>
-                <option value="commute">{t('forms:fuel.tripTypes.commute')}</option>
-                <option value="other">{t('forms:fuel.tripTypes.other')}</option>
-              </select>
+                placeholder="—"
+                options={[
+                  { value: 'private', label: t('forms:fuel.tripTypes.private') },
+                  { value: 'business', label: t('forms:fuel.tripTypes.business') },
+                  { value: 'commute', label: t('forms:fuel.tripTypes.commute') },
+                  { value: 'other', label: t('forms:fuel.tripTypes.other') },
+                ]}
+              />
             </div>
           </div>
         </div>

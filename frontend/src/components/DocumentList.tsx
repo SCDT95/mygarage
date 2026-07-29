@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { formatDateForDisplay } from '../utils/dateUtils'
 import { FileText, Plus, Trash2, Download, Edit3, Save, X } from 'lucide-react'
-import { Button, IconButton, Card, Chip, Mono, EmptyState, Field, Input, Textarea } from './ui'
+import { Button, IconButton, Card, Chip, Mono, EmptyState, Field, Input, Select, Textarea } from './ui'
 import { toast } from 'sonner'
 import api from '../services/api'
 import type { Document } from '../types/document'
@@ -167,20 +167,20 @@ export default function DocumentList({ vin, onAddClick }: DocumentListProps) {
                     />
                   </Field>
                   <Field id="edit-document_type" label={t('documentList.typeLabel')}>
-                    <select
+                    <Select
                       id="edit-document_type"
                       value={editData.document_type}
                       onChange={(e) => setEditData({ ...editData, document_type: e.target.value })}
-                      className="ui-focus-input ui-motion w-full rounded-control border border-border bg-surface-2 px-3 py-2 text-sm text-text"
-                    >
-                      <option value="">{t('documentList.selectType')}</option>
-                      <option value="Insurance">{t('documentList.typeInsurance')}</option>
-                      <option value="Registration">{t('documentList.typeRegistration')}</option>
-                      <option value="Manual">{t('documentList.typeManual')}</option>
-                      <option value="Receipt">{t('documentList.typeReceipt')}</option>
-                      <option value="Inspection">{t('documentList.typeInspection')}</option>
-                      <option value="Other">{t('documentList.typeOther')}</option>
-                    </select>
+                      placeholder={t('documentList.selectType')}
+                      options={[
+                        { value: 'Insurance', label: t('documentList.typeInsurance') },
+                        { value: 'Registration', label: t('documentList.typeRegistration') },
+                        { value: 'Manual', label: t('documentList.typeManual') },
+                        { value: 'Receipt', label: t('documentList.typeReceipt') },
+                        { value: 'Inspection', label: t('documentList.typeInspection') },
+                        { value: 'Other', label: t('documentList.typeOther') },
+                      ]}
+                    />
                   </Field>
                   <Field id="edit-description" label={t('documentList.descriptionLabel')}>
                     <Textarea

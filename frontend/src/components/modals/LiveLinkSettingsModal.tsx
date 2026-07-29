@@ -28,6 +28,7 @@ import {
 } from 'lucide-react'
 import { livelinkService } from '@/services/livelinkService'
 import { vehicleService } from '@/services/vehicleService'
+import { Select } from '@/components/ui'
 import type {
   LiveLinkSettings,
   LiveLinkSettingsUpdate,
@@ -731,18 +732,18 @@ export default function LiveLinkSettingsModal({ isOpen, onClose }: LiveLinkSetti
                 <div className="grid grid-cols-2 gap-4">
                   <div>
                     <label className="block text-sm font-medium text-garage-text mb-1">{t('modal.rawTelemetryRetention')}</label>
-                    <select
+                    <Select
                       value={settings?.telemetry_retention_days ?? 90}
                       onChange={(e) => handleSaveSettings({ telemetry_retention_days: parseInt(e.target.value) })}
                       disabled={saving}
-                      className="w-full px-3 py-2 bg-garage-surface border border-garage-border rounded-lg text-garage-text text-sm focus:ring-2 focus:ring-primary"
-                    >
-                      <option value="30">{t('modal.livelink.retentionDays', { count: 30 })}</option>
-                      <option value="60">{t('modal.livelink.retentionDays', { count: 60 })}</option>
-                      <option value="90">{t('modal.livelink.retentionDays', { count: 90 })}</option>
-                      <option value="180">{t('modal.livelink.retentionDays', { count: 180 })}</option>
-                      <option value="365">{t('modal.livelink.retentionDays', { count: 365 })}</option>
-                    </select>
+                      options={[
+                        { value: '30', label: t('modal.livelink.retentionDays', { count: 30 }) },
+                        { value: '60', label: t('modal.livelink.retentionDays', { count: 60 }) },
+                        { value: '90', label: t('modal.livelink.retentionDays', { count: 90 }) },
+                        { value: '180', label: t('modal.livelink.retentionDays', { count: 180 }) },
+                        { value: '365', label: t('modal.livelink.retentionDays', { count: 365 }) },
+                      ]}
+                    />
                   </div>
                   <div className="flex items-center">
                     <label className="flex items-center gap-3">
@@ -1101,18 +1102,15 @@ function DeviceRow({
         </div>
       </td>
       <td className="py-2 px-3">
-        <select
+        <Select
           value={device.vin ?? ''}
           onChange={(e) => onUpdate(device.device_id, { vin: e.target.value || null })}
-          className="px-2 py-1 bg-garage-surface border border-garage-border rounded text-xs text-garage-text"
-        >
-          <option value="">{t('modal.livelink.unlinked')}</option>
-          {vehicles.map((v) => (
-            <option key={v.vin} value={v.vin}>
-              {v.nickname || `${v.year} ${v.make} ${v.model}`}
-            </option>
-          ))}
-        </select>
+          placeholder={t('modal.livelink.unlinked')}
+          options={vehicles.map((v) => ({
+            value: v.vin,
+            label: v.nickname || `${v.year} ${v.make} ${v.model}`,
+          }))}
+        />
       </td>
       <td className="py-2 px-3">
         <span className="text-xs text-garage-text">{device.fw_version ?? t('modal.livelink.unknown')}</span>

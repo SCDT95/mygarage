@@ -10,6 +10,7 @@ import { vehicleEditSchema, type VehicleEditFormData, VEHICLE_TYPES } from '../s
 import { FormError } from '../components/FormError'
 import { FUEL_TYPE_VALUES, FUEL_TYPE_LABELS, isDieselFuelType } from '../constants/fuel'
 import CurrencyInputPrefix from '../components/common/CurrencyInputPrefix'
+import { Select } from '../components/ui'
 import { useUnitPreference } from '../hooks/useUnitPreference'
 import { UnitConverter, UnitFormatter } from '../utils/units'
 import { toCanonicalLiters } from '../utils/decimalSafe'
@@ -250,20 +251,18 @@ export default function VehicleEdit() {
               <label htmlFor="vehicle_type" className="block text-sm font-medium text-garage-text mb-1">
                 {t('edit.vehicleType')}
               </label>
-              <select
+              {/* No blank option: vehicle_type is a NOT NULL column (the
+                  wizard's select has none either) — a null submit would
+                  409 server-side and roll back the whole update. */}
+              <Select
                 id="vehicle_type"
                 {...register('vehicle_type')}
-                className="w-full px-3 py-2 bg-garage-bg border border-garage-border rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500 text-garage-text"
-              >
-                {/* No blank option: vehicle_type is a NOT NULL column (the
-                    wizard's select has none either) — a null submit would
-                    409 server-side and roll back the whole update. */}
-                {VEHICLE_TYPES.map((type) => (
-                  <option key={type} value={type}>
-                    {t(`vehicleTypeLabels.${type}`, { defaultValue: type })}
-                  </option>
-                ))}
-              </select>
+                invalid={!!errors.vehicle_type}
+                options={VEHICLE_TYPES.map((type) => ({
+                  value: type,
+                  label: t(`vehicleTypeLabels.${type}`, { defaultValue: type }),
+                }))}
+              />
               <FormError error={errors.vehicle_type} />
             </div>
 
@@ -271,14 +270,15 @@ export default function VehicleEdit() {
               <label htmlFor="usage_unit" className="block text-sm font-medium text-garage-text mb-1">
                 {t('edit.usageTracking')}
               </label>
-              <select
+              <Select
                 id="usage_unit"
                 {...register('usage_unit')}
-                className="w-full px-3 py-2 bg-garage-bg border border-garage-border rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500 text-garage-text"
-              >
-                <option value="distance">{t('edit.usageDistance')}</option>
-                <option value="hours">{t('edit.usageHours')}</option>
-              </select>
+                invalid={!!errors.usage_unit}
+                options={[
+                  { value: 'distance', label: t('edit.usageDistance') },
+                  { value: 'hours', label: t('edit.usageHours') },
+                ]}
+              />
               <FormError error={errors.usage_unit} />
             </div>
 
@@ -484,18 +484,16 @@ export default function VehicleEdit() {
                 <label htmlFor="fuel_type" className="block text-sm font-medium text-garage-text mb-1">
                   {t('edit.fuelType')}
                 </label>
-                <select
+                <Select
                   id="fuel_type"
                   {...register('fuel_type')}
-                  className="w-full px-3 py-2 bg-garage-bg border border-garage-border rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500 text-garage-text"
-                >
-                  <option value="">—</option>
-                  {FUEL_TYPE_VALUES.map((value) => (
-                    <option key={value} value={value}>
-                      {t(`forms:fuel.fuelTypes.${value}`, { defaultValue: FUEL_TYPE_LABELS[value] })}
-                    </option>
-                  ))}
-                </select>
+                  invalid={!!errors.fuel_type}
+                  placeholder="—"
+                  options={FUEL_TYPE_VALUES.map((value) => ({
+                    value,
+                    label: t(`forms:fuel.fuelTypes.${value}`, { defaultValue: FUEL_TYPE_LABELS[value] }),
+                  }))}
+                />
                 <FormError error={errors.fuel_type} />
               </div>
             </div>
@@ -614,18 +612,16 @@ export default function VehicleEdit() {
                 <label htmlFor="fuel_type_nonmotorized" className="block text-sm font-medium text-garage-text mb-1">
                   {t('edit.fuelType')}
                 </label>
-                <select
+                <Select
                   id="fuel_type_nonmotorized"
                   {...register('fuel_type')}
-                  className="w-full px-3 py-2 bg-garage-bg border border-garage-border rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500 text-garage-text"
-                >
-                  <option value="">—</option>
-                  {FUEL_TYPE_VALUES.map((value) => (
-                    <option key={value} value={value}>
-                      {t(`forms:fuel.fuelTypes.${value}`, { defaultValue: FUEL_TYPE_LABELS[value] })}
-                    </option>
-                  ))}
-                </select>
+                  invalid={!!errors.fuel_type}
+                  placeholder="—"
+                  options={FUEL_TYPE_VALUES.map((value) => ({
+                    value,
+                    label: t(`forms:fuel.fuelTypes.${value}`, { defaultValue: FUEL_TYPE_LABELS[value] }),
+                  }))}
+                />
                 <FormError error={errors.fuel_type} />
               </div>
             </div>

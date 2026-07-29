@@ -24,7 +24,7 @@ import { useAuth } from '../contexts/AuthContext'
 import { UnitConverter, UnitFormatter } from '../utils/units'
 import { toCanonicalKm, toCanonicalLiters, priceToDisplay, priceToCanonical } from '../utils/decimalSafe'
 import CurrencyInputPrefix from './common/CurrencyInputPrefix'
-import { Button, Field, Input, Textarea, Checkbox } from './ui'
+import { Button, Field, Input, Select, Textarea, Checkbox } from './ui'
 import { formatDateForInput } from '../utils/dateUtils'
 import TimeInput24, { normalizeTime, formatTimeForInput } from './common/TimeInput24'
 import { useTimeFormat } from '../hooks/useTimeFormat'
@@ -554,21 +554,22 @@ export default function FuelRecordForm({ vin, record, onClose, onSuccess }: Fuel
           </div>
 
           <Field id="price_basis" label={t('fuel.priceBasis')} error={errors.price_basis}>
-            <select
+            {/* Phase 3.6 — labels respect the user's unit preference.
+                Was hardcoded "L/gal" / "kg/lb" regardless of system,
+                per issue #69. */}
+            <Select
               id="price_basis"
               {...register('price_basis')}
-              className="ui-focus-input ui-motion w-full rounded-control border border-border bg-surface-2 px-3 py-2 text-sm text-text"
               disabled={isSubmitting}
+              invalid={!!errors.price_basis}
               defaultValue={isElectric ? 'per_kwh' : 'per_volume'}
-            >
-              {/* Phase 3.6 — labels respect the user's unit preference.
-                  Was hardcoded "L/gal" / "kg/lb" regardless of system,
-                  per issue #69. */}
-              <option value="per_volume">{t('fuel.priceBasisPerVolume', { unit: system === 'imperial' ? 'gal' : 'L' })}</option>
-              <option value="per_weight">{t('fuel.priceBasisPerWeight', { unit: system === 'imperial' ? 'lb' : 'kg' })}</option>
-              <option value="per_kwh">{t('fuel.priceBasisPerKwh')}</option>
-              <option value="per_tank">{t('fuel.priceBasisPerTank')}</option>
-            </select>
+              options={[
+                { value: 'per_volume', label: t('fuel.priceBasisPerVolume', { unit: system === 'imperial' ? 'gal' : 'L' }) },
+                { value: 'per_weight', label: t('fuel.priceBasisPerWeight', { unit: system === 'imperial' ? 'lb' : 'kg' }) },
+                { value: 'per_kwh', label: t('fuel.priceBasisPerKwh') },
+                { value: 'per_tank', label: t('fuel.priceBasisPerTank') },
+              ]}
+            />
           </Field>
 
           <div className="grid grid-cols-2 gap-4">
@@ -667,12 +668,14 @@ export default function FuelRecordForm({ vin, record, onClose, onSuccess }: Fuel
           {/* Multi-fuel: only render when the vehicle has fuel_type_secondary set */}
           {isMultiFuel && (
             <Field id="fuel_type_used" label={t('fuel.fuelTypeUsed')} error={errors.fuel_type_used} hint={t('fuel.fuelTypeUsedHint')}>
-              <select id="fuel_type_used" {...register('fuel_type_used')} className="ui-focus-input ui-motion w-full rounded-control border border-border bg-surface-2 px-3 py-2 text-sm text-text" disabled={isSubmitting}>
-                <option value="">{t('common:select') || '—'}</option>
-                {FUEL_TYPE_VALUES.map((value) => (
-                  <option key={value} value={value}>{t(`fuel.fuelTypes.${value}`)}</option>
-                ))}
-              </select>
+              <Select
+                id="fuel_type_used"
+                {...register('fuel_type_used')}
+                disabled={isSubmitting}
+                invalid={!!errors.fuel_type_used}
+                placeholder={t('common:select') || '—'}
+                options={FUEL_TYPE_VALUES.map((value) => ({ value, label: t(`fuel.fuelTypes.${value}`) }))}
+              />
             </Field>
           )}
 
@@ -743,20 +746,24 @@ export default function FuelRecordForm({ vin, record, onClose, onSuccess }: Fuel
                 {/* Payment method + trip type — native selects, retokenized */}
                 <div className="grid grid-cols-2 gap-4">
                   <Field id="payment_method" label={t('fuel.paymentMethod')} error={errors.payment_method}>
-                    <select id="payment_method" {...register('payment_method')} className="ui-focus-input ui-motion w-full rounded-control border border-border bg-surface-2 px-3 py-2 text-sm text-text" disabled={isSubmitting}>
-                      <option value="">{t('fuel.paymentMethodPlaceholder')}</option>
-                      {PAYMENT_METHOD_VALUES.map((value) => (
-                        <option key={value} value={value}>{t(`fuel.paymentMethods.${value}`)}</option>
-                      ))}
-                    </select>
+                    <Select
+                      id="payment_method"
+                      {...register('payment_method')}
+                      disabled={isSubmitting}
+                      invalid={!!errors.payment_method}
+                      placeholder={t('fuel.paymentMethodPlaceholder')}
+                      options={PAYMENT_METHOD_VALUES.map((value) => ({ value, label: t(`fuel.paymentMethods.${value}`) }))}
+                    />
                   </Field>
                   <Field id="trip_type" label={t('fuel.tripType')} error={errors.trip_type}>
-                    <select id="trip_type" {...register('trip_type')} className="ui-focus-input ui-motion w-full rounded-control border border-border bg-surface-2 px-3 py-2 text-sm text-text" disabled={isSubmitting}>
-                      <option value="">{t('fuel.tripTypePlaceholder')}</option>
-                      {TRIP_TYPE_VALUES.map((value) => (
-                        <option key={value} value={value}>{t(`fuel.tripTypes.${value}`)}</option>
-                      ))}
-                    </select>
+                    <Select
+                      id="trip_type"
+                      {...register('trip_type')}
+                      disabled={isSubmitting}
+                      invalid={!!errors.trip_type}
+                      placeholder={t('fuel.tripTypePlaceholder')}
+                      options={TRIP_TYPE_VALUES.map((value) => ({ value, label: t(`fuel.tripTypes.${value}`) }))}
+                    />
                   </Field>
                 </div>
 

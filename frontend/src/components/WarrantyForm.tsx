@@ -4,7 +4,7 @@ import { useForm, type Resolver } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { Save } from 'lucide-react'
 import FormModalWrapper from './FormModalWrapper'
-import { Button, Field, Input, Textarea } from './ui'
+import { Button, Field, Input, Select, Textarea } from './ui'
 import type { WarrantyRecord, WarrantyRecordCreate, WarrantyRecordUpdate } from '../types/warranty'
 import { warrantySchema, type WarrantyFormData, WARRANTY_TYPES } from '../schemas/warranty'
 import { useCreateWarrantyRecord, useUpdateWarrantyRecord } from '../hooks/queries/useWarrantyRecords'
@@ -101,17 +101,14 @@ export default function WarrantyForm({ vin, record, onClose, onSuccess }: Warran
 
           <div className="grid grid-cols-2 gap-4">
             <Field id="warranty_type" label={t('warranty.warrantyType')} required error={errors.warranty_type}>
-              <select
+              <Select
                 id="warranty_type"
                 {...register('warranty_type')}
                 disabled={isSubmitting}
-                className={`ui-focus-input ui-motion w-full rounded-control border bg-surface-2 px-3 py-2 text-sm text-text ${errors.warranty_type ? 'border-danger' : 'border-border'}`}
-              >
-                <option value="">{t('common:selectType')}</option>
-                {WARRANTY_TYPES.map((option) => (
-                  <option key={option.value} value={option.value}>{t(option.labelKey)}</option>
-                ))}
-              </select>
+                invalid={!!errors.warranty_type}
+                placeholder={t('common:selectType')}
+                options={WARRANTY_TYPES.map((option) => ({ value: option.value, label: t(option.labelKey) }))}
+              />
             </Field>
 
             <Field id="provider" label={t('insurance.provider')} error={errors.provider}>

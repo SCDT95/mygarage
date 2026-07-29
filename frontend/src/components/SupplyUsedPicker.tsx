@@ -4,6 +4,7 @@ import { useUnitPreference } from '../hooks/useUnitPreference'
 import { supplyUnitLabel } from '../utils/supplyUnits'
 import type { SupplyUsedEntry } from '../types/serviceVisit'
 import type { Supply } from '../types/supplies'
+import { Select } from './ui'
 
 interface SupplyUsedPickerProps {
   value: SupplyUsedEntry[]
@@ -99,20 +100,18 @@ export default function SupplyUsedPicker({
 
             return (
               <div key={rowIndex} className="flex items-center gap-2">
-                <select
-                  value={row.supply_id}
-                  onChange={(e) => handleSupplyChange(rowIndex, Number(e.target.value))}
-                  disabled={disabled}
-                  aria-label={t('service.suppliesUsed')}
-                  className="flex-1 px-3 py-2 border border-garage-border rounded-md focus:outline-none focus:ring-2 focus:ring-primary bg-garage-bg text-garage-text"
-                >
-                  {supply == null && <option value={row.supply_id}>{`#${row.supply_id}`}</option>}
-                  {rowOptions.map((s) => (
-                    <option key={s.id} value={s.id}>
-                      {s.name}
-                    </option>
-                  ))}
-                </select>
+                <div className="flex-1">
+                  <Select
+                    value={row.supply_id}
+                    onChange={(e) => handleSupplyChange(rowIndex, Number(e.target.value))}
+                    disabled={disabled}
+                    aria-label={t('service.suppliesUsed')}
+                    options={[
+                      ...(supply == null ? [{ value: String(row.supply_id), label: `#${row.supply_id}` }] : []),
+                      ...rowOptions.map((s) => ({ value: String(s.id), label: s.name })),
+                    ]}
+                  />
+                </div>
                 <div className="w-28 flex items-center gap-1">
                   <input
                     type="number"

@@ -5,7 +5,7 @@ import { zodResolver } from '@hookform/resolvers/zod'
 import { Save } from 'lucide-react'
 import FormModalWrapper from './FormModalWrapper'
 import CurrencyInputPrefix from './common/CurrencyInputPrefix'
-import { Button, Field, Input, Textarea } from './ui'
+import { Button, Field, Input, Select, Textarea } from './ui'
 import type { TaxRecord, TaxRecordCreate, TaxRecordUpdate } from '../types/tax'
 import { makeTaxRecordSchema, type TaxRecordFormData, TAX_TYPES } from '../schemas/tax'
 import { useCreateTaxRecord, useUpdateTaxRecord } from '../hooks/queries/useTaxRecords'
@@ -101,17 +101,17 @@ export default function TaxRecordForm({ vin, record, onClose, onSuccess }: TaxRe
             </Field>
 
             <Field id="tax_type" label={t('taxRecordForm.type')} error={errors.tax_type}>
-              <select
+              <Select
                 id="tax_type"
                 {...register('tax_type')}
                 disabled={isSubmitting}
-                className={`ui-focus-input ui-motion w-full rounded-control border bg-surface-2 px-3 py-2 text-sm text-text ${errors.tax_type ? 'border-danger' : 'border-border'}`}
-              >
-                <option value="">{t('tax.selectType')}</option>
-                {TAX_TYPES.map((option) => (
-                  <option key={option.value} value={option.value}>{t(option.labelKey)}</option>
-                ))}
-              </select>
+                invalid={!!errors.tax_type}
+                placeholder={t('tax.selectType')}
+                options={TAX_TYPES.map((option) => ({
+                  value: option.value,
+                  label: t(option.labelKey),
+                }))}
+              />
             </Field>
           </div>
 

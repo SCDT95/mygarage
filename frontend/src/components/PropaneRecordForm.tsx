@@ -12,7 +12,7 @@ import { UnitConverter, UnitFormatter } from '../utils/units'
 import { toCanonicalKg, toCanonicalLiters, priceToDisplay, priceToCanonical } from '../utils/decimalSafe'
 import { formatDateForInput } from '../utils/dateUtils'
 import CurrencyInputPrefix from './common/CurrencyInputPrefix'
-import { Button, Field, Input, Textarea } from './ui'
+import { Button, Field, Input, Select, Textarea } from './ui'
 
 // Propane density: 1 kg ≈ 1.968 L (1 gal ≈ 1.923 kg, 1 gal = 3.78541 L).
 const KG_TO_LITERS = 1.968
@@ -230,23 +230,21 @@ export default function PropaneRecordForm({
 
             <div className="grid grid-cols-2 gap-4">
               <Field id="tank_size_kg" label={t('propane.tankSize')} unit={UnitFormatter.getWeightUnit(system)}>
-                <select
+                <Select
                   id="tank_size_kg"
                   {...register('tank_size_kg', { valueAsNumber: true })}
-                  className="ui-focus-input ui-motion w-full rounded-control border border-border bg-surface-2 px-3 py-2 text-sm text-text"
                   disabled={isSubmitting}
-                >
-                  <option value="">{t('propane.selectTankSize')}</option>
-                  {TANK_SIZES.map((tank) => {
+                  placeholder={t('propane.selectTankSize')}
+                  options={TANK_SIZES.map((tank) => {
                     const value = system === 'imperial' ? Math.round(UnitConverter.kgToLbs(tank.kg) ?? 0) : tank.kg
                     const label = t('propaneRecordForm.tankSizeOption', {
                       size: system === 'imperial' ? tank.sizeImperial : tank.sizeMetric,
                       unit: UnitFormatter.getWeightUnit(system),
                       kind: t(tank.kind === 'rv' ? 'propaneRecordForm.tankKindRv' : 'propaneRecordForm.tankKindPortable'),
                     })
-                    return (<option key={tank.kg} value={value}>{label}</option>)
+                    return { value: String(value), label }
                   })}
-                </select>
+                />
               </Field>
 
               <Field id="tank_quantity" label={t('propane.numberOfTanks')} error={errors.tank_quantity}>

@@ -3,6 +3,7 @@ import { useState, useEffect, useMemo, type SyntheticEvent } from 'react'
 import { X, Eye, EyeOff } from 'lucide-react'
 import { toast } from 'sonner'
 import api from '@/services/api'
+import { Select } from '@/components/ui'
 import { makePasswordSchema } from '@/schemas/auth'
 import { RELATIONSHIP_PRESETS } from '@/types/family'
 import type { User } from '@/types/user'
@@ -281,18 +282,12 @@ export default function AddEditUserModal({ isOpen, onClose, user, onSave, curren
             <label className="block text-sm font-medium text-garage-text mb-1.5">
               {t('modal.relationship')}
             </label>
-            <select
+            <Select
               value={formData.relationship}
               onChange={(e) => setFormData({ ...formData, relationship: e.target.value, relationship_custom: e.target.value !== 'other' ? '' : formData.relationship_custom })}
-              className="w-full px-3 py-2 bg-garage-bg border border-garage-border rounded-lg text-garage-text focus:outline-none focus:ring-2 focus:ring-primary"
-            >
-              <option value="">{t('common:none')}</option>
-              {RELATIONSHIP_PRESETS.map((preset) => (
-                <option key={preset.value} value={preset.value}>
-                  {t(preset.labelKey)}
-                </option>
-              ))}
-            </select>
+              placeholder={t('common:none')}
+              options={RELATIONSHIP_PRESETS.map((preset) => ({ value: preset.value, label: t(preset.labelKey) }))}
+            />
             <p className="text-xs text-garage-text-muted mt-1">
               {t('modal.relationshipHint')}
             </p>
@@ -320,15 +315,15 @@ export default function AddEditUserModal({ isOpen, onClose, user, onSave, curren
             <label className="block text-sm font-medium text-garage-text mb-1.5">
               {t('modal.role')}
             </label>
-            <select
+            <Select
               value={formData.is_admin ? 'admin' : 'user'}
               onChange={(e) => setFormData({ ...formData, is_admin: e.target.value === 'admin' })}
               disabled={isEditMode && user?.id === currentUserId && user?.is_admin && user?.is_active && activeAdminCount === 1}
-              className="w-full px-3 py-2 bg-garage-bg border border-garage-border rounded-lg text-garage-text focus:outline-none focus:ring-2 focus:ring-primary disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              <option value="user">{t('common:user')}</option>
-              <option value="admin">{t('common:admin')}</option>
-            </select>
+              options={[
+                { value: 'user', label: t('common:user') },
+                { value: 'admin', label: t('common:admin') },
+              ]}
+            />
             {isEditMode && user?.id === currentUserId && user?.is_admin && user?.is_active && activeAdminCount === 1 && (
               <p className="text-xs text-warning mt-1">{t('modal.lastActiveAdminWarning')}</p>
             )}

@@ -3,6 +3,7 @@ import { useState } from 'react'
 import { Shield, Info, CheckCircle, AlertCircle, Eye, EyeOff, Loader } from 'lucide-react'
 import api from '@/services/api'
 import { withBase } from '@/utils/basePath'
+import { Select } from '@/components/ui'
 import FormModalWrapper from '../FormModalWrapper'
 
 /** Identity providers known to work with MyGarage. Brand names — never translated. */
@@ -330,16 +331,16 @@ export default function OIDCModal({
                   <label htmlFor="oidc-username-claim" className="block text-xs font-medium text-garage-text mb-1.5">
                     {t('modal.oidc.usernameClaim')}
                   </label>
-                  <select
+                  <Select
                     id="oidc-username-claim"
                     value={formData.oidc_username_claim}
                     onChange={(e) => onFormDataChange({ oidc_username_claim: e.target.value })}
-                    className="w-full px-3 py-2 bg-garage-surface border border-garage-border rounded-lg text-sm text-garage-text focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
-                  >
-                    <option value="preferred_username">preferred_username</option>
-                    <option value="email">email</option>
-                    <option value="sub">sub</option>
-                  </select>
+                    options={[
+                      { value: 'preferred_username', label: 'preferred_username' },
+                      { value: 'email', label: 'email' },
+                      { value: 'sub', label: 'sub' },
+                    ]}
+                  />
                 </div>
 
                 {/* Email Claim */}
@@ -347,15 +348,15 @@ export default function OIDCModal({
                   <label htmlFor="oidc-email-claim" className="block text-xs font-medium text-garage-text mb-1.5">
                     {t('modal.oidc.emailClaim')}
                   </label>
-                  <select
+                  <Select
                     id="oidc-email-claim"
                     value={formData.oidc_email_claim}
                     onChange={(e) => onFormDataChange({ oidc_email_claim: e.target.value })}
-                    className="w-full px-3 py-2 bg-garage-surface border border-garage-border rounded-lg text-sm text-garage-text focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
-                  >
-                    <option value="email">email</option>
-                    <option value="mail">mail</option>
-                  </select>
+                    options={[
+                      { value: 'email', label: 'email' },
+                      { value: 'mail', label: 'mail' },
+                    ]}
+                  />
                 </div>
 
                 {/* Full Name Claim */}
@@ -363,15 +364,15 @@ export default function OIDCModal({
                   <label htmlFor="oidc-full-name-claim" className="block text-xs font-medium text-garage-text mb-1.5">
                     {t('modal.oidc.fullNameClaim')}
                   </label>
-                  <select
+                  <Select
                     id="oidc-full-name-claim"
                     value={formData.oidc_full_name_claim}
                     onChange={(e) => onFormDataChange({ oidc_full_name_claim: e.target.value })}
-                    className="w-full px-3 py-2 bg-garage-surface border border-garage-border rounded-lg text-sm text-garage-text focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
-                  >
-                    <option value="name">name</option>
-                    <option value="given_name">given_name + family_name</option>
-                  </select>
+                    options={[
+                      { value: 'name', label: 'name' },
+                      { value: 'given_name', label: 'given_name + family_name' },
+                    ]}
+                  />
                 </div>
               </div>
 

@@ -9,7 +9,7 @@ import { formatDateForDisplay } from '../utils/dateUtils'
 import { useDateLocale } from '../hooks/useDateLocale'
 import { useRecallRecords, useDeleteRecallRecord, useCheckNHTSA, useToggleRecallResolved } from '../hooks/queries/useRecallRecords'
 import { useQueryClient } from '@tanstack/react-query'
-import { Button, IconButton, EmptyState, Mono, Chip } from './ui'
+import { Button, IconButton, EmptyState, Mono, Chip, Select } from './ui'
 
 interface RecallListProps {
   vin: string
@@ -136,15 +136,15 @@ export default function RecallList({ vin, onAddClick, onEditClick, onRefresh }: 
           <p className="text-sm text-text-mute">{t('recallList.activeCount', { active: stats.active_count, resolved: stats.resolved_count })}</p>
         </div>
         <div className="flex flex-wrap gap-2">
-          <select
+          <Select
             value={statusFilter}
             onChange={(e) => setStatusFilter(e.target.value as 'all' | 'active' | 'resolved')}
-            className="ui-focus-input ui-motion rounded-control border border-border bg-surface-2 px-3 py-2 text-sm text-text"
-          >
-            <option value="all">{t('recallList.allRecalls')}</option>
-            <option value="active">{t('recallList.activeOnly')}</option>
-            <option value="resolved">{t('recallList.resolvedOnly')}</option>
-          </select>
+            options={[
+              { value: 'all', label: t('recallList.allRecalls') },
+              { value: 'active', label: t('recallList.activeOnly') },
+              { value: 'resolved', label: t('recallList.resolvedOnly') },
+            ]}
+          />
           <Button variant="secondary" icon={RefreshCw} onClick={handleCheckNHTSA} loading={nhtsaMutation.isPending} title={t('recallList.checkNHTSATitle')}>
             {nhtsaMutation.isPending ? t('recallList.checking') : t('recallList.checkNHTSA')}
           </Button>
