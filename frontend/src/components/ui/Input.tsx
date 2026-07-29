@@ -1,5 +1,6 @@
 import type { InputHTMLAttributes, ReactNode } from 'react'
 import type { Size } from './types'
+import { useFieldDescribedBy } from './fieldContext'
 
 /**
  * `size` and `prefix` must be omitted from the DOM attribute set before they
@@ -40,11 +41,14 @@ export default function Input({
   prefix,
   suffix,
   className = '',
+  'aria-describedby': ariaDescribedBy,
   ...rest
 }: InputProps) {
+  const describedBy = useFieldDescribedBy(ariaDescribedBy)
   const control = (
     <input
       aria-invalid={invalid || undefined}
+      aria-describedby={describedBy}
       className={[
         'ui-focus-input ui-motion ui-disabled w-full rounded-control border bg-surface-2 px-3 text-text placeholder-text-faint',
         HEIGHT[size],

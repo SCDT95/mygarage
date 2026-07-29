@@ -1,6 +1,7 @@
 import type { SelectHTMLAttributes } from 'react'
 import { ChevronDown } from 'lucide-react'
 import type { Size } from './types'
+import { useFieldDescribedBy } from './fieldContext'
 
 export interface SelectOption {
   value: string
@@ -58,12 +59,15 @@ export default function Select({
   size = 'md',
   invalid = false,
   className = '',
+  'aria-describedby': ariaDescribedBy,
   ...rest
 }: SelectProps) {
+  const describedBy = useFieldDescribedBy(ariaDescribedBy)
   return (
     <div className="relative">
       <select
         aria-invalid={invalid || undefined}
+        aria-describedby={describedBy}
         className={[
           'ui-focus-input ui-motion ui-disabled w-full cursor-pointer appearance-none rounded-control border bg-surface-2 pl-3 pr-10 text-text',
           HEIGHT[size],
