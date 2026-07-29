@@ -5,7 +5,7 @@ import { Avatar, Badge, IconButton } from '../ui'
 import NavSearch from './NavSearch'
 import NotificationBell from './NotificationBell'
 import QuickSettingsDrawer from './QuickSettingsDrawer'
-import { useTheme } from '../../contexts/ThemeContext'
+import { useThemePreference } from '../../hooks/useThemePreference'
 import { useAuth } from '../../contexts/AuthContext'
 
 /**
@@ -22,7 +22,7 @@ import { useAuth } from '../../contexts/AuthContext'
  */
 export default function RightCluster() {
   const { t } = useTranslation('nav')
-  const { theme, toggleTheme } = useTheme()
+  const { theme, toggleTheme } = useThemePreference()
   const { user, isAuthenticated, isAdmin, logout, authMode } = useAuth()
   const navigate = useNavigate()
 

@@ -13,6 +13,7 @@ interface User {
   language?: string
   currency_code?: string
   accent_color?: string | null
+  theme?: 'light' | 'dark' | null
   // Fuel-tracking form defaults (issue #69)
   default_payment_method?: string | null
   default_trip_type?: string | null

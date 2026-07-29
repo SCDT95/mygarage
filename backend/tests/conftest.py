@@ -210,9 +210,10 @@ async def test_user(db_session: AsyncSession) -> dict[str, object]:
         user.email = "testuser@example.com"
         user.is_active = True
         user.is_admin = True
-        # accent_color leaks between tests (a prior test may PUT an explicit
-        # value, and null-on-PUT means "no change"), so reset it to unset here.
+        # accent_color / theme leak between tests (a prior test may PUT an
+        # explicit value, and null-on-PUT means "no change"), so reset to unset.
         user.accent_color = None
+        user.theme = None
         await db_session.commit()
         await db_session.refresh(user)
 

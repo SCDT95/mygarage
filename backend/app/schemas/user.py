@@ -11,6 +11,7 @@ from pydantic import BaseModel, ConfigDict, EmailStr, Field, field_validator, mo
 from app.constants.accents import SUPPORTED_ACCENTS
 from app.constants.fuel import PAYMENT_METHOD_VALUES, TRIP_TYPE_VALUES
 from app.constants.i18n import SUPPORTED_CURRENCIES, SUPPORTED_LANGUAGES
+from app.constants.theme import SUPPORTED_THEMES
 
 # Relationship type presets for family system
 RELATIONSHIP_PRESETS: list[dict[str, str]] = [
@@ -96,6 +97,8 @@ class UserSelfUpdate(BaseModel):
     currency_code: str | None = Field(None, max_length=3)
     # UI theme accent
     accent_color: str | None = Field(None, max_length=20)
+    # UI light/dark theme
+    theme: str | None = Field(None, max_length=10)
     # Fuel-tracking form defaults (issue #69)
     default_payment_method: str | None = Field(None, max_length=20)
     default_trip_type: str | None = Field(None, max_length=20)
@@ -124,6 +127,14 @@ class UserSelfUpdate(BaseModel):
         """Validate accent against the six-key allowlist."""
         if v is not None and v not in SUPPORTED_ACCENTS:
             raise ValueError(f"Unsupported accent: {v}. Supported: {sorted(SUPPORTED_ACCENTS)}")
+        return v
+
+    @field_validator("theme")
+    @classmethod
+    def validate_theme(cls, v: Any) -> Any:
+        """Validate theme against the light/dark allowlist."""
+        if v is not None and v not in SUPPORTED_THEMES:
+            raise ValueError(f"Unsupported theme: {v}. Supported: {sorted(SUPPORTED_THEMES)}")
         return v
 
     @field_validator("default_payment_method")
@@ -161,6 +172,8 @@ class AdminUserUpdate(BaseModel):
     currency_code: str | None = Field(None, max_length=3)
     # UI theme accent
     accent_color: str | None = Field(None, max_length=20)
+    # UI light/dark theme
+    theme: str | None = Field(None, max_length=10)
     # Family/relationship fields
     relationship: RelationshipType = None
     relationship_custom: str | None = Field(None, max_length=100)
@@ -191,6 +204,14 @@ class AdminUserUpdate(BaseModel):
         """Validate accent against the six-key allowlist."""
         if v is not None and v not in SUPPORTED_ACCENTS:
             raise ValueError(f"Unsupported accent: {v}. Supported: {sorted(SUPPORTED_ACCENTS)}")
+        return v
+
+    @field_validator("theme")
+    @classmethod
+    def validate_theme(cls, v: Any) -> Any:
+        """Validate theme against the light/dark allowlist."""
+        if v is not None and v not in SUPPORTED_THEMES:
+            raise ValueError(f"Unsupported theme: {v}. Supported: {sorted(SUPPORTED_THEMES)}")
         return v
 
     @model_validator(mode="after")
@@ -276,6 +297,8 @@ class UserResponse(UserBase):
     currency_code: str = "USD"
     # UI theme accent — None when the user has never explicitly picked one.
     accent_color: str | None = None
+    # UI light/dark theme — None when the user has never explicitly picked one.
+    theme: str | None = None
     # Fuel-tracking form defaults (issue #69)
     default_payment_method: str | None = None
     default_trip_type: str | None = None

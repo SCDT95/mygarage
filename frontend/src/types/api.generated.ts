@@ -6203,6 +6203,8 @@ export interface components {
             show_both_units?: boolean | null;
             /** Show On Family Dashboard */
             show_on_family_dashboard?: boolean | null;
+            /** Theme */
+            theme?: string | null;
             /** Time Format */
             time_format?: string | null;
             /** Unit Preference */
@@ -12657,6 +12659,8 @@ export interface components {
              * @default false
              */
             show_on_family_dashboard: boolean;
+            /** Theme */
+            theme?: string | null;
             /**
              * Time Format
              * @default 12h
@@ -12698,6 +12702,8 @@ export interface components {
             mobile_quick_entry_enabled?: boolean | null;
             /** Show Both Units */
             show_both_units?: boolean | null;
+            /** Theme */
+            theme?: string | null;
             /** Time Format */
             time_format?: string | null;
             /** Unit Preference */

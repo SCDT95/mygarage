@@ -3,7 +3,7 @@ import { useTranslation } from 'react-i18next'
 import { Server, CheckCircle, AlertCircle, Info, Shield, Users, AlertTriangle, Key, Wrench, Fuel, Bell, FileText, StickyNote, Camera, Sun, Moon, Ruler, Clock, Archive, Smartphone, Globe, DollarSign } from 'lucide-react'
 import { useAuth } from '@/contexts/AuthContext'
 import { useSettings } from '@/contexts/SettingsContext'
-import { useTheme } from '@/contexts/ThemeContext'
+import { useThemePreference } from '@/hooks/useThemePreference'
 import type { DashboardResponse } from '@/types/dashboard'
 import api from '@/services/api'
 import { toast } from 'sonner'
@@ -23,7 +23,7 @@ export default function SettingsSystemTab() {
   const { i18n } = useTranslation()
   const { isAuthenticated, isAdmin, user: currentUser, refreshUser } = useAuth()
   const { triggerSave, registerSaveHandler, unregisterSaveHandler } = useSettings()
-  const { theme, setTheme } = useTheme()
+  const { theme, setTheme } = useThemePreference()
   const [formData, setFormData] = useState({
     timezone: 'UTC',
     debug: 'false',

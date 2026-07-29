@@ -90,6 +90,41 @@ class TestUpdateCurrentUserPreferences:
         assert response.status_code == 200
         assert response.json()["accent_color"] is None
 
+    async def test_update_theme(self, client: AsyncClient, auth_headers, test_user, db_session):
+        """Test that the per-account light/dark theme can be updated and persists."""
+        response = await client.put(
+            "/api/auth/me",
+            json={"theme": "light"},
+            headers=auth_headers,
+        )
+        assert response.status_code == 200
+        assert response.json()["theme"] == "light"
+
+        # Verify persisted
+        user = await db_session.get(User, test_user["id"])
+        await db_session.refresh(user)
+        assert user.theme == "light"
+
+    async def test_update_theme_rejects_unsupported(self, client: AsyncClient, auth_headers):
+        """A theme outside the light/dark allowlist is rejected (422)."""
+        response = await client.put(
+            "/api/auth/me",
+            json={"theme": "solarized"},
+            headers=auth_headers,
+        )
+        assert response.status_code == 422
+
+    async def test_theme_unset_by_default(self, client: AsyncClient, auth_headers):
+        """A freshly-created user has NO explicit theme (NULL) from GET /auth/me.
+
+        NULL means "never picked" so the client's localStorage seed / default
+        applies and useThemeSync must not override it; an explicit pick stores a
+        non-null value that syncs across devices.
+        """
+        response = await client.get("/api/auth/me", headers=auth_headers)
+        assert response.status_code == 200
+        assert response.json()["theme"] is None
+
     async def test_update_show_both_units(
         self, client: AsyncClient, auth_headers, test_user, db_session
     ):

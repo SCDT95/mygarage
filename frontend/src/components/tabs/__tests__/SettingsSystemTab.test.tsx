@@ -34,8 +34,8 @@ vi.mock('@/contexts/AuthContext', () => ({
   }),
 }))
 
-vi.mock('@/contexts/ThemeContext', () => ({
-  useTheme: () => ({ theme: 'light', setTheme: vi.fn() }),
+vi.mock('@/hooks/useThemePreference', () => ({
+  useThemePreference: () => ({ theme: 'light', setTheme: vi.fn(), toggleTheme: vi.fn() }),
 }))
 
 // Children with their own data fetching; not under test here.

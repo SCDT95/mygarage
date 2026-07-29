@@ -1,20 +1,26 @@
-import { describe, it, expect, vi } from 'vitest'
+import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen, fireEvent } from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom'
-import * as ThemeContext from '../../../contexts/ThemeContext'
 import * as AuthContext from '../../../contexts/AuthContext'
 import RightCluster from '../RightCluster'
 
-vi.mock('../../../contexts/ThemeContext')
+// RightCluster toggles theme via useThemePreference (local apply + account PUT);
+// mock the hook so the toggle handler is observable without a live provider.
+const themeMocks = vi.hoisted(() => ({ toggleTheme: vi.fn(), setTheme: vi.fn() }))
+vi.mock('../../../hooks/useThemePreference', () => ({
+  useThemePreference: () => ({ theme: 'dark', toggleTheme: themeMocks.toggleTheme, setTheme: themeMocks.setTheme }),
+}))
 vi.mock('../../../contexts/AuthContext')
 // QuickSettingsDrawer (a child) reads useAccent; stub it — not under test here.
 vi.mock('../../../contexts/AccentContext', () => ({
   useAccent: () => ({ accent: 'blue', setAccent: vi.fn() }),
 }))
 
+beforeEach(() => {
+  vi.clearAllMocks()
+})
+
 function setup(overrides: Partial<ReturnType<typeof AuthContext.useAuth>> = {}) {
-  const toggleTheme = vi.fn()
-  vi.spyOn(ThemeContext, 'useTheme').mockReturnValue({ theme: 'dark', toggleTheme, setTheme: vi.fn() })
   vi.spyOn(AuthContext, 'useAuth').mockReturnValue({
     user: { id: 1, username: 'jamey', email: 'j@x', is_admin: false },
     isAuthenticated: true,
@@ -28,14 +34,13 @@ function setup(overrides: Partial<ReturnType<typeof AuthContext.useAuth>> = {}) 
       <RightCluster />
     </MemoryRouter>
   )
-  return { toggleTheme }
 }
 
 describe('RightCluster', () => {
   it('theme toggle calls toggleTheme', () => {
-    const { toggleTheme } = setup()
+    setup()
     fireEvent.click(screen.getByRole('button', { name: 'themeToggle' }))
-    expect(toggleTheme).toHaveBeenCalledOnce()
+    expect(themeMocks.toggleTheme).toHaveBeenCalledOnce()
   })
 
   it('the settings gear is a button that opens the quick-settings drawer, not a nav link', async () => {

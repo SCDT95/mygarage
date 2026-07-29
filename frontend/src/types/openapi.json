@@ -993,6 +993,18 @@
             ],
             "title": "Show On Family Dashboard"
           },
+          "theme": {
+            "anyOf": [
+              {
+                "maxLength": 10,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Theme"
+          },
           "time_format": {
             "anyOf": [
               {
@@ -15612,6 +15624,17 @@
             "title": "Show On Family Dashboard",
             "type": "boolean"
           },
+          "theme": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Theme"
+          },
           "time_format": {
             "default": "12h",
             "title": "Time Format",
@@ -15757,6 +15780,18 @@
               }
             ],
             "title": "Show Both Units"
+          },
+          "theme": {
+            "anyOf": [
+              {
+                "maxLength": 10,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Theme"
           },
           "time_format": {
             "anyOf": [

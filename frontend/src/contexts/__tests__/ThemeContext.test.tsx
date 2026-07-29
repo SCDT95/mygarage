@@ -1,12 +1,11 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { render, screen, act, waitFor } from '@testing-library/react'
-import axios from 'axios'
+import { render, screen, act } from '@testing-library/react'
 import { ThemeProvider, useTheme } from '../ThemeContext'
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-const mockedAxios = axios as any
+// ThemeContext is auth-agnostic and synchronous: it seeds from localStorage and
+// applies the class before paint. The DB read (useThemeSync) and the account
+// write (useThemePreference) are tested separately — no axios here.
 
-// Test component to expose theme context values
 function ThemeConsumer() {
   const { theme, toggleTheme, setTheme } = useTheme()
   return (
@@ -19,9 +18,16 @@ function ThemeConsumer() {
   )
 }
 
+function renderProvider() {
+  return render(
+    <ThemeProvider>
+      <ThemeConsumer />
+    </ThemeProvider>
+  )
+}
+
 describe('ThemeContext', () => {
   beforeEach(() => {
-    vi.clearAllMocks()
     localStorage.clear()
     document.documentElement.classList.remove('light', 'dark')
 
@@ -35,164 +41,70 @@ describe('ThemeContext', () => {
   })
 
   it('useTheme throws when used outside ThemeProvider', () => {
-    // Suppress console.error for expected error
     vi.spyOn(console, 'error').mockImplementation(() => {})
-
-    expect(() => render(<ThemeConsumer />)).toThrow(
-      'useTheme must be used within a ThemeProvider'
-    )
+    expect(() => render(<ThemeConsumer />)).toThrow('useTheme must be used within a ThemeProvider')
   })
 
-  it('initializes with dark theme by default', async () => {
-    // Mock API returning no theme setting
-    mockedAxios.get.mockResolvedValueOnce({
-      data: { settings: [], total: 0 },
-    })
-
-    render(
-      <ThemeProvider>
-        <ThemeConsumer />
-      </ThemeProvider>
-    )
-
-    await waitFor(() => {
-      expect(screen.getByTestId('theme-value')).toHaveTextContent('dark')
-    })
+  it('defaults to dark when nothing is stored', () => {
+    renderProvider()
+    expect(screen.getByTestId('theme-value')).toHaveTextContent('dark')
   })
 
-  it('loads theme from localStorage', async () => {
+  it('seeds the theme from localStorage', () => {
     localStorage.setItem('theme', 'light')
-
-    mockedAxios.get.mockResolvedValueOnce({
-      data: { settings: [], total: 0 },
-    })
-
-    render(
-      <ThemeProvider>
-        <ThemeConsumer />
-      </ThemeProvider>
-    )
-
-    await waitFor(() => {
-      expect(screen.getByTestId('theme-value')).toHaveTextContent('light')
-    })
+    renderProvider()
+    expect(screen.getByTestId('theme-value')).toHaveTextContent('light')
   })
 
-  it('syncs theme from database over localStorage', async () => {
-    localStorage.setItem('theme', 'light')
-
-    // Database returns dark theme
-    mockedAxios.get.mockResolvedValueOnce({
-      data: {
-        settings: [{ key: 'theme', value: 'dark' }],
-        total: 1,
-      },
-    })
-
-    render(
-      <ThemeProvider>
-        <ThemeConsumer />
-      </ThemeProvider>
-    )
-
-    await waitFor(() => {
-      expect(screen.getByTestId('theme-value')).toHaveTextContent('dark')
-    })
-
-    // localStorage should be updated to match database
-    expect(localStorage.getItem('theme')).toBe('dark')
+  it('renders children synchronously (no fetch gate)', () => {
+    const { container } = renderProvider()
+    // The old null-until-initialized gate is gone — the consumer is present at once.
+    expect(container.querySelector('[data-testid="theme-value"]')).not.toBeNull()
   })
 
-  it('applies dark class to document element', async () => {
-    mockedAxios.get.mockResolvedValueOnce({
-      data: { settings: [], total: 0 },
-    })
-
-    render(
-      <ThemeProvider>
-        <ThemeConsumer />
-      </ThemeProvider>
-    )
-
-    await waitFor(() => {
-      expect(document.documentElement.classList.contains('dark')).toBe(true)
-    })
+  it('applies the theme class to the document element', () => {
+    renderProvider()
+    expect(document.documentElement.classList.contains('dark')).toBe(true)
   })
 
-  it('toggles theme from dark to light', async () => {
-    mockedAxios.get.mockResolvedValueOnce({
-      data: { settings: [], total: 0 },
-    })
-    // Mock the PUT for saving theme
-    mockedAxios.put.mockResolvedValueOnce({ data: {} })
+  it('toggles dark -> light, updating value, localStorage and class', () => {
+    renderProvider()
+    expect(screen.getByTestId('theme-value')).toHaveTextContent('dark')
 
-    render(
-      <ThemeProvider>
-        <ThemeConsumer />
-      </ThemeProvider>
-    )
-
-    // Wait for initialization
-    await waitFor(() => {
-      expect(screen.getByTestId('theme-value')).toHaveTextContent('dark')
-    })
-
-    // Toggle to light
-    await act(async () => {
+    act(() => {
       screen.getByText('Toggle').click()
     })
 
     expect(screen.getByTestId('theme-value')).toHaveTextContent('light')
     expect(localStorage.getItem('theme')).toBe('light')
+    expect(document.documentElement.classList.contains('light')).toBe(true)
+    expect(document.documentElement.classList.contains('dark')).toBe(false)
   })
 
-  it('handles database fetch failure gracefully', async () => {
-    vi.spyOn(console, 'error').mockImplementation(() => {})
+  it('setTheme persists the exact value to localStorage', () => {
+    renderProvider()
 
-    mockedAxios.get.mockRejectedValueOnce(new Error('Network error'))
-
-    render(
-      <ThemeProvider>
-        <ThemeConsumer />
-      </ThemeProvider>
-    )
-
-    // Should still render with default dark theme
-    await waitFor(() => {
-      expect(screen.getByTestId('theme-value')).toHaveTextContent('dark')
+    act(() => {
+      screen.getByText('Set Light').click()
     })
+    expect(screen.getByTestId('theme-value')).toHaveTextContent('light')
+    expect(localStorage.getItem('theme')).toBe('light')
+
+    act(() => {
+      screen.getByText('Set Dark').click()
+    })
+    expect(localStorage.getItem('theme')).toBe('dark')
   })
 
-  it('updates the theme-color meta to the nav colour on init and toggle', async () => {
-    mockedAxios.get.mockResolvedValueOnce({ data: { settings: [], total: 0 } })
-    mockedAxios.put.mockResolvedValueOnce({ data: {} })
-
-    render(
-      <ThemeProvider>
-        <ThemeConsumer />
-      </ThemeProvider>
-    )
-
+  it('updates the theme-color meta to the nav colour on mount and toggle', () => {
+    renderProvider()
     const meta = () => document.querySelector('meta[name="theme-color"]')!.getAttribute('content')
 
-    await waitFor(() => expect(screen.getByTestId('theme-value')).toHaveTextContent('dark'))
     expect(meta()).toBe('#0b0e13')
 
-    await act(async () => { screen.getByText('Toggle').click() })
+    act(() => {
+      screen.getByText('Toggle').click()
+    })
     expect(meta()).toBe('#ffffff')
-  })
-
-  it('does not render children until initialized', () => {
-    // Use a promise that never resolves to keep initialization pending
-    mockedAxios.get.mockReturnValueOnce(new Promise(() => {}))
-
-    const { container } = render(
-      <ThemeProvider>
-        <ThemeConsumer />
-      </ThemeProvider>
-    )
-
-    // ThemeProvider returns null before initialized
-    expect(container.innerHTML).toBe('')
   })
 })

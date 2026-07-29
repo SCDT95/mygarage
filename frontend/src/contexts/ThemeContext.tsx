@@ -1,6 +1,4 @@
-import React, { createContext, useContext, useEffect, useState, useCallback } from 'react';
-import axios from 'axios';
-import { withBase } from '../utils/basePath';
+import React, { createContext, useContext, useState, useLayoutEffect, useCallback } from 'react';
 
 type Theme = 'light' | 'dark';
 
@@ -32,9 +30,25 @@ interface ThemeProviderProps {
   children: React.ReactNode;
 }
 
+/** Read the localStorage theme seed. The index.html bootstrap has already
+ *  applied the matching class before first paint, so this only mirrors that
+ *  seed into React state — no fetch, no flash. */
+function readStoredTheme(): Theme {
+  try {
+    const stored = localStorage.getItem('theme');
+    return stored === 'light' || stored === 'dark' ? stored : 'dark';
+  } catch {
+    return 'dark';
+  }
+}
+
 export const ThemeProvider: React.FC<ThemeProviderProps> = ({ children }) => {
-  const [theme, setThemeState] = useState<Theme>('dark');
-  const [isInitialized, setIsInitialized] = useState(false);
+  // Seeded synchronously from localStorage. The per-account theme (user.theme)
+  // is applied over this seed by useThemeSync once auth resolves — mirroring the
+  // accent architecture, ThemeProvider stays auth-agnostic (it mounts outside
+  // AuthProvider) and handles only the local apply + localStorage. The account
+  // write (PUT /auth/me) lives in useThemePreference at the toggle sites.
+  const [theme, setThemeState] = useState<Theme>(readStoredTheme);
 
   const applyTheme = useCallback((newTheme: Theme) => {
     const html = document.documentElement;
@@ -52,89 +66,21 @@ export const ThemeProvider: React.FC<ThemeProviderProps> = ({ children }) => {
     }
   }, []);
 
-  // Initialize theme from localStorage and database
-  useEffect(() => {
-    let cancelled = false;
+  // Apply before paint on mount and whenever the theme changes (toggle or
+  // useThemeSync). The bootstrap already applied the initial class, so the mount
+  // pass is an idempotent no-op that also keeps meta[theme-color] correct.
+  useLayoutEffect(() => {
+    applyTheme(theme);
+  }, [theme, applyTheme]);
 
-    const initializeTheme = async () => {
-      // First, try to get theme from localStorage (instant)
-      const localTheme = localStorage.getItem('theme') as Theme | null;
-      if (localTheme === 'light' || localTheme === 'dark') {
-        applyTheme(localTheme);
-        setThemeState(localTheme);
-      }
-
-      // Then, sync with database (persistent across devices)
-      // Use public endpoint for unauthenticated access (Security Enhancement v2.10.0)
-      try {
-        const response = await axios.get(withBase('/api/settings/public'));
-        if (cancelled) return;
-
-        const settings = response.data.settings; // API returns { settings: [...], total: N }
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const themeSetting = settings.find((s: any) => s.key === 'theme');
-
-        if (themeSetting && themeSetting.value) {
-          const dbTheme = themeSetting.value as Theme;
-          if (dbTheme !== localTheme) {
-            // Database has different value - use it
-            applyTheme(dbTheme);
-            setThemeState(dbTheme);
-            localStorage.setItem('theme', dbTheme);
-          }
-        } else if (!localTheme) {
-          // No theme set anywhere - use default dark
-          applyTheme('dark');
-          setThemeState('dark');
-          localStorage.setItem('theme', 'dark');
-        }
-      } catch (error) {
-        console.error('Failed to load theme from database:', error);
-        // If database fails, keep localStorage value or default to dark
-      }
-
-      if (!cancelled) {
-        setIsInitialized(true);
-      }
-    };
-
-    initializeTheme();
-
-    return () => { cancelled = true; };
-  }, [applyTheme]);
-
-  const setTheme = async (newTheme: Theme) => {
-    // Apply immediately to DOM
-    applyTheme(newTheme);
+  const setTheme = useCallback((newTheme: Theme) => {
     setThemeState(newTheme);
-
-    // Save to localStorage (instant persistence)
     localStorage.setItem('theme', newTheme);
+  }, []);
 
-    // Save to database (persistent across devices)
-    try {
-      await axios.put(withBase('/api/settings/theme'), {
-        key: 'theme',
-        value: newTheme,
-        category: 'general',
-        // i18n-exempt — API payload metadata persisted server-side, never rendered
-        description: 'User interface theme (light or dark)',
-      });
-    } catch (error) {
-      console.error('Failed to save theme to database:', error);
-      // Continue anyway - localStorage will work
-    }
-  };
-
-  const toggleTheme = () => {
-    const newTheme = theme === 'dark' ? 'light' : 'dark';
-    setTheme(newTheme);
-  };
-
-  // Don't render children until theme is initialized to prevent flash
-  if (!isInitialized) {
-    return null;
-  }
+  const toggleTheme = useCallback(() => {
+    setTheme(theme === 'dark' ? 'light' : 'dark');
+  }, [theme, setTheme]);
 
   return (
     <ThemeContext.Provider value={{ theme, toggleTheme, setTheme }}>

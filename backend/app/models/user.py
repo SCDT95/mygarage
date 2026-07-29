@@ -67,6 +67,15 @@ class User(Base):
         String(20), nullable=True
     )  # one of the six keys in frontend src/constants/accents.ts
 
+    # UI light/dark theme (per-account). Same nullable semantics as accent_color:
+    # NULL = the user has never explicitly picked a theme, so the client's
+    # localStorage seed / default wins and useThemeSync must NOT override it. A
+    # non-null value ('light' or 'dark') is an explicit choice that syncs across
+    # devices. The frontend also mirrors this to localStorage for instant apply.
+    theme: Mapped[str | None] = mapped_column(
+        String(10), nullable=True
+    )  # 'light' or 'dark' (see frontend src/contexts/ThemeContext.tsx)
+
     # Mobile experience
     mobile_quick_entry_enabled: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
 
