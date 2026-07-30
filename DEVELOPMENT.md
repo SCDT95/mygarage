@@ -106,16 +106,16 @@ bun run build
 bun run preview
 
 # Run tests
-bun test
+bun run test:run
 
 # Run tests in watch mode
-bun test --watch
+bun run test
 
 # Run tests with UI
-bun test --ui
+bun run test:ui
 
 # Run tests with coverage
-bun test --coverage
+bun run test:coverage
 
 # Type checking
 bun run type-check
@@ -162,7 +162,7 @@ frontend/
 1. **Start dev server**: `bun dev`
 2. **Make changes** - HMR will automatically reload
 3. **Check types**: `bun run type-check`
-4. **Run tests**: `bun test`
+4. **Run tests**: `bun run test:run`
 5. **Lint code**: `bun run lint`
 6. **Build**: `bun run build`
 
@@ -377,19 +377,19 @@ docker rm mygarage-test
 cd frontend
 
 # Run all tests
-bun test
+bun run test:run
 
 # Run tests in watch mode
-bun test --watch
+bun run test
 
 # Run tests with UI
-bun test --ui
+bun run test:ui
 
 # Run with coverage
-bun test --coverage
+bun run test:coverage
 
 # Run specific test file
-bun test src/components/VehicleCard.test.tsx
+bun run test:run src/components/VehicleCard.test.tsx
 ```
 
 Test framework: **Vitest** with:
@@ -567,7 +567,7 @@ This means when you update application code, users only download changed chunks,
 1. Fork the repository
 2. Create a feature branch: `git checkout -b feature/my-feature`
 3. Make changes
-4. Run tests: `bun test && pytest`
+4. Run tests: `bun run test:run && pytest`
 5. Run linters: `bun run lint`
 6. Commit changes: `git commit -m "feat: add my feature"`
 7. Push: `git push origin feature/my-feature`
