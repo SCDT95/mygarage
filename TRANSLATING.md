@@ -78,12 +78,12 @@ Translate the text around them:
 
 Start with the files users see most:
 
-1. `nav.json` (15 keys) — navigation labels
-2. `common.json` (~160 keys) — buttons, errors, auth pages
-3. `settings.json` (~220 keys) — settings page
-4. `vehicles.json` (~620 keys) — vehicle screens, lists, detail pages
-5. `forms.json` (~350 keys) — form labels, modals
-6. `analytics.json` — analytics pages (if populated)
+1. `nav.json` — navigation labels
+2. `common.json` — buttons, errors, auth pages
+3. `settings.json` — settings page
+4. `vehicles.json` — vehicle screens, lists, detail pages
+5. `forms.json` — form labels and modals
+6. `analytics.json` — analytics pages
 
 ### 6. Validate Your Work
 
@@ -115,19 +115,20 @@ bun run validate:translations
 
 ## Supported Languages
 
-Every key is translated in all of them. See [TRANSLATIONS.md](TRANSLATIONS.md) for
-the live percentages — they sit just under 100% because strings like `VIN`,
-`MyGarage` and `Diesel` are correctly identical to English (see
-[Things NOT to Translate](#things-not-to-translate)), not because anything is missing.
+See [TRANSLATIONS.md](TRANSLATIONS.md) for live per-language coverage. No language
+ever reads 100%, even when complete: shared terms like `VIN`, `MyGarage` and
+`Diesel` are correctly identical to English (see
+[Things NOT to Translate](#things-not-to-translate)) and count as untranslated.
 
 | Code | Language |
 |------|----------|
 | en | English (canonical source) |
+| de | German |
 | fr | French |
 | pl | Polish |
-| uk | Ukrainian |
-| ru | Russian |
 | pt-BR | Brazilian Portuguese |
+| ru | Russian |
+| uk | Ukrainian |
 
 To add a new language, translating the files is not enough — a locale directory
 that isn't registered in **all three** allowlists is never loaded, and
@@ -143,4 +144,5 @@ users, and vice versa.
 
 ## Questions?
 
-Open a [Discussion](https://github.com/homelabforge/mygarage/discussions) on GitHub.
+Open a [GitHub Discussion](https://github.com/homelabforge/mygarage/discussions)
+or ask in our [Discord community](https://discord.gg/6XttnVgG).
