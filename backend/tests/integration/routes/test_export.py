@@ -9,6 +9,27 @@ import pytest
 from httpx import AsyncClient
 
 
+@pytest.fixture(autouse=True)
+def _reset_export_rate_limit():
+    """Reset export routes' shared limiter storage before each test.
+
+    ``routes/export.py`` defines a single module-level ``Limiter`` shared by
+    every export endpoint (5/minute, deliberately strict for expensive
+    CSV/JSON generation). Without a reset, cumulative calls across this
+    file's tests (including ``test_export_rate_limiting``'s intentional
+    10-call burst) exhaust the budget and later tests intermittently 429
+    regardless of their own logic. Mirrors the precedent in
+    ``test_auth.py``'s ``TestCookieSecureFlag._reset_rate_limits``.
+    """
+    from app.routes.export import limiter as export_limiter
+
+    storage = export_limiter._storage
+    storage.storage.clear()
+    storage.expirations.clear()
+    if hasattr(storage, "events"):
+        storage.events.clear()
+
+
 @pytest.mark.integration
 @pytest.mark.asyncio
 @pytest.mark.slow
@@ -153,3 +174,254 @@ class TestExportRoutes:
         assert response.status_code == 200
         content_type = response.headers.get("content-type", "")
         assert "csv" in content_type.lower() or "text/csv" in content_type
+
+
+@pytest.mark.integration
+@pytest.mark.asyncio
+class TestFuelCSVExportEngineHours:
+    """Phase 9: fuel_records.engine_hours is a real exported column (P0 EXCLUDE removed)."""
+
+    async def test_fuel_csv_export_includes_engine_hours_column(
+        self, client: AsyncClient, auth_headers, test_vehicle, db_session
+    ):
+        import csv
+        import io
+        from datetime import date
+        from decimal import Decimal
+
+        from app.models.fuel import FuelRecord
+
+        db_session.add(
+            FuelRecord(
+                vin=test_vehicle["vin"],
+                date=date(2026, 4, 1),
+                odometer_km=Decimal("1000.00"),
+                engine_hours=Decimal("123.4"),
+                liters=Decimal("20.0"),
+                cost=Decimal("30.00"),
+                is_full_tank=True,
+            )
+        )
+        await db_session.commit()
+
+        response = await client.get(
+            f"/api/export/vehicles/{test_vehicle['vin']}/fuel/csv",
+            headers=auth_headers,
+        )
+        assert response.status_code == 200
+
+        reader = csv.DictReader(io.StringIO(response.text))
+        rows = list(reader)
+        assert "Engine Hours" in reader.fieldnames
+
+        row = next(r for r in rows if r["Date"] == "2026-04-01")
+        assert row["Engine Hours"] == "123.4"
+
+    async def test_fuel_csv_export_null_engine_hours_is_blank(
+        self, client: AsyncClient, auth_headers, test_user, db_session
+    ):
+        """Records with no engine_hours (pure-distance vehicle) emit an empty cell.
+
+        Uses a dedicated VIN rather than the shared ``test_vehicle`` /
+        ``test_vehicle_with_records`` fixtures: those reuse one fixed VIN
+        across the whole test session, so records from unrelated tests
+        (including this class's own ``engine_hours``-bearing record) would
+        otherwise leak into the row set and break an "all blank" assertion.
+        """
+        import csv
+        import io
+        from datetime import date
+        from decimal import Decimal
+
+        from app.models.fuel import FuelRecord
+        from app.models.vehicle import Vehicle
+
+        vin = "FUELNULLHRS000001"
+        db_session.add(
+            Vehicle(
+                vin=vin,
+                user_id=test_user["id"],
+                nickname="Fuel Null Hours",
+                vehicle_type="Car",
+                year=2024,
+                make="Test",
+                model="NullHours",
+            )
+        )
+        await db_session.commit()
+
+        db_session.add(
+            FuelRecord(
+                vin=vin,
+                date=date(2026, 4, 6),
+                odometer_km=Decimal("2000.00"),
+                liters=Decimal("15.0"),
+                cost=Decimal("22.00"),
+                is_full_tank=True,
+            )
+        )
+        await db_session.commit()
+
+        response = await client.get(
+            f"/api/export/vehicles/{vin}/fuel/csv",
+            headers=auth_headers,
+        )
+        assert response.status_code == 200
+        reader = csv.DictReader(io.StringIO(response.text))
+        rows = list(reader)
+        assert rows
+        assert all(r["Engine Hours"] == "" for r in rows)
+
+
+@pytest.mark.integration
+@pytest.mark.asyncio
+class TestServiceCSVExportEngineHours:
+    """Phase 9: service-visit CSV export gains an engine_hours column."""
+
+    async def test_service_csv_export_includes_engine_hours_column(
+        self, client: AsyncClient, auth_headers, test_vehicle, db_session
+    ):
+        import csv
+        import io
+        from datetime import date
+        from decimal import Decimal
+
+        from app.models.service_line_item import ServiceLineItem
+        from app.models.service_visit import ServiceVisit
+
+        visit = ServiceVisit(
+            vin=test_vehicle["vin"],
+            date=date(2026, 4, 2),
+            odometer_km=Decimal("1000.00"),
+            engine_hours=Decimal("55.5"),
+            service_category="Maintenance",
+            total_cost=Decimal("45.00"),
+        )
+        db_session.add(visit)
+        await db_session.flush()
+        db_session.add(
+            ServiceLineItem(visit_id=visit.id, description="Oil change", cost=Decimal("45.00"))
+        )
+        await db_session.commit()
+
+        response = await client.get(
+            f"/api/export/vehicles/{test_vehicle['vin']}/service/csv",
+            headers=auth_headers,
+        )
+        assert response.status_code == 200
+        reader = csv.DictReader(io.StringIO(response.text))
+        rows = list(reader)
+        assert "Engine Hours" in reader.fieldnames
+        row = next(r for r in rows if r["Date"] == "2026-04-02")
+        assert row["Engine Hours"] == "55.5"
+
+
+@pytest.mark.integration
+@pytest.mark.asyncio
+class TestHoursCSVExport:
+    """Phase 9: standalone hours CSV export, mirroring the odometer CSV endpoint."""
+
+    async def test_export_hours_csv(
+        self, client: AsyncClient, auth_headers, test_vehicle, db_session
+    ):
+        import csv
+        import io
+        from datetime import date
+        from decimal import Decimal
+
+        from app.models.hours import HoursRecord
+
+        db_session.add(
+            HoursRecord(
+                vin=test_vehicle["vin"],
+                date=date(2026, 4, 3),
+                engine_hours=Decimal("200.1"),
+                notes="Manual reading",
+                source="manual",
+            )
+        )
+        await db_session.commit()
+
+        response = await client.get(
+            f"/api/export/vehicles/{test_vehicle['vin']}/hours/csv",
+            headers=auth_headers,
+        )
+        assert response.status_code == 200
+        content_type = response.headers.get("content-type", "")
+        assert "csv" in content_type.lower() or "text/csv" in content_type
+
+        reader = csv.DictReader(io.StringIO(response.text))
+        rows = list(reader)
+        assert set(reader.fieldnames) == {
+            "units_version",
+            "Date",
+            "Engine Hours",
+            "Notes",
+            "Source",
+        }
+        row = next(r for r in rows if r["Date"] == "2026-04-03")
+        assert row["Engine Hours"] == "200.1"
+        assert row["Notes"] == "Manual reading"
+        assert row["Source"] == "manual"
+
+    async def test_export_hours_csv_unauthorized(
+        self, client: AsyncClient, test_vehicle_with_records
+    ):
+        """Matches the odometer CSV endpoint's authz: 401 with no token."""
+        vehicle = test_vehicle_with_records
+        response = await client.get(f"/api/export/vehicles/{vehicle['vin']}/hours/csv")
+        assert response.status_code == 401
+
+    async def test_export_hours_csv_vehicle_not_found(self, client: AsyncClient, auth_headers):
+        response = await client.get(
+            "/api/export/vehicles/INVALIDVIN1234567/hours/csv",
+            headers=auth_headers,
+        )
+        assert response.status_code == 404
+
+    async def test_export_hours_csv_forbidden_non_owner(
+        self, client: AsyncClient, non_admin_headers, test_vehicle
+    ):
+        response = await client.get(
+            f"/api/export/vehicles/{test_vehicle['vin']}/hours/csv",
+            headers=non_admin_headers,
+        )
+        assert response.status_code == 403
+
+
+@pytest.mark.integration
+@pytest.mark.asyncio
+class TestFullVehicleJSONExportHours:
+    """Phase 9: full-vehicle JSON export gains an hours_records array."""
+
+    async def test_json_export_contains_hours_records(
+        self, client: AsyncClient, auth_headers, test_vehicle, db_session
+    ):
+        from datetime import date
+        from decimal import Decimal
+
+        from app.models.hours import HoursRecord
+
+        db_session.add(
+            HoursRecord(
+                vin=test_vehicle["vin"],
+                date=date(2026, 4, 4),
+                engine_hours=Decimal("321.9"),
+                notes="JSON export check",
+                source="manual",
+            )
+        )
+        await db_session.commit()
+
+        response = await client.get(
+            f"/api/export/vehicles/{test_vehicle['vin']}/json",
+            headers=auth_headers,
+        )
+        assert response.status_code == 200
+        data = response.json()
+        assert "hours_records" in data
+        matching = [r for r in data["hours_records"] if r["date"] == "2026-04-04"]
+        assert len(matching) == 1
+        assert matching[0]["engine_hours"] == 321.9
+        assert matching[0]["notes"] == "JSON export check"
+        assert matching[0]["source"] == "manual"

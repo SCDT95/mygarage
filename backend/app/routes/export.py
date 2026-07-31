@@ -16,6 +16,7 @@ from app.database import get_db
 from app.models import (
     DEFRecord,
     FuelRecord,
+    HoursRecord,
     InsurancePolicy,
     Note,
     OdometerRecord,
@@ -94,6 +95,7 @@ async def export_service_records_csv(
         "Category",
         "Description",
         "Odometer (km)",
+        "Engine Hours",
         "Cost",
         "Vendor",
         "Notes",
@@ -102,6 +104,11 @@ async def export_service_records_csv(
     rows = []
     for visit in visits:
         vendor_name = visit.vendor.name if visit.vendor else ""
+        # engine_hours: hour-metered vehicles (ATVs, side-by-sides, equipment).
+        # Dimensionless — no unit conversion. `is not None` (not `or ""`) so a
+        # genuine 0.0 reading isn't dropped, matching fuel's outside_temp_c/
+        # obc_l_per_100km convention.
+        engine_hours = f"{visit.engine_hours:.1f}" if visit.engine_hours is not None else ""
         if visit.line_items:
             for item in visit.line_items:
                 rows.append(
@@ -110,6 +117,7 @@ async def export_service_records_csv(
                         visit.service_category or "",
                         item.description or "",
                         visit.odometer_km or "",
+                        engine_hours,
                         f"{item.cost:.2f}" if item.cost else "",
                         vendor_name,
                         item.notes or visit.notes or "",
@@ -123,6 +131,7 @@ async def export_service_records_csv(
                     visit.service_category or "",
                     "",
                     visit.odometer_km or "",
+                    engine_hours,
                     f"{visit.calculated_total_cost:.2f}" if visit.calculated_total_cost else "",
                     vendor_name,
                     visit.notes or "",
@@ -172,6 +181,7 @@ async def export_fuel_records_csv(
         "Date",
         "Filled At",
         "Odometer (km)",
+        "Engine Hours",
         "Liters",
         "Price Per Liter",
         "Rebate",
@@ -201,6 +211,10 @@ async def export_fuel_records_csv(
                 record.date.isoformat() if record.date else "",
                 record.filled_at.isoformat() if record.filled_at else "",
                 record.odometer_km or "",
+                # Dimensionless — no unit conversion. `is not None` (not `or ""`)
+                # so a genuine 0.0 reading isn't dropped, matching outside_temp_c
+                # / obc_l_per_100km below.
+                f"{record.engine_hours:.1f}" if record.engine_hours is not None else "",
                 f"{record.liters:.3f}" if record.liters else "",
                 f"{record.price_per_unit:.3f}" if record.price_per_unit else "",
                 f"{record.rebate:.2f}" if record.rebate else "",
@@ -326,6 +340,62 @@ async def export_odometer_records_csv(
 
     # Generate filename
     filename = f"{vehicle.year}_{vehicle.make}_{vehicle.model}_odometer_records_{datetime.now().strftime('%Y%m%d')}.csv"
+
+    return StreamingResponse(
+        iter([output.getvalue()]),
+        media_type="text/csv",
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+    )
+
+
+@router.get("/vehicles/{vin}/hours/csv")
+@limiter.limit(settings.rate_limit_exports)
+async def export_hours_records_csv(
+    request: Request,
+    vin: str,
+    db: AsyncSession = Depends(get_db),
+    current_user: User | None = Depends(require_auth),
+):
+    """Export engine-hours records as CSV.
+
+    Mirrors :func:`export_odometer_records_csv` — the hours track's
+    standalone history CSV for hour-metered vehicles (ATVs, side-by-sides,
+    equipment). Registered under this router (``/api/export``), not the
+    hours CRUD router (``/api/vehicles/{vin}/hours``), to avoid shadowing
+    that router's ``GET /{record_id}`` route.
+    """
+    # Verify vehicle exists and user has access
+    vehicle = await get_vehicle_or_403(vin, current_user, db)
+
+    # Get all hours records
+    result = await db.execute(
+        select(HoursRecord).where(HoursRecord.vin == vin).order_by(HoursRecord.date.desc())
+    )
+    records = result.scalars().all()
+
+    # Generate CSV. `source` documents provenance (manual/fuel/service_visit)
+    # for the operator's reference — the importer always writes 'manual' on
+    # re-import (see import_hours_csv), since a CSV can't carry a live FK to
+    # a fuel/service row in the target vehicle's tables.
+    headers = ["Date", "Engine Hours", "Notes", "Source"]
+
+    rows = []
+    for record in records:
+        rows.append(
+            [
+                record.date.isoformat() if record.date else "",
+                # Dimensionless — no unit conversion. `is not None` (not
+                # `or ""`) so a genuine 0.0 reading isn't dropped.
+                f"{record.engine_hours:.1f}" if record.engine_hours is not None else "",
+                record.notes or "",
+                record.source or "",
+            ]
+        )
+
+    output = generate_csv_stream(headers, rows)
+
+    # Generate filename
+    filename = f"{vehicle.year}_{vehicle.make}_{vehicle.model}_hours_records_{datetime.now().strftime('%Y%m%d')}.csv"
 
     return StreamingResponse(
         iter([output.getvalue()]),
@@ -587,6 +657,11 @@ async def export_vehicle_json(
     )
     odometer_records = odometer_result.scalars().all()
 
+    hours_result = await db.execute(
+        select(HoursRecord).where(HoursRecord.vin == vin).order_by(HoursRecord.date.desc())
+    )
+    hours_records = hours_result.scalars().all()
+
     note_result = await db.execute(select(Note).where(Note.vin == vin).order_by(Note.date.desc()))
     notes = note_result.scalars().all()
 
@@ -661,6 +736,15 @@ async def export_vehicle_json(
                 "notes": r.notes,
             }
             for r in odometer_records
+        ],
+        "hours_records": [
+            {
+                "date": r.date.isoformat() if r.date else None,
+                "engine_hours": float(r.engine_hours) if r.engine_hours is not None else None,
+                "notes": r.notes,
+                "source": r.source,
+            }
+            for r in hours_records
         ],
         "notes": [
             {

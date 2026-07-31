@@ -32,6 +32,7 @@ from app.database import get_db
 from app.models import (
     DEFRecord,
     FuelRecord,
+    HoursRecord,
     InsurancePolicy,
     Note,
     OdometerRecord,
@@ -227,6 +228,9 @@ async def import_service_csv(
             # Convert legacy values to km on ingest so the metric ORM column is correct.
             odometer_raw = parse_decimal(row.get("Odometer (km)", "") or row.get("Mileage", ""))
             odometer_km = _mi_to_km(odometer_raw) if _row_is_legacy_v2(row) else odometer_raw
+            # Engine-hours: hour-metered vehicles (ATVs, side-by-sides, equipment).
+            # Dimensionless — no unit conversion (never present in legacy v2 CSVs).
+            engine_hours = parse_decimal(row.get("Engine Hours", ""))
             cost = parse_decimal(row.get("Cost", ""))
             vendor_name = (
                 row.get("Vendor", "").strip() or row.get("Vendor Name", "").strip() or None
@@ -264,6 +268,7 @@ async def import_service_csv(
                 vin=vin,
                 date=date,
                 odometer_km=odometer_km,
+                engine_hours=engine_hours,
                 service_category=category or "Maintenance",
                 vendor_id=vendor_id,
                 notes=notes,
@@ -346,6 +351,11 @@ async def import_fuel_csv(
                 liters = volume_raw
                 price_per_unit = price_raw
 
+            # Engine-hours: hour-metered vehicles (ATVs, side-by-sides,
+            # equipment). Dimensionless — no unit conversion, never present
+            # in legacy v2 CSVs.
+            engine_hours = parse_decimal(row.get("Engine Hours", ""))
+
             cost = parse_decimal(row.get("Total Cost", "") or row.get("Cost", ""))
             rebate = parse_decimal(row.get("Rebate", ""))
             is_full_tank = parse_bool(row.get("Full Tank", "True"))
@@ -388,6 +398,7 @@ async def import_fuel_csv(
                 vin=vin,
                 date=date,
                 odometer_km=odometer_km,
+                engine_hours=engine_hours,
                 liters=liters,
                 price_per_unit=price_per_unit,
                 cost=cost,
@@ -558,6 +569,87 @@ async def import_odometer_csv(
         except Exception as e:
             logger.error("Import row %d failed: %s", row_num, e)
             import_result.add_error(row_num, "Invalid record data")
+
+    await db.commit()
+
+    return import_result.to_dict()
+
+
+@router.post("/vehicles/{vin}/hours/csv")
+@limiter.limit(settings.rate_limit_uploads)
+async def import_hours_csv(
+    request: Request,
+    vin: str,
+    file: UploadFile = File(...),
+    skip_duplicates: bool = Form(True),
+    db: AsyncSession = Depends(get_db),
+    current_user: User | None = Depends(require_auth),
+):
+    """Import engine-hours records from CSV file.
+
+    Mirrors :func:`import_odometer_csv` — the hours track's standalone
+    history CSV for hour-metered vehicles. Registered under this router
+    (``/api/import``), not the hours CRUD router (``/api/vehicles/{vin}/hours``),
+    to avoid shadowing that router's ``GET/PUT/DELETE /{record_id}`` routes.
+
+    Every imported row becomes a manual reading (``source='manual'``, both
+    ``fuel_record_id``/``service_visit_id`` left null) regardless of what the
+    exported "Source" column says — a CSV cannot carry a live foreign key to
+    a fuel/service row in the *target* vehicle's tables, so re-establishing
+    sync provenance on import would be fabricated.
+    """
+    await get_vehicle_or_403(vin, current_user, db, require_write=True)
+
+    # Validate and parse CSV
+    csv_data = await validate_csv_upload(file)
+    csv_reader = csv.DictReader(io.StringIO(csv_data))
+
+    import_result = ImportResult()
+
+    for row_num, row in enumerate(csv_reader, start=2):
+        try:
+            # Parse required fields
+            date = parse_date(row.get("Date", ""))
+            if not date:
+                import_result.add_error(row_num, "Date is required")
+                continue
+
+            # Dimensionless — no unit conversion, no legacy-v2 fallback (the
+            # hours track didn't exist in v2/v3 exports).
+            engine_hours = parse_decimal(row.get("Engine Hours", ""))
+            if engine_hours is None:
+                import_result.add_error(row_num, "Engine Hours is required")
+                continue
+
+            notes = row.get("Notes", "").strip() or None
+
+            # Check for duplicates if requested
+            if skip_duplicates:
+                existing = await db.execute(
+                    select(HoursRecord).where(
+                        HoursRecord.vin == vin,
+                        HoursRecord.date == date,
+                        HoursRecord.engine_hours == engine_hours,
+                    )
+                )
+                if existing.scalar_one_or_none():
+                    import_result.add_skip()
+                    continue
+
+            # Create record — always a manual reading (see docstring).
+            record = HoursRecord(
+                vin=vin,
+                date=date,
+                engine_hours=engine_hours,
+                notes=notes,
+                source="manual",
+            )
+            db.add(record)
+            import_result.add_success()
+
+        except Exception as e:
+            logger.error("Hours import row %d failed: %s", row_num, e)
+            import_result.add_error(row_num, "Invalid hours record data")
 
     await db.commit()
 

@@ -10,6 +10,30 @@ import pytest
 from httpx import AsyncClient
 
 
+@pytest.fixture(autouse=True)
+def _reset_import_rate_limit():
+    """Reset import (and export, for round-trip tests) limiter storage before each test.
+
+    ``routes/import_data.py`` defines a single module-level ``Limiter``
+    shared by every import endpoint (20/minute). This file's test count has
+    grown enough (Phase 9 added fuel/service/hours engine_hours coverage,
+    including export->import round-trip tests that also call ``routes/export.py``'s
+    stricter 5/minute limiter) that cumulative calls across tests can approach
+    either budget and cause intermittent 429s unrelated to the behavior under
+    test. Mirrors the precedent in ``test_auth.py``'s
+    ``TestCookieSecureFlag._reset_rate_limits``.
+    """
+    from app.routes.export import limiter as export_limiter
+    from app.routes.import_data import limiter as import_limiter
+
+    for lim in (import_limiter, export_limiter):
+        storage = lim._storage
+        storage.storage.clear()
+        storage.expirations.clear()
+        if hasattr(storage, "events"):
+            storage.events.clear()
+
+
 @pytest.mark.integration
 @pytest.mark.asyncio
 class TestImportRoutes:
@@ -522,3 +546,439 @@ Property Tax,75.00,2024-01-15,2024-01-31,Travis County,Vehicle tax"""
             files={"file": ("test.csv", BytesIO(csv_content), "text/csv")},
         )
         assert response.status_code == 403
+
+
+@pytest.mark.integration
+@pytest.mark.asyncio
+class TestFuelCSVImportEngineHours:
+    """Phase 9: fuel CSV import parses Engine Hours as Decimal (no unit conversion)."""
+
+    async def test_import_fuel_csv_persists_engine_hours_decimal(
+        self, client: AsyncClient, auth_headers, test_vehicle, db_session
+    ):
+        from datetime import date
+        from decimal import Decimal
+
+        from sqlalchemy import select
+
+        from app.models.fuel import FuelRecord
+
+        csv_content = (
+            "Date,Odometer (km),Liters,Price Per Liter,Total Cost,Full Tank,Engine Hours,Notes\n"
+            "2026-05-16,1200.0,20.0,1.50,30.0,True,456.7,Hours test\n"
+        )
+        response = await client.post(
+            f"/api/import/vehicles/{test_vehicle['vin']}/fuel/csv",
+            headers=auth_headers,
+            files={"file": ("fuel.csv", BytesIO(csv_content.encode()), "text/csv")},
+        )
+        assert response.status_code == 200
+        assert response.json()["success_count"] == 1
+
+        result = await db_session.execute(
+            select(FuelRecord).where(
+                FuelRecord.vin == test_vehicle["vin"], FuelRecord.date == date(2026, 5, 16)
+            )
+        )
+        row = result.scalar_one()
+        assert row.engine_hours == Decimal("456.7")
+
+    async def test_import_fuel_csv_blank_engine_hours_is_none(
+        self, client: AsyncClient, auth_headers, test_vehicle, db_session
+    ):
+        from datetime import date
+
+        from sqlalchemy import select
+
+        from app.models.fuel import FuelRecord
+
+        csv_content = (
+            "Date,Odometer (km),Liters,Total Cost,Full Tank,Engine Hours,Notes\n"
+            "2026-05-19,1300.0,18.0,28.0,True,,No hours reading\n"
+        )
+        response = await client.post(
+            f"/api/import/vehicles/{test_vehicle['vin']}/fuel/csv",
+            headers=auth_headers,
+            files={"file": ("fuel.csv", BytesIO(csv_content.encode()), "text/csv")},
+        )
+        assert response.status_code == 200
+        assert response.json()["success_count"] == 1
+
+        result = await db_session.execute(
+            select(FuelRecord).where(
+                FuelRecord.vin == test_vehicle["vin"], FuelRecord.date == date(2026, 5, 19)
+            )
+        )
+        row = result.scalar_one()
+        assert row.engine_hours is None
+
+
+@pytest.mark.integration
+@pytest.mark.asyncio
+class TestServiceCSVImportEngineHours:
+    """Phase 9: service-visit CSV import parses Engine Hours as Decimal."""
+
+    async def test_import_service_csv_persists_engine_hours_decimal(
+        self, client: AsyncClient, auth_headers, test_vehicle, db_session
+    ):
+        from datetime import date
+        from decimal import Decimal
+
+        from sqlalchemy import select
+
+        from app.models.service_visit import ServiceVisit
+
+        csv_content = (
+            "Date,Category,Description,Odometer (km),Cost,Vendor,Engine Hours,Notes\n"
+            "2026-05-17,Maintenance,Oil Change,1200.0,45.99,QuickLube,88.8,Notes here\n"
+        )
+        response = await client.post(
+            f"/api/import/vehicles/{test_vehicle['vin']}/service/csv",
+            headers=auth_headers,
+            files={"file": ("service.csv", BytesIO(csv_content.encode()), "text/csv")},
+        )
+        assert response.status_code == 200
+        assert response.json()["success_count"] == 1
+
+        result = await db_session.execute(
+            select(ServiceVisit).where(
+                ServiceVisit.vin == test_vehicle["vin"], ServiceVisit.date == date(2026, 5, 17)
+            )
+        )
+        row = result.scalar_one()
+        assert row.engine_hours == Decimal("88.8")
+
+
+@pytest.mark.integration
+@pytest.mark.asyncio
+class TestFuelServiceCSVRoundTrip:
+    """Phase 9: engine_hours survives export -> import unchanged (Decimal-exact)."""
+
+    async def test_fuel_engine_hours_export_then_import_round_trip(
+        self, client: AsyncClient, auth_headers, test_user, db_session
+    ):
+        from datetime import date
+        from decimal import Decimal
+
+        from sqlalchemy import select
+
+        from app.models.fuel import FuelRecord
+        from app.models.vehicle import Vehicle
+
+        vin_a = "FUELCSVSRC0000001"
+        vin_b = "FUELCSVDST0000001"
+        db_session.add_all(
+            [
+                Vehicle(
+                    vin=vin_a,
+                    user_id=test_user["id"],
+                    nickname="Fuel CSV Src",
+                    vehicle_type="Car",
+                    year=2024,
+                    make="Test",
+                    model="FuelSrc",
+                ),
+                Vehicle(
+                    vin=vin_b,
+                    user_id=test_user["id"],
+                    nickname="Fuel CSV Dst",
+                    vehicle_type="Car",
+                    year=2024,
+                    make="Test",
+                    model="FuelDst",
+                ),
+            ]
+        )
+        await db_session.commit()
+
+        db_session.add(
+            FuelRecord(
+                vin=vin_a,
+                date=date(2026, 5, 18),
+                odometer_km=Decimal("500.00"),
+                engine_hours=Decimal("42.3"),
+                liters=Decimal("10.0"),
+                cost=Decimal("15.00"),
+                is_full_tank=True,
+            )
+        )
+        await db_session.commit()
+
+        export_resp = await client.get(
+            f"/api/export/vehicles/{vin_a}/fuel/csv", headers=auth_headers
+        )
+        assert export_resp.status_code == 200
+
+        import_resp = await client.post(
+            f"/api/import/vehicles/{vin_b}/fuel/csv",
+            headers=auth_headers,
+            files={"file": ("fuel.csv", BytesIO(export_resp.content), "text/csv")},
+        )
+        assert import_resp.status_code == 200
+        assert import_resp.json()["success_count"] == 1
+
+        result = await db_session.execute(select(FuelRecord).where(FuelRecord.vin == vin_b))
+        row = result.scalar_one()
+        assert row.engine_hours == Decimal("42.3")
+
+    async def test_service_engine_hours_export_then_import_round_trip(
+        self, client: AsyncClient, auth_headers, test_user, db_session
+    ):
+        from datetime import date
+        from decimal import Decimal
+
+        from sqlalchemy import select
+
+        from app.models.service_line_item import ServiceLineItem
+        from app.models.service_visit import ServiceVisit
+        from app.models.vehicle import Vehicle
+
+        vin_a = "SVCCSVSRC00000001"
+        vin_b = "SVCCSVDST00000001"
+        db_session.add_all(
+            [
+                Vehicle(
+                    vin=vin_a,
+                    user_id=test_user["id"],
+                    nickname="Service CSV Src",
+                    vehicle_type="Car",
+                    year=2024,
+                    make="Test",
+                    model="SvcSrc",
+                ),
+                Vehicle(
+                    vin=vin_b,
+                    user_id=test_user["id"],
+                    nickname="Service CSV Dst",
+                    vehicle_type="Car",
+                    year=2024,
+                    make="Test",
+                    model="SvcDst",
+                ),
+            ]
+        )
+        await db_session.commit()
+
+        visit = ServiceVisit(
+            vin=vin_a,
+            date=date(2026, 5, 21),
+            odometer_km=Decimal("600.00"),
+            engine_hours=Decimal("15.6"),
+            service_category="Maintenance",
+            total_cost=Decimal("20.00"),
+        )
+        db_session.add(visit)
+        await db_session.flush()
+        db_session.add(
+            ServiceLineItem(visit_id=visit.id, description="Filter change", cost=Decimal("20.00"))
+        )
+        await db_session.commit()
+
+        export_resp = await client.get(
+            f"/api/export/vehicles/{vin_a}/service/csv", headers=auth_headers
+        )
+        assert export_resp.status_code == 200
+
+        import_resp = await client.post(
+            f"/api/import/vehicles/{vin_b}/service/csv",
+            headers=auth_headers,
+            files={"file": ("service.csv", BytesIO(export_resp.content), "text/csv")},
+        )
+        assert import_resp.status_code == 200
+        assert import_resp.json()["success_count"] == 1
+
+        result = await db_session.execute(select(ServiceVisit).where(ServiceVisit.vin == vin_b))
+        row = result.scalar_one()
+        assert row.engine_hours == Decimal("15.6")
+
+
+@pytest.mark.integration
+@pytest.mark.asyncio
+class TestHoursCSVImport:
+    """Phase 9: standalone hours CSV import, mirroring the odometer CSV endpoint."""
+
+    async def test_import_hours_csv(self, client: AsyncClient, auth_headers, test_vehicle):
+        csv_content = """Date,Engine Hours,Notes,Source
+2026-05-10,50.5,First reading,manual
+2026-05-20,60.2,Second reading,manual"""
+        response = await client.post(
+            f"/api/import/vehicles/{test_vehicle['vin']}/hours/csv",
+            headers=auth_headers,
+            files={"file": ("hours.csv", BytesIO(csv_content.encode()), "text/csv")},
+        )
+        assert response.status_code == 200
+        data = response.json()
+        assert data["success_count"] == 2
+        assert data["error_count"] == 0
+
+    async def test_import_hours_csv_missing_engine_hours(
+        self, client: AsyncClient, auth_headers, test_vehicle
+    ):
+        csv_content = """Date,Engine Hours,Notes
+2026-05-11,,Missing hours"""
+        response = await client.post(
+            f"/api/import/vehicles/{test_vehicle['vin']}/hours/csv",
+            headers=auth_headers,
+            files={"file": ("hours.csv", BytesIO(csv_content.encode()), "text/csv")},
+        )
+        assert response.status_code == 200
+        data = response.json()
+        assert data["error_count"] == 1
+        assert "Engine Hours is required" in data["errors"][0]
+
+    async def test_import_hours_csv_skip_duplicates(
+        self, client: AsyncClient, auth_headers, test_vehicle
+    ):
+        csv_content = """Date,Engine Hours,Notes
+2026-05-12,70.0,Unique reading"""
+        r1 = await client.post(
+            f"/api/import/vehicles/{test_vehicle['vin']}/hours/csv",
+            headers=auth_headers,
+            files={"file": ("hours.csv", BytesIO(csv_content.encode()), "text/csv")},
+            data={"skip_duplicates": "true"},
+        )
+        assert r1.status_code == 200
+        assert r1.json()["success_count"] == 1
+
+        r2 = await client.post(
+            f"/api/import/vehicles/{test_vehicle['vin']}/hours/csv",
+            headers=auth_headers,
+            files={"file": ("hours.csv", BytesIO(csv_content.encode()), "text/csv")},
+            data={"skip_duplicates": "true"},
+        )
+        assert r2.status_code == 200
+        assert r2.json()["skipped_count"] == 1
+        assert r2.json()["success_count"] == 0
+
+    async def test_import_hours_csv_unauthorized(self, client: AsyncClient, test_vehicle):
+        csv_content = """Date,Engine Hours,Notes
+2026-05-13,80.0,Reading"""
+        response = await client.post(
+            f"/api/import/vehicles/{test_vehicle['vin']}/hours/csv",
+            files={"file": ("hours.csv", BytesIO(csv_content.encode()), "text/csv")},
+        )
+        assert response.status_code == 401
+
+    async def test_import_hours_csv_vehicle_not_found(self, client: AsyncClient, auth_headers):
+        csv_content = """Date,Engine Hours,Notes
+2026-05-14,90.0,Reading"""
+        response = await client.post(
+            "/api/import/vehicles/INVALIDVIN1234567/hours/csv",
+            headers=auth_headers,
+            files={"file": ("hours.csv", BytesIO(csv_content.encode()), "text/csv")},
+        )
+        assert response.status_code == 404
+
+    async def test_import_hours_csv_forbidden_non_owner(
+        self, client: AsyncClient, non_admin_headers, test_vehicle
+    ):
+        csv_content = """Date,Engine Hours,Notes
+2026-05-15,95.0,Reading"""
+        response = await client.post(
+            f"/api/import/vehicles/{test_vehicle['vin']}/hours/csv",
+            headers=non_admin_headers,
+            files={"file": ("hours.csv", BytesIO(csv_content.encode()), "text/csv")},
+        )
+        assert response.status_code == 403
+
+
+@pytest.mark.integration
+@pytest.mark.asyncio
+class TestHoursCSVRoundTrip:
+    """Phase 9: standalone hours CSV round-trips Decimal-exact and normalizes source.
+
+    Every imported row becomes a manual reading regardless of the exported
+    Source column -- the CSV cannot carry a live FK to a fuel/service row in
+    the *target* vehicle's tables, so an original source='fuel' row must
+    still land as source='manual' with both link columns null.
+    """
+
+    async def test_export_then_import_into_another_vehicle(
+        self, client: AsyncClient, auth_headers, test_user, db_session
+    ):
+        from datetime import date
+        from decimal import Decimal
+
+        from sqlalchemy import select
+
+        from app.models.hours import HoursRecord
+        from app.models.vehicle import Vehicle
+
+        vin_a = "HOURSCSVSRC000001"
+        vin_b = "HOURSCSVDST000001"
+        db_session.add_all(
+            [
+                Vehicle(
+                    vin=vin_a,
+                    user_id=test_user["id"],
+                    nickname="Hours CSV Src",
+                    vehicle_type="ATV",
+                    year=2024,
+                    make="Test",
+                    model="HoursSrc",
+                ),
+                Vehicle(
+                    vin=vin_b,
+                    user_id=test_user["id"],
+                    nickname="Hours CSV Dst",
+                    vehicle_type="ATV",
+                    year=2024,
+                    make="Test",
+                    model="HoursDst",
+                ),
+            ]
+        )
+        await db_session.commit()
+
+        db_session.add_all(
+            [
+                HoursRecord(
+                    vin=vin_a,
+                    date=date(2026, 5, 1),
+                    engine_hours=Decimal("100.0"),
+                    notes="Manual reading",
+                    source="manual",
+                ),
+                HoursRecord(
+                    vin=vin_a,
+                    date=date(2026, 5, 2),
+                    engine_hours=Decimal("105.3"),
+                    notes="Synced from fuel",
+                    source="fuel",
+                ),
+            ]
+        )
+        await db_session.commit()
+
+        export_resp = await client.get(
+            f"/api/export/vehicles/{vin_a}/hours/csv", headers=auth_headers
+        )
+        assert export_resp.status_code == 200
+
+        import_resp = await client.post(
+            f"/api/import/vehicles/{vin_b}/hours/csv",
+            headers=auth_headers,
+            files={"file": ("hours.csv", BytesIO(export_resp.content), "text/csv")},
+        )
+        assert import_resp.status_code == 200
+        data = import_resp.json()
+        assert data["success_count"] == 2
+        assert data["error_count"] == 0
+
+        result = await db_session.execute(
+            select(HoursRecord).where(HoursRecord.vin == vin_b).order_by(HoursRecord.date)
+        )
+        rows = result.scalars().all()
+        assert len(rows) == 2
+
+        assert rows[0].engine_hours == Decimal("100.0")
+        assert rows[0].source == "manual"
+        assert rows[0].fuel_record_id is None
+        assert rows[0].service_visit_id is None
+
+        # Exported as source='fuel' -- normalized to 'manual' on import since
+        # there is no real fuel record in vehicle B to link.
+        assert rows[1].engine_hours == Decimal("105.3")
+        assert rows[1].source == "manual"
+        assert rows[1].fuel_record_id is None
+        assert rows[1].service_visit_id is None
