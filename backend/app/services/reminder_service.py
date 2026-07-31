@@ -8,11 +8,13 @@ from fastapi import HTTPException
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.models.hours import HoursRecord
 from app.models.odometer import OdometerRecord
 from app.models.reminder import Reminder
 from app.models.service_line_item import ServiceLineItem
 from app.models.service_visit import ServiceVisit
 from app.schemas.reminder import ReminderCreate, ReminderResponse, ReminderUpdate
+from app.services.hours_service import latest_engine_hours_and_date
 from app.utils.logging_utils import sanitize_for_log
 
 logger = logging.getLogger(__name__)
@@ -22,16 +24,38 @@ NOTIFICATION_COOLDOWN = timedelta(hours=24)
 
 
 def validate_reminder_state(
-    reminder_type: str, due_date: date | None, due_mileage_km: Decimal | None
+    reminder_type: str,
+    due_date: date | None,
+    due_mileage_km: Decimal | None,
+    due_hours: Decimal | None,
 ) -> None:
     """Shared validation for both create and the final merged state on update.
 
     Raises ValueError if the combination is invalid for reminder_type.
+
+    - ``'date'`` requires ``due_date``.
+    - ``'mileage'`` requires ``due_mileage_km``.
+    - ``'hours'`` requires ``due_hours`` (mirrors ``'mileage'`` — no date
+      requirement).
+    - ``'both'`` requires ``due_date`` AND ``due_mileage_km`` (unchanged —
+      stays date+mileage, never date+hours).
+    - ``'smart'`` requires ``due_date`` AND *exactly one* of
+      ``{due_mileage_km, due_hours}``. This accepts today's existing
+      date+mileage smart reminders (hours null) as well as the new
+      date+hours variant (mileage null) for hour-tracked vehicles, but
+      rejects specifying both or neither.
     """
     if reminder_type in ("date", "both", "smart") and not due_date:
         raise ValueError("due_date required for this reminder type")
-    if reminder_type in ("mileage", "both", "smart") and not due_mileage_km:
+    if reminder_type in ("mileage", "both") and not due_mileage_km:
         raise ValueError("due_mileage_km required for this reminder type")
+    if reminder_type == "hours" and not due_hours:
+        raise ValueError("due_hours required for this reminder type")
+    if reminder_type == "smart":
+        has_mileage = due_mileage_km is not None
+        has_hours = due_hours is not None
+        if has_mileage == has_hours:
+            raise ValueError("smart reminders require exactly one of due_mileage_km or due_hours")
 
 
 async def calculate_driving_rate(vin: str, db: AsyncSession) -> float | None:
@@ -74,6 +98,51 @@ async def get_current_mileage(vin: str, db: AsyncSession) -> Decimal | None:
     )
     row = result.scalar_one_or_none()
     return row
+
+
+async def calculate_hours_driving_rate(vin: str, db: AsyncSession) -> float | None:
+    """Calculate average engine-hours/day from last 90 days of HoursRecord.
+
+    Mirrors ``calculate_driving_rate`` (same 90-day window/approach),
+    substituting ``engine_hours`` for ``odometer_km``.
+
+    Returns None if fewer than 2 records in the window.
+    """
+    cutoff = date.today() - timedelta(days=90)
+    result = await db.execute(
+        select(
+            func.min(HoursRecord.engine_hours),
+            func.max(HoursRecord.engine_hours),
+            func.min(HoursRecord.date),
+            func.max(HoursRecord.date),
+            func.count(HoursRecord.id),
+        )
+        .where(HoursRecord.vin == vin)
+        .where(HoursRecord.date >= cutoff)
+    )
+    row = result.one()
+    min_hours, max_hours, min_date, max_date, count = row
+
+    if count < 2 or min_date == max_date:
+        return None
+
+    days_span = (max_date - min_date).days
+    if days_span <= 0:
+        return None
+
+    return float(max_hours - min_hours) / days_span
+
+
+async def get_current_hours(vin: str, db: AsyncSession) -> Decimal | None:
+    """Get the canonical current engine-hours reading for a vehicle.
+
+    Mirrors ``get_current_mileage``, but delegates to the ONE canonical
+    "latest hours" helper (``latest_engine_hours_and_date`` — see the
+    hours-usage-model plan §1) rather than re-deriving it, so reminders
+    agree with every other surface (detail-stats, hero/card, widget).
+    """
+    engine_hours, _ = await latest_engine_hours_and_date(db, vin)
+    return engine_hours
 
 
 def calculate_smart_estimated_date(
@@ -127,7 +196,7 @@ async def create_reminder(
     if effective_line_item_id:
         await _validate_line_item_vin(effective_line_item_id, vin, db)
 
-    validate_reminder_state(data.reminder_type, data.due_date, data.due_mileage_km)
+    validate_reminder_state(data.reminder_type, data.due_date, data.due_mileage_km, data.due_hours)
 
     reminder = Reminder(
         vin=vin,
@@ -136,6 +205,7 @@ async def create_reminder(
         reminder_type=data.reminder_type,
         due_date=data.due_date,
         due_mileage_km=data.due_mileage_km,
+        due_hours=data.due_hours,
         notes=data.notes,
     )
     db.add(reminder)
@@ -156,9 +226,10 @@ async def update_reminder(reminder: Reminder, data: ReminderUpdate, db: AsyncSes
     )
     final_date = data.due_date if "due_date" in set_fields else reminder.due_date
     final_km = data.due_mileage_km if "due_mileage_km" in set_fields else reminder.due_mileage_km
+    final_hours = data.due_hours if "due_hours" in set_fields else reminder.due_hours
 
     try:
-        validate_reminder_state(final_type, final_date, final_km)
+        validate_reminder_state(final_type, final_date, final_km, final_hours)
     except ValueError as e:
         raise HTTPException(status_code=422, detail=str(e))
 
@@ -170,6 +241,8 @@ async def update_reminder(reminder: Reminder, data: ReminderUpdate, db: AsyncSes
         reminder.due_date = final_date
     if "due_mileage_km" in set_fields:
         reminder.due_mileage_km = final_km
+    if "due_hours" in set_fields:
+        reminder.due_hours = final_hours
     if "notes" in set_fields:
         reminder.notes = data.notes
 
@@ -177,14 +250,29 @@ async def update_reminder(reminder: Reminder, data: ReminderUpdate, db: AsyncSes
 
 
 async def enrich_with_estimate(reminder: Reminder, db: AsyncSession) -> ReminderResponse:
-    """Build ReminderResponse, computing estimated_due_date for smart type."""
+    """Build ReminderResponse, computing estimated_due_date for smart type.
+
+    A smart reminder targets exactly one of ``due_mileage_km``/``due_hours``
+    (enforced by ``validate_reminder_state``); branch on which is set and
+    project from the matching accumulation rate (km/day or hours/day), both
+    fed through the same ``calculate_smart_estimated_date`` formula.
+    """
     response = ReminderResponse.model_validate(reminder)
     if reminder.reminder_type == "smart" and reminder.status == "pending":
-        rate = await calculate_driving_rate(reminder.vin, db)
-        latest_odometer_km = await get_current_mileage(reminder.vin, db)
-        if rate and latest_odometer_km and reminder.due_mileage_km and reminder.due_date:
+        rate: float | None = None
+        current: Decimal | None = None
+        target: Decimal | None = None
+        if reminder.due_mileage_km is not None:
+            rate = await calculate_driving_rate(reminder.vin, db)
+            current = await get_current_mileage(reminder.vin, db)
+            target = reminder.due_mileage_km
+        elif reminder.due_hours is not None:
+            rate = await calculate_hours_driving_rate(reminder.vin, db)
+            current = await get_current_hours(reminder.vin, db)
+            target = reminder.due_hours
+        if rate and current and target and reminder.due_date:
             response.estimated_due_date = calculate_smart_estimated_date(
-                latest_odometer_km, reminder.due_mileage_km, rate, reminder.due_date
+                current, target, rate, reminder.due_date
             )
     return response
 
@@ -224,8 +312,17 @@ async def check_due_reminders(db: AsyncSession) -> None:
     dispatcher = NotificationDispatcher(db)
 
     for reminder in reminders:
-        # Dedup check
-        if reminder.last_notified_at and (now - reminder.last_notified_at) < NOTIFICATION_COOLDOWN:
+        # Dedup check. Reminder.last_notified_at is a plain (non-tz-aware)
+        # DateTime column — SQLite's bind processor silently drops tzinfo on
+        # write, so a value round-tripped through the DB comes back naive
+        # even though it was always written as UTC. Re-attach UTC before
+        # comparing against the aware `now`, or a naive/aware subtraction
+        # raises TypeError on the very next scheduler tick after a reminder
+        # has ever been notified once.
+        last_notified_at = reminder.last_notified_at
+        if last_notified_at is not None and last_notified_at.tzinfo is None:
+            last_notified_at = last_notified_at.replace(tzinfo=UTC)
+        if last_notified_at and (now - last_notified_at) < NOTIFICATION_COOLDOWN:
             continue
 
         should_notify = False
@@ -241,7 +338,14 @@ async def check_due_reminders(db: AsyncSession) -> None:
             if latest_odometer_km and latest_odometer_km >= reminder.due_mileage_km:
                 should_notify = True
 
-        # Smart: check estimated date or mileage
+        # Hours-based check
+        if reminder.reminder_type == "hours" and reminder.due_hours:
+            current_hours = await get_current_hours(reminder.vin, db)
+            if current_hours and current_hours >= reminder.due_hours:
+                should_notify = True
+
+        # Smart: check estimated date or the tracked usage target (exactly
+        # one of due_mileage_km/due_hours is set — validate_reminder_state).
         if reminder.reminder_type == "smart":
             # Check mileage
             if reminder.due_mileage_km:
@@ -249,18 +353,32 @@ async def check_due_reminders(db: AsyncSession) -> None:
                 if latest_odometer_km and latest_odometer_km >= reminder.due_mileage_km:
                     should_notify = True
 
+            # Check hours
+            if reminder.due_hours:
+                current_hours = await get_current_hours(reminder.vin, db)
+                if current_hours and current_hours >= reminder.due_hours:
+                    should_notify = True
+
             # Check date (hard cap)
             if reminder.due_date and reminder.due_date <= today:
                 should_notify = True
 
-            # Check estimated date (within 7 days)
-            if not should_notify and reminder.due_mileage_km and reminder.due_date:
-                rate = await calculate_driving_rate(reminder.vin, db)
-                latest_odometer_km = await get_current_mileage(reminder.vin, db)
-                if rate and latest_odometer_km:
-                    est = calculate_smart_estimated_date(
-                        latest_odometer_km, reminder.due_mileage_km, rate, reminder.due_date
-                    )
+            # Check estimated date (within 7 days), branching on whichever
+            # target is set.
+            if not should_notify and reminder.due_date:
+                rate: float | None = None
+                current: Decimal | None = None
+                target: Decimal | None = None
+                if reminder.due_mileage_km:
+                    rate = await calculate_driving_rate(reminder.vin, db)
+                    current = await get_current_mileage(reminder.vin, db)
+                    target = reminder.due_mileage_km
+                elif reminder.due_hours:
+                    rate = await calculate_hours_driving_rate(reminder.vin, db)
+                    current = await get_current_hours(reminder.vin, db)
+                    target = reminder.due_hours
+                if rate and current and target:
+                    est = calculate_smart_estimated_date(current, target, rate, reminder.due_date)
                     if (est - today).days <= 7:
                         should_notify = True
 
@@ -294,6 +412,8 @@ def _build_reminder_message(reminder: Reminder) -> str:
         parts.append(f"Due date: {reminder.due_date.isoformat()}")
     if reminder.due_mileage_km:
         parts.append(f"Due mileage: {reminder.due_mileage_km:,} km")
+    if reminder.due_hours:
+        parts.append(f"Due hours: {reminder.due_hours:,} hr")
     if reminder.notes:
         parts.append(f"Notes: {reminder.notes}")
     return "\n".join(parts)
