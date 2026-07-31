@@ -54,11 +54,17 @@ async def list_fuel_records(
     - Admin users can access all fuel records
     """
     service = FuelRecordService(db)
-    responses, total, avg_value = await service.list_fuel_records(
+    responses, total, avg_value, avg_l_per_hr, avg_cost_per_hr = await service.list_fuel_records(
         vin, current_user, skip, limit, include_hauling
     )
 
-    return FuelRecordListResponse(records=responses, total=total, average_l_per_100km=avg_value)
+    return FuelRecordListResponse(
+        records=responses,
+        total=total,
+        average_l_per_100km=avg_value,
+        average_l_per_hr=avg_l_per_hr,
+        average_cost_per_hr=avg_cost_per_hr,
+    )
 
 
 # Maximum window between a DriveSession's `ended_at` and the fuel record's
@@ -172,9 +178,9 @@ async def get_fuel_record(
     - Admin users can access all fuel records
     """
     service = FuelRecordService(db)
-    record, mpg = await service.get_fuel_record(vin, record_id, current_user)
+    record, mpg, l_per_hr = await service.get_fuel_record(vin, record_id, current_user)
 
-    return await build_fuel_response(db, record, mpg)
+    return await build_fuel_response(db, record, mpg, l_per_hr)
 
 
 @router.post("", response_model=FuelRecordResponse, status_code=201)
@@ -192,9 +198,9 @@ async def create_fuel_record(
     - Admin users can create fuel records for all vehicles
     """
     service = FuelRecordService(db)
-    record, mpg = await service.create_fuel_record(vin, record_data, current_user)
+    record, mpg, l_per_hr = await service.create_fuel_record(vin, record_data, current_user)
 
-    return await build_fuel_response(db, record, mpg)
+    return await build_fuel_response(db, record, mpg, l_per_hr)
 
 
 @router.put("/{record_id}", response_model=FuelRecordResponse)
@@ -213,9 +219,11 @@ async def update_fuel_record(
     - Admin users can update all fuel records
     """
     service = FuelRecordService(db)
-    record, mpg = await service.update_fuel_record(vin, record_id, record_data, current_user)
+    record, mpg, l_per_hr = await service.update_fuel_record(
+        vin, record_id, record_data, current_user
+    )
 
-    return await build_fuel_response(db, record, mpg)
+    return await build_fuel_response(db, record, mpg, l_per_hr)
 
 
 @router.delete("/{record_id}", status_code=204)

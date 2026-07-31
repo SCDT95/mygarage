@@ -23,6 +23,7 @@ from app.schemas.fuel import FuelRecordCreate, FuelRecordResponse, FuelRecordUpd
 from app.utils.cache import cached, invalidate_cache_for_vehicle
 from app.utils.def_sync import ensure_def_capable, sync_def_from_fuel_record
 from app.utils.fuel_station_sync import resolve_fuel_station
+from app.utils.hours_sync import sync_hours_from_record
 from app.utils.logging_utils import sanitize_for_log
 from app.utils.odometer_sync import sync_odometer_from_record
 
@@ -63,29 +64,37 @@ async def resolve_station_names(
 
 
 async def build_fuel_response(
-    db: AsyncSession, record: FuelRecord, l_per_100km: Decimal | None
+    db: AsyncSession,
+    record: FuelRecord,
+    l_per_100km: Decimal | None,
+    l_per_hr: Decimal | None = None,
 ) -> FuelRecordResponse:
     """Build the API response for a single fuel record, station name resolved.
 
     Uses ``db.get`` rather than the batched lookup: on create/update the
     address-book row is already in the session's identity map (the write path
     just loaded or created it), so this usually resolves without any query.
+
+    ``l_per_hr`` is the hours-economy analog of ``l_per_100km`` (L/hr over the
+    full-tank interval's Δengine_hours); ``None`` for pure-distance vehicles.
     """
     station_name = record.station_name_freetext
     if record.station_address_book_id:
         entry = await db.get(AddressBookEntry, record.station_address_book_id)
         station_name = (entry.business_name if entry else None) or record.station_name_freetext
-    return _fuel_response(record, l_per_100km, station_name)
+    return _fuel_response(record, l_per_100km, l_per_hr, station_name)
 
 
 def _fuel_response(
     record: FuelRecord,
     l_per_100km: Decimal | None,
+    l_per_hr: Decimal | None,
     station_name: str | None,
 ) -> FuelRecordResponse:
     """Assemble a response from an ORM row plus its derived fields."""
     record_dict = record.__dict__.copy()
     record_dict["l_per_100km"] = l_per_100km
+    record_dict["l_per_hr"] = l_per_hr
     record_dict["station_name"] = station_name
     return FuelRecordResponse(**record_dict)
 
@@ -145,6 +154,60 @@ def calculate_l_per_100km(
     return round(l_per_100km, 2)
 
 
+def calculate_hours_economy(
+    current_record: FuelRecord,
+    previous_record: FuelRecord | None,
+    interval_liters: Decimal,
+    interval_cost: Decimal,
+) -> tuple[Decimal, Decimal] | None:
+    """L/hr + cost/hr for a full-tank record, over the engine-hours delta.
+
+    The hours analog of :func:`calculate_l_per_100km`: same full-tank / missed /
+    previous-endpoint guards, but the axis is ``engine_hours`` (dimensionless —
+    no unit conversion) instead of ``odometer_km``, and it yields TWO figures
+    from TWO interval numerators over the same Δhours:
+
+    - ``interval_liters`` = every liter added since the previous full-tank
+      endpoint (partials + this fill), so ``l_per_hr = interval_liters / Δhours``.
+    - ``interval_cost`` = every net cost since that endpoint, so
+      ``cost_per_hr = interval_cost / Δhours``. ``cost`` is already net of any
+      rebate (see :class:`~app.models.fuel.FuelRecord`), so no rebate math here.
+
+    Because there are two numerators, this does NOT gate on either being
+    present (unlike the distance calc's single ``liters`` guard): a valid
+    interval always yields both figures — ``0`` when a numerator is empty —
+    so a cost figure is never dropped for want of liters or vice versa. The
+    endpoint / missed / hauling rules (which is-full-tank is an endpoint, a
+    missed fill re-anchors without a figure, hauling folds when excluded) live
+    in :func:`compute_full_tank_hours_economy` and match the distance calc
+    exactly. Returns ``None`` (no figure) for a partial, a missed fill-up, a
+    missing endpoint, or a non-increasing meter.
+    """
+    # Only full-tank endpoints score (defensive; the accumulator only calls
+    # this at endpoints). Mirrors calculate_l_per_100km.
+    if not current_record.is_full_tank:
+        return None
+
+    # A missed fill-up covers unmeasured fuel: no valid figure, but it still
+    # re-anchors the next interval (handled by the caller).
+    if current_record.missed_fillup:
+        return None
+
+    # Need this record's own hours reading and a previous endpoint to delta from.
+    if current_record.engine_hours is None:
+        return None
+    if previous_record is None or previous_record.engine_hours is None:
+        return None
+
+    delta_hours = current_record.engine_hours - previous_record.engine_hours
+    if delta_hours <= 0:
+        return None
+
+    l_per_hr = interval_liters / delta_hours
+    cost_per_hr = interval_cost / delta_hours
+    return round(l_per_hr, 2), round(cost_per_hr, 2)
+
+
 def compute_full_tank_economy(
     records_asc: list[FuelRecord],
     exclude_hauling: bool = False,
@@ -189,6 +252,62 @@ def compute_full_tank_economy(
 
         prev_endpoint = record
         liters_since = Decimal(0)
+
+    return results
+
+
+def compute_full_tank_hours_economy(
+    records_asc: list[FuelRecord],
+    exclude_hauling: bool = False,
+) -> list[tuple[FuelRecord, Decimal, Decimal]]:
+    """L/hr + cost/hr for each full-tank record, in a single O(n) pass.
+
+    The engine-hours mirror of :func:`compute_full_tank_economy`. ``records_asc``
+    must be every ``engine_hours``-bearing fill-up for the vehicle, ordered by
+    ``engine_hours`` ascending. Consecutive full-tank endpoints tile the hours
+    axis, so a running accumulator collects the liters AND the net cost of every
+    partial fill-up since the previous endpoint and folds them — plus the
+    endpoint's own fill — into that interval's two numerators (design-review
+    finding R1-H5: cost/hr must accumulate all partials, not just the endpoint
+    fill). This is the single source of truth for the per-record and
+    vehicle-average hours-economy surfaces so they can't drift apart.
+
+    Endpoint rules are IDENTICAL to the distance function:
+    - A missed fill-up is still an endpoint: it anchors the next interval but
+      yields no figure of its own.
+    - When ``exclude_hauling`` is set, a hauling full tank is not an endpoint, so
+      its fuel folds into the surrounding interval instead of splitting it.
+    - A fill-up with no ``engine_hours`` is off the hours axis and is skipped
+      entirely (its fuel does not fold in) — the analog of skipping
+      ``odometer_km is None`` in the distance pass.
+
+    Returns ``(record, l_per_hr, cost_per_hr)`` triples in hours order, only for
+    endpoints that produced a valid figure.
+    """
+    results: list[tuple[FuelRecord, Decimal, Decimal]] = []
+    prev_endpoint: FuelRecord | None = None
+    liters_since = Decimal(0)  # fuel added strictly after prev_endpoint
+    cost_since = Decimal(0)  # net cost added strictly after prev_endpoint
+
+    for record in records_asc:
+        if record.engine_hours is None:
+            continue
+        if record.liters is not None:
+            liters_since += record.liters
+        if record.cost is not None:
+            cost_since += record.cost
+
+        if not record.is_full_tank or (exclude_hauling and record.is_hauling):
+            continue
+
+        # `record` is an endpoint; its own liters/cost are already accumulated.
+        figure = calculate_hours_economy(record, prev_endpoint, liters_since, cost_since)
+        if figure is not None:
+            results.append((record, figure[0], figure[1]))
+
+        prev_endpoint = record
+        liters_since = Decimal(0)
+        cost_since = Decimal(0)
 
     return results
 
@@ -273,6 +392,47 @@ async def calculate_average_l_per_100km(
     return round(sum(values) / len(values), 2)
 
 
+@cached(ttl_seconds=300)  # Cache for 5 minutes
+async def calculate_average_hours_economy(
+    db: AsyncSession, vin: str, exclude_hauling: bool = True
+) -> tuple[Decimal | None, Decimal | None]:
+    """Average L/hr and cost/hr across all full-tank fuel records.
+
+    Mirrors :func:`calculate_average_l_per_100km` so the hours and distance
+    averages stay parallel: load every ``engine_hours``-bearing fill-up ordered
+    by ``engine_hours`` ascending (partials contribute their liters and cost to
+    the interval), score them once via
+    :func:`compute_full_tank_hours_economy`, then mean each figure independently.
+
+    Args:
+        db: Database session
+        vin: Vehicle VIN
+        exclude_hauling: If True (default), exclude ``is_hauling=True`` records
+            for more representative daily-use economy.
+
+    Returns ``(average_l_per_hr, average_cost_per_hr)`` — ``(None, None)`` when
+    no full-tank interval produced a figure (e.g. a pure-distance vehicle).
+    """
+    result = await db.execute(
+        select(FuelRecord)
+        .where(FuelRecord.vin == vin)
+        .where(FuelRecord.engine_hours.isnot(None))
+        .order_by(FuelRecord.engine_hours.asc(), FuelRecord.date.asc())
+    )
+    all_records = list(result.scalars().all())
+
+    figures = compute_full_tank_hours_economy(all_records, exclude_hauling)
+    if not figures:
+        return None, None
+
+    l_values = [l_per_hr for _, l_per_hr, _ in figures]
+    cost_values = [cost_per_hr for _, _, cost_per_hr in figures]
+    return (
+        round(sum(l_values) / len(l_values), 2),
+        round(sum(cost_values) / len(cost_values), 2),
+    )
+
+
 class FuelRecordService:
     """Service for managing fuel record business logic with L/100km calculations."""
 
@@ -296,6 +456,30 @@ class FuelRecordService:
         )
         return calculate_l_per_100km(record, prev_record, interval_liters)
 
+    async def _hours_economy_for(self, vin: str, record: FuelRecord) -> Decimal | None:
+        """L/hr for a single just-written/read full-tank record.
+
+        Scores the record through the same O(n) accumulator the list and
+        average paths use (``compute_full_tank_hours_economy`` — the single
+        source of truth) so the per-record figure can't drift from the
+        vehicle average. Only ``l_per_hr`` surfaces per record (cost/hr is an
+        aggregate-only figure). Returns None for partial fill-ups, records with
+        no ``engine_hours``, and un-anchorable records.
+        """
+        if record.engine_hours is None or not record.is_full_tank:
+            return None
+        result = await self.db.execute(
+            select(FuelRecord)
+            .where(FuelRecord.vin == vin)
+            .where(FuelRecord.engine_hours.isnot(None))
+            .order_by(FuelRecord.engine_hours.asc(), FuelRecord.date.asc())
+        )
+        all_asc = list(result.scalars().all())
+        for scored, l_per_hr, _cost_per_hr in compute_full_tank_hours_economy(all_asc):
+            if scored.id == record.id:
+                return l_per_hr
+        return None
+
     async def list_fuel_records(
         self,
         vin: str,
@@ -303,8 +487,14 @@ class FuelRecordService:
         skip: int = 0,
         limit: int = 100,
         include_hauling: bool = False,
-    ) -> tuple[list[FuelRecordResponse], int, Decimal | None]:
-        """List fuel records with per-record L/100km + vehicle-wide average."""
+    ) -> tuple[list[FuelRecordResponse], int, Decimal | None, Decimal | None, Decimal | None]:
+        """List fuel records with per-record economy + vehicle-wide averages.
+
+        Returns ``(responses, total, average_l_per_100km, average_l_per_hr,
+        average_cost_per_hr)``. The hours averages are ``None`` for a
+        pure-distance vehicle, mirroring how the distance average is ``None``
+        for a pure-hours one.
+        """
         from app.services.auth import get_vehicle_or_403
 
         vin = vin.upper().strip()
@@ -334,9 +524,27 @@ class FuelRecordService:
             all_asc = list(all_asc_result.scalars().all())
             economy_by_id = {r.id: value for r, value in compute_full_tank_economy(all_asc)}
 
+            # Per-record hours economy, computed the same way over the hours
+            # axis (ordered by engine_hours) so both dimensions stay parallel.
+            hours_asc_result = await self.db.execute(
+                select(FuelRecord)
+                .where(FuelRecord.vin == vin)
+                .where(FuelRecord.engine_hours.isnot(None))
+                .order_by(FuelRecord.engine_hours.asc(), FuelRecord.date.asc())
+            )
+            hours_asc = list(hours_asc_result.scalars().all())
+            hours_economy_by_id = {
+                r.id: l_per_hr for r, l_per_hr, _ in compute_full_tank_hours_economy(hours_asc)
+            }
+
             station_names = await resolve_station_names(self.db, list(records))
             responses = [
-                _fuel_response(record, economy_by_id.get(record.id), station_names.get(record.id))
+                _fuel_response(
+                    record,
+                    economy_by_id.get(record.id),
+                    hours_economy_by_id.get(record.id),
+                    station_names.get(record.id),
+                )
                 for record in records
             ]
 
@@ -348,8 +556,11 @@ class FuelRecordService:
             avg_value = await calculate_average_l_per_100km(
                 self.db, vin, exclude_hauling=not include_hauling
             )
+            avg_l_per_hr, avg_cost_per_hr = await calculate_average_hours_economy(
+                self.db, vin, exclude_hauling=not include_hauling
+            )
 
-            return responses, total, avg_value
+            return responses, total, avg_value, avg_l_per_hr, avg_cost_per_hr
 
         except HTTPException:
             raise
@@ -363,8 +574,8 @@ class FuelRecordService:
 
     async def get_fuel_record(
         self, vin: str, record_id: int, current_user: User
-    ) -> tuple[FuelRecord, Decimal | None]:
-        """Get a specific fuel record with L/100km."""
+    ) -> tuple[FuelRecord, Decimal | None, Decimal | None]:
+        """Get a specific fuel record with L/100km and L/hr."""
         from app.services.auth import get_vehicle_or_403
 
         vin = vin.upper().strip()
@@ -379,12 +590,13 @@ class FuelRecordService:
             raise HTTPException(status_code=404, detail=f"Fuel record {record_id} not found")
 
         value = await self._economy_for(vin, record)
+        hours_value = await self._hours_economy_for(vin, record)
 
-        return record, value
+        return record, value, hours_value
 
     async def create_fuel_record(
         self, vin: str, record_data: FuelRecordCreate, current_user: User
-    ) -> tuple[FuelRecord, Decimal | None]:
+    ) -> tuple[FuelRecord, Decimal | None, Decimal | None]:
         """Create a new fuel record with L/100km calc.
 
         Uses a single outer transaction (since v2.27.0) so station create,
@@ -481,6 +693,27 @@ class FuelRecordService:
                     )
                     raise
 
+            # 3b. Engine-hours sync (no internal commit). Located by source
+            # identity; engine_hours=None is a no-op on create (nothing to
+            # delete). Composed into the same outer transaction.
+            if record.date:
+                try:
+                    await sync_hours_from_record(
+                        db=self.db,
+                        vin=vin,
+                        date=record.date,
+                        engine_hours=record.engine_hours,
+                        source_type="fuel",
+                        source_id=record.id,
+                        commit=False,
+                    )
+                except Exception as e:
+                    logger.warning(
+                        "Failed to auto-sync engine hours for fuel record (rolling back): %s",
+                        sanitize_for_log(e),
+                    )
+                    raise
+
             # 4. DEF sync (no internal commit).
             if def_fill_level is not None:
                 try:
@@ -505,6 +738,7 @@ class FuelRecordService:
             await self.db.refresh(record)
 
             value = await self._economy_for(vin, record)
+            hours_value = await self._hours_economy_for(vin, record)
 
             logger.info(
                 "Created fuel record %s for %s (L/100km: %s)",
@@ -515,7 +749,7 @@ class FuelRecordService:
 
             await invalidate_cache_for_vehicle(vin)
 
-            return record, value
+            return record, value, hours_value
 
         except HTTPException:
             raise
@@ -542,7 +776,7 @@ class FuelRecordService:
         record_id: int,
         record_data: FuelRecordUpdate,
         current_user: User,
-    ) -> tuple[FuelRecord, Decimal | None]:
+    ) -> tuple[FuelRecord, Decimal | None, Decimal | None]:
         """Update a fuel record; recompute L/100km."""
         from app.services.auth import get_vehicle_or_403
 
@@ -666,6 +900,28 @@ class FuelRecordService:
                     )
                     raise
 
+            # Engine-hours sync. Runs unconditionally (not gated on a non-null
+            # reading) so clearing engine_hours to null deletes the synced row;
+            # located by source identity, composed into the same transaction.
+            if record.date:
+                try:
+                    await sync_hours_from_record(
+                        db=self.db,
+                        vin=vin,
+                        date=record.date,
+                        engine_hours=record.engine_hours,
+                        source_type="fuel",
+                        source_id=record.id,
+                        commit=False,
+                    )
+                except Exception as e:
+                    logger.warning(
+                        "Failed to auto-sync engine hours for fuel record %s (rolling back): %s",
+                        record_id,
+                        sanitize_for_log(e),
+                    )
+                    raise
+
             if def_fill_level_was_sent:
                 try:
                     if def_fill_level is not None:
@@ -696,12 +952,13 @@ class FuelRecordService:
             await self.db.refresh(record)
 
             value = await self._economy_for(vin, record)
+            hours_value = await self._hours_economy_for(vin, record)
 
             logger.info("Updated fuel record %s for %s", record_id, sanitize_for_log(vin))
 
             await invalidate_cache_for_vehicle(vin)
 
-            return record, value
+            return record, value, hours_value
 
         except HTTPException:
             raise

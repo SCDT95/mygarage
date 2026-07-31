@@ -67,6 +67,15 @@ class FuelRecordBase(BaseModel):
     odometer_km: Decimal | None = Field(
         None, description="Odometer reading in kilometers", ge=0, le=99999999.99
     )
+    engine_hours: Decimal | None = Field(
+        None,
+        description=(
+            "Engine-hours reading at this fill-up (hour-metered vehicles). "
+            "Dimensionless — no unit conversion. Auto-syncs to hours history."
+        ),
+        ge=0,
+        le=9999999.9,
+    )
     liters: Decimal | None = Field(
         None, description="Fuel amount in liters", ge=0, le=9999.999, decimal_places=3
     )
@@ -354,6 +363,12 @@ class FuelRecordUpdate(BaseModel):
     odometer_km: Decimal | None = Field(
         None, description="Odometer reading in kilometers", ge=0, le=99999999.99
     )
+    engine_hours: Decimal | None = Field(
+        None,
+        description="Engine-hours reading at this fill-up (hour-metered vehicles)",
+        ge=0,
+        le=9999999.9,
+    )
     liters: Decimal | None = Field(
         None, description="Fuel amount in liters", ge=0, le=9999.999, decimal_places=3
     )
@@ -475,6 +490,13 @@ class FuelRecordResponse(FuelRecordBase):
     vin: str
     created_at: datetime
     l_per_100km: Decimal | None = Field(None, description="Calculated fuel economy (L/100 km)")
+    l_per_hr: Decimal | None = Field(
+        None,
+        description=(
+            "Calculated fuel rate (L/hr) over the full-tank interval's engine-hours "
+            "delta; null for pure-distance vehicles or un-anchorable records"
+        ),
+    )
     station_name: str | None = Field(
         None,
         description=(
@@ -516,6 +538,13 @@ class FuelRecordListResponse(BaseModel):
     total: int
     average_l_per_100km: Decimal | None = Field(
         None, description="Average fuel consumption (L/100 km) across all records"
+    )
+    average_l_per_hr: Decimal | None = Field(
+        None, description="Average fuel rate (L/hr) across all records; null for pure-distance"
+    )
+    average_cost_per_hr: Decimal | None = Field(
+        None,
+        description="Average fuel cost per engine-hour across all records; null for pure-distance",
     )
 
     model_config = {
