@@ -238,6 +238,60 @@ class TestVehicleDetailStats:
         assert body["overdue_count"] == 0
         assert body["upcoming_count"] == 1
 
+    async def test_overdue_and_upcoming_hours_boundaries(
+        self, client: AsyncClient, non_admin_headers, non_admin_user, db_session: AsyncSession
+    ):
+        """Phase 6b parity fix: detail-stats must use the SAME hours-aware
+        is_reminder_overdue predicate as the dashboard, family dashboard, and
+        calendar — a pure `hours` reminder can no longer show overdue on the
+        dashboard card but 'upcoming' on this SAME vehicle's detail page.
+        Mirrors test_dashboard.test_dashboard_mixed_date_mileage_hours_reminders_all_evaluated:
+        pre-existing date/mileage behavior stays exactly as-is (G8) while the
+        new hours branch is exercised alongside them on one vehicle."""
+        vin = await _seed_vehicle(db_session, non_admin_user["id"], "5NPE24AF0FH100020")
+        db_session.add(OdometerRecord(vin=vin, date=date.today(), odometer_km=Decimal("60000")))
+        db_session.add(HoursRecord(vin=vin, date=date.today(), engine_hours=Decimal("50.0")))
+        db_session.add_all(
+            [
+                Reminder(
+                    vin=vin,
+                    title="Overdue by date",
+                    reminder_type="date",
+                    due_date=date.today() - timedelta(days=1),
+                    status="pending",
+                ),  # overdue (date/mileage behavior unchanged)
+                Reminder(
+                    vin=vin,
+                    title="Not overdue by mileage",
+                    reminder_type="mileage",
+                    due_mileage_km=Decimal("100000"),
+                    status="pending",
+                ),  # upcoming (date/mileage behavior unchanged)
+                Reminder(
+                    vin=vin,
+                    title="Overdue by hours",
+                    reminder_type="hours",
+                    due_hours=Decimal("40.0"),
+                    status="pending",
+                ),  # overdue: current_hours (50.0) >= due_hours (40.0)
+                Reminder(
+                    vin=vin,
+                    title="Not overdue by hours",
+                    reminder_type="hours",
+                    due_hours=Decimal("500.0"),
+                    status="pending",
+                ),  # upcoming: current_hours (50.0) < due_hours (500.0)
+            ]
+        )
+        await db_session.commit()
+
+        body = (
+            await client.get(f"/api/vehicles/{vin}/detail-stats", headers=non_admin_headers)
+        ).json()
+        # 2 overdue (date + hours), 2 upcoming (mileage + hours).
+        assert body["overdue_count"] == 2
+        assert body["upcoming_count"] == 2
+
     async def test_spent_this_year_is_ytd_scoped(
         self,
         client: AsyncClient,
