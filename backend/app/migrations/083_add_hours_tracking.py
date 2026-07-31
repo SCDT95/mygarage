@@ -260,8 +260,13 @@ def _widen_reminder_type_check_sqlite(engine) -> None:
             _rebuild_vehicle_reminders(cur)
 
             # Pre-commit FK integrity check — roll back rather than commit a
-            # rebuild that orphaned the inbound/outbound FK.
-            violations = cur.execute("PRAGMA foreign_key_check").fetchall()
+            # rebuild that orphaned the inbound/outbound FK. Scoped to the
+            # rebuilt table only (migration 053 pattern): an unscoped
+            # whole-database check would also surface pre-existing orphans in
+            # unrelated tables on a legacy DB that predates this repo's
+            # ``PRAGMA foreign_keys=ON`` fix, aborting this FATAL migration
+            # (and app startup) over a violation this rebuild didn't cause.
+            violations = cur.execute("PRAGMA foreign_key_check(vehicle_reminders)").fetchall()
             if violations:
                 raise RuntimeError(
                     f"FK violations after vehicle_reminders rebuild (pre-commit): {violations!r}"

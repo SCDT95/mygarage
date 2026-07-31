@@ -278,3 +278,63 @@ def test_083_missing_vehicles_table_skips(engine_for_migration):
     """A bare DB without the ``vehicles`` table must skip, not raise."""
     _dialect, engine, _url = engine_for_migration
     _load("083_add_hours_tracking").upgrade(engine)
+
+
+def test_083_tolerates_preexisting_orphans_in_other_tables(migration_db):
+    """A legacy DB with an orphaned row in an UNRELATED table must not abort
+    the ``vehicle_reminders`` CHECK-widening rebuild (SQLite only).
+
+    Real legacy prod DBs accumulated orphaned child rows in other tables
+    before this repo's ``PRAGMA foreign_keys=ON`` fix started enforcing FKs.
+    The pre-commit integrity gate in ``_widen_reminder_type_check_sqlite``
+    must be scoped to ``vehicle_reminders`` (the table it just rebuilt, per
+    migration 053's pattern) — not a whole-database
+    ``PRAGMA foreign_key_check``, which would also surface those unrelated
+    orphans, raise, roll back, and — because migration 083 is
+    ``FATAL=True`` — abort app startup even though the reminder rebuild
+    itself was clean.
+    """
+    from sqlalchemy import create_engine
+
+    db_file, db_url = migration_db
+    engine = create_engine(db_url)
+    _make_deps(engine)
+
+    # A second FK-constrained table, unrelated to vehicle_reminders, that
+    # already carries an orphaned row — the legacy-prod scenario.
+    with engine.begin() as conn:
+        conn.execute(
+            text(
+                "CREATE TABLE odometer_records ("
+                "id INTEGER PRIMARY KEY AUTOINCREMENT, "
+                "vin VARCHAR(17) NOT NULL REFERENCES vehicles(vin) ON DELETE CASCADE, "
+                "reading NUMERIC(10,2))"
+            )
+        )
+    with engine.connect() as conn:
+        conn.execute(text("PRAGMA foreign_keys = OFF"))
+        conn.execute(
+            text("INSERT INTO odometer_records (vin, reading) VALUES ('DOES-NOT-EXIST-VIN', 100)")
+        )
+        conn.commit()
+
+    # Confirm the seeded orphan is real and would trip a whole-database check
+    # (i.e. this test actually exercises the bug the fix addresses).
+    with engine.connect() as conn:
+        whole_db_violations = conn.execute(text("PRAGMA foreign_key_check")).fetchall()
+    assert whole_db_violations, "test setup must produce a real whole-DB FK violation"
+
+    # Migration 083 must succeed anyway — the orphan lives outside the table
+    # it rebuilds and pre-commit-checks.
+    _load("083_add_hours_tracking").upgrade(engine)
+
+    # ...and the CHECK widening itself took effect.
+    vin = "1FT0000000000000X"
+    with engine.begin() as conn:
+        conn.execute(
+            text(
+                "INSERT INTO vehicle_reminders (vin, title, reminder_type, due_hours) "
+                "VALUES (:vin, 'Valve service', 'hours', 250)"
+            ),
+            {"vin": vin},
+        )
