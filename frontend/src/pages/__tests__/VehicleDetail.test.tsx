@@ -6,6 +6,7 @@ import { Link, MemoryRouter, Route, Routes } from 'react-router-dom'
 vi.mock('../../components/tabs/ServiceTab', () => ({ default: () => <div>ServiceTab</div> }))
 vi.mock('../../components/tabs/FuelTab', () => ({ default: () => <div>FuelTab</div> }))
 vi.mock('../../components/tabs/OdometerTab', () => ({ default: () => <div>OdometerTab</div> }))
+vi.mock('../../components/tabs/HoursTab', () => ({ default: () => <div>HoursTab</div> }))
 vi.mock('../../components/tabs/PhotosTab', () => ({ default: () => <div>PhotosTab</div> }))
 vi.mock('../../components/tabs/DocumentsTab', () => ({ default: () => <div>DocumentsTab</div> }))
 vi.mock('../../components/tabs/NotesTab', () => ({ default: () => <div>NotesTab</div> }))
@@ -29,9 +30,12 @@ vi.mock('../../components/modals/VehicleTransferWizard', () => ({ default: () =>
 vi.mock('../../components/modals/VehicleSharingModal', () => ({ default: () => null }))
 vi.mock('../../components/TransferHistorySection', () => ({ default: () => <div>TransferHistory</div> }))
 vi.mock('../../components/SubTabNav', () => ({
-  default: ({ tabs, activeTab, onTabChange }: { tabs: { id: string; label: string }[]; activeTab: string; onTabChange: (id: string) => void }) => (
+  // `visible` filtering matches the real Tabs component (ui/Tabs.tsx) so
+  // gating tests (Task 16a: Hours vs Odometer) exercise the actual config,
+  // not an unfiltered list.
+  default: ({ tabs, activeTab, onTabChange }: { tabs: { id: string; label: string; visible?: boolean }[]; activeTab: string; onTabChange: (id: string) => void }) => (
     <div data-testid="sub-tab-nav">
-      {tabs.map((tab: { id: string; label: string }) => (
+      {tabs.filter((tab) => tab.visible !== false).map((tab: { id: string; label: string }) => (
         <button
           key={tab.id}
           role="tab"
@@ -331,6 +335,65 @@ describe('VehicleDetail', () => {
     // Scoped to the sub-tab nav: the Fuel PRIMARY tab legitimately still exists.
     const subNav = screen.getByTestId('sub-tab-nav')
     expect(within(subNav).queryByRole('tab', { name: 'detail.tabs.fuel' })).not.toBeInTheDocument()
+  })
+
+  // --- Hours/Odometer Sub-tab Visibility (Task 16a) ---
+
+  it('shows Odometer (not Hours) under Maintenance for a distance-tracking vehicle', async () => {
+    // mockVehicle defaults to usage_unit: 'distance', secondary_usage_enabled: false.
+    renderVehicleDetail()
+    await waitFor(() => expect(screen.getByText('Test Car')).toBeInTheDocument())
+
+    fireEvent.click(screen.getAllByText('detail.tabs.maintenance')[0])
+    await waitFor(() => expect(screen.getByTestId('sub-tab-nav')).toBeInTheDocument())
+
+    const subNav = screen.getByTestId('sub-tab-nav')
+    expect(within(subNav).getByRole('tab', { name: 'detail.misc.odometer' })).toBeInTheDocument()
+    expect(within(subNav).queryByRole('tab', { name: 'common:engineHours' })).not.toBeInTheDocument()
+  })
+
+  it('shows Hours (not Odometer) under Maintenance for an hours-tracking vehicle', async () => {
+    mockedVehicleService.get.mockResolvedValue({
+      ...mockVehicle, usage_unit: 'hours', secondary_usage_enabled: false,
+    })
+    renderVehicleDetail()
+    await waitFor(() => expect(screen.getByText('Test Car')).toBeInTheDocument())
+
+    fireEvent.click(screen.getAllByText('detail.tabs.maintenance')[0])
+    await waitFor(() => expect(screen.getByTestId('sub-tab-nav')).toBeInTheDocument())
+
+    const subNav = screen.getByTestId('sub-tab-nav')
+    expect(within(subNav).getByRole('tab', { name: 'common:engineHours' })).toBeInTheDocument()
+    expect(within(subNav).queryByRole('tab', { name: 'detail.misc.odometer' })).not.toBeInTheDocument()
+  })
+
+  it('shows BOTH Odometer and Hours under Maintenance for a dual-tracking vehicle', async () => {
+    mockedVehicleService.get.mockResolvedValue({
+      ...mockVehicle, usage_unit: 'distance', secondary_usage_enabled: true,
+    })
+    renderVehicleDetail()
+    await waitFor(() => expect(screen.getByText('Test Car')).toBeInTheDocument())
+
+    fireEvent.click(screen.getAllByText('detail.tabs.maintenance')[0])
+    await waitFor(() => expect(screen.getByTestId('sub-tab-nav')).toBeInTheDocument())
+
+    const subNav = screen.getByTestId('sub-tab-nav')
+    expect(within(subNav).getByRole('tab', { name: 'detail.misc.odometer' })).toBeInTheDocument()
+    expect(within(subNav).getByRole('tab', { name: 'common:engineHours' })).toBeInTheDocument()
+  })
+
+  it('mounts HoursTab when the Hours sub-tab is selected (reachability: HoursTab is imported and rendered from VehicleDetail)', async () => {
+    mockedVehicleService.get.mockResolvedValue({
+      ...mockVehicle, usage_unit: 'hours', secondary_usage_enabled: false,
+    })
+    renderVehicleDetail()
+    await waitFor(() => expect(screen.getByText('Test Car')).toBeInTheDocument())
+
+    fireEvent.click(screen.getAllByText('detail.tabs.maintenance')[0])
+    const hoursTab = await screen.findByRole('tab', { name: 'common:engineHours' })
+    fireEvent.click(hoursTab)
+
+    expect(await screen.findByText('HoursTab')).toBeInTheDocument()
   })
 
   // --- LiveLink Tab Visibility ---

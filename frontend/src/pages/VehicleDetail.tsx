@@ -38,6 +38,7 @@ import { isDieselFuelType } from '../constants/fuel'
 import ServiceTab from '../components/tabs/ServiceTab'
 import FuelTab from '../components/tabs/FuelTab'
 import OdometerTab from '../components/tabs/OdometerTab'
+import HoursTab from '../components/tabs/HoursTab'
 import PhotosTab from '../components/tabs/PhotosTab'
 import DocumentsTab from '../components/tabs/DocumentsTab'
 import NotesTab from '../components/tabs/NotesTab'
@@ -72,6 +73,7 @@ import VehicleSharingModal from '../components/modals/VehicleSharingModal'
 import TorqueSourceModal from '../components/modals/TorqueSourceModal'
 import { useOnlineStatus } from '../hooks/useOnlineStatus'
 import { useAuth } from '../contexts/AuthContext'
+import { getUsageTracking } from '../utils/usageTracking'
 
 type ApiError = {
   response?: {
@@ -109,7 +111,7 @@ type ImportSectionResult = {
 
 export type ModalType = 'remove' | 'transfer' | 'sharing' | 'windowSticker' | 'torqueSource' | null
 export type PrimaryTabType = 'overview' | 'media' | 'maintenance' | 'fuel' | 'tracking' | 'financial' | 'livelink'
-export type SubTabType = 'photos' | 'documents' | 'service' | 'fuel' | 'def' | 'propane' | 'odometer' | 'notes' | 'warranties' | 'insurance' | 'tax' | 'tolls' | 'spotrentals' | 'suppliesused' | 'recalls' | 'reports' | 'reminders' | 'live' | 'dtcs' | 'sessions' | 'charts' | 'trips'
+export type SubTabType = 'photos' | 'documents' | 'service' | 'fuel' | 'def' | 'propane' | 'odometer' | 'hours' | 'notes' | 'warranties' | 'insurance' | 'tax' | 'tolls' | 'spotrentals' | 'suppliesused' | 'recalls' | 'reports' | 'reminders' | 'live' | 'dtcs' | 'sessions' | 'charts' | 'trips'
 
 // Hero action buttons switch to the relevant tab + sub-tab (SDQ-1). The
 // Equipment pill (SDQ-2) signals VehicleOverviewTab to expand + scroll a
@@ -466,6 +468,15 @@ export default function VehicleDetail() {
   const isMotorized = vehicle?.vehicle_type &&
     !['Trailer', 'FifthWheel', 'TravelTrailer'].includes(vehicle.vehicle_type)
 
+  // Task 16a — which usage dimension(s) this vehicle tracks, gating the
+  // Odometer vs. Hours maintenance sub-tab below. A pure-hours vehicle sees
+  // Hours (not Odometer), a pure-distance vehicle sees Odometer (not Hours),
+  // dual-tracking sees both.
+  const { tracksDistance, tracksHours } = getUsageTracking({
+    usage_unit: vehicle?.usage_unit,
+    secondary_usage_enabled: vehicle?.secondary_usage_enabled,
+  })
+
   // Equipment-presence flags (B7) — the actions toolbar hides an Equipment
   // button when its <details> target (below, in VehicleOverviewTab) is absent.
   // Optional-chained into a local so no `vehicle.standard_equipment` non-null
@@ -556,7 +567,8 @@ export default function VehicleDetail() {
     ],
     maintenance: [
       { id: 'service' as const, label: t('vehicleStats.service'), icon: Wrench },
-      { id: 'odometer' as const, label: t('detail.misc.odometer'), icon: Gauge, visible: isMotorized },
+      { id: 'odometer' as const, label: t('detail.misc.odometer'), icon: Gauge, visible: isMotorized && tracksDistance },
+      { id: 'hours' as const, label: t('common:engineHours'), icon: Clock, visible: tracksHours },
       { id: 'recalls' as const, label: t('detail.misc.recalls'), icon: AlertTriangle },
     ],
     fuel: [
@@ -702,6 +714,7 @@ export default function VehicleDetail() {
         {activePrimaryTab === 'fuel' && activeSubTab === 'def' && vin && <DEFTab vin={vin} isDiesel={isDiesel} />}
         {activePrimaryTab === 'fuel' && activeSubTab === 'propane' && vin && <PropaneTab vin={vin} />}
         {activePrimaryTab === 'maintenance' && activeSubTab === 'odometer' && vin && <OdometerTab vin={vin} />}
+        {activePrimaryTab === 'maintenance' && activeSubTab === 'hours' && vin && <HoursTab vin={vin} />}
         {activePrimaryTab === 'maintenance' && activeSubTab === 'recalls' && vin && <SafetyTab vin={vin} />}
 
         {/* Tracking Sub-tabs */}
