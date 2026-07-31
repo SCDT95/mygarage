@@ -2,7 +2,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen, fireEvent, waitFor } from '@testing-library/react'
 import { MemoryRouter, Route, Routes } from 'react-router-dom'
 import { FUEL_TYPE_VALUES } from '../../constants/fuel'
-import type { Vehicle } from '../../types/vehicle'
+import type { Vehicle, VehicleDetailStats } from '../../types/vehicle'
 
 vi.mock('../../services/api', () => ({
   default: {
@@ -46,6 +46,46 @@ const baseVehicle: Vehicle = {
 
 function renderVehicleEdit(vehicle: Vehicle, vin = vehicle.vin): void {
   mockedApi.get.mockResolvedValue({ data: vehicle })
+  render(
+    <MemoryRouter initialEntries={[`/vehicles/${vin}/edit`]}>
+      <Routes>
+        <Route path="/vehicles/:vin/edit" element={<VehicleEdit />} />
+      </Routes>
+    </MemoryRouter>,
+  )
+}
+
+const baseDetailStats: VehicleDetailStats = {
+  average_cost_per_hr: null,
+  average_l_per_hr: null,
+  current_hours: null,
+  last_fillup_date: null,
+  last_service_date: null,
+  latest_hours: null,
+  latest_odometer_date: null,
+  latest_odometer_km: null,
+  overdue_count: 0,
+  secondary_usage_enabled: false,
+  spent_this_year: '0',
+  upcoming_count: 0,
+  usage_unit: 'distance',
+  year: 2024,
+}
+
+// Distinguishes the vehicle GET from the detail-stats GET (VehicleEdit fetches
+// both in parallel — detail-stats supplies the derived latest_hours +
+// secondary_usage_enabled prefills) so each test can control them independently.
+function renderVehicleEditWithStats(
+  vehicle: Vehicle,
+  detailStats: VehicleDetailStats,
+  vin = vehicle.vin,
+): void {
+  mockedApi.get.mockImplementation((url: string) => {
+    if (url.includes('detail-stats')) {
+      return Promise.resolve({ data: detailStats })
+    }
+    return Promise.resolve({ data: vehicle })
+  })
   render(
     <MemoryRouter initialEntries={[`/vehicles/${vin}/edit`]}>
       <Routes>
@@ -275,5 +315,113 @@ describe('VehicleEdit — DEF tank capacity diesel-only gate', () => {
 
     const [, payload] = mockedApi.put.mock.calls[0]
     expect(payload).toMatchObject({ fuel_type: 'gasoline', def_tank_capacity_liters: null })
+  })
+})
+
+describe('VehicleEdit — dual usage tracking (hours + distance)', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    vi.spyOn(console, 'error').mockImplementation(() => {})
+  })
+
+  it('shows the Current Hours field when the primary usage unit is hours', async () => {
+    renderVehicleEditWithStats(
+      { ...baseVehicle, usage_unit: 'hours' },
+      baseDetailStats,
+    )
+
+    expect(await screen.findByLabelText('edit.currentHours')).toBeInTheDocument()
+  })
+
+  it('shows the Current Hours field when primary is distance but secondary (hours) tracking is enabled', async () => {
+    renderVehicleEditWithStats(
+      { ...baseVehicle, usage_unit: 'distance' },
+      { ...baseDetailStats, secondary_usage_enabled: true },
+    )
+
+    expect(await screen.findByLabelText('edit.currentHours')).toBeInTheDocument()
+  })
+
+  it('hides the Current Hours field for a distance-only vehicle (no secondary tracking)', async () => {
+    renderVehicleEditWithStats(
+      { ...baseVehicle, usage_unit: 'distance' },
+      { ...baseDetailStats, secondary_usage_enabled: false },
+    )
+
+    // Wait for the form to finish loading before asserting absence.
+    await screen.findByLabelText('edit.nickname *')
+    expect(screen.queryByLabelText('edit.currentHours')).not.toBeInTheDocument()
+  })
+
+  it('labels the also-track toggle as "also track hours" for a distance-primary vehicle', async () => {
+    renderVehicleEditWithStats(
+      { ...baseVehicle, usage_unit: 'distance' },
+      baseDetailStats,
+    )
+
+    expect(await screen.findByLabelText('edit.alsoTrackHours')).toBeInTheDocument()
+    expect(screen.queryByLabelText('edit.alsoTrackDistance')).not.toBeInTheDocument()
+  })
+
+  it('labels the also-track toggle as "also track distance/odometer" for an hours-primary vehicle', async () => {
+    renderVehicleEditWithStats(
+      { ...baseVehicle, usage_unit: 'hours' },
+      baseDetailStats,
+    )
+
+    expect(await screen.findByLabelText('edit.alsoTrackDistance')).toBeInTheDocument()
+    expect(screen.queryByLabelText('edit.alsoTrackHours')).not.toBeInTheDocument()
+  })
+
+  it('toggling the also-track checkbox for a distance-primary vehicle reveals the Current Hours field', async () => {
+    renderVehicleEditWithStats(
+      { ...baseVehicle, usage_unit: 'distance' },
+      { ...baseDetailStats, secondary_usage_enabled: false },
+    )
+
+    const toggle = (await screen.findByLabelText('edit.alsoTrackHours')) as HTMLInputElement
+    expect(screen.queryByLabelText('edit.currentHours')).not.toBeInTheDocument()
+
+    fireEvent.click(toggle)
+
+    expect(await screen.findByLabelText('edit.currentHours')).toBeInTheDocument()
+  })
+
+  it('submits secondary_usage_enabled and current_hours in the payload', async () => {
+    renderVehicleEditWithStats(
+      { ...baseVehicle, usage_unit: 'hours' },
+      { ...baseDetailStats, usage_unit: 'hours', latest_hours: '42.5' },
+    )
+
+    const hoursInput = (await screen.findByLabelText('edit.currentHours')) as HTMLInputElement
+    fireEvent.change(hoursInput, { target: { value: '55.5' } })
+
+    const saveButton = screen.getByRole('button', { name: 'edit.saveChanges' })
+    fireEvent.click(saveButton)
+
+    await waitFor(() => expect(mockedApi.put).toHaveBeenCalled())
+
+    const [, payload] = mockedApi.put.mock.calls[0]
+    expect(payload).toMatchObject({ secondary_usage_enabled: false, current_hours: 55.5 })
+  })
+
+  it('prefills Current Hours from detail-stats latest_hours, not the stale vehicle.current_hours column', async () => {
+    renderVehicleEditWithStats(
+      { ...baseVehicle, usage_unit: 'hours', current_hours: '999.9' },
+      { ...baseDetailStats, usage_unit: 'hours', latest_hours: '42.5' },
+    )
+
+    const hoursInput = (await screen.findByLabelText('edit.currentHours')) as HTMLInputElement
+    expect(hoursInput.value).toBe('42.5')
+  })
+
+  it('leaves Current Hours empty when detail-stats has no latest_hours reading yet', async () => {
+    renderVehicleEditWithStats(
+      { ...baseVehicle, usage_unit: 'hours', current_hours: '999.9' },
+      { ...baseDetailStats, usage_unit: 'hours', latest_hours: null },
+    )
+
+    const hoursInput = (await screen.findByLabelText('edit.currentHours')) as HTMLInputElement
+    expect(hoursInput.value).toBe('')
   })
 })

@@ -165,6 +165,10 @@ export const vehicleEditSchema = z.object({
   // form always supplies the vehicle's real value via its <select>.
   usage_unit: z.enum(['distance', 'hours']).default('distance'),
   current_hours: currentHoursSchema,
+  // Also-track-the-other-dimension toggle. Defaulted so a payload that omits
+  // it (older forms / tests) is treated as distance/hours-only — mirrors the
+  // usage_unit default above.
+  secondary_usage_enabled: z.boolean().default(false),
   color: optionalStringSchema,
 
   // Vehicle Details

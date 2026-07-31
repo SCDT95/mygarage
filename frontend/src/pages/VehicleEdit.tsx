@@ -5,6 +5,7 @@ import { useForm, type Resolver } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { ArrowLeft, Save, Droplets } from 'lucide-react'
 import api from '../services/api'
+import vehicleService from '../services/vehicleService'
 import type { Vehicle } from '../types/vehicle'
 import { vehicleEditSchema, type VehicleEditFormData, VEHICLE_TYPES } from '../schemas/vehicle'
 import { FormError } from '../components/FormError'
@@ -15,6 +16,7 @@ import { useUnitPreference } from '../hooks/useUnitPreference'
 import { UnitConverter, UnitFormatter } from '../utils/units'
 import { toCanonicalLiters } from '../utils/decimalSafe'
 import { withBase } from '../utils/basePath'
+import { getUsageTracking } from '../utils/usageTracking'
 
 export default function VehicleEdit() {
   const { t } = useTranslation('vehicles')
@@ -45,6 +47,15 @@ export default function VehicleEdit() {
     defaultValues: {},
   })
 
+  // Which usage dimension(s) the form is currently configured for — primary
+  // (usage_unit) plus the also-track toggle. Drives the Current Hours
+  // field's visibility: it shows for hours-primary AND distance-primary+
+  // secondary-enabled ("dual") vehicles, not just usage_unit === 'hours'.
+  const usageTracking = getUsageTracking({
+    usage_unit: watch('usage_unit'),
+    secondary_usage_enabled: watch('secondary_usage_enabled'),
+  })
+
   const watchedFuelType = watch('fuel_type')
   // The currently-selected (not saved) fuel type — drives DEF capacity
   // gating below so switching the dropdown updates the UI immediately,
@@ -62,7 +73,14 @@ export default function VehicleEdit() {
   const fetchVehicle = useCallback(async () => {
     if (!vin) return
     try {
-      const response = await api.get(`/vehicles/${vin}`)
+      // detail-stats is a supplementary read-aggregation (latest_hours,
+      // secondary_usage_enabled) — its failure must not block loading the
+      // edit form itself, so it's fetched alongside the vehicle GET but
+      // swallows its own error.
+      const [response, detailStats] = await Promise.all([
+        api.get(`/vehicles/${vin}`),
+        vehicleService.getDetailStats(vin).catch(() => null),
+      ])
       const data: Vehicle = response.data
       setVehicle(data)
 
@@ -75,7 +93,14 @@ export default function VehicleEdit() {
         license_plate: data.license_plate,
         vehicle_type: data.vehicle_type,
         usage_unit: data.usage_unit ?? 'distance',
-        current_hours: data.current_hours,
+        secondary_usage_enabled: detailStats?.secondary_usage_enabled ?? false,
+        // R2-H1: `data.current_hours` (the vehicle GET's raw column value) is
+        // retired as a read source — it is no longer written on save (see
+        // onSubmit/backend), so it goes stale the moment a user records a
+        // fuel fill-up or service visit with a newer reading. Prefill from
+        // the derived latest hours reading instead; if detail-stats has none
+        // (or the fetch failed), leave the field empty for the user to enter.
+        current_hours: detailStats?.latest_hours != null ? Number(detailStats.latest_hours) : null,
         color: data.color,
         year: data.year,
         make: data.make,
@@ -282,7 +307,21 @@ export default function VehicleEdit() {
               <FormError error={errors.usage_unit} />
             </div>
 
-            {watch('usage_unit') === 'hours' && (
+            <div>
+              <label htmlFor="secondary_usage_enabled" className="flex items-center gap-3 cursor-pointer mt-6">
+                <input
+                  type="checkbox"
+                  id="secondary_usage_enabled"
+                  {...register('secondary_usage_enabled')}
+                  className="w-4 h-4 rounded border-garage-border bg-garage-bg text-primary focus:ring-primary"
+                />
+                <span className="text-sm font-medium text-garage-text">
+                  {watch('usage_unit') === 'hours' ? t('edit.alsoTrackDistance') : t('edit.alsoTrackHours')}
+                </span>
+              </label>
+            </div>
+
+            {usageTracking.tracksHours && (
               <div>
                 <label
                   htmlFor="current_hours"

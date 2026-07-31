@@ -333,6 +333,8 @@
     }
   },
   "edit": {
+    "alsoTrackDistance": "Also track distance/odometer",
+    "alsoTrackHours": "Also track engine hours",
     "backToVehicle": "Back to Vehicle",
     "basicInformation": "Basic Information",
     "bodyClass": "Body Class",
