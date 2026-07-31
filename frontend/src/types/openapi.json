@@ -1276,6 +1276,25 @@
         "title": "Body_import_fuel_csv_api_import_vehicles__vin__fuel_csv_post",
         "type": "object"
       },
+      "Body_import_hours_csv_api_import_vehicles__vin__hours_csv_post": {
+        "properties": {
+          "file": {
+            "contentMediaType": "application/octet-stream",
+            "title": "File",
+            "type": "string"
+          },
+          "skip_duplicates": {
+            "default": true,
+            "title": "Skip Duplicates",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "file"
+        ],
+        "title": "Body_import_hours_csv_api_import_vehicles__vin__hours_csv_post",
+        "type": "object"
+      },
       "Body_import_insurance_csv_api_import_vehicles__vin__insurance_csv_post": {
         "properties": {
           "file": {
@@ -1622,6 +1641,19 @@
             "description": "Additional details",
             "title": "Description"
           },
+          "due_hours": {
+            "anyOf": [
+              {
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Due engine-hours reading for hours-based reminders (Phase 6b)",
+            "title": "Due Hours"
+          },
           "due_mileage_km": {
             "anyOf": [
               {
@@ -1634,6 +1666,19 @@
             ],
             "description": "Due odometer reading (km) for mileage-based reminders (Phase 3)",
             "title": "Due Mileage Km"
+          },
+          "hours_until_due": {
+            "anyOf": [
+              {
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Engine-hours until due hours reading (Phase 6b)",
+            "title": "Hours Until Due"
           },
           "id": {
             "description": "Unique identifier in format 'type-id'",
@@ -4507,6 +4552,24 @@
             "description": "FK to users.id when driver is a known household user",
             "title": "Driver User Id"
           },
+          "engine_hours": {
+            "anyOf": [
+              {
+                "maximum": 9999999.9,
+                "minimum": 0.0,
+                "type": "number"
+              },
+              {
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Engine-hours reading at this fill-up (hour-metered vehicles). Dimensionless \u2014 no unit conversion. Auto-syncs to hours history.",
+            "title": "Engine Hours"
+          },
           "filled_at": {
             "anyOf": [
               {
@@ -4890,6 +4953,19 @@
           }
         ],
         "properties": {
+          "average_cost_per_hr": {
+            "anyOf": [
+              {
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Average fuel cost per engine-hour across all records; null for pure-distance",
+            "title": "Average Cost Per Hr"
+          },
           "average_l_per_100km": {
             "anyOf": [
               {
@@ -4902,6 +4978,19 @@
             ],
             "description": "Average fuel consumption (L/100 km) across all records",
             "title": "Average L Per 100Km"
+          },
+          "average_l_per_hr": {
+            "anyOf": [
+              {
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Average fuel rate (L/hr) across all records; null for pure-distance",
+            "title": "Average L Per Hr"
           },
           "records": {
             "items": {
@@ -4992,6 +5081,19 @@
             "description": "FK to users.id when driver is a known household user",
             "title": "Driver User Id"
           },
+          "engine_hours": {
+            "anyOf": [
+              {
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Engine-hours reading at this fill-up (hour-metered vehicles). Dimensionless \u2014 no unit conversion. Auto-syncs to hours history.",
+            "title": "Engine Hours"
+          },
           "filled_at": {
             "anyOf": [
               {
@@ -5072,6 +5174,19 @@
             ],
             "description": "Calculated fuel economy (L/100 km)",
             "title": "L Per 100Km"
+          },
+          "l_per_hr": {
+            "anyOf": [
+              {
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Calculated fuel rate (L/hr) over the full-tank interval's engine-hours delta; null for pure-distance vehicles or un-anchorable records",
+            "title": "L Per Hr"
           },
           "liters": {
             "anyOf": [
@@ -5406,6 +5521,24 @@
               }
             ],
             "title": "Driver User Id"
+          },
+          "engine_hours": {
+            "anyOf": [
+              {
+                "maximum": 9999999.9,
+                "minimum": 0.0,
+                "type": "number"
+              },
+              {
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Engine-hours reading at this fill-up (hour-metered vehicles)",
+            "title": "Engine Hours"
           },
           "filled_at": {
             "anyOf": [
@@ -6073,6 +6206,429 @@
           }
         },
         "title": "HTTPValidationError",
+        "type": "object"
+      },
+      "HoursAccumulatedDataPoint": {
+        "description": "Single (date, engine_hours) reading from ``hours_records`` history.\n\nThe hours analog of an odometer-over-time series \u2014 no such point series\nis currently exposed for distance in Analytics (``total_km_driven`` /\n``average_km_per_month`` on :class:`VehicleAnalytics` are summary\nscalars, not a series), so this is a new, clearly-named series rather\nthan a literal mirror. Every ``hours_records`` row is a real observation\n(manual, fuel-synced, or service-synced); neither field is nullable \u2014\na row with a null reading cannot exist in the table.",
+        "properties": {
+          "date": {
+            "format": "date",
+            "title": "Date",
+            "type": "string"
+          },
+          "engine_hours": {
+            "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+            "title": "Engine Hours",
+            "type": "string"
+          }
+        },
+        "required": [
+          "date",
+          "engine_hours"
+        ],
+        "title": "HoursAccumulatedDataPoint",
+        "type": "object"
+      },
+      "HoursEconomyDataPoint": {
+        "description": "Single engine-hours fuel-economy data point (dimensionless \u2014 no unit\nconversion; canonical and display units are the same for hours).\n\nThe hours mirror of :class:`FuelEconomyDataPoint`. ``l_per_hr`` is\nnullable: a full-tank interval with zero liters (a $0 top-off logged\npurely for the hours reading) still scores a valid ``cost_per_hr``, so\nthe point is kept rather than dropped \u2014 see\n:func:`app.services.fuel_service.calculate_hours_economy`. ``cost_per_hr``\nis never null for a point that exists in the series at all.",
+        "properties": {
+          "cost": {
+            "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+            "title": "Cost",
+            "type": "string"
+          },
+          "cost_per_hr": {
+            "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+            "title": "Cost Per Hr",
+            "type": "string"
+          },
+          "date": {
+            "format": "date",
+            "title": "Date",
+            "type": "string"
+          },
+          "engine_hours": {
+            "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+            "title": "Engine Hours",
+            "type": "string"
+          },
+          "l_per_hr": {
+            "anyOf": [
+              {
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "L Per Hr"
+          },
+          "liters": {
+            "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+            "title": "Liters",
+            "type": "string"
+          }
+        },
+        "required": [
+          "date",
+          "engine_hours",
+          "cost_per_hr",
+          "liters",
+          "cost"
+        ],
+        "title": "HoursEconomyDataPoint",
+        "type": "object"
+      },
+      "HoursEconomyTrend": {
+        "description": "Engine-hours fuel economy trend (canonical L/hr + cost/hr; lower L/hr\nis better, mirroring the L/100km convention \u2014 less fuel burned per hour\nof engine operation).\n\nThe hours mirror of :class:`FuelEconomyTrend`. ``average_l_per_hr`` /\n``average_cost_per_hr`` are the canonical vehicle-level averages from\n:func:`app.services.fuel_service.calculate_average_hours_economy`\n(``exclude_hauling=True``) \u2014 this is where ``average_l_per_100km`` lives\non the distance side, so the two hours averages live in the equivalent\nplace here. ``best``/``worst``/``recent``/``trend`` come from the trend's\nown full-tank-endpoint pass (``exclude_hauling=False``), matching the\ndistance trend's internal convention. All are ``None`` for a vehicle with\nno ``engine_hours``-bearing fuel records (pure-distance vehicle).",
+        "properties": {
+          "average_cost_per_hr": {
+            "anyOf": [
+              {
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Average Cost Per Hr"
+          },
+          "average_l_per_hr": {
+            "anyOf": [
+              {
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Average L Per Hr"
+          },
+          "best_l_per_hr": {
+            "anyOf": [
+              {
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Best L Per Hr"
+          },
+          "data_points": {
+            "default": [],
+            "items": {
+              "$ref": "#/components/schemas/HoursEconomyDataPoint"
+            },
+            "title": "Data Points",
+            "type": "array"
+          },
+          "recent_cost_per_hr": {
+            "anyOf": [
+              {
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Recent Cost Per Hr"
+          },
+          "recent_l_per_hr": {
+            "anyOf": [
+              {
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Recent L Per Hr"
+          },
+          "trend": {
+            "default": "stable",
+            "title": "Trend",
+            "type": "string"
+          },
+          "worst_l_per_hr": {
+            "anyOf": [
+              {
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Worst L Per Hr"
+          }
+        },
+        "title": "HoursEconomyTrend",
+        "type": "object"
+      },
+      "HoursRecordCreate": {
+        "description": "Schema for creating a new hours record.",
+        "examples": [
+          {
+            "date": "2025-01-15",
+            "engine_hours": 812.4,
+            "notes": "Monthly reading",
+            "vin": "ML32A5HJ9KH009478"
+          }
+        ],
+        "properties": {
+          "date": {
+            "description": "Reading date",
+            "format": "date",
+            "title": "Date",
+            "type": "string"
+          },
+          "engine_hours": {
+            "anyOf": [
+              {
+                "maximum": 999999999.9,
+                "minimum": 0.0,
+                "type": "number"
+              },
+              {
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+                "type": "string"
+              }
+            ],
+            "description": "Engine hours reading",
+            "title": "Engine Hours"
+          },
+          "notes": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Additional notes",
+            "title": "Notes"
+          },
+          "vin": {
+            "description": "Vehicle VIN",
+            "maxLength": 17,
+            "minLength": 17,
+            "title": "Vin",
+            "type": "string"
+          }
+        },
+        "required": [
+          "date",
+          "engine_hours",
+          "vin"
+        ],
+        "title": "HoursRecordCreate",
+        "type": "object"
+      },
+      "HoursRecordListResponse": {
+        "description": "Schema for hours record list response.",
+        "examples": [
+          {
+            "latest_engine_hours": 812.4,
+            "records": [
+              {
+                "created_at": "2025-01-15T09:00:00",
+                "date": "2025-01-15",
+                "engine_hours": 812.4,
+                "id": 1,
+                "notes": "Monthly reading",
+                "source": "manual",
+                "vin": "ML32A5HJ9KH009478"
+              }
+            ],
+            "total": 1
+          }
+        ],
+        "properties": {
+          "latest_engine_hours": {
+            "anyOf": [
+              {
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Canonical latest engine-hours reading (highest on record)",
+            "title": "Latest Engine Hours"
+          },
+          "records": {
+            "items": {
+              "$ref": "#/components/schemas/HoursRecordResponse"
+            },
+            "title": "Records",
+            "type": "array"
+          },
+          "total": {
+            "title": "Total",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "records",
+          "total"
+        ],
+        "title": "HoursRecordListResponse",
+        "type": "object"
+      },
+      "HoursRecordResponse": {
+        "description": "Schema for hours record response.",
+        "examples": [
+          {
+            "created_at": "2025-01-15T09:00:00",
+            "date": "2025-01-15",
+            "engine_hours": 812.4,
+            "id": 1,
+            "notes": "Monthly reading",
+            "source": "manual",
+            "vin": "ML32A5HJ9KH009478"
+          }
+        ],
+        "properties": {
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "date": {
+            "description": "Reading date",
+            "format": "date",
+            "title": "Date",
+            "type": "string"
+          },
+          "engine_hours": {
+            "description": "Engine hours reading",
+            "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+            "title": "Engine Hours",
+            "type": "string"
+          },
+          "fuel_record_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Fuel Record Id"
+          },
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "notes": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Additional notes",
+            "title": "Notes"
+          },
+          "service_visit_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Service Visit Id"
+          },
+          "source": {
+            "title": "Source",
+            "type": "string"
+          },
+          "vin": {
+            "title": "Vin",
+            "type": "string"
+          }
+        },
+        "required": [
+          "date",
+          "engine_hours",
+          "id",
+          "vin",
+          "source",
+          "fuel_record_id",
+          "service_visit_id",
+          "created_at"
+        ],
+        "title": "HoursRecordResponse",
+        "type": "object"
+      },
+      "HoursRecordUpdate": {
+        "description": "Schema for updating an existing hours record.",
+        "examples": [
+          {
+            "engine_hours": 815.2,
+            "notes": "Corrected reading"
+          }
+        ],
+        "properties": {
+          "date": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Reading date",
+            "title": "Date"
+          },
+          "engine_hours": {
+            "anyOf": [
+              {
+                "maximum": 999999999.9,
+                "minimum": 0.0,
+                "type": "number"
+              },
+              {
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Engine hours reading",
+            "title": "Engine Hours"
+          },
+          "notes": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Additional notes",
+            "title": "Notes"
+          }
+        },
+        "title": "HoursRecordUpdate",
         "type": "object"
       },
       "InsurancePolicy": {
@@ -9685,6 +10241,23 @@
             ],
             "title": "Due Date"
           },
+          "due_hours": {
+            "anyOf": [
+              {
+                "exclusiveMinimum": 0.0,
+                "maximum": 999999999.9,
+                "type": "number"
+              },
+              {
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Due Hours"
+          },
           "due_mileage_km": {
             "anyOf": [
               {
@@ -9729,7 +10302,8 @@
               "date",
               "mileage",
               "both",
-              "smart"
+              "smart",
+              "hours"
             ],
             "title": "Reminder Type",
             "type": "string"
@@ -9767,6 +10341,18 @@
               }
             ],
             "title": "Due Date"
+          },
+          "due_hours": {
+            "anyOf": [
+              {
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Due Hours"
           },
           "due_mileage_km": {
             "anyOf": [
@@ -9860,6 +10446,7 @@
           "reminder_type",
           "due_date",
           "due_mileage_km",
+          "due_hours",
           "status",
           "notes",
           "last_notified_at",
@@ -9883,6 +10470,23 @@
               }
             ],
             "title": "Due Date"
+          },
+          "due_hours": {
+            "anyOf": [
+              {
+                "exclusiveMinimum": 0.0,
+                "maximum": 999999999.9,
+                "type": "number"
+              },
+              {
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Due Hours"
           },
           "due_mileage_km": {
             "anyOf": [
@@ -9919,7 +10523,8 @@
                   "date",
                   "mileage",
                   "both",
-                  "smart"
+                  "smart",
+                  "hours"
                 ],
                 "type": "string"
               },
@@ -10707,6 +11312,24 @@
             "title": "Date",
             "type": "string"
           },
+          "engine_hours": {
+            "anyOf": [
+              {
+                "maximum": 9999999.9,
+                "minimum": 0.0,
+                "type": "number"
+              },
+              {
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Engine-hours reading at this service visit (hour-metered vehicles). Dimensionless \u2014 no unit conversion. Auto-syncs to hours history.",
+            "title": "Engine Hours"
+          },
           "insurance_claim_number": {
             "anyOf": [
               {
@@ -10947,6 +11570,19 @@
             "title": "Date",
             "type": "string"
           },
+          "engine_hours": {
+            "anyOf": [
+              {
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Engine-hours reading at this service visit (hour-metered vehicles). Dimensionless \u2014 no unit conversion. Auto-syncs to hours history.",
+            "title": "Engine Hours"
+          },
           "has_failed_inspections": {
             "description": "Whether any inspections failed",
             "title": "Has Failed Inspections",
@@ -11164,6 +11800,24 @@
             ],
             "description": "Visit date",
             "title": "Date"
+          },
+          "engine_hours": {
+            "anyOf": [
+              {
+                "maximum": 9999999.9,
+                "minimum": 0.0,
+                "type": "number"
+              },
+              {
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Engine-hours reading at this service visit (hour-metered vehicles)",
+            "title": "Engine Hours"
           },
           "insurance_claim_number": {
             "anyOf": [
@@ -16202,6 +16856,17 @@
           "fuel_economy": {
             "$ref": "#/components/schemas/FuelEconomyTrend"
           },
+          "hours_accumulated": {
+            "default": [],
+            "items": {
+              "$ref": "#/components/schemas/HoursAccumulatedDataPoint"
+            },
+            "title": "Hours Accumulated",
+            "type": "array"
+          },
+          "hours_economy": {
+            "$ref": "#/components/schemas/HoursEconomyTrend"
+          },
           "predictions": {
             "default": [],
             "items": {
@@ -16273,7 +16938,8 @@
           "vehicle_type",
           "cost_analysis",
           "cost_projection",
-          "fuel_economy"
+          "fuel_economy",
+          "hours_economy"
         ],
         "title": "VehicleAnalytics",
         "type": "object"
@@ -16946,6 +17612,30 @@
       "VehicleDetailStats": {
         "description": "Read-aggregation for the Vehicle Detail hero + key-facts strip (P5).\n\nMetric-canonical: latest_odometer_km is raw km (frontend converts at the\nboundary). spent_this_year is currency (Decimal -> JSON string).",
         "properties": {
+          "average_cost_per_hr": {
+            "anyOf": [
+              {
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Average Cost Per Hr"
+          },
+          "average_l_per_hr": {
+            "anyOf": [
+              {
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Average L Per Hr"
+          },
           "current_hours": {
             "anyOf": [
               {
@@ -16982,6 +17672,18 @@
             ],
             "title": "Last Service Date"
           },
+          "latest_hours": {
+            "anyOf": [
+              {
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Latest Hours"
+          },
           "latest_odometer_date": {
             "anyOf": [
               {
@@ -17010,6 +17712,10 @@
             "title": "Overdue Count",
             "type": "integer"
           },
+          "secondary_usage_enabled": {
+            "title": "Secondary Usage Enabled",
+            "type": "boolean"
+          },
           "spent_this_year": {
             "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
             "title": "Spent This Year",
@@ -17033,6 +17739,10 @@
           "upcoming_count",
           "usage_unit",
           "current_hours",
+          "latest_hours",
+          "average_l_per_hr",
+          "average_cost_per_hr",
+          "secondary_usage_enabled",
           "latest_odometer_km",
           "latest_odometer_date",
           "last_service_date",
@@ -18095,6 +18805,18 @@
             "title": "Archived Visible",
             "type": "boolean"
           },
+          "average_cost_per_hr": {
+            "anyOf": [
+              {
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Average Cost Per Hr"
+          },
           "average_l_per_100km": {
             "anyOf": [
               {
@@ -18106,6 +18828,18 @@
               }
             ],
             "title": "Average L Per 100Km"
+          },
+          "average_l_per_hr": {
+            "anyOf": [
+              {
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Average L Per Hr"
           },
           "current_hours": {
             "anyOf": [
@@ -18135,6 +18869,18 @@
               }
             ],
             "title": "Latest Fuel Date"
+          },
+          "latest_hours": {
+            "anyOf": [
+              {
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Latest Hours"
           },
           "latest_odometer_date": {
             "anyOf": [
@@ -18220,6 +18966,11 @@
               }
             ],
             "title": "Recent L Per 100Km"
+          },
+          "secondary_usage_enabled": {
+            "default": false,
+            "title": "Secondary Usage Enabled",
+            "type": "boolean"
           },
           "share_permission": {
             "anyOf": [
@@ -20250,8 +21001,20 @@
         "type": "object"
       },
       "WidgetVehicleV2": {
-        "description": "Per-vehicle rollup exposing BOTH unit systems (v2).\n\nMetric is the canonical/native representation; the imperial fields are\nboundary conversions included so a single endpoint serves users on either\nsystem. Every field of the v1 ``WidgetVehicle`` is preserved verbatim\n(``odometer`` in miles, ``recent_mpg``/``average_mpg``) so v2 is a strict\nsuperset and the legacy imperial endpoint can be retired losslessly. The\nhomepage customapi widget picks which 4 fields to display.",
+        "description": "Per-vehicle rollup exposing BOTH unit systems (v2).\n\nMetric is the canonical/native representation; the imperial fields are\nboundary conversions included so a single endpoint serves users on either\nsystem. Every field of the v1 ``WidgetVehicle`` is preserved verbatim\n(``odometer`` in miles, ``recent_mpg``/``average_mpg``) so v2 is a strict\nsuperset and the legacy imperial endpoint can be retired losslessly. The\nhomepage customapi widget picks which 4 fields to display.\n\nEngine-hours fields (Task 8): ``latest_hours``/``average_l_per_hr``/\n``average_cost_per_hr`` are hours-only additions \u2014 v1 never gains these,\nsince it is frozen. Hours are dimensionless (no imperial/metric split),\nso unlike the distance fields above there is no second unit-system\nvariant to add; ``Decimal`` end to end, matching\n``schemas/dashboard.py``'s ``VehicleStatistics``. Null for a\npure-distance vehicle (no ``hours_records`` rows).",
         "properties": {
+          "average_cost_per_hr": {
+            "anyOf": [
+              {
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Average Cost Per Hr"
+          },
           "average_km_per_l": {
             "anyOf": [
               {
@@ -20273,6 +21036,18 @@
               }
             ],
             "title": "Average L Per 100Km"
+          },
+          "average_l_per_hr": {
+            "anyOf": [
+              {
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Average L Per Hr"
           },
           "average_mpg": {
             "anyOf": [
@@ -20320,6 +21095,18 @@
               }
             ],
             "title": "Last Service Date"
+          },
+          "latest_hours": {
+            "anyOf": [
+              {
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Latest Hours"
           },
           "make": {
             "anyOf": [
@@ -21622,7 +22409,7 @@
     },
     "/api/analytics/vehicles/{vin}/export": {
       "get": {
-        "description": "Export vehicle analytics as PDF report.\n\nReturns a PDF file with comprehensive analytics data including:\n- Cost analysis summary\n- Rolling averages and spending trends\n- Cost projections\n- Monthly breakdown\n- Service type breakdown\n- Vendor analysis (if available)\n- Seasonal patterns (if available)",
+        "description": "Export vehicle analytics as PDF report.\n\nReturns a PDF file with comprehensive analytics data including:\n- Cost analysis summary\n- Rolling averages and spending trends\n- Cost projections\n- Monthly breakdown\n- Service type breakdown\n- Vendor analysis (if available)\n- Seasonal patterns (if available)\n- Upcoming reminders (if any are pending)",
         "operationId": "export_analytics_pdf_api_analytics_vehicles__vin__export_get",
         "parameters": [
           {
@@ -23581,6 +24368,52 @@
         ]
       }
     },
+    "/api/export/vehicles/{vin}/hours/csv": {
+      "get": {
+        "description": "Export engine-hours records as CSV.\n\nMirrors :func:`export_odometer_records_csv` \u2014 the hours track's\nstandalone history CSV for hour-metered vehicles (ATVs, side-by-sides,\nequipment). Registered under this router (``/api/export``), not the\nhours CRUD router (``/api/vehicles/{vin}/hours``), to avoid shadowing\nthat router's ``GET /{record_id}`` route.",
+        "operationId": "export_hours_records_csv_api_export_vehicles__vin__hours_csv_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "vin",
+            "required": true,
+            "schema": {
+              "title": "Vin",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Export Hours Records Csv",
+        "tags": [
+          "export"
+        ]
+      }
+    },
     "/api/export/vehicles/{vin}/insurance/csv": {
       "get": {
         "description": "Export insurance records as CSV",
@@ -24502,6 +25335,62 @@
           }
         ],
         "summary": "Import Fuel Csv",
+        "tags": [
+          "import"
+        ]
+      }
+    },
+    "/api/import/vehicles/{vin}/hours/csv": {
+      "post": {
+        "description": "Import engine-hours records from CSV file.\n\nMirrors :func:`import_odometer_csv` \u2014 the hours track's standalone\nhistory CSV for hour-metered vehicles. Registered under this router\n(``/api/import``), not the hours CRUD router (``/api/vehicles/{vin}/hours``),\nto avoid shadowing that router's ``GET/PUT/DELETE /{record_id}`` routes.\n\nEvery imported row becomes a manual reading (``source='manual'``, both\n``fuel_record_id``/``service_visit_id`` left null) regardless of what the\nexported \"Source\" column says \u2014 a CSV cannot carry a live foreign key to\na fuel/service row in the *target* vehicle's tables, so re-establishing\nsync provenance on import would be fabricated.",
+        "operationId": "import_hours_csv_api_import_vehicles__vin__hours_csv_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "vin",
+            "required": true,
+            "schema": {
+              "title": "Vin",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/Body_import_hours_csv_api_import_vehicles__vin__hours_csv_post"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Import Hours Csv",
         "tags": [
           "import"
         ]
@@ -29839,6 +30728,303 @@
         "summary": "Update Fuel Record",
         "tags": [
           "Fuel Records"
+        ]
+      }
+    },
+    "/api/vehicles/{vin}/hours": {
+      "get": {
+        "description": "Get all hours records for a vehicle.\n\n**Path Parameters:**\n- **vin**: Vehicle VIN\n\n**Query Parameters:**\n- **skip**: Number of records to skip (pagination)\n- **limit**: Maximum number of records to return\n\n**Returns:**\n- List of hours records with total count and the canonical latest reading",
+        "operationId": "list_hours_records_api_vehicles__vin__hours_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "vin",
+            "required": true,
+            "schema": {
+              "title": "Vin",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "skip",
+            "required": false,
+            "schema": {
+              "default": 0,
+              "minimum": 0,
+              "title": "Skip",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 100,
+              "maximum": 500,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HoursRecordListResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "List Hours Records",
+        "tags": [
+          "Hours Records"
+        ]
+      },
+      "post": {
+        "description": "Create a new hours record.\n\nA manually-entered reading -- ``source`` defaults to ``'manual'`` with both\n``fuel_record_id`` and ``service_visit_id`` left null (the model column\ndefault), matching how synced rows are distinguished from manual ones.\n\n**Path Parameters:**\n- **vin**: Vehicle VIN\n\n**Request Body:**\n- Hours record data\n\n**Returns:**\n- Created hours record\n\n**Raises:**\n- **404**: Vehicle not found\n- **500**: Database error",
+        "operationId": "create_hours_record_api_vehicles__vin__hours_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "vin",
+            "required": true,
+            "schema": {
+              "title": "Vin",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/HoursRecordCreate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HoursRecordResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Create Hours Record",
+        "tags": [
+          "Hours Records"
+        ]
+      }
+    },
+    "/api/vehicles/{vin}/hours/{record_id}": {
+      "delete": {
+        "description": "Delete an hours record.\n\n**Path Parameters:**\n- **vin**: Vehicle VIN\n- **record_id**: Hours record ID\n\n**Raises:**\n- **404**: Record not found\n- **500**: Database error",
+        "operationId": "delete_hours_record_api_vehicles__vin__hours__record_id__delete",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "vin",
+            "required": true,
+            "schema": {
+              "title": "Vin",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "record_id",
+            "required": true,
+            "schema": {
+              "title": "Record Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Delete Hours Record",
+        "tags": [
+          "Hours Records"
+        ]
+      },
+      "get": {
+        "description": "Get a specific hours record.\n\n**Path Parameters:**\n- **vin**: Vehicle VIN\n- **record_id**: Hours record ID\n\n**Returns:**\n- Hours record details\n\n**Raises:**\n- **404**: Record not found",
+        "operationId": "get_hours_record_api_vehicles__vin__hours__record_id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "vin",
+            "required": true,
+            "schema": {
+              "title": "Vin",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "record_id",
+            "required": true,
+            "schema": {
+              "title": "Record Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HoursRecordResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Get Hours Record",
+        "tags": [
+          "Hours Records"
+        ]
+      },
+      "put": {
+        "description": "Update an existing hours record.\n\n**Path Parameters:**\n- **vin**: Vehicle VIN\n- **record_id**: Hours record ID\n\n**Request Body:**\n- Updated hours record data\n\n**Returns:**\n- Updated hours record\n\n**Raises:**\n- **404**: Record not found\n- **500**: Database error",
+        "operationId": "update_hours_record_api_vehicles__vin__hours__record_id__put",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "vin",
+            "required": true,
+            "schema": {
+              "title": "Vin",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "record_id",
+            "required": true,
+            "schema": {
+              "title": "Record Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/HoursRecordUpdate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HoursRecordResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Update Hours Record",
+        "tags": [
+          "Hours Records"
         ]
       }
     },

@@ -405,6 +405,8 @@ describe('VehicleDetail', () => {
     const A_STATS: VehicleDetailStats = {
       overdue_count: 3, upcoming_count: 0,
       usage_unit: 'distance', current_hours: null,
+      latest_hours: null, average_l_per_hr: null, average_cost_per_hr: null,
+      secondary_usage_enabled: false,
       latest_odometer_km: null, latest_odometer_date: null,
       last_service_date: null, last_fillup_date: null,
       spent_this_year: '0.00', year: 2026,
@@ -446,6 +448,8 @@ describe('VehicleDetail', () => {
     mockedVehicleService.getDetailStats.mockResolvedValue({
       overdue_count: 3, upcoming_count: 2,
       usage_unit: 'distance', current_hours: null,
+      latest_hours: null, average_l_per_hr: null, average_cost_per_hr: null,
+      secondary_usage_enabled: false,
       latest_odometer_km: '160000.00', latest_odometer_date: '2026-07-01',
       last_service_date: '2026-06-15', last_fillup_date: '2026-07-10',
       spent_this_year: '1234.50', year: 2026,

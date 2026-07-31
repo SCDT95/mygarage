@@ -155,6 +155,7 @@ export interface paths {
          *     - Service type breakdown
          *     - Vendor analysis (if available)
          *     - Seasonal patterns (if available)
+         *     - Upcoming reminders (if any are pending)
          */
         get: operations["export_analytics_pdf_api_analytics_vehicles__vin__export_get"];
         put?: never;
@@ -1119,6 +1120,32 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/export/vehicles/{vin}/hours/csv": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Export Hours Records Csv
+         * @description Export engine-hours records as CSV.
+         *
+         *     Mirrors :func:`export_odometer_records_csv` — the hours track's
+         *     standalone history CSV for hour-metered vehicles (ATVs, side-by-sides,
+         *     equipment). Registered under this router (``/api/export``), not the
+         *     hours CRUD router (``/api/vehicles/{vin}/hours``), to avoid shadowing
+         *     that router's ``GET /{record_id}`` route.
+         */
+        get: operations["export_hours_records_csv_api_export_vehicles__vin__hours_csv_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/export/vehicles/{vin}/insurance/csv": {
         parameters: {
             query?: never;
@@ -1581,6 +1608,37 @@ export interface paths {
          * @description Import fuel records from CSV file.
          */
         post: operations["import_fuel_csv_api_import_vehicles__vin__fuel_csv_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/import/vehicles/{vin}/hours/csv": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Import Hours Csv
+         * @description Import engine-hours records from CSV file.
+         *
+         *     Mirrors :func:`import_odometer_csv` — the hours track's standalone
+         *     history CSV for hour-metered vehicles. Registered under this router
+         *     (``/api/import``), not the hours CRUD router (``/api/vehicles/{vin}/hours``),
+         *     to avoid shadowing that router's ``GET/PUT/DELETE /{record_id}`` routes.
+         *
+         *     Every imported row becomes a manual reading (``source='manual'``, both
+         *     ``fuel_record_id``/``service_visit_id`` left null) regardless of what the
+         *     exported "Source" column says — a CSV cannot carry a live foreign key to
+         *     a fuel/service row in the *target* vehicle's tables, so re-establishing
+         *     sync provenance on import would be fabricated.
+         */
+        post: operations["import_hours_csv_api_import_vehicles__vin__hours_csv_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -3836,6 +3894,117 @@ export interface paths {
          *     - Admin users can delete all fuel records
          */
         delete: operations["delete_fuel_record_api_vehicles__vin__fuel__record_id__delete"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/vehicles/{vin}/hours": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Hours Records
+         * @description Get all hours records for a vehicle.
+         *
+         *     **Path Parameters:**
+         *     - **vin**: Vehicle VIN
+         *
+         *     **Query Parameters:**
+         *     - **skip**: Number of records to skip (pagination)
+         *     - **limit**: Maximum number of records to return
+         *
+         *     **Returns:**
+         *     - List of hours records with total count and the canonical latest reading
+         */
+        get: operations["list_hours_records_api_vehicles__vin__hours_get"];
+        put?: never;
+        /**
+         * Create Hours Record
+         * @description Create a new hours record.
+         *
+         *     A manually-entered reading -- ``source`` defaults to ``'manual'`` with both
+         *     ``fuel_record_id`` and ``service_visit_id`` left null (the model column
+         *     default), matching how synced rows are distinguished from manual ones.
+         *
+         *     **Path Parameters:**
+         *     - **vin**: Vehicle VIN
+         *
+         *     **Request Body:**
+         *     - Hours record data
+         *
+         *     **Returns:**
+         *     - Created hours record
+         *
+         *     **Raises:**
+         *     - **404**: Vehicle not found
+         *     - **500**: Database error
+         */
+        post: operations["create_hours_record_api_vehicles__vin__hours_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/vehicles/{vin}/hours/{record_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Hours Record
+         * @description Get a specific hours record.
+         *
+         *     **Path Parameters:**
+         *     - **vin**: Vehicle VIN
+         *     - **record_id**: Hours record ID
+         *
+         *     **Returns:**
+         *     - Hours record details
+         *
+         *     **Raises:**
+         *     - **404**: Record not found
+         */
+        get: operations["get_hours_record_api_vehicles__vin__hours__record_id__get"];
+        /**
+         * Update Hours Record
+         * @description Update an existing hours record.
+         *
+         *     **Path Parameters:**
+         *     - **vin**: Vehicle VIN
+         *     - **record_id**: Hours record ID
+         *
+         *     **Request Body:**
+         *     - Updated hours record data
+         *
+         *     **Returns:**
+         *     - Updated hours record
+         *
+         *     **Raises:**
+         *     - **404**: Record not found
+         *     - **500**: Database error
+         */
+        put: operations["update_hours_record_api_vehicles__vin__hours__record_id__put"];
+        post?: never;
+        /**
+         * Delete Hours Record
+         * @description Delete an hours record.
+         *
+         *     **Path Parameters:**
+         *     - **vin**: Vehicle VIN
+         *     - **record_id**: Hours record ID
+         *
+         *     **Raises:**
+         *     - **404**: Record not found
+         *     - **500**: Database error
+         */
+        delete: operations["delete_hours_record_api_vehicles__vin__hours__record_id__delete"];
         options?: never;
         head?: never;
         patch?: never;
@@ -6355,6 +6524,16 @@ export interface components {
              */
             skip_duplicates: boolean;
         };
+        /** Body_import_hours_csv_api_import_vehicles__vin__hours_csv_post */
+        Body_import_hours_csv_api_import_vehicles__vin__hours_csv_post: {
+            /** File */
+            file: string;
+            /**
+             * Skip Duplicates
+             * @default true
+             */
+            skip_duplicates: boolean;
+        };
         /** Body_import_insurance_csv_api_import_vehicles__vin__insurance_csv_post */
         Body_import_insurance_csv_api_import_vehicles__vin__insurance_csv_post: {
             /** File */
@@ -6511,10 +6690,20 @@ export interface components {
              */
             description?: string | null;
             /**
+             * Due Hours
+             * @description Due engine-hours reading for hours-based reminders (Phase 6b)
+             */
+            due_hours?: string | null;
+            /**
              * Due Mileage Km
              * @description Due odometer reading (km) for mileage-based reminders (Phase 3)
              */
             due_mileage_km?: string | null;
+            /**
+             * Hours Until Due
+             * @description Engine-hours until due hours reading (Phase 6b)
+             */
+            hours_until_due?: string | null;
             /**
              * Id
              * @description Unique identifier in format 'type-id'
@@ -7838,6 +8027,11 @@ export interface components {
              */
             driver_user_id?: number | null;
             /**
+             * Engine Hours
+             * @description Engine-hours reading at this fill-up (hour-metered vehicles). Dimensionless — no unit conversion. Auto-syncs to hours history.
+             */
+            engine_hours?: number | string | null;
+            /**
              * Filled At
              * @description Optional fill-up timestamp (naive local). Required for OBC auto-suggest from a matching DriveSession.
              */
@@ -7995,10 +8189,20 @@ export interface components {
          */
         FuelRecordListResponse: {
             /**
+             * Average Cost Per Hr
+             * @description Average fuel cost per engine-hour across all records; null for pure-distance
+             */
+            average_cost_per_hr?: string | null;
+            /**
              * Average L Per 100Km
              * @description Average fuel consumption (L/100 km) across all records
              */
             average_l_per_100km?: string | null;
+            /**
+             * Average L Per Hr
+             * @description Average fuel rate (L/hr) across all records; null for pure-distance
+             */
+            average_l_per_hr?: string | null;
             /** Records */
             records: components["schemas"]["FuelRecordResponse"][];
             /** Total */
@@ -8051,6 +8255,11 @@ export interface components {
              */
             driver_user_id?: number | null;
             /**
+             * Engine Hours
+             * @description Engine-hours reading at this fill-up (hour-metered vehicles). Dimensionless — no unit conversion. Auto-syncs to hours history.
+             */
+            engine_hours?: string | null;
+            /**
              * Filled At
              * @description Optional fill-up timestamp (naive local). Required for OBC auto-suggest from a matching DriveSession.
              */
@@ -8089,6 +8298,11 @@ export interface components {
              * @description Calculated fuel economy (L/100 km)
              */
             l_per_100km?: string | null;
+            /**
+             * L Per Hr
+             * @description Calculated fuel rate (L/hr) over the full-tank interval's engine-hours delta; null for pure-distance vehicles or un-anchorable records
+             */
+            l_per_hr?: string | null;
             /**
              * Liters
              * @description Fuel amount in liters
@@ -8216,6 +8430,11 @@ export interface components {
             driver_name_freetext?: string | null;
             /** Driver User Id */
             driver_user_id?: number | null;
+            /**
+             * Engine Hours
+             * @description Engine-hours reading at this fill-up (hour-metered vehicles)
+             */
+            engine_hours?: number | string | null;
             /**
              * Filled At
              * @description Optional fill-up timestamp
@@ -8519,6 +8738,230 @@ export interface components {
         HTTPValidationError: {
             /** Detail */
             detail?: components["schemas"]["ValidationError"][];
+        };
+        /**
+         * HoursAccumulatedDataPoint
+         * @description Single (date, engine_hours) reading from ``hours_records`` history.
+         *
+         *     The hours analog of an odometer-over-time series — no such point series
+         *     is currently exposed for distance in Analytics (``total_km_driven`` /
+         *     ``average_km_per_month`` on :class:`VehicleAnalytics` are summary
+         *     scalars, not a series), so this is a new, clearly-named series rather
+         *     than a literal mirror. Every ``hours_records`` row is a real observation
+         *     (manual, fuel-synced, or service-synced); neither field is nullable —
+         *     a row with a null reading cannot exist in the table.
+         */
+        HoursAccumulatedDataPoint: {
+            /**
+             * Date
+             * Format: date
+             */
+            date: string;
+            /** Engine Hours */
+            engine_hours: string;
+        };
+        /**
+         * HoursEconomyDataPoint
+         * @description Single engine-hours fuel-economy data point (dimensionless — no unit
+         *     conversion; canonical and display units are the same for hours).
+         *
+         *     The hours mirror of :class:`FuelEconomyDataPoint`. ``l_per_hr`` is
+         *     nullable: a full-tank interval with zero liters (a $0 top-off logged
+         *     purely for the hours reading) still scores a valid ``cost_per_hr``, so
+         *     the point is kept rather than dropped — see
+         *     :func:`app.services.fuel_service.calculate_hours_economy`. ``cost_per_hr``
+         *     is never null for a point that exists in the series at all.
+         */
+        HoursEconomyDataPoint: {
+            /** Cost */
+            cost: string;
+            /** Cost Per Hr */
+            cost_per_hr: string;
+            /**
+             * Date
+             * Format: date
+             */
+            date: string;
+            /** Engine Hours */
+            engine_hours: string;
+            /** L Per Hr */
+            l_per_hr?: string | null;
+            /** Liters */
+            liters: string;
+        };
+        /**
+         * HoursEconomyTrend
+         * @description Engine-hours fuel economy trend (canonical L/hr + cost/hr; lower L/hr
+         *     is better, mirroring the L/100km convention — less fuel burned per hour
+         *     of engine operation).
+         *
+         *     The hours mirror of :class:`FuelEconomyTrend`. ``average_l_per_hr`` /
+         *     ``average_cost_per_hr`` are the canonical vehicle-level averages from
+         *     :func:`app.services.fuel_service.calculate_average_hours_economy`
+         *     (``exclude_hauling=True``) — this is where ``average_l_per_100km`` lives
+         *     on the distance side, so the two hours averages live in the equivalent
+         *     place here. ``best``/``worst``/``recent``/``trend`` come from the trend's
+         *     own full-tank-endpoint pass (``exclude_hauling=False``), matching the
+         *     distance trend's internal convention. All are ``None`` for a vehicle with
+         *     no ``engine_hours``-bearing fuel records (pure-distance vehicle).
+         */
+        HoursEconomyTrend: {
+            /** Average Cost Per Hr */
+            average_cost_per_hr?: string | null;
+            /** Average L Per Hr */
+            average_l_per_hr?: string | null;
+            /** Best L Per Hr */
+            best_l_per_hr?: string | null;
+            /**
+             * Data Points
+             * @default []
+             */
+            data_points: components["schemas"]["HoursEconomyDataPoint"][];
+            /** Recent Cost Per Hr */
+            recent_cost_per_hr?: string | null;
+            /** Recent L Per Hr */
+            recent_l_per_hr?: string | null;
+            /**
+             * Trend
+             * @default stable
+             */
+            trend: string;
+            /** Worst L Per Hr */
+            worst_l_per_hr?: string | null;
+        };
+        /**
+         * HoursRecordCreate
+         * @description Schema for creating a new hours record.
+         * @example {
+         *       "date": "2025-01-15",
+         *       "engine_hours": 812.4,
+         *       "notes": "Monthly reading",
+         *       "vin": "ML32A5HJ9KH009478"
+         *     }
+         */
+        HoursRecordCreate: {
+            /**
+             * Date
+             * Format: date
+             * @description Reading date
+             */
+            date: string;
+            /**
+             * Engine Hours
+             * @description Engine hours reading
+             */
+            engine_hours: number | string;
+            /**
+             * Notes
+             * @description Additional notes
+             */
+            notes?: string | null;
+            /**
+             * Vin
+             * @description Vehicle VIN
+             */
+            vin: string;
+        };
+        /**
+         * HoursRecordListResponse
+         * @description Schema for hours record list response.
+         * @example {
+         *       "latest_engine_hours": 812.4,
+         *       "records": [
+         *         {
+         *           "created_at": "2025-01-15T09:00:00",
+         *           "date": "2025-01-15",
+         *           "engine_hours": 812.4,
+         *           "id": 1,
+         *           "notes": "Monthly reading",
+         *           "source": "manual",
+         *           "vin": "ML32A5HJ9KH009478"
+         *         }
+         *       ],
+         *       "total": 1
+         *     }
+         */
+        HoursRecordListResponse: {
+            /**
+             * Latest Engine Hours
+             * @description Canonical latest engine-hours reading (highest on record)
+             */
+            latest_engine_hours?: string | null;
+            /** Records */
+            records: components["schemas"]["HoursRecordResponse"][];
+            /** Total */
+            total: number;
+        };
+        /**
+         * HoursRecordResponse
+         * @description Schema for hours record response.
+         * @example {
+         *       "created_at": "2025-01-15T09:00:00",
+         *       "date": "2025-01-15",
+         *       "engine_hours": 812.4,
+         *       "id": 1,
+         *       "notes": "Monthly reading",
+         *       "source": "manual",
+         *       "vin": "ML32A5HJ9KH009478"
+         *     }
+         */
+        HoursRecordResponse: {
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /**
+             * Date
+             * Format: date
+             * @description Reading date
+             */
+            date: string;
+            /**
+             * Engine Hours
+             * @description Engine hours reading
+             */
+            engine_hours: string;
+            /** Fuel Record Id */
+            fuel_record_id: number | null;
+            /** Id */
+            id: number;
+            /**
+             * Notes
+             * @description Additional notes
+             */
+            notes?: string | null;
+            /** Service Visit Id */
+            service_visit_id: number | null;
+            /** Source */
+            source: string;
+            /** Vin */
+            vin: string;
+        };
+        /**
+         * HoursRecordUpdate
+         * @description Schema for updating an existing hours record.
+         * @example {
+         *       "engine_hours": 815.2,
+         *       "notes": "Corrected reading"
+         *     }
+         */
+        HoursRecordUpdate: {
+            /**
+             * Date
+             * @description Reading date
+             */
+            date?: string | null;
+            /**
+             * Engine Hours
+             * @description Engine hours reading
+             */
+            engine_hours?: number | string | null;
+            /**
+             * Notes
+             * @description Additional notes
+             */
+            notes?: string | null;
         };
         /**
          * InsurancePolicy
@@ -10200,6 +10643,8 @@ export interface components {
         ReminderCreate: {
             /** Due Date */
             due_date?: string | null;
+            /** Due Hours */
+            due_hours?: number | string | null;
             /** Due Mileage Km */
             due_mileage_km?: number | string | null;
             /** Line Item Id */
@@ -10210,7 +10655,7 @@ export interface components {
              * Reminder Type
              * @enum {string}
              */
-            reminder_type: "date" | "mileage" | "both" | "smart";
+            reminder_type: "date" | "mileage" | "both" | "smart" | "hours";
             /** Title */
             title: string;
         };
@@ -10226,6 +10671,8 @@ export interface components {
             created_at: string;
             /** Due Date */
             due_date: string | null;
+            /** Due Hours */
+            due_hours: string | null;
             /** Due Mileage Km */
             due_mileage_km: string | null;
             /** Estimated Due Date */
@@ -10263,12 +10710,14 @@ export interface components {
         ReminderUpdate: {
             /** Due Date */
             due_date?: string | null;
+            /** Due Hours */
+            due_hours?: number | string | null;
             /** Due Mileage Km */
             due_mileage_km?: number | string | null;
             /** Notes */
             notes?: string | null;
             /** Reminder Type */
-            reminder_type?: ("date" | "mileage" | "both" | "smart") | null;
+            reminder_type?: ("date" | "mileage" | "both" | "smart" | "hours") | null;
             /** Title */
             title?: string | null;
         };
@@ -10618,6 +11067,11 @@ export interface components {
              */
             date: string;
             /**
+             * Engine Hours
+             * @description Engine-hours reading at this service visit (hour-metered vehicles). Dimensionless — no unit conversion. Auto-syncs to hours history.
+             */
+            engine_hours?: number | string | null;
+            /**
              * Insurance Claim Number
              * @description Insurance claim number
              */
@@ -10735,6 +11189,11 @@ export interface components {
              */
             date: string;
             /**
+             * Engine Hours
+             * @description Engine-hours reading at this service visit (hour-metered vehicles). Dimensionless — no unit conversion. Auto-syncs to hours history.
+             */
+            engine_hours?: string | null;
+            /**
              * Has Failed Inspections
              * @description Whether any inspections failed
              */
@@ -10824,6 +11283,11 @@ export interface components {
              * @description Visit date
              */
             date?: string | null;
+            /**
+             * Engine Hours
+             * @description Engine-hours reading at this service visit (hour-metered vehicles)
+             */
+            engine_hours?: number | string | null;
             /**
              * Insurance Claim Number
              * @description Insurance claim number
@@ -12879,6 +13343,12 @@ export interface components {
             fuel_alerts: components["schemas"]["FuelEfficiencyAlert"][];
             fuel_economy: components["schemas"]["FuelEconomyTrend"];
             /**
+             * Hours Accumulated
+             * @default []
+             */
+            hours_accumulated: components["schemas"]["HoursAccumulatedDataPoint"][];
+            hours_economy: components["schemas"]["HoursEconomyTrend"];
+            /**
              * Predictions
              * @default []
              */
@@ -13227,18 +13697,26 @@ export interface components {
          *     boundary). spent_this_year is currency (Decimal -> JSON string).
          */
         VehicleDetailStats: {
+            /** Average Cost Per Hr */
+            average_cost_per_hr: string | null;
+            /** Average L Per Hr */
+            average_l_per_hr: string | null;
             /** Current Hours */
             current_hours: string | null;
             /** Last Fillup Date */
             last_fillup_date: string | null;
             /** Last Service Date */
             last_service_date: string | null;
+            /** Latest Hours */
+            latest_hours: string | null;
             /** Latest Odometer Date */
             latest_odometer_date: string | null;
             /** Latest Odometer Km */
             latest_odometer_km: string | null;
             /** Overdue Count */
             overdue_count: number;
+            /** Secondary Usage Enabled */
+            secondary_usage_enabled: boolean;
             /** Spent This Year */
             spent_this_year: string;
             /** Upcoming Count */
@@ -13646,8 +14124,12 @@ export interface components {
              * @default true
              */
             archived_visible: boolean;
+            /** Average Cost Per Hr */
+            average_cost_per_hr?: string | null;
             /** Average L Per 100Km */
             average_l_per_100km?: string | null;
+            /** Average L Per Hr */
+            average_l_per_hr?: string | null;
             /** Current Hours */
             current_hours?: string | null;
             /**
@@ -13657,6 +14139,8 @@ export interface components {
             is_shared_with_me: boolean;
             /** Latest Fuel Date */
             latest_fuel_date?: string | null;
+            /** Latest Hours */
+            latest_hours?: string | null;
             /** Latest Odometer Date */
             latest_odometer_date?: string | null;
             /** Latest Odometer Km */
@@ -13673,6 +14157,11 @@ export interface components {
             overdue_maintenance_count: number;
             /** Recent L Per 100Km */
             recent_l_per_100km?: string | null;
+            /**
+             * Secondary Usage Enabled
+             * @default false
+             */
+            secondary_usage_enabled: boolean;
             /** Share Permission */
             share_permission?: string | null;
             /** Shared By Username */
@@ -14539,12 +15028,24 @@ export interface components {
          *     (``odometer`` in miles, ``recent_mpg``/``average_mpg``) so v2 is a strict
          *     superset and the legacy imperial endpoint can be retired losslessly. The
          *     homepage customapi widget picks which 4 fields to display.
+         *
+         *     Engine-hours fields (Task 8): ``latest_hours``/``average_l_per_hr``/
+         *     ``average_cost_per_hr`` are hours-only additions — v1 never gains these,
+         *     since it is frozen. Hours are dimensionless (no imperial/metric split),
+         *     so unlike the distance fields above there is no second unit-system
+         *     variant to add; ``Decimal`` end to end, matching
+         *     ``schemas/dashboard.py``'s ``VehicleStatistics``. Null for a
+         *     pure-distance vehicle (no ``hours_records`` rows).
          */
         WidgetVehicleV2: {
+            /** Average Cost Per Hr */
+            average_cost_per_hr?: string | null;
             /** Average Km Per L */
             average_km_per_l?: number | null;
             /** Average L Per 100Km */
             average_l_per_100km?: number | null;
+            /** Average L Per Hr */
+            average_l_per_hr?: string | null;
             /** Average Mpg */
             average_mpg?: number | null;
             /** Documents */
@@ -14557,6 +15058,8 @@ export interface components {
             last_fuel_date?: string | null;
             /** Last Service Date */
             last_service_date?: string | null;
+            /** Latest Hours */
+            latest_hours?: string | null;
             /** Make */
             make?: string | null;
             /** Model */
@@ -16304,6 +16807,37 @@ export interface operations {
             };
         };
     };
+    export_hours_records_csv_api_export_vehicles__vin__hours_csv_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                vin: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     export_insurance_csv_api_export_vehicles__vin__insurance_csv_get: {
         parameters: {
             query?: never;
@@ -16890,6 +17424,41 @@ export interface operations {
         requestBody: {
             content: {
                 "multipart/form-data": components["schemas"]["Body_import_fuel_csv_api_import_vehicles__vin__fuel_csv_post"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    import_hours_csv_api_import_vehicles__vin__hours_csv_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                vin: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "multipart/form-data": components["schemas"]["Body_import_hours_csv_api_import_vehicles__vin__hours_csv_post"];
             };
         };
         responses: {
@@ -20292,6 +20861,173 @@ export interface operations {
         };
     };
     delete_fuel_record_api_vehicles__vin__fuel__record_id__delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                vin: string;
+                record_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_hours_records_api_vehicles__vin__hours_get: {
+        parameters: {
+            query?: {
+                skip?: number;
+                limit?: number;
+            };
+            header?: never;
+            path: {
+                vin: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HoursRecordListResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    create_hours_record_api_vehicles__vin__hours_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                vin: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["HoursRecordCreate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HoursRecordResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_hours_record_api_vehicles__vin__hours__record_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                vin: string;
+                record_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HoursRecordResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    update_hours_record_api_vehicles__vin__hours__record_id__put: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                vin: string;
+                record_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["HoursRecordUpdate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HoursRecordResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    delete_hours_record_api_vehicles__vin__hours__record_id__delete: {
         parameters: {
             query?: never;
             header?: never;
