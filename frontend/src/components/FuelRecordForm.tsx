@@ -23,6 +23,7 @@ import { useUnitPreference } from '../hooks/useUnitPreference'
 import { useAuth } from '../contexts/AuthContext'
 import { UnitConverter, UnitFormatter } from '../utils/units'
 import { toCanonicalKm, toCanonicalLiters, priceToDisplay, priceToCanonical } from '../utils/decimalSafe'
+import { getUsageTracking } from '../utils/usageTracking'
 import CurrencyInputPrefix from './common/CurrencyInputPrefix'
 import { Button, Field, Input, Select, Textarea, Checkbox } from './ui'
 import { formatDateForInput } from '../utils/dateUtils'
@@ -69,6 +70,12 @@ export default function FuelRecordForm({ vin, record, onClose, onSuccess }: Fuel
   const updateMutation = useUpdateFuelRecord(vin)
   const [vehicleFuelType, setVehicleFuelType] = useState<string>('')
   const [vehicleFuelTypeSecondary, setVehicleFuelTypeSecondary] = useState<string>('')
+  // Task 13 — which usage dimension(s) this vehicle tracks, driving the
+  // odometer vs. engine-hours field visibility below. Defaults mirror
+  // getUsageTracking's own distance-primary default so the form doesn't
+  // flash the wrong field before the vehicle fetch resolves.
+  const [vehicleUsageUnit, setVehicleUsageUnit] = useState<string>('distance')
+  const [vehicleSecondaryUsageEnabled, setVehicleSecondaryUsageEnabled] = useState<boolean>(false)
   const { system } = useUnitPreference()
   const { timeFormat } = useTimeFormat()
   const { user } = useAuth()
@@ -140,6 +147,8 @@ export default function FuelRecordForm({ vin, record, onClose, onSuccess }: Fuel
       odometer_km: system === 'imperial' && record?.odometer_km != null
         ? UnitConverter.kmToMiles(toNumber(record.odometer_km)!) ?? undefined
         : toNumber(record?.odometer_km),
+      // Engine hours are dimensionless — no unit conversion regardless of system.
+      engine_hours: toNumber(record?.engine_hours),
       liters: system === 'imperial' && record?.liters != null
         ? UnitConverter.litersToGallons(toNumber(record.liters)!) ?? undefined
         : toNumber(record?.liters),
@@ -219,6 +228,9 @@ export default function FuelRecordForm({ vin, record, onClose, onSuccess }: Fuel
         // Store fuel_type for conditional rendering
         setVehicleFuelType(vehicleData.fuel_type || '')
         setVehicleFuelTypeSecondary(vehicleData.fuel_type_secondary || '')
+        // Task 13 — usage-dimension fields, for odometer/engine-hours field visibility.
+        setVehicleUsageUnit(vehicleData.usage_unit || 'distance')
+        setVehicleSecondaryUsageEnabled(!!vehicleData.secondary_usage_enabled)
 
         // Auto-populate fuel_type from vehicle if not editing
         if (!record && vehicleData.fuel_type) {
@@ -397,6 +409,8 @@ export default function FuelRecordForm({ vin, record, onClose, onSuccess }: Fuel
         date: data.date,
         filled_at: filledAtValue,
         odometer_km: toCanonicalKm(data.odometer_km, system) ?? undefined,
+        // Dimensionless — submitted verbatim, no canonical conversion.
+        engine_hours: data.engine_hours,
         liters: toCanonicalLiters(data.liters, system) ?? undefined,
         propane_liters: toCanonicalLiters(data.propane_liters, system) ?? undefined,
         kwh: data.kwh,
@@ -453,6 +467,13 @@ export default function FuelRecordForm({ vin, record, onClose, onSuccess }: Fuel
     }
   }
 
+  // Task 13 — which usage dimension(s) drive the odometer vs. engine-hours
+  // field visibility (a dual vehicle shows both).
+  const { tracksDistance, tracksHours } = getUsageTracking({
+    usage_unit: vehicleUsageUnit,
+    secondary_usage_enabled: vehicleSecondaryUsageEnabled,
+  })
+
   // Conditional field visibility based on fuel_type
   const isElectric = vehicleFuelType?.toLowerCase().includes('electric')
   const isHybrid = vehicleFuelType?.toLowerCase().includes('hybrid')
@@ -505,19 +526,39 @@ export default function FuelRecordForm({ vin, record, onClose, onSuccess }: Fuel
             <Field id="date" label={t('common:date')} required error={errors.date}>
               <Input type="date" id="date" {...register('date')} invalid={!!errors.date} disabled={isSubmitting} />
             </Field>
-            <Field id="odometer_km" label={t('common:mileage')} unit={UnitFormatter.getDistanceUnit(system)} error={errors.odometer_km}>
+            {tracksDistance && (
+              <Field id="odometer_km" label={t('common:mileage')} unit={UnitFormatter.getDistanceUnit(system)} error={errors.odometer_km}>
+                <Input
+                  type="number"
+                  id="odometer_km"
+                  mono
+                  {...register('odometer_km', { valueAsNumber: true })}
+                  min="0"
+                  placeholder={system === 'imperial' ? '45000' : '72420'}
+                  invalid={!!errors.odometer_km}
+                  disabled={isSubmitting}
+                />
+              </Field>
+            )}
+          </div>
+
+          {/* Task 13 — engine-hours reading (hour-metered vehicles). Dimensionless:
+              NO unit conversion regardless of system, unlike odometer_km above. */}
+          {tracksHours && (
+            <Field id="engine_hours" label={t('common:engineHours')} unit="hr" error={errors.engine_hours}>
               <Input
                 type="number"
-                id="odometer_km"
+                id="engine_hours"
                 mono
-                {...register('odometer_km', { valueAsNumber: true })}
+                {...register('engine_hours', { valueAsNumber: true })}
                 min="0"
-                placeholder={system === 'imperial' ? '45000' : '72420'}
-                invalid={!!errors.odometer_km}
+                step="0.1"
+                placeholder="812.4"
+                invalid={!!errors.engine_hours}
                 disabled={isSubmitting}
               />
             </Field>
-          </div>
+          )}
 
           <div className="grid grid-cols-3 gap-4">
             {showGallons && (

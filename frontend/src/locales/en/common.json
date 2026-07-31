@@ -303,6 +303,7 @@
   "deleting": "Deleting...",
   "enabled": "Enabled",
   "endDate": "End Date",
+  "engineHours": "Engine Hours",
   "inactive": "Inactive",
   "installPrompt": {
     "title": "Install MyGarage",
@@ -507,6 +508,10 @@
     "odometer": {
       "negative": "Odometer cannot be negative",
       "tooLarge": "Odometer value too large"
+    },
+    "engineHours": {
+      "negative": "Engine hours cannot be negative",
+      "tooLarge": "Engine hours value too large"
     },
     "amount": {
       "negative": "Amount cannot be negative",

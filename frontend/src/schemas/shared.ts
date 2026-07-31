@@ -117,3 +117,15 @@ export const makeOptionalKwhSchema = (t: TFunction) =>
     .or(z.nan())
     .transform(val => isNaN(val) ? undefined : val)
     .optional()
+
+// Engine-hours validator — dimensionless (no unit conversion), for
+// hour-metered vehicles. Bounds mirror the backend's FuelRecordBase/Update
+// `engine_hours` field (ge=0, le=9999999.9).
+export const makeOptionalEngineHoursSchema = (t: TFunction) =>
+  z
+    .number()
+    .min(0, t('common:validation.engineHours.negative'))
+    .max(9999999.9, t('common:validation.engineHours.tooLarge'))
+    .or(z.nan())
+    .transform(val => isNaN(val) ? undefined : val)
+    .optional()

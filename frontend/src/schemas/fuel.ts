@@ -7,6 +7,7 @@ import {
   makeOptionalCurrencySchema,
   makeOptionalPricePerUnitSchema,
   makeOptionalKwhSchema,
+  makeOptionalEngineHoursSchema,
   makeNotesSchema,
 } from './shared'
 import {
@@ -37,6 +38,7 @@ export const makeFuelRecordSchema = (t: TFunction) =>
     date: makeDateSchema(t),
     filled_at: z.string().optional(),
     odometer_km: makeOptionalOdometerSchema(t),
+    engine_hours: makeOptionalEngineHoursSchema(t),
     liters: makeOptionalVolumeSchema(t),
     propane_liters: makeOptionalVolumeSchema(t),
     kwh: makeOptionalKwhSchema(t),

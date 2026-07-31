@@ -471,6 +471,46 @@ export class UnitFormatter {
   }
 
   /**
+   * Format engine-hour fuel rate (the hours analog of fuel economy) with
+   * appropriate unit label.
+   *
+   * Engine hours are dimensionless — only the volume side converts between
+   * systems. Mirrors formatFuelEconomy's N/A-guard and showBoth shape; uses
+   * the exact US-gallon factor (1 gal = 3.785411784 L) rather than
+   * UnitConverter's rounded GALLONS_TO_LITERS, per spec.
+   *
+   * @param lPerHr - Value in L/hr (canonical metric)
+   * @param system - Target unit system
+   * @param showBoth - Show both units (e.g., "3.20 L/hr (0.85 gal/hr)")
+   */
+  static formatFuelRate(lPerHr: Numeric, system: UnitSystem, showBoth: boolean = false): string {
+    if (lPerHr === null || lPerHr === undefined) {
+      return 'N/A';
+    }
+
+    const lNum = typeof lPerHr === 'string' ? parseFloat(lPerHr) : lPerHr;
+    if (isNaN(lNum) || lNum === 0) return 'N/A';
+
+    const LITERS_PER_GALLON = 3.785411784;
+
+    if (system === 'metric') {
+      const primary = `${lNum.toFixed(2)} L/hr`;
+      if (showBoth) {
+        const galPerHr = lNum / LITERS_PER_GALLON;
+        return `${primary} (${galPerHr.toFixed(2)} gal/hr)`;
+      }
+      return primary;
+    } else {
+      const galPerHr = lNum / LITERS_PER_GALLON;
+      const primary = `${galPerHr.toFixed(2)} gal/hr`;
+      if (showBoth) {
+        return `${primary} (${lNum.toFixed(2)} L/hr)`;
+      }
+      return primary;
+    }
+  }
+
+  /**
    * Format temperature with appropriate unit label.
    *
    * @param celsius - Value in Celsius (canonical metric)
@@ -619,6 +659,13 @@ export class UnitFormatter {
    */
   static getFuelEconomyUnit(system: UnitSystem): string {
     return system === 'imperial' ? 'MPG' : 'L/100km';
+  }
+
+  /**
+   * Get fuel-rate (engine-hours economy) unit label for input placeholders.
+   */
+  static getFuelRateUnit(system: UnitSystem): string {
+    return system === 'imperial' ? 'gal/hr' : 'L/hr';
   }
 
   /**

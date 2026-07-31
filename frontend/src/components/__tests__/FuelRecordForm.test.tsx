@@ -336,6 +336,87 @@ describe('FuelRecordForm — footer lift (P3 Task 4)', () => {
   })
 })
 
+describe('FuelRecordForm — engine-hours usage tracking (Task 13)', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+  })
+
+  const odometerInput = () => document.getElementById('odometer_km') as HTMLInputElement | null
+  const engineHoursInput = () => document.getElementById('engine_hours') as HTMLInputElement | null
+
+  it('shows the engine-hours input (and hides odometer) for an hours-tracking vehicle', async () => {
+    mockedApiGet.mockResolvedValue({
+      data: mockVehicle({ fuel_type: 'gasoline', usage_unit: 'hours', secondary_usage_enabled: false }),
+    })
+    render(<FuelRecordForm {...DEFAULT_PROPS} />)
+    await waitFor(() => expect(mockedApiGet).toHaveBeenCalled())
+
+    expect(engineHoursInput()).toBeInTheDocument()
+    expect(odometerInput()).not.toBeInTheDocument()
+  })
+
+  it('shows the odometer input (and hides engine-hours) for a distance-tracking vehicle', async () => {
+    mockedApiGet.mockResolvedValue({
+      data: mockVehicle({ fuel_type: 'gasoline', usage_unit: 'distance', secondary_usage_enabled: false }),
+    })
+    render(<FuelRecordForm {...DEFAULT_PROPS} />)
+    await waitFor(() => expect(mockedApiGet).toHaveBeenCalled())
+
+    expect(odometerInput()).toBeInTheDocument()
+    expect(engineHoursInput()).not.toBeInTheDocument()
+  })
+
+  it('shows BOTH odometer and engine-hours inputs for a dual-tracking vehicle', async () => {
+    mockedApiGet.mockResolvedValue({
+      data: mockVehicle({ fuel_type: 'gasoline', usage_unit: 'distance', secondary_usage_enabled: true }),
+    })
+    render(<FuelRecordForm {...DEFAULT_PROPS} />)
+    await waitFor(() => expect(mockedApiGet).toHaveBeenCalled())
+
+    expect(odometerInput()).toBeInTheDocument()
+    expect(engineHoursInput()).toBeInTheDocument()
+  })
+
+  it('labels the engine-hours field with the dimensionless "hr" unit — no conversion even in imperial', async () => {
+    unitPrefMock.system = 'imperial'
+    mockedApiGet.mockResolvedValue({
+      data: mockVehicle({ fuel_type: 'gasoline', usage_unit: 'hours', secondary_usage_enabled: false }),
+    })
+    render(<FuelRecordForm {...DEFAULT_PROPS} />)
+    await waitFor(() => expect(mockedApiGet).toHaveBeenCalled())
+
+    expect(screen.getByLabelText('common:engineHours (hr)')).toHaveAttribute('id', 'engine_hours')
+    unitPrefMock.system = 'metric'
+  })
+
+  it('submits engine_hours in the create payload', async () => {
+    mockedApiGet.mockResolvedValue({
+      data: mockVehicle({ fuel_type: 'gasoline', usage_unit: 'hours', secondary_usage_enabled: false }),
+    })
+    render(<FuelRecordForm {...DEFAULT_PROPS} />)
+    await waitFor(() => expect(mockedApiGet).toHaveBeenCalled())
+
+    fireEvent.change(dateInput('date'), { target: { value: '2026-04-30' } })
+    fireEvent.change(engineHoursInput()!, { target: { value: '812.4' } })
+    fireEvent.submit(drawerForm())
+
+    await waitFor(() => expect(mockedApiPost).toHaveBeenCalled())
+    const body = mockedApiPost.mock.calls.at(-1)?.[1] as Record<string, unknown>
+    expect(body.engine_hours).toBe(812.4)
+  })
+
+  it('prefills engine_hours from the record on edit', async () => {
+    mockedApiGet.mockResolvedValue({
+      data: mockVehicle({ fuel_type: 'gasoline', usage_unit: 'hours', secondary_usage_enabled: false }),
+    })
+    const record = { ...REC, engine_hours: '640.5' }
+    render(<FuelRecordForm {...DEFAULT_PROPS} record={record as never} />)
+    await waitFor(() => expect(mockedApiGet).toHaveBeenCalled())
+
+    expect(engineHoursInput()!.value).toBe('640.5')
+  })
+})
+
 describe('FuelRecordForm — OBC fields stay canonical-labeled in imperial (B9)', () => {
   beforeEach(() => {
     vi.clearAllMocks()

@@ -195,6 +195,70 @@ describe('FuelRecordList — conditional propane column', () => {
   })
 })
 
+describe('FuelRecordList — hours usage tracking (Task 13)', () => {
+  // Distinct decimals from the distance-side fixtures (7.2 / 8.5 / 43.75) so
+  // regex text matches below can't accidentally hit the wrong number.
+  const hoursRecord: FuelRecord = { ...record, id: 3, l_per_hr: '3.20', engine_hours: '812.4' } as FuelRecord
+  const HOURS_DATA = {
+    records: [hoursRecord],
+    total: 1,
+    average_l_per_100km: null,
+    average_l_per_hr: '4.50',
+    average_cost_per_hr: '2.75',
+  }
+
+  it('shows the Fuel Rate column and per-row gal/hr, and hides Mileage/Fuel Economy, for an hours-tracking vehicle', async () => {
+    apiGetMock.mockResolvedValue({ data: { fuel_type: 'gasoline', usage_unit: 'hours', secondary_usage_enabled: false } })
+    useFuelRecordsMock.mockReturnValue({ data: HOURS_DATA, isLoading: false, error: null })
+    render(<FuelRecordList {...DEFAULT_PROPS} />)
+
+    expect(await screen.findByRole('columnheader', { name: 'fuelList.fuelRate' })).toBeInTheDocument()
+    // real formatFuelRate(3.2, 'metric') -> "3.20 L/hr"
+    expect(within(table()).getByText(/3\.20/)).toBeInTheDocument()
+    expect(within(table()).queryByRole('columnheader', { name: 'fuelList.mileage' })).not.toBeInTheDocument()
+    expect(within(table()).queryByRole('columnheader', { name: 'fuelList.fuelEconomy' })).not.toBeInTheDocument()
+  })
+
+  it('shows the Avg gal/hr and Cost/hr stat cards, and hides Avg Fuel Economy, for an hours-tracking vehicle', async () => {
+    apiGetMock.mockResolvedValue({ data: { fuel_type: 'gasoline', usage_unit: 'hours', secondary_usage_enabled: false } })
+    useFuelRecordsMock.mockReturnValue({ data: HOURS_DATA, isLoading: false, error: null })
+    render(<FuelRecordList {...DEFAULT_PROPS} />)
+    await waitFor(() => expect(apiGetMock).toHaveBeenCalled())
+
+    // real formatFuelRate(4.5, 'metric') -> "4.50 L/hr"; formatCurrency(2.75) -> "$2.75"
+    expect(await screen.findByText('4.50 L/hr')).toBeInTheDocument()
+    expect(screen.getByText('$2.75')).toBeInTheDocument()
+    expect(screen.queryByText('fuelList.avgFuelEconomy')).not.toBeInTheDocument()
+  })
+
+  it('keeps Mileage + Fuel Economy and omits Fuel Rate / hours stats for a pure-distance vehicle (table unchanged)', async () => {
+    // apiGetMock default (beforeEach) returns fuel_type only — no usage_unit, defaults to distance.
+    render(<FuelRecordList {...DEFAULT_PROPS} />)
+    await waitFor(() => expect(apiGetMock).toHaveBeenCalled())
+
+    expect(within(table()).getByRole('columnheader', { name: 'fuelList.mileage' })).toBeInTheDocument()
+    expect(within(table()).getByRole('columnheader', { name: 'fuelList.fuelEconomy' })).toBeInTheDocument()
+    expect(within(table()).queryByRole('columnheader', { name: 'fuelList.fuelRate' })).not.toBeInTheDocument()
+    expect(screen.queryByText('fuelList.costPerHour')).not.toBeInTheDocument()
+  })
+
+  it('shows BOTH mileage/economy AND fuel-rate columns/stats for a dual-tracking vehicle', async () => {
+    apiGetMock.mockResolvedValue({ data: { fuel_type: 'gasoline', usage_unit: 'distance', secondary_usage_enabled: true } })
+    useFuelRecordsMock.mockReturnValue({
+      data: { ...HOURS_DATA, average_l_per_100km: '8.5' },
+      isLoading: false,
+      error: null,
+    })
+    render(<FuelRecordList {...DEFAULT_PROPS} />)
+
+    expect(await screen.findByRole('columnheader', { name: 'fuelList.mileage' })).toBeInTheDocument()
+    expect(within(table()).getByRole('columnheader', { name: 'fuelList.fuelEconomy' })).toBeInTheDocument()
+    expect(within(table()).getByRole('columnheader', { name: 'fuelList.fuelRate' })).toBeInTheDocument()
+    expect(screen.getByText('fuelList.avgFuelEconomy')).toBeInTheDocument()
+    expect(screen.getByText('$2.75')).toBeInTheDocument()
+  })
+})
+
 describe('FuelRecordList — empty state CTA is wired', () => {
   it('shows the "no records" empty state and its add-first CTA fires onAddClick (fails if the CTA is unwired or the title text changes)', () => {
     useFuelRecordsMock.mockReturnValue({ data: { records: [], total: 0, average_l_per_100km: null }, isLoading: false, error: null })

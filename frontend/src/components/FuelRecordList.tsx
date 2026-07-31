@@ -11,6 +11,7 @@ import api from '../services/api'
 import { useUnitPreference } from '../hooks/useUnitPreference'
 import { UnitFormatter } from '../utils/units'
 import { priceToDisplay } from '../utils/decimalSafe'
+import { getUsageTracking } from '../utils/usageTracking'
 import { useFuelRecords, useDeleteFuelRecord, useImportFuelCSV } from '../hooks/queries/useFuelRecords'
 import { Button, IconButton, Card, Mono, DataTable, Badge, SearchField, EmptyState, Checkbox } from './ui'
 import type { DataTableColumn } from './ui'
@@ -27,6 +28,12 @@ export default function FuelRecordList({ vin, onAddClick, onEditClick }: FuelRec
   const [exporting, setExporting] = useState(false)
   const [includeHauling, setIncludeHauling] = useState(false)
   const [vehicleFuelType, setVehicleFuelType] = useState<string>('')
+  // Task 13 — which usage dimension(s) this vehicle tracks, driving mileage
+  // vs. gal/hr column + stat visibility below. Defaults mirror
+  // getUsageTracking's own distance-primary default so the table doesn't
+  // flash the wrong columns before the vehicle fetch resolves.
+  const [vehicleUsageUnit, setVehicleUsageUnit] = useState<string>('distance')
+  const [vehicleSecondaryUsageEnabled, setVehicleSecondaryUsageEnabled] = useState<boolean>(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const { system, showBoth } = useUnitPreference()
   const { currencyCode, locale } = useCurrencyPreference()
@@ -57,6 +64,17 @@ export default function FuelRecordList({ vin, onAddClick, onEditClick }: FuelRec
     setPage(0)
   }, [includeHauling])
   const averageEconomy = data?.average_l_per_100km != null ? parseFloat(String(data.average_l_per_100km)) : null
+  // Task 13 — hours-economy averages (canonical L/hr + currency/hr), null
+  // for a pure-distance vehicle (no engine_hours-bearing fuel records).
+  const averageFuelRate = data?.average_l_per_hr != null ? parseFloat(String(data.average_l_per_hr)) : null
+  const averageCostPerHr = data?.average_cost_per_hr != null ? parseFloat(String(data.average_cost_per_hr)) : null
+
+  // Which usage dimension(s) this vehicle tracks — drives mileage/economy
+  // vs. gal/hr column + stat visibility (a dual vehicle shows both).
+  const { tracksDistance, tracksHours } = getUsageTracking({
+    usage_unit: vehicleUsageUnit,
+    secondary_usage_enabled: vehicleSecondaryUsageEnabled,
+  })
 
   // Fetch vehicle data to determine fuel type
   useEffect(() => {
@@ -65,6 +83,8 @@ export default function FuelRecordList({ vin, onAddClick, onEditClick }: FuelRec
         const response = await api.get(`/vehicles/${vin}`)
         const vehicleData: Vehicle = response.data
         setVehicleFuelType(vehicleData.fuel_type || '')
+        setVehicleUsageUnit(vehicleData.usage_unit || 'distance')
+        setVehicleSecondaryUsageEnabled(!!vehicleData.secondary_usage_enabled)
       } catch {
         // Silent fail - non-critical for display
       }
@@ -168,8 +188,10 @@ export default function FuelRecordList({ vin, onAddClick, onEditClick }: FuelRec
 
   const columns: DataTableColumn<FuelRecord>[] = [
     { id: 'date', header: t('fuelList.date'), mono: true, render: (r) => formatDate(r.date) },
-    { id: 'mileage', header: t('fuelList.mileage'), align: 'right', mono: true,
-      render: (r) => r.odometer_km != null ? UnitFormatter.formatDistance(parseFloat(String(r.odometer_km)), system, showBoth) : '-' },
+    ...(tracksDistance ? [{
+      id: 'mileage', header: t('fuelList.mileage'), align: 'right' as const, mono: true,
+      render: (r: FuelRecord) => r.odometer_km != null ? UnitFormatter.formatDistance(parseFloat(String(r.odometer_km)), system, showBoth) : '-',
+    }] : []),
     { id: 'volume', header: t('fuelList.volumeUnit', { unit: UnitFormatter.getVolumeUnit(system) }), align: 'right', mono: true,
       render: (r) => r.liters ? UnitFormatter.formatVolume(parseFloat(r.liters.toString()), system, showBoth) : '-' },
     ...(showPropaneColumn ? [{
@@ -183,10 +205,19 @@ export default function FuelRecordList({ vin, onAddClick, onEditClick }: FuelRec
       render: (r) => r.price_per_unit ? formatCurrency(priceToDisplay(r.price_per_unit, system, r.price_basis) ?? 0, { currencyCode, locale }) : '-' },
     { id: 'cost', header: t('fuelList.totalCost'), align: 'right', mono: true,
       render: (r) => r.cost ? formatCurrency(parseFloat(r.cost.toString()), { currencyCode, locale }) : '-' },
-    { id: 'economy', header: t('fuelList.fuelEconomy'),
-      render: (r) => r.l_per_100km
+    ...(tracksDistance ? [{
+      id: 'economy', header: t('fuelList.fuelEconomy'),
+      render: (r: FuelRecord) => r.l_per_100km
         ? <Badge tone="success">{UnitFormatter.formatFuelEconomy(parseFloat(r.l_per_100km.toString()), system, showBoth)}</Badge>
-        : <span className="text-sm text-text-mute">-</span> },
+        : <span className="text-sm text-text-mute">-</span>,
+    }] : []),
+    // Task 13 — engine-hours economy (gal/hr display; canonical L/hr storage).
+    ...(tracksHours ? [{
+      id: 'fuelRate', header: t('fuelList.fuelRate'),
+      render: (r: FuelRecord) => r.l_per_hr
+        ? <Badge tone="success">{UnitFormatter.formatFuelRate(parseFloat(r.l_per_hr.toString()), system, showBoth)}</Badge>
+        : <span className="text-sm text-text-mute">-</span>,
+    }] : []),
     { id: 'fullTank', header: t('fuelList.fullTank'),
       render: (r) => r.is_full_tank ? <Badge>{t('fuelList.full')}</Badge> : <Badge tone="muted">{t('fuelList.partial')}</Badge> },
     { id: 'hauling', header: t('fuelList.hauling'),
@@ -284,7 +315,7 @@ export default function FuelRecordList({ vin, onAddClick, onEditClick }: FuelRec
 
         return (
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-            {averageEconomy !== null && (
+            {tracksDistance && averageEconomy !== null && (
               <Card padding="sm">
                 <div className="flex items-center gap-1 text-xs text-text-mute mb-1">
                   <TrendingUp aria-hidden="true" className="w-3 h-3" />
@@ -326,6 +357,24 @@ export default function FuelRecordList({ vin, onAddClick, onEditClick }: FuelRec
                   <span>{UnitFormatter.getCostPerDistanceLabel(system)}</span>
                 </div>
                 <Mono size="2xl" weight="bold">{UnitFormatter.formatCostPerDistance(costPerKm, system, currencyCode, locale)}</Mono>
+              </Card>
+            )}
+            {/* Task 13 — engine-hours economy stats. */}
+            {tracksHours && averageFuelRate !== null && (
+              <Card padding="sm">
+                <div className="flex items-center gap-1 text-xs text-text-mute mb-1">
+                  <Gauge aria-hidden="true" className="w-3 h-3" />
+                  <span>{t('fuelList.avgFuelRate', { unit: UnitFormatter.getFuelRateUnit(system) })}</span>
+                </div>
+                <Mono size="2xl" weight="bold">{UnitFormatter.formatFuelRate(averageFuelRate, system, showBoth)}</Mono>
+              </Card>
+            )}
+            {tracksHours && averageCostPerHr !== null && (
+              <Card padding="sm">
+                <div className="flex items-center gap-1 text-xs text-text-mute mb-1">
+                  <span>{t('fuelList.costPerHour')}</span>
+                </div>
+                <Mono size="2xl" weight="bold">{formatCurrency(averageCostPerHr, { currencyCode, locale })}</Mono>
               </Card>
             )}
           </div>
