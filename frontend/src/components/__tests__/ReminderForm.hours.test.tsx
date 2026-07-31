@@ -11,6 +11,12 @@ import type { Reminder } from '../../types/reminder'
 // both dimensions. `smart` targets the vehicle's PRIMARY dimension
 // (getUsageTracking(...).primary) so the backend's exactly-one-of
 // {due_mileage_km, due_hours} rule is never violated.
+//
+// Task 15 (revised, parity fix) — the hours field is interval-based, mirroring
+// the mileage field exactly: with a currentHours baseline it's "engine-hours
+// until due" (due_hours = currentHours + interval); with none, the entered
+// value is the absolute target verbatim (same fallback as mileage without a
+// currentMileage baseline).
 
 const createMock = vi.fn().mockResolvedValue({})
 const updateMock = vi.fn().mockResolvedValue({})
@@ -100,7 +106,7 @@ describe('ReminderForm — hours reminder type (Task 15)', () => {
     expect(screen.getByLabelText('reminder.dueHours * (hr)')).toBeInTheDocument()
   })
 
-  it('submitting an hours reminder sends due_hours and NOT due_mileage_km (fails if either field is mis-wired)', async () => {
+  it('with no currentHours baseline, the entered value is submitted verbatim as the absolute due_hours target (fails if either field is mis-wired)', async () => {
     const user = userEvent.setup()
     render(<ReminderForm {...DEFAULT_PROPS} />)
     await waitFor(() => expect(screen.getByText('reminderForm.typeHours')).toBeInTheDocument())
@@ -117,6 +123,25 @@ describe('ReminderForm — hours reminder type (Task 15)', () => {
     })
   })
 
+  it('with a currentHours baseline, the entered value is an INTERVAL added to currentHours to produce due_hours (mirrors the mileage currentMileage + interval math, Task 15 parity fix)', async () => {
+    const user = userEvent.setup()
+    render(<ReminderForm {...DEFAULT_PROPS} currentHours={100} />)
+    await waitFor(() => expect(screen.getByText('reminderForm.typeHours')).toBeInTheDocument())
+
+    await user.type(screen.getByLabelText('common:title *'), 'Hydraulic service')
+    fireEvent.click(typeButton('reminderForm.typeHours'))
+    // label switches to the "until due" interval wording once a baseline exists
+    expect(screen.getByLabelText('reminder.hoursUntilDue * (hr)')).toBeInTheDocument()
+    fireEvent.change(screen.getByLabelText('reminder.hoursUntilDue * (hr)'), { target: { value: '50' } })
+    fireEvent.click(screen.getByRole('button', { name: 'common:create' }))
+
+    await waitFor(() => expect(createMock).toHaveBeenCalledTimes(1))
+    expect(createMock.mock.calls[0][0]).toStrictEqual({
+      title: 'Hydraulic service', reminder_type: 'hours', due_date: undefined,
+      due_mileage_km: undefined, due_hours: 150, notes: undefined,
+    })
+  })
+
   it('validation: hours type with no target blocks submit (fails if the required guard is dropped)', async () => {
     const user = userEvent.setup()
     render(<ReminderForm {...DEFAULT_PROPS} />)
@@ -130,7 +155,7 @@ describe('ReminderForm — hours reminder type (Task 15)', () => {
     expect(createMock).not.toHaveBeenCalled()
   })
 
-  it('prefills due_hours from the reminder on edit', async () => {
+  it('with no currentHours baseline, edit prefills due_hours verbatim (absolute target === the field value)', async () => {
     const reminder = {
       id: 5, vin: 'V1', title: 'Hydraulic service', reminder_type: 'hours', status: 'pending',
       due_date: null, due_mileage_km: null, due_hours: '640.5', estimated_due_date: null, notes: null,
@@ -141,6 +166,20 @@ describe('ReminderForm — hours reminder type (Task 15)', () => {
     await waitFor(() => expect(mockedApiGet).toHaveBeenCalled())
 
     expect((screen.getByLabelText('reminder.dueHours * (hr)') as HTMLInputElement).value).toBe('640.5')
+  })
+
+  it('with a currentHours baseline, edit prefills the REMAINING interval — not the absolute due_hours target (mirrors the mileage edit-prefill reverse computation, Task 15 parity fix)', async () => {
+    const reminder = {
+      id: 5, vin: 'V1', title: 'Hydraulic service', reminder_type: 'hours', status: 'pending',
+      due_date: null, due_mileage_km: null, due_hours: '150', estimated_due_date: null, notes: null,
+      line_item_id: null, last_notified_at: null,
+      created_at: '2026-01-01T00:00:00Z', updated_at: '2026-01-01T00:00:00Z',
+    } as unknown as Reminder
+    render(<ReminderForm {...DEFAULT_PROPS} reminder={reminder} currentHours={100} />)
+    await waitFor(() => expect(mockedApiGet).toHaveBeenCalled())
+
+    // remaining interval = due_hours(150) - currentHours(100) = 50, NOT the absolute 150
+    expect((screen.getByLabelText('reminder.hoursUntilDue * (hr)') as HTMLInputElement).value).toBe('50')
   })
 })
 

@@ -14,6 +14,7 @@ vi.mock('../../hooks/useReminders', () => ({
   useDeleteReminder: () => ({ mutateAsync: deleteMock }),
 }))
 vi.mock('../../hooks/useLatestMileage', () => ({ useLatestMileage: () => ({ data: null }) }))
+vi.mock('../../hooks/useLatestHours', () => ({ useLatestHours: () => ({ data: null }) }))
 vi.mock('../../hooks/useDateLocale', () => ({ useDateLocale: () => 'en-US' }))
 vi.mock('../../hooks/useUnitPreference', () => ({ useUnitPreference: () => ({ system: 'imperial', showBoth: false }) }))
 vi.mock('sonner', () => ({ toast: { success: vi.fn(), error: vi.fn() } }))

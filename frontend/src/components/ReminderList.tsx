@@ -8,6 +8,7 @@ import { Bell, Plus, Check, X, Edit, Trash2, Clock, Gauge, Zap, Timer } from 'lu
 import { toast } from 'sonner'
 import { useReminders, useMarkReminderDone, useMarkReminderDismissed, useDeleteReminder } from '../hooks/useReminders'
 import { useLatestMileage } from '../hooks/useLatestMileage'
+import { useLatestHours } from '../hooks/useLatestHours'
 import { formatDateForDisplay } from '../utils/dateUtils'
 import { useDateLocale } from '../hooks/useDateLocale'
 import ReminderForm from './ReminderForm'
@@ -48,6 +49,7 @@ export default function ReminderList({ vin }: ReminderListProps) {
   }
 
   const { data: currentMileage } = useLatestMileage(vin)
+  const { data: currentHours } = useLatestHours(vin)
   const { data: reminders = [], isLoading } = useReminders(vin, activeStatus === 'all' ? 'all' : activeStatus)
   const markDoneMutation = useMarkReminderDone(vin)
   const dismissMutation = useMarkReminderDismissed(vin)
@@ -202,6 +204,7 @@ export default function ReminderList({ vin }: ReminderListProps) {
           vin={vin}
           reminder={editingReminder}
           currentMileage={currentMileage}
+          currentHours={currentHours}
           onClose={handleFormClose}
           onSuccess={handleFormClose}
         />

@@ -5,10 +5,13 @@
  * is available, the form converts interval → absolute on submit. On edit, it
  * reverse-computes the remaining interval for display.
  *
- * The engine-hours target (Task 15) has no such baseline — there is no
- * tracked "current hours" here — so it is a plain absolute due_hours value,
- * submitted verbatim. `smart` reminders target the vehicle's PRIMARY usage
- * dimension (mileage or hours, from getUsageTracking), never both at once.
+ * The engine-hours target (Task 15, revised) mirrors this exactly for parity:
+ * it is also an interval ("engine-hours until due"), converted to an absolute
+ * due_hours using the currentHours baseline (from useLatestHours) when one is
+ * available, with the same edit-time reverse-computation. Hours stay
+ * dimensionless throughout (no unit conversion, unlike mileage). `smart`
+ * reminders target the vehicle's PRIMARY usage dimension (mileage or hours,
+ * from getUsageTracking), never both at once.
  */
 
 import { useTranslation } from 'react-i18next'
@@ -31,6 +34,7 @@ interface ReminderFormProps {
   vin: string
   reminder?: Reminder
   currentMileage?: number | null
+  currentHours?: number | null
   onClose: () => void
   onSuccess: () => void
 }
@@ -50,12 +54,13 @@ const REMINDER_TYPE_DEFS: Record<ReminderType, { labelKey: string; descriptionKe
   smart: { labelKey: 'reminderForm.typeSmart', descriptionKey: 'reminderForm.typeSmartDescription' },
 }
 
-export default function ReminderForm({ vin, reminder, currentMileage, onClose, onSuccess }: ReminderFormProps) {
+export default function ReminderForm({ vin, reminder, currentMileage, currentHours, onClose, onSuccess }: ReminderFormProps) {
   const { t } = useTranslation('forms')
   const isEdit = !!reminder
   const createMutation = useCreateReminder(vin)
   const updateMutation = useUpdateReminder(vin)
   const hasMileage = currentMileage != null && currentMileage > 0
+  const hasHours = currentHours != null && currentHours > 0
   const { system } = useUnitPreference()
   // currentMileage is in canonical km. Convert to user display unit when present.
   const currentDisplay = currentMileage != null
@@ -121,17 +126,19 @@ export default function ReminderForm({ vin, reminder, currentMileage, onClose, o
   })()
   const [mileageInterval, setMileageInterval] = useState<number | undefined>(initialInterval)
 
-  // Task 15 — due_hours target. Engine hours are dimensionless (no unit
-  // conversion, no "current + interval" baseline math like mileage above —
-  // there is no tracked "current hours" here), so this is submitted verbatim
-  // as the absolute due_hours target the backend stores.
-  const initialDueHours = (() => {
+  // Task 15 (revised) — hours input is always an interval ("engine-hours
+  // until due"), mirroring the mileage field above exactly. On edit, reverse-
+  // compute the remaining interval (in hours — dimensionless, no unit
+  // conversion) from the absolute due_hours target.
+  const initialHoursInterval = (() => {
     const dh = reminder?.due_hours
     if (dh == null) return undefined
     const dhNum = typeof dh === 'string' ? parseFloat(dh) : dh
-    return isNaN(dhNum) ? undefined : dhNum
+    if (isNaN(dhNum)) return undefined
+    const remainingHours = currentHours != null ? Math.max(0, dhNum - currentHours) : dhNum
+    return Math.round(remainingHours * 10) / 10
   })()
-  const [dueHours, setDueHours] = useState<number | undefined>(initialDueHours)
+  const [hoursInterval, setHoursInterval] = useState<number | undefined>(initialHoursInterval)
 
   const [notes, setNotes] = useState(reminder?.notes ?? '')
 
@@ -139,6 +146,12 @@ export default function ReminderForm({ vin, reminder, currentMileage, onClose, o
   const absoluteTarget = hasMileage && mileageInterval && currentDisplay != null
     ? currentDisplay + mileageInterval
     : mileageInterval
+
+  // Hours target for display — dimensionless, so no display-unit conversion
+  // (unlike absoluteTarget above), mirroring the same current+interval math.
+  const absoluteHoursTarget = hasHours && hoursInterval && currentHours != null
+    ? currentHours + hoursInterval
+    : hoursInterval
 
   // Task 15 — smart reminders target the vehicle's PRIMARY dimension (keeps
   // the backend's exactly-one-of{mileage,hours} rule trivially satisfied: we
@@ -168,7 +181,7 @@ export default function ReminderForm({ vin, reminder, currentMileage, onClose, o
       return
     }
 
-    if (needsHoursField && !dueHours) {
+    if (needsHoursField && !hoursInterval) {
       setError(t('reminder.hoursRequired'))
       return
     }
@@ -180,9 +193,14 @@ export default function ReminderForm({ vin, reminder, currentMileage, onClose, o
     const due_mileage_km = needsMileageField
       ? (hasMileage && intervalKm != null ? currentMileage + intervalKm : intervalKm ?? undefined)
       : undefined
-    // due_hours is submitted verbatim — dimensionless, no canonical conversion
-    // — and only for the type/metric combos that target it.
-    const due_hours = needsHoursField ? dueHours : undefined
+    // due_hours mirrors due_mileage_km's interval → absolute conversion:
+    // currentHours baseline + entered interval when available, else the
+    // entered value is the absolute target itself. Dimensionless — no
+    // canonical unit conversion — and only sent for the type/metric combos
+    // that target it.
+    const due_hours = needsHoursField
+      ? (hasHours && hoursInterval != null ? currentHours + hoursInterval : hoursInterval ?? undefined)
+      : undefined
 
     setSubmitting(true)
     try {
@@ -332,22 +350,50 @@ export default function ReminderForm({ vin, reminder, currentMileage, onClose, o
           </div>
         )}
 
-        {/* Task 15 — engine-hours target. Dimensionless: no unit conversion and
-            no current-hours baseline (unlike the mileage field above), so the
-            entered value is the absolute due_hours target submitted verbatim. */}
+        {/* Task 15 (revised) — engine-hours target, interval-based to mirror
+            the mileage field above exactly. Dimensionless: no unit conversion,
+            but the same current+interval baseline math and edit-time reverse
+            computation apply when a currentHours reading exists. */}
         {needsHoursField && (
-          <Field id="reminder-hours" label={t('reminder.dueHours')} unit="hr" required>
-            <Input
+          <div>
+            <Field
               id="reminder-hours"
-              type="number"
-              value={dueHours ?? ''}
-              onChange={(e) => setDueHours(e.target.value ? parseFloat(e.target.value) : undefined)}
-              min="0"
-              step="0.1"
-              placeholder="850"
-              disabled={submitting}
-            />
-          </Field>
+              label={hasHours ? t('reminder.hoursUntilDue') : t('reminder.dueHours')}
+              unit="hr"
+              required
+            >
+              <Input
+                id="reminder-hours"
+                type="number"
+                value={hoursInterval ?? ''}
+                onChange={(e) => setHoursInterval(e.target.value ? parseFloat(e.target.value) : undefined)}
+                min="0"
+                step="0.1"
+                placeholder={
+                  hasHours
+                    ? t('reminderForm.hoursIntervalPlaceholder')
+                    : t('reminderForm.hoursAbsolutePlaceholder')
+                }
+                disabled={submitting}
+              />
+            </Field>
+            {hasHours && hoursInterval && currentHours != null ? (
+              <p className="text-xs text-text-mute mt-1">
+                {t('reminderForm.hoursTargetHint', {
+                  current: currentHours.toLocaleString(getActiveLocale()),
+                  interval: hoursInterval.toLocaleString(getActiveLocale()),
+                  target: (absoluteHoursTarget ?? 0).toLocaleString(getActiveLocale()),
+                })}
+              </p>
+            ) : !hasHours ? (
+              <p className="text-xs text-warning mt-1">{t('reminder.noHoursData')}</p>
+            ) : null}
+            {isEdit && hasHours && initialHoursInterval !== undefined && initialHoursInterval <= 0 && (
+              <p className="text-xs text-danger mt-1">
+                {t('reminder.overdueHoursHint')}
+              </p>
+            )}
+          </div>
         )}
 
         {reminderType === 'smart' && (

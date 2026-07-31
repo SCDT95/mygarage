@@ -580,12 +580,15 @@
     "dueHours": "Due Hours (engine hours)",
     "dueMileage": "Due Mileage (odometer)",
     "editTitle": "Edit Reminder",
-    "hoursRequired": "Due hours is required for this reminder type",
+    "hoursRequired": "Engine-hours until due is required for this reminder type",
+    "hoursUntilDue": "Engine-Hours Until Due",
     "milesRequired": "Miles until due is required for this reminder type",
     "milesUntilDue": "Miles Until Due",
+    "noHoursData": "No engine-hours data — enter absolute target hours",
     "noOdometerData": "No odometer data — enter absolute target mileage",
     "optionalNotes": "Optional notes...",
     "overdueHint": "This reminder is overdue — enter a new interval from current mileage",
+    "overdueHoursHint": "This reminder is overdue — enter a new interval from current engine hours",
     "reminderType": "Reminder Type",
     "smartModeDescription": "Smart mode uses your usage history to estimate when you'll hit the target. The date acts as a hard cap — you'll be notified by whichever comes first.",
     "titlePlaceholder": "e.g., Next oil change",
@@ -739,7 +742,10 @@
     "mileageIntervalPlaceholder": "e.g., 5000",
     "mileageAbsolutePlaceholderImperial": "e.g., 92000",
     "mileageAbsolutePlaceholderMetric": "e.g., 148000",
-    "mileageTargetHint": "Current: {{current}} + {{interval}} = {{target}} {{unit}} target"
+    "mileageTargetHint": "Current: {{current}} + {{interval}} = {{target}} {{unit}} target",
+    "hoursIntervalPlaceholder": "e.g., 50",
+    "hoursAbsolutePlaceholder": "e.g., 850",
+    "hoursTargetHint": "Current: {{current}} + {{interval}} = {{target}} hr target"
   },
   "propaneRecordForm": {
     "tankSizeOption": "{{size}} {{unit}} ({{kind}})",
