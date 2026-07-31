@@ -239,6 +239,43 @@ class TestSetManualCurrentHours:
         await db_session.delete(fuel)
         await db_session.commit()
 
+    async def test_tolerates_multiple_same_day_manual_rows(
+        self, db_session: AsyncSession, test_vehicle, clean_hours_records
+    ):
+        """Regression: the manual-hours CRUD endpoint (POST
+        /api/vehicles/{vin}/hours) has no same-day uniqueness guard, so a
+        user can log TWO manual readings dated today before ever touching
+        the vehicle-update current_hours upsert. The old
+        ``scalar_one_or_none()`` lookup raised ``MultipleResultsFound`` the
+        moment it saw both rows — an unhandled 500 on a core vehicle CRUD
+        path. It must instead deterministically pick the NEWEST (highest
+        id) of the two, update it in place, and not create a third row."""
+        vin = test_vehicle["vin"]
+        older = await _add_hours_record(db_session, vin, date.today(), Decimal("10.0"))
+        newer = await _add_hours_record(db_session, vin, date.today(), Decimal("20.0"))
+        assert newer.id > older.id
+
+        updated = await set_manual_current_hours(db_session, vin, Decimal("30.0"))
+        await db_session.commit()
+
+        assert updated.id == newer.id, "the newest same-day manual row must be the one updated"
+        assert updated.engine_hours == Decimal("30.0")
+
+        rows = (
+            (
+                await db_session.execute(
+                    select(HoursRecord).where(
+                        HoursRecord.vin == vin, HoursRecord.source == "manual"
+                    )
+                )
+            )
+            .scalars()
+            .all()
+        )
+        assert len(rows) == 2, "no third row should be created"
+        older_row = next(r for r in rows if r.id == older.id)
+        assert older_row.engine_hours == Decimal("10.0"), "the older row must be left untouched"
+
     async def test_commit_true_commits_and_refreshes(
         self, db_session: AsyncSession, test_vehicle, clean_hours_records
     ):

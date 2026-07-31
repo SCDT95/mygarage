@@ -70,7 +70,15 @@ async def set_manual_current_hours(
     never carries — and updates its ``engine_hours`` in place. A repeated
     call the SAME day (e.g. two vehicle updates in one session) updates that
     ONE row rather than creating a second: at most one manual row per vin
-    per day. Creates one when absent.
+    per day, in the common case. Creates one when absent.
+
+    The manual-hours CRUD endpoint (``POST /api/vehicles/{vin}/hours``) has
+    no same-day uniqueness guard, so more than one matching row CAN exist by
+    the time this upsert runs. Tolerate that: order by ``id DESC`` and take
+    the newest match with ``.scalars().first()`` rather than
+    ``scalar_one_or_none()``, which raises ``MultipleResultsFound`` (an
+    unhandled 500 on the vehicle-update path) the moment a second manual row
+    for today exists.
 
     Args:
         commit: When True, commits and refreshes within its own unit of
@@ -83,16 +91,23 @@ async def set_manual_current_hours(
     """
     today = date.today()
     existing = (
-        await db.execute(
-            select(HoursRecord).where(
-                HoursRecord.vin == vin,
-                HoursRecord.date == today,
-                HoursRecord.source == "manual",
-                HoursRecord.fuel_record_id.is_(None),
-                HoursRecord.service_visit_id.is_(None),
+        (
+            await db.execute(
+                select(HoursRecord)
+                .where(
+                    HoursRecord.vin == vin,
+                    HoursRecord.date == today,
+                    HoursRecord.source == "manual",
+                    HoursRecord.fuel_record_id.is_(None),
+                    HoursRecord.service_visit_id.is_(None),
+                )
+                .order_by(HoursRecord.id.desc())
+                .limit(1)
             )
         )
-    ).scalar_one_or_none()
+        .scalars()
+        .first()
+    )
 
     if existing is not None:
         existing.engine_hours = engine_hours
