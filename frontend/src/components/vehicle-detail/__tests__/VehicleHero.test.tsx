@@ -1,10 +1,29 @@
 import { describe, it, expect, vi } from 'vitest'
+import { readFileSync } from 'node:fs'
+import { resolve } from 'node:path'
 import { render, screen } from '../../../__tests__/test-utils'
 import type { Vehicle, VehicleDetailStats } from '../../../types/vehicle'
 import { UnitFormatter } from '../../../utils/units'
 
 vi.mock('../../../hooks/useUnitPreference', () => ({
   useUnitPreference: () => ({ system: 'imperial' }),
+}))
+
+// LOCAL i18n mock (same pattern as FuelRecordList's B7 fix): the GLOBAL
+// setup.ts mock is `t: (key) => key`, which discards interpolation args, so
+// `t('vehicleStats.hoursValue', { value })` renders the identical string
+// regardless of value — a test proving latest_hours (not the stale
+// current_hours column) drives the display needs the value to come through.
+// This override retains `options.value` and is otherwise behaviour-identical
+// to the global mock (bare key) so the pre-existing tests below stay green.
+vi.mock('react-i18next', () => ({
+  useTranslation: () => ({
+    t: (key: string, options?: { value?: unknown }) =>
+      options?.value != null ? `${key} (${options.value})` : key,
+    i18n: { language: 'en', changeLanguage: () => Promise.resolve() },
+  }),
+  Trans: ({ children }: { children: React.ReactNode }) => children,
+  initReactI18next: { type: '3rdParty', init: () => {} },
 }))
 
 import VehicleHero from '../VehicleHero'
@@ -58,5 +77,57 @@ describe('VehicleHero', () => {
     render(<VehicleHero vehicle={{ ...VEHICLE, vehicle_type: 'FifthWheel' } as Vehicle}
       photoUrl={null} fromCache={false} detailStats={STATS} />)
     expect(screen.queryByText('detail.misc.odometer')).not.toBeInTheDocument()
+  })
+
+  it('shows the hero reading from latest_hours, NOT the stale current_hours column (fixture where the two differ)', () => {
+    const hoursStats: VehicleDetailStats = {
+      ...STATS,
+      usage_unit: 'hours',
+      current_hours: '999.9', // decoy stale column — must be ignored
+      latest_hours: '55.5',
+    }
+    render(<VehicleHero vehicle={VEHICLE} photoUrl={null} fromCache={false} detailStats={hoursStats} />)
+    expect(screen.getByText('detail.misc.hours')).toBeInTheDocument()
+    expect(screen.getByText('vehicleStats.hoursValue (55.5)')).toBeInTheDocument()
+    expect(screen.queryByText('vehicleStats.hoursValue (999.9)')).not.toBeInTheDocument()
+    // Pure-hours: no odometer reading chip.
+    expect(screen.queryByText('detail.misc.odometer')).not.toBeInTheDocument()
+  })
+
+  it('dual-tracking (distance primary) shows BOTH the odometer AND the hours reading', () => {
+    const dualStats: VehicleDetailStats = {
+      ...STATS,
+      usage_unit: 'distance',
+      secondary_usage_enabled: true,
+      latest_odometer_km: '160000.00',
+      latest_hours: '321.75',
+    }
+    render(<VehicleHero vehicle={VEHICLE} photoUrl={null} fromCache={false} detailStats={dualStats} />)
+    const expectedDistance = UnitFormatter.formatDistance(parseFloat(dualStats.latest_odometer_km!), 'imperial')
+    expect(screen.getByText('detail.misc.odometer')).toBeInTheDocument()
+    expect(screen.getByText(expectedDistance)).toBeInTheDocument()
+    expect(screen.getByText('detail.misc.hours')).toBeInTheDocument()
+    expect(screen.getByText('vehicleStats.hoursValue (321.75)')).toBeInTheDocument()
+  })
+
+  it('dual-tracking (hours primary) shows BOTH the hours AND the odometer reading', () => {
+    const dualStats: VehicleDetailStats = {
+      ...STATS,
+      usage_unit: 'hours',
+      secondary_usage_enabled: true,
+      latest_odometer_km: '160000.00',
+      latest_hours: '321.75',
+    }
+    render(<VehicleHero vehicle={VEHICLE} photoUrl={null} fromCache={false} detailStats={dualStats} />)
+    const expectedDistance = UnitFormatter.formatDistance(parseFloat(dualStats.latest_odometer_km!), 'imperial')
+    expect(screen.getByText('detail.misc.hours')).toBeInTheDocument()
+    expect(screen.getByText('vehicleStats.hoursValue (321.75)')).toBeInTheDocument()
+    expect(screen.getByText('detail.misc.odometer')).toBeInTheDocument()
+    expect(screen.getByText(expectedDistance)).toBeInTheDocument()
+  })
+
+  it('never reads detailStats.current_hours (grep-style source check — the stale column is retired)', () => {
+    const src = readFileSync(resolve(__dirname, '../VehicleHero.tsx'), 'utf8')
+    expect(src).not.toMatch(/current_hours/)
   })
 })

@@ -5,6 +5,7 @@ import { useUnitPreference } from '../../hooks/useUnitPreference'
 import { UnitFormatter } from '../../utils/units'
 import { formatDateForDisplay } from '../../utils/dateUtils'
 import { useDateLocale } from '../../hooks/useDateLocale'
+import { getUsageTracking } from '../../utils/usageTracking'
 import { Chip, Badge, Mono } from '../ui'
 
 interface VehicleHeroProps {
@@ -33,29 +34,49 @@ export default function VehicleHero({ vehicle, photoUrl, fromCache, detailStats 
     vehicle.vehicle_type &&
     !['Trailer', 'FifthWheel', 'TravelTrailer'].includes(vehicle.vehicle_type)
 
-  // Usage reading: engine hours for hour-metered vehicles, odometer distance
-  // otherwise. Hours carry no companion date (a single current value).
-  const tracksHours = detailStats?.usage_unit === 'hours'
-  const reading = tracksHours
-    ? detailStats?.current_hours != null
-      ? t('vehicleStats.hoursValue', { value: Number(detailStats.current_hours).toLocaleString() })
+  // Usage reading(s): engine hours for hour-metered vehicles, odometer
+  // distance otherwise — derived from `latest_hours` (the maintained
+  // aggregate), NOT the retired stale-hours column. Hours carry no
+  // companion date (a single current value). A dual-tracking vehicle (both
+  // dimensions enabled) shows its PRIMARY dimension as the headline reading
+  // plus the other dimension as a secondary chip.
+  const usage = detailStats ? getUsageTracking(detailStats) : null
+  const primaryIsHours = usage?.primary === 'hours'
+  const isDualTracking = !!usage && usage.tracksDistance && usage.tracksHours
+
+  const primaryReading = primaryIsHours
+    ? detailStats?.latest_hours != null
+      ? t('vehicleStats.hoursValue', { value: Number(detailStats.latest_hours).toLocaleString() })
       : null
     : isMotorized && detailStats?.latest_odometer_km
       ? UnitFormatter.formatDistance(parseFloat(detailStats.latest_odometer_km), system)
       : null
 
-  const readingLabel = tracksHours ? t('detail.misc.hours') : t('detail.misc.odometer')
+  const primaryLabel = primaryIsHours ? t('detail.misc.hours') : t('detail.misc.odometer')
 
   // Companion reading date (m2) — distance only; a formatted date is DATA, not
   // UI copy (G2), so it needs no i18n key. Rendered only when there's a reading.
-  const readingDate =
-    !tracksHours && reading && detailStats?.latest_odometer_date
+  const primaryReadingDate =
+    !primaryIsHours && primaryReading && detailStats?.latest_odometer_date
       ? formatDateForDisplay(
           detailStats.latest_odometer_date,
           { year: 'numeric', month: 'short', day: 'numeric' },
           dateLocale,
         )
       : null
+
+  // Secondary reading — the OTHER usage dimension, dual-tracking vehicles only.
+  const secondaryReading = isDualTracking
+    ? primaryIsHours
+      ? isMotorized && detailStats?.latest_odometer_km
+        ? UnitFormatter.formatDistance(parseFloat(detailStats.latest_odometer_km), system)
+        : null
+      : detailStats?.latest_hours != null
+        ? t('vehicleStats.hoursValue', { value: Number(detailStats.latest_hours).toLocaleString() })
+        : null
+    : null
+
+  const secondaryLabel = primaryIsHours ? t('detail.misc.odometer') : t('detail.misc.hours')
 
   const overdue = detailStats?.overdue_count ?? 0
   const upcoming = detailStats?.upcoming_count ?? 0
@@ -93,18 +114,26 @@ export default function VehicleHero({ vehicle, photoUrl, fromCache, detailStats 
       <div className="pointer-events-none absolute inset-x-6 bottom-5">
         <div className="mb-2 flex flex-wrap items-center gap-2.5">
           <Chip tone="accent">{vehicle.vehicle_type}</Chip>
-          {reading ? (
+          {primaryReading ? (
             <span className="inline-flex items-center gap-1.5 rounded-chip bg-badge-bg px-2.5 py-1 text-text-dim">
               <Gauge aria-hidden="true" className="h-3.5 w-3.5" />
-              <span className="text-[11px] font-medium">{readingLabel}</span>
+              <span className="text-[11px] font-medium">{primaryLabel}</span>
               <span className="text-[11px]">·</span>
-              <Mono size="sm">{reading}</Mono>
-              {readingDate ? (
+              <Mono size="sm">{primaryReading}</Mono>
+              {primaryReadingDate ? (
                 <>
                   <span className="text-[11px]">·</span>
-                  <span className="text-[11px]">{readingDate}</span>
+                  <span className="text-[11px]">{primaryReadingDate}</span>
                 </>
               ) : null}
+            </span>
+          ) : null}
+          {secondaryReading ? (
+            <span className="inline-flex items-center gap-1.5 rounded-chip bg-badge-bg px-2.5 py-1 text-text-dim">
+              <Gauge aria-hidden="true" className="h-3.5 w-3.5" />
+              <span className="text-[11px] font-medium">{secondaryLabel}</span>
+              <span className="text-[11px]">·</span>
+              <Mono size="sm">{secondaryReading}</Mono>
             </span>
           ) : null}
           {vehicle.sold_date ? <Badge tone="warning">{t('vehicleCard.sold')}</Badge> : null}

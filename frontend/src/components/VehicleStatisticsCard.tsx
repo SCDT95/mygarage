@@ -20,6 +20,7 @@ import { formatDateForDisplay } from '../utils/dateUtils'
 import { useUnitPreference } from '../hooks/useUnitPreference'
 import { UnitFormatter } from '../utils/units'
 import { withBase } from '../utils/basePath'
+import { getUsageTracking } from '../utils/usageTracking'
 import VehicleLiveLinkWidget from './livelink/VehicleLiveLinkWidget'
 import { ListRow, Tile, Badge, Mono } from './ui'
 
@@ -45,12 +46,12 @@ function VehicleStatisticsCard({ stats }: VehicleStatisticsCardProps) {
     })
   }
 
-  const tracksHours = stats.usage_unit === 'hours'
+  const usage = getUsageTracking(stats)
   const hasActivity =
     stats.total_service_records > 0 ||
     stats.total_fuel_records > 0 ||
     stats.total_odometer_records > 0 ||
-    (tracksHours && stats.current_hours != null)
+    (usage.tracksHours && stats.latest_hours != null)
 
   const typeLabels: Record<string, string> = {
     Car: t('vehicleTypeLabels.Car'),
@@ -172,51 +173,72 @@ function VehicleStatisticsCard({ stats }: VehicleStatisticsCardProps) {
               {stats.latest_fuel_date && (
                 <ListRow icon={Fuel} label={t('vehicleStats.lastFillUp')} value={formatDate(stats.latest_fuel_date)} />
               )}
-              {tracksHours
-                ? stats.current_hours != null && (
-                    <ListRow
-                      icon={Gauge}
-                      label={t('vehicleStats.latestHours')}
-                      value={t('vehicleStats.hoursValue', {
-                        value: Number(stats.current_hours).toLocaleString(),
-                      })}
-                    />
-                  )
-                : stats.latest_odometer_km && (
-                    <ListRow
-                      icon={Gauge}
-                      label={t('vehicleStats.latestOdometer')}
-                      value={UnitFormatter.formatDistance(
-                        parseFloat(String(stats.latest_odometer_km)),
-                        system,
-                        false
-                      )}
-                    />
+              {usage.tracksDistance && stats.latest_odometer_km && (
+                <ListRow
+                  icon={Gauge}
+                  label={t('vehicleStats.latestOdometer')}
+                  value={UnitFormatter.formatDistance(
+                    parseFloat(String(stats.latest_odometer_km)),
+                    system,
+                    false
                   )}
+                />
+              )}
+              {usage.tracksHours && stats.latest_hours != null && (
+                <ListRow
+                  icon={Gauge}
+                  label={t('vehicleStats.latestHours')}
+                  value={t('vehicleStats.hoursValue', {
+                    value: Number(stats.latest_hours).toLocaleString(),
+                  })}
+                />
+              )}
             </div>
           </div>
         )}
 
-        {/* Highlight strip — average fuel economy (accent). Distance-based, so
-            hidden for hour-metered vehicles (MPG is meaningless there). */}
-        {!tracksHours && stats.average_l_per_100km && (
-          <div className="border-t border-border pt-3">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <TrendingUp aria-hidden="true" className="h-4 w-4 text-(--accent-fg)" />
-                <span className="text-sm text-text-mute">
-                  {t('vehicleStatisticsCardExtra.averageFuelEconomy', {
-                    unit: UnitFormatter.getFuelEconomyUnit(system),
-                  })}
-                </span>
+        {/* Highlight strip — average fuel economy (accent). MPG is distance-
+            based (hidden for hour-metered vehicles); gal/hr is the hours
+            analog (Phase 13's formatFuelRate/getFuelRateUnit), hidden for
+            distance-only vehicles. A dual-tracking vehicle shows both. */}
+        {((usage.tracksDistance && stats.average_l_per_100km) ||
+          (usage.tracksHours && stats.average_l_per_hr)) && (
+          <div className="space-y-3 border-t border-border pt-3">
+            {usage.tracksDistance && stats.average_l_per_100km && (
+              <div>
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <TrendingUp aria-hidden="true" className="h-4 w-4 text-(--accent-fg)" />
+                    <span className="text-sm text-text-mute">
+                      {t('vehicleStatisticsCardExtra.averageFuelEconomy', {
+                        unit: UnitFormatter.getFuelEconomyUnit(system),
+                      })}
+                    </span>
+                  </div>
+                  <Mono size="lg" weight="bold" tone="accent">
+                    {UnitFormatter.formatFuelEconomy(parseFloat(String(stats.average_l_per_100km)), system, false)}
+                  </Mono>
+                </div>
+                {stats.recent_l_per_100km && stats.recent_l_per_100km !== stats.average_l_per_100km && (
+                  <div className="mt-1 text-xs text-text-mute">
+                    {t('vehicleStats.recent')}: {UnitFormatter.formatFuelEconomy(parseFloat(String(stats.recent_l_per_100km)), system, false)}
+                  </div>
+                )}
               </div>
-              <Mono size="lg" weight="bold" tone="accent">
-                {UnitFormatter.formatFuelEconomy(parseFloat(String(stats.average_l_per_100km)), system, false)}
-              </Mono>
-            </div>
-            {stats.recent_l_per_100km && stats.recent_l_per_100km !== stats.average_l_per_100km && (
-              <div className="mt-1 text-xs text-text-mute">
-                {t('vehicleStats.recent')}: {UnitFormatter.formatFuelEconomy(parseFloat(String(stats.recent_l_per_100km)), system, false)}
+            )}
+            {usage.tracksHours && stats.average_l_per_hr && (
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <TrendingUp aria-hidden="true" className="h-4 w-4 text-(--accent-fg)" />
+                  <span className="text-sm text-text-mute">
+                    {t('vehicleStatisticsCardExtra.averageFuelEconomy', {
+                      unit: UnitFormatter.getFuelRateUnit(system),
+                    })}
+                  </span>
+                </div>
+                <Mono size="lg" weight="bold" tone="accent">
+                  {UnitFormatter.formatFuelRate(parseFloat(String(stats.average_l_per_hr)), system, false)}
+                </Mono>
               </div>
             )}
           </div>
