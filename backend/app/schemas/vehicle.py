@@ -66,6 +66,10 @@ class VehicleBase(BaseModel):
     current_hours: Decimal | None = Field(
         None, description="Current engine-hour reading (used when usage_unit == 'hours')", ge=0
     )
+    secondary_usage_enabled: bool = Field(
+        False,
+        description="Also track the non-primary usage dimension (distance+hours dual tracking)",
+    )
     year: int | None = Field(None, description="Model year", ge=1900, le=2100)
     make: str | None = Field(None, description="Manufacturer brand", max_length=50)
     model: str | None = Field(None, description="Model name", max_length=50)

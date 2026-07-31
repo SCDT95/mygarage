@@ -35,6 +35,7 @@ const baseVehicle: Vehicle = {
   nickname: 'Test Car',
   vehicle_type: 'Car',
   usage_unit: 'distance',
+  secondary_usage_enabled: false,
   year: 2024,
   make: 'Toyota',
   model: 'Camry',

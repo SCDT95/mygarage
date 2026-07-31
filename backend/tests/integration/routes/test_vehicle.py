@@ -195,6 +195,64 @@ class TestVehicleRoutes:
         resp = await client.post("/api/vehicles", json=payload, headers=auth_headers)
         assert resp.status_code == 422
 
+    async def test_create_vehicle_persists_secondary_usage_enabled(
+        self, client: AsyncClient, auth_headers, sample_vehicle_payload
+    ):
+        """secondary_usage_enabled=true on create must persist. `VehicleBase`
+        was missing this field entirely, so Pydantic's `extra="ignore"` was
+        silently dropping it on POST -> the "also track hours" toggle was a
+        no-op. Regression guard for that gap."""
+        vin = "1HGCM82633A100004"
+        payload = {**sample_vehicle_payload, "vin": vin, "secondary_usage_enabled": True}
+        resp = await client.post("/api/vehicles", json=payload, headers=auth_headers)
+        assert resp.status_code == 201
+        assert resp.json()["secondary_usage_enabled"] is True
+
+        get_resp = await client.get(f"/api/vehicles/{vin}", headers=auth_headers)
+        assert get_resp.status_code == 200
+        assert get_resp.json()["secondary_usage_enabled"] is True
+
+    async def test_update_vehicle_toggles_secondary_usage_enabled(
+        self, client: AsyncClient, auth_headers, sample_vehicle_payload
+    ):
+        """A PUT toggling secondary_usage_enabled true -> false must persist
+        the new value (same VehicleBase gap: VehicleUpdate silently dropped
+        it too)."""
+        vin = "1HGCM82633A100005"
+        payload = {**sample_vehicle_payload, "vin": vin, "secondary_usage_enabled": True}
+        resp = await client.post("/api/vehicles", json=payload, headers=auth_headers)
+        assert resp.status_code == 201
+        assert resp.json()["secondary_usage_enabled"] is True
+
+        upd = await client.put(
+            f"/api/vehicles/{vin}",
+            json={"secondary_usage_enabled": False},
+            headers=auth_headers,
+        )
+        assert upd.status_code == 200
+        assert upd.json()["secondary_usage_enabled"] is False
+
+        get_resp = await client.get(f"/api/vehicles/{vin}", headers=auth_headers)
+        assert get_resp.json()["secondary_usage_enabled"] is False
+
+    async def test_omitted_secondary_usage_enabled_on_update_leaves_it_unchanged(
+        self, client: AsyncClient, auth_headers, sample_vehicle_payload
+    ):
+        """exclude_unset semantics: a PUT that never mentions
+        secondary_usage_enabled must not reset it to the schema default."""
+        vin = "1HGCM82633A100006"
+        payload = {**sample_vehicle_payload, "vin": vin, "secondary_usage_enabled": True}
+        resp = await client.post("/api/vehicles", json=payload, headers=auth_headers)
+        assert resp.status_code == 201
+
+        upd = await client.put(
+            f"/api/vehicles/{vin}",
+            json={"license_plate": "SECONDARY-1"},
+            headers=auth_headers,
+        )
+        assert upd.status_code == 200
+        assert upd.json()["secondary_usage_enabled"] is True
+
     async def test_delete_vehicle(self, client: AsyncClient, auth_headers, test_user, db_session):
         """Test deleting a vehicle."""
         from app.models.vehicle import Vehicle

@@ -13517,6 +13517,12 @@ export interface components {
              */
             purchase_price?: number | string | null;
             /**
+             * Secondary Usage Enabled
+             * @description Also track the non-primary usage dimension (distance+hours dual tracking)
+             * @default false
+             */
+            secondary_usage_enabled: boolean;
+            /**
              * Sold Date
              * @description Date sold
              */
@@ -13970,6 +13976,12 @@ export interface components {
              */
             purchase_price?: string | null;
             /**
+             * Secondary Usage Enabled
+             * @description Also track the non-primary usage dimension (distance+hours dual tracking)
+             * @default false
+             */
+            secondary_usage_enabled: boolean;
+            /**
              * Sold Date
              * @description Date sold
              */
@@ -14343,6 +14355,12 @@ export interface components {
              * @description Purchase price
              */
             purchase_price?: number | string | null;
+            /**
+             * Secondary Usage Enabled
+             * @description Also track the non-primary usage dimension (distance+hours dual tracking)
+             * @default false
+             */
+            secondary_usage_enabled: boolean;
             /**
              * Sold Date
              * @description Date sold

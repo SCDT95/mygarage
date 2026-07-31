@@ -145,6 +145,7 @@ export default function VehicleWizard({ onClose, onSuccess }: VehicleWizardProps
         nickname: validatedData.nickname,
         vehicle_type: validatedData.vehicle_type,
         usage_unit: validatedData.usage_unit,
+        secondary_usage_enabled: validatedData.secondary_usage_enabled,
         year: validatedData.year,
         make: validatedData.make,
         model: validatedData.model,

@@ -17259,6 +17259,12 @@
             "description": "Purchase price",
             "title": "Purchase Price"
           },
+          "secondary_usage_enabled": {
+            "default": false,
+            "description": "Also track the non-primary usage dimension (distance+hours dual tracking)",
+            "title": "Secondary Usage Enabled",
+            "type": "boolean"
+          },
           "sold_date": {
             "anyOf": [
               {
@@ -18378,6 +18384,12 @@
             "description": "Purchase price",
             "title": "Purchase Price"
           },
+          "secondary_usage_enabled": {
+            "default": false,
+            "description": "Also track the non-primary usage dimension (distance+hours dual tracking)",
+            "title": "Secondary Usage Enabled",
+            "type": "boolean"
+          },
           "sold_date": {
             "anyOf": [
               {
@@ -19434,6 +19446,12 @@
             ],
             "description": "Purchase price",
             "title": "Purchase Price"
+          },
+          "secondary_usage_enabled": {
+            "default": false,
+            "description": "Also track the non-primary usage dimension (distance+hours dual tracking)",
+            "title": "Secondary Usage Enabled",
+            "type": "boolean"
           },
           "sold_date": {
             "anyOf": [
