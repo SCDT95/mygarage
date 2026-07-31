@@ -55,6 +55,9 @@ export interface ServiceVisitFormData {
   vendor_id: number | undefined
   date: string
   odometer_km: number | undefined
+  // Task 14 — dimensionless engine-hours reading (hour-metered vehicles). No
+  // unit conversion, unlike odometer_km (mirrors FuelRecordForm's engine_hours).
+  engine_hours: number | undefined
   notes: string
   insurance_claim_number: string
   tax_amount: number | undefined

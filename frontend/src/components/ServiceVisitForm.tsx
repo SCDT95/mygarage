@@ -5,7 +5,7 @@ import FormModalWrapper from './FormModalWrapper'
 import CurrencyInputPrefix from './common/CurrencyInputPrefix'
 import { toast } from 'sonner'
 import type { ServiceVisit, ServiceVisitCreate, ServiceVisitFormData, ServiceVisitFormLineItem, ServiceLineItemCreate, ServiceLineItemUpdate, ServiceCategory, SupplyUsedEntry } from '../types/serviceVisit'
-import type { VehicleType } from '../types/vehicle'
+import type { Vehicle, VehicleType } from '../types/vehicle'
 import type { Supply } from '../types/supplies'
 import type { UnitSystem } from '../utils/units'
 import { SERVICE_CATEGORIES } from '../schemas/serviceVisit'
@@ -20,6 +20,8 @@ import { useLatestMileage } from '../hooks/useLatestMileage'
 import { UnitConverter, UnitFormatter } from '../utils/units'
 import { toCanonicalKm } from '../utils/decimalSafe'
 import { canonicalToDisplay, displayToCanonical } from '../utils/supplyUnits'
+import { getUsageTracking } from '../utils/usageTracking'
+import api from '../services/api'
 import { Button, Field, Input, Textarea, Mono } from './ui'
 import { formatCurrency, formatCurrencyZero } from '../utils/formatUtils'
 import { useCurrencyPreference } from '../hooks/useCurrencyPreference'
@@ -85,6 +87,33 @@ export default function ServiceVisitForm({
   const updateMutation = useUpdateServiceVisit(vin)
   const isMotorized = !vehicleType || !NON_MOTORIZED_TYPES.includes(vehicleType)
   const { data: currentMileage } = useLatestMileage(vin)
+  // Task 14 — which usage dimension(s) this vehicle tracks, driving the
+  // odometer vs. engine-hours field visibility below. Defaults mirror
+  // getUsageTracking's own distance-primary default so the form doesn't
+  // flash the wrong field before the vehicle fetch resolves. `vehicleType`
+  // arrives as a prop (ServiceTab already fetches the vehicle), but
+  // usage_unit/secondary_usage_enabled don't — mirrors FuelRecordForm's own
+  // independent `/vehicles/{vin}` fetch (Task 13) rather than threading a
+  // new prop through ServiceTab.
+  const [vehicleUsageUnit, setVehicleUsageUnit] = useState<string>('distance')
+  const [vehicleSecondaryUsageEnabled, setVehicleSecondaryUsageEnabled] = useState<boolean>(false)
+  useEffect(() => {
+    const fetchVehicleUsage = async () => {
+      try {
+        const response = await api.get(`/vehicles/${vin}`)
+        const vehicleData: Vehicle = response.data
+        setVehicleUsageUnit(vehicleData.usage_unit || 'distance')
+        setVehicleSecondaryUsageEnabled(!!vehicleData.secondary_usage_enabled)
+      } catch {
+        // Silent fail - non-critical for field visibility
+      }
+    }
+    fetchVehicleUsage()
+  }, [vin])
+  const { tracksDistance, tracksHours } = getUsageTracking({
+    usage_unit: vehicleUsageUnit,
+    secondary_usage_enabled: vehicleSecondaryUsageEnabled,
+  })
   // UNFILTERED (include archived, NO vin scope): this lookup backs cost-breakdown,
   // edit-hydration and the submit map, all of which must resolve EVERY consumed
   // supply — including one later archived OR repinned to a different vehicle. A
@@ -125,6 +154,9 @@ export default function ServiceVisitForm({
               ? UnitConverter.kmToMiles(Number(visit.odometer_km)) ?? Number(visit.odometer_km)
               : Number(visit.odometer_km))
           : undefined,
+        // Task 14 — dimensionless engine-hours reading. NO unit conversion
+        // regardless of system, unlike odometer_km above.
+        engine_hours: visit.engine_hours != null ? Number(visit.engine_hours) : undefined,
         notes: visit.notes || '',
         insurance_claim_number: visit.insurance_claim_number || '',
         tax_amount: visit.tax_amount !== undefined && visit.tax_amount !== null ? Number(visit.tax_amount) : undefined,
@@ -155,6 +187,7 @@ export default function ServiceVisitForm({
       vendor_id: undefined,
       date: dateStr,
       odometer_km: undefined,
+      engine_hours: undefined,
       notes: '',
       insurance_claim_number: '',
       tax_amount: undefined,
@@ -356,6 +389,9 @@ export default function ServiceVisitForm({
           vendor_id: formData.vendor_id,
           date: formData.date,
           odometer_km: odometerKm,
+          // Dimensionless — submitted verbatim, no canonical conversion
+          // (mirrors FuelRecordForm's engine_hours submit).
+          engine_hours: formData.engine_hours,
           notes: formData.notes || undefined,
           insurance_claim_number: formData.insurance_claim_number || undefined,
           tax_amount: formData.tax_amount,
@@ -390,6 +426,8 @@ export default function ServiceVisitForm({
           vendor_id: formData.vendor_id,
           date: formData.date,
           odometer_km: odometerKm,
+          // Dimensionless — submitted verbatim, no canonical conversion.
+          engine_hours: formData.engine_hours,
           notes: formData.notes || undefined,
           insurance_claim_number: formData.insurance_claim_number || undefined,
           tax_amount: formData.tax_amount,
@@ -461,7 +499,7 @@ export default function ServiceVisitForm({
                 />
               </Field>
 
-              {isMotorized && (
+              {isMotorized && tracksDistance && (
                 <Field id="service-odometer" label={t('common:mileage')} unit={UnitFormatter.getDistanceUnit(system)}>
                   <Input
                     type="number"
@@ -477,6 +515,24 @@ export default function ServiceVisitForm({
                 </Field>
               )}
             </div>
+
+            {/* Task 14 — engine-hours reading (hour-metered vehicles). Dimensionless:
+                NO unit conversion regardless of system, unlike odometer_km above. */}
+            {isMotorized && tracksHours && (
+              <Field id="service-engine-hours" label={t('common:engineHours')} unit="hr">
+                <Input
+                  type="number"
+                  id="service-engine-hours"
+                  mono
+                  value={formData.engine_hours ?? ''}
+                  onChange={(e) => handleFieldChange('engine_hours', e.target.value ? parseFloat(e.target.value) : undefined)}
+                  min="0"
+                  step="0.1"
+                  placeholder="812.4"
+                  disabled={submitting}
+                />
+              </Field>
+            )}
 
             <div className="mb-4">
               <label className="mb-1 block text-sm font-medium text-text">{t('service.vendorShop')}</label>

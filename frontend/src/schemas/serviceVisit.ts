@@ -4,6 +4,7 @@ import {
   makeDateSchema,
   makeOptionalOdometerSchema,
   makeOptionalCurrencySchema,
+  makeOptionalEngineHoursSchema,
 } from './shared'
 // Service categories matching backend Literal type
 export const SERVICE_CATEGORIES = ['Maintenance', 'Inspection', 'Collision', 'Upgrades', 'Detailing'] as const
@@ -65,6 +66,9 @@ export const makeServiceVisitSchema = (t: TFunction) =>
       .transform(val => (typeof val === 'number' && isNaN(val) ? undefined : val)),
     date: makeDateSchema(t),
     odometer_km: makeOptionalOdometerSchema(t),
+    // Task 14 — dimensionless engine-hours reading (hour-metered vehicles).
+    // No unit conversion, mirroring the fuel-record schema (makeFuelRecordSchema).
+    engine_hours: makeOptionalEngineHoursSchema(t),
     notes: z.string().max(5000, t('common:validation.serviceVisit.notesTooLong')).optional(),
     insurance_claim_number: z
       .string()

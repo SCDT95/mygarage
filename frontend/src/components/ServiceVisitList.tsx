@@ -1,4 +1,4 @@
-import { useState, useMemo, useCallback } from 'react'
+import { useState, useMemo, useCallback, useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
 import { formatDateForDisplay } from '../utils/dateUtils'
 import { formatCurrency } from '../utils/formatUtils'
@@ -23,10 +23,12 @@ import {
 import { toast } from 'sonner'
 import type { ServiceVisit, ServiceLineItem } from '../types/serviceVisit'
 import type { Attachment } from '../types/attachment'
+import type { Vehicle } from '../types/vehicle'
 import api from '../services/api'
 import { withBase } from '../utils/basePath'
 import { useUnitPreference } from '../hooks/useUnitPreference'
 import { UnitFormatter } from '../utils/units'
+import { getUsageTracking } from '../utils/usageTracking'
 import { useServiceVisits, useDeleteServiceVisit } from '../hooks/queries/useServiceVisits'
 import { Button, Card, IconButton, Chip, Mono, SearchField, EmptyState } from './ui'
 import type { Tone } from './ui'
@@ -81,11 +83,36 @@ export default function ServiceVisitList({
   const [visitAttachments, setVisitAttachments] = useState<Record<number, Attachment[]>>({})
   const { system, showBoth } = useUnitPreference()
   const { currencyCode, locale } = useCurrencyPreference()
+  // Task 14 — which usage dimension(s) this vehicle tracks, driving the
+  // odometer vs. engine-hours reading display below. Defaults mirror
+  // getUsageTracking's own distance-primary default so the list doesn't
+  // flash the wrong reading before the vehicle fetch resolves.
+  const [vehicleUsageUnit, setVehicleUsageUnit] = useState<string>('distance')
+  const [vehicleSecondaryUsageEnabled, setVehicleSecondaryUsageEnabled] = useState<boolean>(false)
+  const { tracksDistance, tracksHours } = getUsageTracking({
+    usage_unit: vehicleUsageUnit,
+    secondary_usage_enabled: vehicleSecondaryUsageEnabled,
+  })
 
   const { data, isLoading, error } = useServiceVisits(vin)
   const deleteMutation = useDeleteServiceVisit(vin)
 
   const visits = useMemo(() => data?.visits ?? [], [data?.visits])
+
+  // Fetch vehicle data to determine tracked usage dimension(s).
+  useEffect(() => {
+    const fetchVehicleUsage = async () => {
+      try {
+        const response = await api.get(`/vehicles/${vin}`)
+        const vehicleData: Vehicle = response.data
+        setVehicleUsageUnit(vehicleData.usage_unit || 'distance')
+        setVehicleSecondaryUsageEnabled(!!vehicleData.secondary_usage_enabled)
+      } catch {
+        // Silent fail - non-critical for display
+      }
+    }
+    fetchVehicleUsage()
+  }, [vin])
 
   // Fetch attachments when a visit is expanded
   const fetchAttachmentsForVisit = useCallback(async (visitId: number) => {
@@ -338,10 +365,21 @@ export default function ServiceVisitList({
                       )}
                     </div>
 
-                    {visit.odometer_km != null && (
+                    {tracksDistance && visit.odometer_km != null && (
                       <div className="flex items-center gap-1 text-sm text-text-mute">
                         <Gauge aria-hidden="true" className="w-4 h-4" />
                         <Mono size="sm">{UnitFormatter.formatDistance(parseFloat(String(visit.odometer_km)), system, showBoth)}</Mono>
+                      </div>
+                    )}
+
+                    {/* Task 14 — engine-hours reading (hour-metered vehicles).
+                        Dimensionless: no UnitFormatter conversion, unlike odometer_km
+                        above — "hr" is a fixed unit symbol, same convention as
+                        FuelRecordForm's engine_hours field (unit="hr", untranslated). */}
+                    {tracksHours && visit.engine_hours != null && (
+                      <div className="flex items-center gap-1 text-sm text-text-mute">
+                        <Gauge aria-hidden="true" className="w-4 h-4" />
+                        <Mono size="sm">{Number(visit.engine_hours).toFixed(1)} hr</Mono>
                       </div>
                     )}
 

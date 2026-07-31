@@ -10,7 +10,11 @@ vi.mock('../../hooks/queries/useServiceVisits', () => ({
   useServiceVisits: () => useServiceVisitsMock(),
   useDeleteServiceVisit: () => ({ mutate: deleteMutate, isPending: false, variables: undefined }),
 }))
-vi.mock('../../services/api', () => ({ default: { get: vi.fn().mockResolvedValue({ data: { attachments: [] } }) } }))
+// Hoisted + mutable (kept "mock"-prefixed per Vitest's factory-hoisting rule) so the
+// Task 14 usage-tracking suite below can vary the /vehicles/{vin} response per test;
+// every other test in this file leaves it at the attachments-only default.
+const apiGetMock = vi.fn().mockResolvedValue({ data: { attachments: [] } })
+vi.mock('../../services/api', () => ({ default: { get: (...args: unknown[]) => apiGetMock(...args) } }))
 vi.mock('../../hooks/useUnitPreference', () => ({ useUnitPreference: () => ({ system: 'metric', showBoth: false }) }))
 vi.mock('../../hooks/useCurrencyPreference', () => ({ useCurrencyPreference: () => ({ currencyCode: 'USD', locale: 'en-US' }) }))
 vi.mock('sonner', () => ({ toast: { success: vi.fn(), error: vi.fn() } }))
@@ -118,5 +122,54 @@ describe('ServiceVisitList — search filters, empty state CTA', () => {
     expect(screen.getByText('serviceList.noRecords')).toBeInTheDocument()
     fireEvent.click(screen.getByRole('button', { name: 'serviceList.logFirstVisit' }))
     expect(onAddClick).toHaveBeenCalled()
+  })
+})
+
+describe('ServiceVisitList — engine-hours usage tracking (Task 14)', () => {
+  // A visit carrying BOTH readings — distinct decimals from each other so a
+  // regex match against one can't accidentally hit the other, and so the
+  // gating tests genuinely discriminate tracksDistance/tracksHours (not just
+  // a null-guard on an absent field).
+  const bothReadingsVisit = { ...visit, id: 5, odometer_km: '80467', engine_hours: '812.4' } as unknown as ServiceVisit
+
+  beforeEach(() => {
+    useServiceVisitsMock.mockReturnValue({ data: { visits: [bothReadingsVisit] }, isLoading: false, error: null })
+  })
+
+  it('shows the engine-hours reading (and hides odometer) for an hours-tracking vehicle', async () => {
+    apiGetMock.mockResolvedValueOnce({ data: { usage_unit: 'hours', secondary_usage_enabled: false } })
+    render(<ServiceVisitList {...PROPS} />)
+    await waitFor(() => expect(apiGetMock).toHaveBeenCalled())
+
+    expect(await screen.findByText(/812\.4/)).toBeInTheDocument()
+    expect(screen.queryByText(/80,467/)).not.toBeInTheDocument()
+  })
+
+  it('shows the odometer reading (and hides engine-hours) for a distance-tracking vehicle', async () => {
+    apiGetMock.mockResolvedValueOnce({ data: { usage_unit: 'distance', secondary_usage_enabled: false } })
+    render(<ServiceVisitList {...PROPS} />)
+    await waitFor(() => expect(apiGetMock).toHaveBeenCalled())
+
+    expect(await screen.findByText(/80,467/)).toBeInTheDocument()
+    expect(screen.queryByText(/812\.4/)).not.toBeInTheDocument()
+  })
+
+  it('shows BOTH odometer and engine-hours readings for a dual-tracking vehicle', async () => {
+    apiGetMock.mockResolvedValueOnce({ data: { usage_unit: 'distance', secondary_usage_enabled: true } })
+    render(<ServiceVisitList {...PROPS} />)
+    await waitFor(() => expect(apiGetMock).toHaveBeenCalled())
+
+    expect(await screen.findByText(/812\.4/)).toBeInTheDocument()
+    expect(screen.getByText(/80,467/)).toBeInTheDocument()
+  })
+
+  it('keeps the odometer reading and shows no engine-hours for a pure-distance vehicle (list unchanged)', async () => {
+    // apiGetMock default (module scope) returns attachments-only — no usage_unit,
+    // defaults to distance, matching every pre-existing test in this file.
+    render(<ServiceVisitList {...PROPS} />)
+    await waitFor(() => expect(apiGetMock).toHaveBeenCalled())
+
+    expect(await screen.findByText(/80,467/)).toBeInTheDocument()
+    expect(screen.queryByText(/812\.4/)).not.toBeInTheDocument()
   })
 })
