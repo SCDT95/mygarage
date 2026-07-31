@@ -2,12 +2,41 @@
 Unit test fixtures and configuration.
 
 Unit tests should not require database access and test pure functions/logic.
+Some subdirectories (utils, services) do exercise db_session for sync/derive
+helpers that are thin wrappers over a single query — those tests still live
+under unit/ by existing convention (see test_odometer_sync.py, test_def_sync.py).
 """
 
 from datetime import datetime, timedelta
 from decimal import Decimal
 
 import pytest
+import pytest_asyncio
+from sqlalchemy import delete
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from app.models import HoursRecord
+
+
+@pytest_asyncio.fixture
+async def clean_hours_records(db_session: AsyncSession, test_vehicle):
+    """Clean up hours_records for the shared test vehicle before/after each test.
+
+    Shared by ``tests/unit/utils/test_hours_sync.py`` and
+    ``tests/unit/services/test_hours_service.py``. Scoped to ONLY
+    ``hours_records`` — the shared ``test_vehicle`` vin is reused across many
+    test files (fuel/service sync tests among them), and a blanket
+    vin-scoped delete on ``fuel_records``/``service_visits`` broke
+    ``test_odometer_sync.py`` (which relies on FuelRecord rows with specific
+    low ids created earlier in the full suite run) when that was tried.
+    Parent fuel/service rows created by hours tests are cleaned up
+    individually, by id, in their own fixtures.
+    """
+    await db_session.execute(delete(HoursRecord).where(HoursRecord.vin == test_vehicle["vin"]))
+    await db_session.commit()
+    yield
+    await db_session.execute(delete(HoursRecord).where(HoursRecord.vin == test_vehicle["vin"]))
+    await db_session.commit()
 
 
 @pytest.fixture
