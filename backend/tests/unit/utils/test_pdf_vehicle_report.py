@@ -270,3 +270,195 @@ class TestGenerateVehicleAnalyticsPdf:
         buf = generate_vehicle_analytics_pdf(data)
         text = _extract_text(buf.read())
         assert "homelabforge.io" in text
+
+
+def _make_hours_accumulated(
+    readings: list[tuple[str, Decimal]],
+) -> list[dict]:
+    """Build an ``hours_accumulated``-shaped list (date-ascending, per
+    ``get_hours_accumulated_series``): list of {date, engine_hours}.
+    """
+    from datetime import date as date_type
+
+    return [{"date": date_type.fromisoformat(d), "engine_hours": hours} for d, hours in readings]
+
+
+def _make_reminder(
+    title: str,
+    reminder_type: str,
+    due_date: str | None = None,
+    due_mileage_km: Decimal | None = None,
+    due_hours: Decimal | None = None,
+) -> dict:
+    """Build a reminder dict mirroring ``schemas.reminder.ReminderResponse``."""
+    from datetime import date as date_type
+
+    return {
+        "title": title,
+        "reminder_type": reminder_type,
+        "due_date": date_type.fromisoformat(due_date) if due_date else None,
+        "due_mileage_km": due_mileage_km,
+        "due_hours": due_hours,
+    }
+
+
+class TestUsageEfficiencySection:
+    """Tests for the hours-usage-model PDF section (Phase 10)."""
+
+    def test_pure_hours_vehicle_shows_hours_summary(self) -> None:
+        """Pure-hours vehicle: latest engine-hours + L/hr economy render;
+        no distance/MPG card leaks in (nothing to hide behind since there's
+        no odometer data at all)."""
+        data = _make_analytics_data()
+        data["total_km_driven"] = None
+        data["average_km_per_month"] = None
+        data["fuel_economy"] = {"average_l_per_100km": None}
+        data["hours_economy"] = {
+            "average_l_per_hr": Decimal("1.85"),
+            "average_cost_per_hr": Decimal("7.40"),
+        }
+        data["hours_accumulated"] = _make_hours_accumulated(
+            [
+                ("2025-01-01", Decimal("100.0")),
+                ("2025-03-01", Decimal("150.0")),
+                ("2025-06-01", Decimal("250.0")),
+            ]
+        )
+
+        buf = generate_vehicle_analytics_pdf(data)
+        text = _extract_text(buf.read())
+
+        assert "Usage & Efficiency" in text
+        assert "ENGINE HOURS" in text
+        assert "250.0 hr" in text
+        assert "L/hr" in text
+        assert "Hours History" in text
+        # No distance card leaked in for a pure-hours vehicle.
+        assert "DISTANCE DRIVEN" not in text
+        assert "FUEL ECONOMY" not in text
+
+    def test_pure_hours_vehicle_hours_history_table(self) -> None:
+        """Hours history table lists (date, engine_hours) readings."""
+        data = _make_analytics_data()
+        data["total_km_driven"] = None
+        data["hours_economy"] = {
+            "average_l_per_hr": Decimal("1.85"),
+            "average_cost_per_hr": Decimal("7.40"),
+        }
+        data["hours_accumulated"] = _make_hours_accumulated(
+            [
+                ("2025-01-01", Decimal("100.0")),
+                ("2025-03-01", Decimal("150.0")),
+            ]
+        )
+
+        buf = generate_vehicle_analytics_pdf(data)
+        text = _extract_text(buf.read())
+
+        assert "100.0 hr" in text
+        assert "150.0 hr" in text
+
+    def test_dual_vehicle_shows_both_dimensions(self) -> None:
+        """Dual-track vehicle: both odometer/distance AND hours summaries
+        render, each with its own economy figure."""
+        data = _make_analytics_data()
+        data["total_km_driven"] = Decimal("12000")
+        data["average_km_per_month"] = Decimal("1000")
+        data["fuel_economy"] = {"average_l_per_100km": Decimal("9.4")}
+        data["hours_economy"] = {
+            "average_l_per_hr": Decimal("1.85"),
+            "average_cost_per_hr": Decimal("7.40"),
+        }
+        data["hours_accumulated"] = _make_hours_accumulated(
+            [("2025-01-01", Decimal("100.0")), ("2025-06-01", Decimal("250.0"))]
+        )
+
+        buf = generate_vehicle_analytics_pdf(data)
+        text = _extract_text(buf.read())
+
+        assert "DISTANCE DRIVEN" in text
+        assert "12,000 km" in text
+        assert "FUEL ECONOMY" in text
+        assert "9.4" in text
+        assert "L/100km" in text
+        assert "ENGINE HOURS" in text
+        assert "250.0 hr" in text
+        assert "HOURS ECONOMY" in text
+        assert "L/hr" in text
+
+    def test_pure_distance_vehicle_regression(self) -> None:
+        """Pure-distance vehicle (no hours data at all): report is
+        unchanged — no hours section, no hours history table leak in."""
+        data = _make_analytics_data()
+        buf = generate_vehicle_analytics_pdf(data)
+        text = _extract_text(buf.read())
+
+        assert "Usage & Efficiency" not in text
+        assert "Hours History" not in text
+        assert "ENGINE HOURS" not in text
+        assert "L/hr" not in text
+
+    def test_hours_reminder_renders_hours_target(self) -> None:
+        """A reminder with due_hours set renders its target in hours, not
+        blank and not a mileage figure."""
+        data = _make_analytics_data()
+        reminders = [
+            _make_reminder("Oil change (hours)", "hours", due_hours=Decimal("250.0")),
+        ]
+
+        buf = generate_vehicle_analytics_pdf(data, reminders_data=reminders)
+        text = _extract_text(buf.read())
+
+        assert "Upcoming Reminders" in text
+        assert "Oil change (hours)" in text
+        assert "250.0 hr" in text
+
+    def test_mileage_reminder_still_renders_mileage_target(self) -> None:
+        """A mileage reminder (no due_hours) still renders its km target —
+        the hours addition must not regress the distance path."""
+        data = _make_analytics_data()
+        reminders = [
+            _make_reminder("Tire rotation", "mileage", due_mileage_km=Decimal("50000")),
+        ]
+
+        buf = generate_vehicle_analytics_pdf(data, reminders_data=reminders)
+        text = _extract_text(buf.read())
+
+        assert "Tire rotation" in text
+        assert "50,000 km" in text
+
+    def test_no_reminders_no_section(self) -> None:
+        """Without reminders_data, no reminders section renders (backward
+        compatible default)."""
+        data = _make_analytics_data()
+        buf = generate_vehicle_analytics_pdf(data)
+        text = _extract_text(buf.read())
+        assert "Upcoming Reminders" not in text
+
+    def test_all_three_shapes_generate_valid_pdf(self) -> None:
+        """Report generation succeeds (no reportlab exception) for
+        pure-hours, dual, and pure-distance vehicle shapes."""
+        pure_distance = _make_analytics_data()
+
+        pure_hours = _make_analytics_data()
+        pure_hours["total_km_driven"] = None
+        pure_hours["hours_economy"] = {
+            "average_l_per_hr": Decimal("1.85"),
+            "average_cost_per_hr": Decimal("7.40"),
+        }
+        pure_hours["hours_accumulated"] = _make_hours_accumulated(
+            [("2025-01-01", Decimal("100.0"))]
+        )
+
+        dual = _make_analytics_data()
+        dual["total_km_driven"] = Decimal("12000")
+        dual["hours_economy"] = {
+            "average_l_per_hr": Decimal("1.85"),
+            "average_cost_per_hr": Decimal("7.40"),
+        }
+        dual["hours_accumulated"] = _make_hours_accumulated([("2025-01-01", Decimal("100.0"))])
+
+        for shape in (pure_distance, pure_hours, dual):
+            buf = generate_vehicle_analytics_pdf(shape)
+            content = buf.read()
+            assert content[:4] == PDF_MAGIC

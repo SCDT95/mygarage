@@ -440,7 +440,7 @@ KPI_COLORS = {
 def make_kpi_row(
     cards: list[dict[str, Any]],
 ) -> Table:
-    """Create a row of 4 KPI cards.
+    """Create a row of KPI cards (1-4 cards; 4 is the common case).
 
     Each card dict should have:
         label: str (uppercase label)
@@ -448,8 +448,14 @@ def make_kpi_row(
         sub: str (sub-detail text)
         color: str ("blue", "green", "amber", "red")
         sub_html: str | None (optional HTML for sub-detail with colored badge)
+
+    Card width divides the content width evenly by the number of cards
+    passed (e.g. a 2-card hours-only summary gets half-width cards, not
+    quarter-width cards floating in an otherwise-empty row).
     """
     styles = get_styles()
+    num_cards = len(cards)
+    card_width = CONTENT_WIDTH / num_cards
 
     cells = []
     for card in cards:
@@ -474,7 +480,7 @@ def make_kpi_row(
         # Stack vertically
         cell_content = Table(
             [[label], [value], [sub]],
-            colWidths=[CONTENT_WIDTH / 4 - 20],
+            colWidths=[card_width - 20],
         )
         cell_content.setStyle(
             TableStyle(
@@ -490,9 +496,8 @@ def make_kpi_row(
         )
         cells.append(cell_content)
 
-    # Create 4-column grid
-    card_width = CONTENT_WIDTH / 4
-    kpi_table = Table([cells], colWidths=[card_width] * 4)
+    # Create the KPI grid (evenly divided by however many cards were passed)
+    kpi_table = Table([cells], colWidths=[card_width] * num_cards)
 
     style_cmds: list[Any] = [
         ("VALIGN", (0, 0), (-1, -1), "TOP"),

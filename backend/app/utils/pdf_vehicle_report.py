@@ -5,6 +5,9 @@ matching the branded design system.
 """
 
 import logging
+from datetime import date as date_type
+from datetime import datetime
+from decimal import Decimal, InvalidOperation
 from io import BytesIO
 from typing import Any
 
@@ -36,6 +39,7 @@ from app.utils.pdf_components import (
     make_section_header,
     make_vehicle_banner,
     make_vendor_list,
+    style_as_card,
     wrap_in_card,
 )
 from app.utils.pdf_styles import (
@@ -76,6 +80,243 @@ def _safe_int(val: Any) -> int:
         return 0
 
 
+def _safe_decimal(val: Any) -> Decimal | None:
+    """Convert Decimal/str/int/float/None to Decimal safely (never float —
+    hours/economy figures keep full precision through to display)."""
+    if val is None:
+        return None
+    try:
+        return Decimal(str(val))
+    except InvalidOperation, ValueError, TypeError:
+        return None
+
+
+def _parse_date(val: Any) -> date_type | None:
+    """Normalize a date/datetime/ISO-string/None into a ``date``."""
+    if val is None:
+        return None
+    if isinstance(val, datetime):
+        return val.date()
+    if isinstance(val, date_type):
+        return val
+    if isinstance(val, str):
+        try:
+            return date_type.fromisoformat(val)
+        except ValueError:
+            return None
+    return None
+
+
+def _format_date(val: date_type | None) -> str:
+    """Format a date for report display, or 'N/A' if absent."""
+    if val is None:
+        return "N/A"
+    return val.strftime("%b %d, %Y")
+
+
+def _latest_hours_point(
+    hours_accumulated: list[dict[str, Any]],
+) -> tuple[Decimal | None, date_type | None]:
+    """Pick the canonical "latest" hours reading from an accumulated-hours
+    series (``analytics_data["hours_accumulated"]``, already ordered by
+    date ascending — see ``get_hours_accumulated_series``).
+
+    Mirrors the ``engine_hours DESC, date DESC`` tie-break used by the
+    canonical ``latest_engine_hours_and_date`` DB helper (a physical meter
+    is monotonic, so "latest" = highest reading, tie-broken to the newest
+    date). The ``id``-level tie-break isn't available here — this render
+    layer has no DB access, only the already-computed series — which is an
+    acceptable approximation for a display surface, not a source of truth.
+    """
+    best_hours: Decimal | None = None
+    best_date: date_type | None = None
+    for point in hours_accumulated:
+        hours = _safe_decimal(point.get("engine_hours"))
+        if hours is None:
+            continue
+        point_date = _parse_date(point.get("date"))
+        is_better = (
+            best_hours is None
+            or hours > best_hours
+            or (
+                hours == best_hours and (point_date or date_type.min) > (best_date or date_type.min)
+            )
+        )
+        if is_better:
+            best_hours = hours
+            best_date = point_date
+    return best_hours, best_date
+
+
+def _build_usage_efficiency_cards(
+    analytics_data: dict[str, Any],
+    currency_code: str,
+    locale: str,
+) -> list[dict[str, Any]]:
+    """Build KPI cards for the "Usage & Efficiency" section.
+
+    Distance cards appear only when the vehicle has real odometer history
+    (``total_km_driven`` present); hours cards appear only when the vehicle
+    has real hours history (``hours_accumulated`` non-empty). A pure-hours
+    vehicle therefore never shows a distance/MPG placeholder, a
+    pure-distance vehicle gets no cards here at all (the caller skips the
+    whole section in that case — see ``generate_vehicle_analytics_pdf``),
+    and a dual-track vehicle gets both. No unit conversion — hours are
+    dimensionless and this report is metric-canonical throughout.
+    """
+    cards: list[dict[str, Any]] = []
+
+    total_km_driven = _safe_decimal(analytics_data.get("total_km_driven"))
+    if total_km_driven is not None:
+        average_km_per_month = _safe_decimal(analytics_data.get("average_km_per_month"))
+        sub = f"Avg {average_km_per_month:,.0f} km/mo" if average_km_per_month is not None else ""
+        cards.append(
+            {
+                "label": "Distance Driven",
+                "value": f"{total_km_driven:,.0f} km",
+                "sub": sub,
+                "color": "blue",
+            }
+        )
+
+        fuel_economy = analytics_data.get("fuel_economy") or {}
+        avg_l_100km = _safe_decimal(fuel_economy.get("average_l_per_100km"))
+        cards.append(
+            {
+                "label": "Fuel Economy",
+                "value": f"{avg_l_100km:,.1f} L/100km" if avg_l_100km is not None else "N/A",
+                "sub": "",
+                "color": "green",
+            }
+        )
+
+    hours_accumulated = analytics_data.get("hours_accumulated") or []
+    if hours_accumulated:
+        latest_hours, latest_date = _latest_hours_point(hours_accumulated)
+        cards.append(
+            {
+                "label": "Engine Hours",
+                "value": f"{latest_hours:,.1f} hr" if latest_hours is not None else "N/A",
+                "sub": f"As of {_format_date(latest_date)}" if latest_date is not None else "",
+                "color": "amber",
+            }
+        )
+
+        hours_economy = analytics_data.get("hours_economy") or {}
+        avg_l_hr = _safe_decimal(hours_economy.get("average_l_per_hr"))
+        avg_cost_hr = _safe_decimal(hours_economy.get("average_cost_per_hr"))
+        cost_sub = (
+            f"{format_currency(avg_cost_hr, currency_code, locale)}/hr"
+            if avg_cost_hr is not None
+            else ""
+        )
+        cards.append(
+            {
+                "label": "Hours Economy",
+                "value": f"{avg_l_hr:,.2f} L/hr" if avg_l_hr is not None else "N/A",
+                "sub": cost_sub,
+                "color": "red",
+            }
+        )
+
+    return cards
+
+
+def _build_hours_history_table(
+    hours_accumulated: list[dict[str, Any]],
+    styles: dict[str, Any],
+) -> Table:
+    """Build the hours-records history table (date, engine hours, source) —
+    the hours analog of an odometer history table. Newest first, capped to
+    the most recent 20 readings to keep the report a reasonable length
+    (mirrors the ``monthly_data[-12:]`` cap used for the spending chart).
+
+    ``source``/``notes`` are optional per-point keys (not part of the
+    ``HoursAccumulatedDataPoint`` analytics series today) — rendered when a
+    caller supplies them, "—" otherwise, so this table is forward-compatible
+    with a richer data source without further changes here.
+    """
+    cell_style = styles["TableCell"]
+    amt_style = styles["TableAmount"]
+
+    ordered = sorted(
+        hours_accumulated,
+        key=lambda p: _parse_date(p.get("date")) or date_type.min,
+        reverse=True,
+    )[:20]
+
+    rows = []
+    for point in ordered:
+        engine_hours = _safe_decimal(point.get("engine_hours"))
+        source = point.get("source") or point.get("notes") or "—"
+        rows.append(
+            [
+                Paragraph(_format_date(_parse_date(point.get("date"))), cell_style),
+                Paragraph(
+                    f"{engine_hours:,.1f} hr" if engine_hours is not None else "N/A", amt_style
+                ),
+                Paragraph(str(source), cell_style),
+            ]
+        )
+
+    return make_data_table(
+        headers=["Date", "Engine Hours", "Source"],
+        rows=rows,
+        col_widths=[CONTENT_WIDTH * 0.3, CONTENT_WIDTH * 0.3, CONTENT_WIDTH * 0.4],
+        amount_columns=[1],
+    )
+
+
+def _reminder_due_text(reminder: dict[str, Any]) -> str:
+    """Render a reminder's target as readable text.
+
+    ``due_hours`` takes priority over ``due_mileage_km`` when both happen to
+    be set on one reminder (not expected in practice, but keeps an
+    hours-targeted reminder from ever silently falling back to a mileage
+    figure). No unit conversion — hours are dimensionless.
+    """
+    parts: list[str] = []
+    due_date = _parse_date(reminder.get("due_date"))
+    if due_date is not None:
+        parts.append(_format_date(due_date))
+
+    due_hours = _safe_decimal(reminder.get("due_hours"))
+    due_mileage_km = _safe_decimal(reminder.get("due_mileage_km"))
+    if due_hours is not None:
+        parts.append(f"{due_hours:,.1f} hr")
+    elif due_mileage_km is not None:
+        parts.append(f"{due_mileage_km:,.0f} km")
+
+    return " · ".join(parts) if parts else "N/A"
+
+
+def _build_reminders_table(
+    reminders_data: list[dict[str, Any]],
+    styles: dict[str, Any],
+) -> Table:
+    """Build the upcoming-reminders table. A reminder with ``due_hours`` set
+    renders its target in hours (see ``_reminder_due_text``), never blank
+    and never a mileage figure.
+    """
+    cell_style = styles["TableCell"]
+
+    rows = []
+    for reminder in reminders_data:
+        rows.append(
+            [
+                Paragraph(str(reminder.get("title", "")), cell_style),
+                Paragraph(str(reminder.get("reminder_type", "")).title(), cell_style),
+                Paragraph(_reminder_due_text(reminder), cell_style),
+            ]
+        )
+
+    return make_data_table(
+        headers=["Reminder", "Type", "Due"],
+        rows=rows,
+        col_widths=[CONTENT_WIDTH * 0.4, CONTENT_WIDTH * 0.2, CONTENT_WIDTH * 0.4],
+    )
+
+
 def _trend_badge_html(trend_direction: str) -> str:
     """Build HTML for the trend direction badge."""
     if trend_direction == "decreasing":
@@ -93,15 +334,28 @@ def generate_vehicle_analytics_pdf(
     seasonal_data: dict[str, Any] | None = None,
     currency_code: str = "USD",
     locale: str = "en-US",
+    reminders_data: list[dict[str, Any]] | None = None,
 ) -> BytesIO:
     """Generate a branded vehicle analytics PDF report.
 
     Args:
-        analytics_data: VehicleAnalytics.model_dump() output.
+        analytics_data: VehicleAnalytics.model_dump() output. The
+            "Usage & Efficiency" and "Hours History" sections render from
+            its existing ``total_km_driven``/``average_km_per_month``/
+            ``fuel_economy``/``hours_economy``/``hours_accumulated``
+            fields — no extra plumbing required for those.
         vendor_data: VendorAnalyticsSummary.model_dump() output, or None.
         seasonal_data: SeasonalAnalyticsSummary.model_dump() output, or None.
         currency_code: ISO 4217 currency code (default "USD") used in PDF rendering.
         locale: BCP 47 locale for currency symbol selection (default "en-US").
+        reminders_data: Optional list of reminder dicts (mirroring
+            ``schemas.reminder.ReminderResponse``: ``title``,
+            ``reminder_type``, ``due_date``, ``due_mileage_km``,
+            ``due_hours``) rendered as an "Upcoming Reminders" section when
+            provided. An hours-targeted reminder (``due_hours`` set) shows
+            its target in hours, never blank or a mileage figure. Follows
+            the same optional-section pattern as ``vendor_data``/
+            ``seasonal_data`` — omitted entirely when None.
 
     Returns:
         BytesIO containing the PDF document.
@@ -210,6 +464,53 @@ def generate_vehicle_analytics_pdf(
 
     story.append(make_kpi_row(kpi_cards))
     story.append(Spacer(1, SECTION_SPACING))
+
+    # ── 2b. Usage & Efficiency (hours-usage-model) ─────────────
+    # Distance cards only appear when total_km_driven is present; hours
+    # cards only when hours_accumulated is non-empty. A pure-distance
+    # vehicle (neither) skips this whole block — report unchanged.
+    usage_cards = _build_usage_efficiency_cards(analytics_data, currency_code, locale)
+    if usage_cards:
+        story.append(make_section_header("Usage & Efficiency"))
+        story.append(Spacer(1, 10))
+        story.append(make_kpi_row(usage_cards))
+        story.append(Spacer(1, SECTION_SPACING))
+
+    # ── 2c. Hours History ───────────────────────────────────────
+    hours_accumulated = analytics_data.get("hours_accumulated") or []
+    if hours_accumulated:
+        story.append(
+            make_section_header(
+                "Hours History",
+                annotation=(
+                    f"{len(hours_accumulated)} reading{'s' if len(hours_accumulated) != 1 else ''}"
+                ),
+            )
+        )
+        story.append(Spacer(1, 10))
+        # style_as_card (not wrap_in_card) — this table can run to 20 rows,
+        # and wrap_in_card nests it in a non-splittable single-cell
+        # container that reportlab can't paginate (see style_as_card's
+        # docstring; the same LayoutError the service-breakdown table
+        # avoids above by skipping wrap_in_card past 10 rows).
+        story.append(style_as_card(_build_hours_history_table(hours_accumulated, styles)))
+        story.append(Spacer(1, SECTION_SPACING))
+
+    # ── 2d. Upcoming Reminders ──────────────────────────────────
+    if reminders_data:
+        story.append(
+            make_section_header(
+                "Upcoming Reminders",
+                annotation=(
+                    f"{len(reminders_data)} reminder{'s' if len(reminders_data) != 1 else ''}"
+                ),
+            )
+        )
+        story.append(Spacer(1, 10))
+        # style_as_card, not wrap_in_card — reminders_data is caller-sized
+        # and unbounded; keep the table splittable across pages.
+        story.append(style_as_card(_build_reminders_table(reminders_data, styles)))
+        story.append(Spacer(1, SECTION_SPACING))
 
     # ── 3. Monthly Spending Chart ─────────────────────────────
     monthly_data = cost.get("monthly_breakdown", [])
