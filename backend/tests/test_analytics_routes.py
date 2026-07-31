@@ -1,10 +1,21 @@
 """Integration tests for analytics API routes."""
 
+import fitz  # PyMuPDF
 import pytest
 from httpx import AsyncClient
 
 from app.models.user import User
 from app.models.vehicle import Vehicle
+
+
+def _extract_pdf_text(pdf_bytes: bytes) -> str:
+    """Extract all text from PDF bytes using PyMuPDF."""
+    doc = fitz.open(stream=pdf_bytes, filetype="pdf")
+    text = ""
+    for page in doc:
+        text += page.get_text()  # type: ignore[operator]
+    doc.close()
+    return text
 
 
 @pytest.mark.integration
@@ -160,6 +171,42 @@ class TestAnalyticsEndpoints:
         # Validate PDF magic bytes and content
         assert response.content[:5] == b"%PDF-"
         assert len(response.content) > 100
+
+    async def test_export_analytics_pdf_includes_pending_hours_reminder(
+        self,
+        client: AsyncClient,
+        vehicle_with_analytics_data: Vehicle,
+        auth_headers: dict,
+    ):
+        """A pending hours reminder on the vehicle must render in the
+        exported PDF's "Upcoming Reminders" section, proving
+        `reminders_data` is wired end-to-end from the route (not just at
+        the PDF-builder-function level)."""
+        vin = vehicle_with_analytics_data.vin
+
+        create_resp = await client.post(
+            f"/api/vehicles/{vin}/reminders",
+            json={
+                "title": "Hydraulic fluid change",
+                "reminder_type": "hours",
+                "due_hours": 500.0,
+            },
+            headers=auth_headers,
+        )
+        assert create_resp.status_code == 201
+
+        response = await client.get(
+            f"/api/analytics/vehicles/{vin}/export",
+            headers=auth_headers,
+        )
+
+        assert response.status_code == 200
+        assert response.content[:5] == b"%PDF-"
+
+        text = _extract_pdf_text(response.content)
+        assert "Upcoming Reminders" in text
+        assert "Hydraulic fluid change" in text
+        assert "500.0 hr" in text
 
     async def test_export_garage_analytics_pdf(
         self,

@@ -1438,6 +1438,7 @@ async def export_analytics_pdf(
     - Service type breakdown
     - Vendor analysis (if available)
     - Seasonal patterns (if available)
+    - Upcoming reminders (if any are pending)
     """
     from fastapi.responses import StreamingResponse
 
@@ -1471,6 +1472,16 @@ async def export_analytics_pdf(
         logger.error("Error fetching seasonal analytics for %s: %s", vin, e)
         seasonal_data = None
 
+    # Fetch pending reminders for the "Upcoming Reminders" section
+    try:
+        from app.services import reminder_service
+
+        reminders = await reminder_service.list_reminders(vin, db, status="pending")
+        reminders_data = [r.model_dump() for r in reminders]
+    except Exception as e:
+        logger.error("Error fetching reminders for %s: %s", vin, e)
+        reminders_data = None
+
     # Convert analytics to dict for PDF generator
     analytics_data = analytics.model_dump()
 
@@ -1481,6 +1492,7 @@ async def export_analytics_pdf(
         seasonal_data=seasonal_data,
         currency_code=safe_code,
         locale=safe_locale,
+        reminders_data=reminders_data,
     )
 
     # Return PDF as streaming response
