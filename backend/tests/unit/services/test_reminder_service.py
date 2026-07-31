@@ -14,7 +14,7 @@ existed. Every other backward-compat assertion (mileage/date/both unaffected)
 lives alongside it in ``TestValidateReminderStateBackwardCompat``.
 """
 
-from datetime import date, timedelta
+from datetime import UTC, date, datetime, timedelta
 from decimal import Decimal
 
 import pytest
@@ -553,6 +553,83 @@ class TestCheckDueRemindersHours:
         ]
         assert len(own_messages) == 1
         assert "Due mileage: 55,000 km" in own_messages[0]
+
+
+# ---------------------------------------------------------------------------
+# check_due_reminders — naive last_notified_at regression (Phase 5 fix)
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.unit
+@pytest.mark.asyncio
+class TestCheckDueRemindersNaiveLastNotifiedAt:
+    """Regression test for the naive-vs-aware last_notified_at bug fixed in
+    check_due_reminders (~lines 322-325).
+
+    Reminder.last_notified_at is a plain (non-tz-aware) DateTime column.
+    SQLite's bind processor drops tzinfo on write, so a value round-tripped
+    through the DB comes back naive even though it was written as UTC.
+    Comparing that naive value directly against the aware `datetime.now(UTC)`
+    raises TypeError on the scheduler's next tick after a reminder has ever
+    been notified once. Without the `.replace(tzinfo=UTC)` normalization,
+    this test fails with exactly that TypeError.
+    """
+
+    async def test_naive_last_notified_at_within_cooldown_is_not_renotified(
+        self,
+        db_session: AsyncSession,
+        test_vehicle,
+        clean_hours_records,
+        clean_reminders,
+        monkeypatch,
+    ):
+        vin = test_vehicle["vin"]
+        # Overdue by hours target, but already notified 1 hour ago — well
+        # inside the 24h NOTIFICATION_COOLDOWN.
+        await _add_hours_record(db_session, vin, date.today(), Decimal("600.0"))
+
+        reminder = Reminder(
+            vin=vin,
+            title="Hydraulic service",
+            reminder_type="hours",
+            due_hours=Decimal("500.0"),
+            status="pending",
+            last_notified_at=datetime.now(UTC) - timedelta(hours=1),
+        )
+        db_session.add(reminder)
+        await db_session.commit()
+        await db_session.refresh(reminder)
+
+        # Confirms the setup actually reproduces the bug's precondition:
+        # the value written as UTC-aware round-trips through SQLite naive.
+        assert reminder.last_notified_at.tzinfo is None
+
+        sent_messages: list[str] = []
+
+        class _StubDispatcher:
+            def __init__(self, db):
+                pass
+
+            async def dispatch(self, event_type, title, message):
+                sent_messages.append(message)
+
+        monkeypatch.setattr(
+            "app.services.notifications.dispatcher.NotificationDispatcher",
+            _StubDispatcher,
+        )
+
+        # Must not raise: "TypeError: can't subtract offset-naive and
+        # offset-aware datetimes."
+        await check_due_reminders(db_session)
+
+        own_messages = [
+            m for m in sent_messages if m.startswith(f"Service reminder: {reminder.title}")
+        ]
+        # Within the cooldown window -> skipped, not re-notified. This
+        # assertion only passes if the naive last_notified_at was correctly
+        # normalized and compared — a broken dedup (e.g. always False on
+        # exception, or always True without normalization) would fail here.
+        assert own_messages == []
 
 
 # ---------------------------------------------------------------------------
