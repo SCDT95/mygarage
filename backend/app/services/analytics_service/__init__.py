@@ -8,6 +8,7 @@ from app.services.analytics_service.costs import calculate_spot_rental_costs
 from app.services.analytics_service.dataframes import visits_to_dataframe
 from app.services.analytics_service.fuel import (
     calculate_fuel_economy_with_pandas,
+    calculate_hours_economy_with_pandas,
     calculate_propane_costs,
 )
 from app.services.analytics_service.patterns import (
@@ -22,6 +23,7 @@ from app.services.analytics_service.trends import (
 
 __all__ = [
     "calculate_fuel_economy_with_pandas",
+    "calculate_hours_economy_with_pandas",
     "calculate_monthly_aggregation",
     "calculate_propane_costs",
     "calculate_rolling_averages",

@@ -63,6 +63,74 @@ class FuelEconomyTrend(BaseModel):
     model_config = {"from_attributes": True}
 
 
+class HoursEconomyDataPoint(BaseModel):
+    """Single engine-hours fuel-economy data point (dimensionless — no unit
+    conversion; canonical and display units are the same for hours).
+
+    The hours mirror of :class:`FuelEconomyDataPoint`. ``l_per_hr`` is
+    nullable: a full-tank interval with zero liters (a $0 top-off logged
+    purely for the hours reading) still scores a valid ``cost_per_hr``, so
+    the point is kept rather than dropped — see
+    :func:`app.services.fuel_service.calculate_hours_economy`. ``cost_per_hr``
+    is never null for a point that exists in the series at all.
+    """
+
+    date: date_type
+    engine_hours: Decimal
+    l_per_hr: Decimal | None = None
+    cost_per_hr: Decimal
+    liters: Decimal
+    cost: Decimal
+
+    model_config = {"from_attributes": True}
+
+
+class HoursEconomyTrend(BaseModel):
+    """Engine-hours fuel economy trend (canonical L/hr + cost/hr; lower L/hr
+    is better, mirroring the L/100km convention — less fuel burned per hour
+    of engine operation).
+
+    The hours mirror of :class:`FuelEconomyTrend`. ``average_l_per_hr`` /
+    ``average_cost_per_hr`` are the canonical vehicle-level averages from
+    :func:`app.services.fuel_service.calculate_average_hours_economy`
+    (``exclude_hauling=True``) — this is where ``average_l_per_100km`` lives
+    on the distance side, so the two hours averages live in the equivalent
+    place here. ``best``/``worst``/``recent``/``trend`` come from the trend's
+    own full-tank-endpoint pass (``exclude_hauling=False``), matching the
+    distance trend's internal convention. All are ``None`` for a vehicle with
+    no ``engine_hours``-bearing fuel records (pure-distance vehicle).
+    """
+
+    average_l_per_hr: Decimal | None = None
+    average_cost_per_hr: Decimal | None = None
+    best_l_per_hr: Decimal | None = None
+    worst_l_per_hr: Decimal | None = None
+    recent_l_per_hr: Decimal | None = None  # Last full-tank hours-economy endpoint
+    recent_cost_per_hr: Decimal | None = None
+    trend: str = "stable"  # "improving", "declining", "stable"
+    data_points: list[HoursEconomyDataPoint] = []
+
+    model_config = {"from_attributes": True}
+
+
+class HoursAccumulatedDataPoint(BaseModel):
+    """Single (date, engine_hours) reading from ``hours_records`` history.
+
+    The hours analog of an odometer-over-time series — no such point series
+    is currently exposed for distance in Analytics (``total_km_driven`` /
+    ``average_km_per_month`` on :class:`VehicleAnalytics` are summary
+    scalars, not a series), so this is a new, clearly-named series rather
+    than a literal mirror. Every ``hours_records`` row is a real observation
+    (manual, fuel-synced, or service-synced); neither field is nullable —
+    a row with a null reading cannot exist in the table.
+    """
+
+    date: date_type
+    engine_hours: Decimal
+
+    model_config = {"from_attributes": True}
+
+
 class ServiceHistoryItem(BaseModel):
     """Service history timeline item."""
 
@@ -177,6 +245,15 @@ class VehicleAnalytics(BaseModel):
     # Fuel Economy
     fuel_economy: FuelEconomyTrend
     fuel_alerts: list[FuelEfficiencyAlert] = []
+
+    # Engine-Hours Economy (hours-usage-model Phase 7) — mirrors fuel_economy.
+    # Always present; individual fields are null/empty for a pure-distance
+    # vehicle rather than the whole object being omitted.
+    hours_economy: HoursEconomyTrend
+
+    # Hours accumulated over time (date, engine_hours) — the hours analog of
+    # an odometer-over-time series. Empty for a pure-distance vehicle.
+    hours_accumulated: list[HoursAccumulatedDataPoint] = []
 
     # Service History
     service_history: list[ServiceHistoryItem] = []

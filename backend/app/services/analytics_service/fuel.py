@@ -13,7 +13,7 @@ import pandas as pd
 
 from app.models import FuelRecord
 from app.services.analytics_service.trends import calculate_trend_direction
-from app.services.fuel_service import compute_full_tank_economy
+from app.services.fuel_service import compute_full_tank_economy, compute_full_tank_hours_economy
 
 # Realistic L/100km band (~5–100 MPG). A fill-up outside it is almost always a
 # data-entry slip (mistyped odometer/volume); dropping it keeps the trend chart
@@ -22,11 +22,12 @@ _MIN_REALISTIC_L_PER_100KM = 2.35
 _MAX_REALISTIC_L_PER_100KM = 47.0
 
 
-def _l_per_100km_trend(values: pd.Series) -> str:
-    """Map a numeric trend on L/100km to fuel-economy semantics.
+def _lower_is_better_trend(values: pd.Series) -> str:
+    """Map a numeric trend to fuel-economy semantics where LOWER is better.
 
-    Lower L/100km is better, so an increasing slope means fuel economy is
-    *declining*, and a decreasing slope means it is *improving*.
+    Shared by the distance (L/100km) and hours (L/hr) consumption trends:
+    an increasing slope means consumption is rising, i.e. efficiency is
+    *declining*; a decreasing slope means efficiency is *improving*.
     """
     direction = calculate_trend_direction(values)
     if direction == "increasing":
@@ -34,6 +35,24 @@ def _l_per_100km_trend(values: pd.Series) -> str:
     if direction == "decreasing":
         return "improving"
     return "stable"
+
+
+def _l_per_100km_trend(values: pd.Series) -> str:
+    """Map a numeric trend on L/100km to fuel-economy semantics.
+
+    Lower L/100km is better, so an increasing slope means fuel economy is
+    *declining*, and a decreasing slope means it is *improving*.
+    """
+    return _lower_is_better_trend(values)
+
+
+def _l_per_hr_trend(values: pd.Series) -> str:
+    """Map a numeric trend on L/hr to fuel-economy semantics.
+
+    The hours mirror of :func:`_l_per_100km_trend` — lower L/hr is better
+    (less fuel burned per hour of engine operation), same direction mapping.
+    """
+    return _lower_is_better_trend(values)
 
 
 def calculate_fuel_economy_with_pandas(
@@ -95,6 +114,91 @@ def calculate_fuel_economy_with_pandas(
         "recent_l_per_100km": Decimal(str(round(values.iloc[-1], 2))),
         "trend": _l_per_100km_trend(values.tail(10)),
         "std_dev": (Decimal(str(round(values.std(), 2))) if len(values) > 1 else Decimal("0")),
+    }
+
+    return df, stats
+
+
+def calculate_hours_economy_with_pandas(
+    fuel_records: list[FuelRecord],
+) -> tuple[pd.DataFrame, dict[str, Any]]:
+    """Calculate engine-hours fuel economy statistics (L/hr + cost/hr).
+
+    The hours mirror of :func:`calculate_fuel_economy_with_pandas`: one row
+    per full-tank hours-economy endpoint (partials folded into the interval
+    by :func:`compute_full_tank_hours_economy`), displayed in chronological
+    order. Two deliberate differences from the distance function:
+
+    - No realistic-range filter. L/100km has a physically sane band (~5-100
+      MPG) because every vehicle covers the same km with its wheels; L/hr has
+      no such band — a lawn tractor and a diesel generator both report
+      "hours" but burn wildly different rates, so a universal filter would
+      silently drop legitimate readings for one device class or another.
+    - Values stay ``Decimal`` end to end, no float round-trip: the inputs
+      from :func:`compute_full_tank_hours_economy` are already exact
+      ``Decimal`` figures (unlike the distance path, which downgrades to
+      ``float`` for the realistic-range comparison above). ``pandas`` holds
+      them as an ``object``-dtype column, so ``None`` survives untouched
+      (no silent coercion to ``NaN``); aggregates (best/worst/recent) are
+      computed in plain Python rather than ``Series.mean()``/``.min()``,
+      which require a numeric dtype.
+
+    A zero-liters interval (P3 backlog fix in ``calculate_hours_economy``)
+    still produces a row — ``cost_per_hr`` is always valid for a scored
+    interval — but with ``l_per_hr`` set to ``None`` rather than a phantom
+    ``0.00``. It is excluded from ``best``/``worst``/``recent_l_per_hr``/
+    ``trend`` the same way :func:`calculate_average_hours_economy` excludes
+    it from the vehicle-level average.
+
+    Args:
+        fuel_records: Every fuel record for the vehicle, any order.
+
+    Returns:
+        Tuple of (DataFrame with one row per scored full-tank endpoint,
+        statistics dict). Both are empty when fewer than 2 records carry an
+        ``engine_hours`` reading (mirrors the distance function's <2-record
+        floor).
+    """
+    if not fuel_records or len(fuel_records) < 2:
+        return pd.DataFrame(), {}
+
+    # Consecutive full-tank endpoints tile the hours axis, so records must be
+    # fed in engine_hours order for the accumulator in
+    # compute_full_tank_hours_economy to fold partials correctly.
+    records_asc = sorted(
+        (r for r in fuel_records if r.engine_hours is not None),
+        key=lambda r: (r.engine_hours, r.date),
+    )
+    figures = compute_full_tank_hours_economy(records_asc, exclude_hauling=False)
+
+    data = []
+    for record, l_per_hr, cost_per_hr in figures:
+        data.append(
+            {
+                "date": pd.Timestamp(record.date),
+                "engine_hours": record.engine_hours,
+                "liters": record.liters if record.liters is not None else Decimal("0"),
+                "cost": record.cost if record.cost is not None else Decimal("0"),
+                "l_per_hr": l_per_hr,
+                "cost_per_hr": cost_per_hr,
+            }
+        )
+
+    if not data:
+        return pd.DataFrame(), {}
+
+    # Display in chronological order, matching calculate_fuel_economy_with_pandas.
+    df = pd.DataFrame(data).sort_values("date").reset_index(drop=True)
+
+    l_values = [v for v in df["l_per_hr"] if v is not None]
+    l_series = df["l_per_hr"].dropna()
+
+    stats: dict[str, Any] = {
+        "best_l_per_hr": min(l_values) if l_values else None,
+        "worst_l_per_hr": max(l_values) if l_values else None,
+        "recent_l_per_hr": df["l_per_hr"].iloc[-1],
+        "recent_cost_per_hr": df["cost_per_hr"].iloc[-1],
+        "trend": _l_per_hr_trend(l_series.tail(10)) if l_values else "stable",
     }
 
     return df, stats

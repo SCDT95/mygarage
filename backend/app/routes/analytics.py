@@ -25,6 +25,7 @@ from app.database import get_db
 from app.models import (
     DEFRecord,
     FuelRecord,
+    HoursRecord,
     OdometerRecord,
     ServiceVisit,
     SpotRentalBilling,
@@ -47,6 +48,9 @@ from app.schemas.analytics import (
     GarageCostTotals,
     GarageMonthlyTrend,
     GarageVehicleCost,
+    HoursAccumulatedDataPoint,
+    HoursEconomyDataPoint,
+    HoursEconomyTrend,
     MaintenancePrediction,
     MonthlyCostSummary,
     PeriodComparison,
@@ -61,6 +65,7 @@ from app.schemas.analytics import (
 from app.services import analytics_service
 from app.services.auth import get_vehicle_or_403, require_auth
 from app.services.def_service import DEFRecordService
+from app.services.fuel_service import calculate_average_hours_economy
 from app.services.service_visit_service import service_visit_cost_load_options
 from app.utils.cache import cached
 
@@ -376,6 +381,97 @@ async def get_fuel_economy_trend(db: AsyncSession, vin: str) -> FuelEconomyTrend
     )
 
 
+@cached(ttl_seconds=600)  # Cache for 10 minutes
+async def get_hours_economy_trend(db: AsyncSession, vin: str) -> HoursEconomyTrend:
+    """Calculate engine-hours fuel economy trend (L/hr + cost/hr) using pandas.
+
+    The hours mirror of :func:`get_fuel_economy_trend`. ``average_l_per_hr``
+    / ``average_cost_per_hr`` come from the canonical DB-backed
+    :func:`calculate_average_hours_economy` (``exclude_hauling=True``) rather
+    than the trend's own mean — that is where ``average_l_per_100km`` lives
+    on the distance side (:class:`FuelEconomyTrend`), so the two hours
+    averages live in the equivalent place here.
+    ``best``/``worst``/``recent``/``trend`` come from the trend's own
+    full-tank-endpoint pass (``exclude_hauling=False``), matching the
+    distance trend's internal convention. Naturally null/empty for a
+    pure-distance vehicle (no ``engine_hours``-bearing fuel records) — no
+    explicit branch needed, same as the dashboard's hours figures.
+    """
+    average_l_per_hr, average_cost_per_hr = await calculate_average_hours_economy(db, vin)
+
+    # Get all fuel records
+    result = await db.execute(
+        select(FuelRecord).where(FuelRecord.vin == vin).order_by(FuelRecord.date)
+    )
+    fuel_records = list(result.scalars().all())
+
+    if not fuel_records:
+        return HoursEconomyTrend(
+            average_l_per_hr=average_l_per_hr,
+            average_cost_per_hr=average_cost_per_hr,
+        )
+
+    # Use pandas for hours economy calculation (canonical L/hr + cost/hr)
+    hours_df, stats = analytics_service.calculate_hours_economy_with_pandas(fuel_records)
+
+    if hours_df.empty or not stats:
+        return HoursEconomyTrend(
+            average_l_per_hr=average_l_per_hr,
+            average_cost_per_hr=average_cost_per_hr,
+        )
+
+    # Convert DataFrame to data points. Values are already Decimal (see
+    # calculate_hours_economy_with_pandas) — no float round-trip needed.
+    data_points = []
+    for _, row in hours_df.iterrows():
+        data_points.append(
+            HoursEconomyDataPoint(
+                date=row["date"].date(),
+                engine_hours=row["engine_hours"],
+                l_per_hr=row["l_per_hr"],
+                cost_per_hr=row["cost_per_hr"],
+                liters=row["liters"],
+                cost=row["cost"],
+            )
+        )
+
+    return HoursEconomyTrend(
+        average_l_per_hr=average_l_per_hr,
+        average_cost_per_hr=average_cost_per_hr,
+        best_l_per_hr=stats.get("best_l_per_hr"),
+        worst_l_per_hr=stats.get("worst_l_per_hr"),
+        recent_l_per_hr=stats.get("recent_l_per_hr"),
+        recent_cost_per_hr=stats.get("recent_cost_per_hr"),
+        trend=stats.get("trend", "stable"),
+        data_points=data_points,
+    )
+
+
+@cached(ttl_seconds=600)  # Cache for 10 minutes
+async def get_hours_accumulated_series(
+    db: AsyncSession, vin: str
+) -> list[HoursAccumulatedDataPoint]:
+    """(date, engine_hours) points from ``hours_records``, ordered by date.
+
+    The hours analog of an odometer-over-time series — no such point series
+    is currently exposed for distance in Analytics, so this is new rather
+    than a literal mirror (see :class:`HoursAccumulatedDataPoint`). Every
+    ``hours_records`` row for the vehicle (manual + fuel-synced +
+    service-synced) is included; ties on date break to insertion order
+    (``id``) for determinism across SQLite and PostgreSQL. Naturally
+    empty for a pure-distance vehicle.
+    """
+    result = await db.execute(
+        select(HoursRecord.date, HoursRecord.engine_hours)
+        .where(HoursRecord.vin == vin)
+        .order_by(HoursRecord.date, HoursRecord.id)
+    )
+    return [
+        HoursAccumulatedDataPoint(date=row.date, engine_hours=row.engine_hours)
+        for row in result.all()
+    ]
+
+
 def build_fuel_alerts(fuel_economy: FuelEconomyTrend) -> list[FuelEfficiencyAlert]:
     """Generate alert messages based on fuel economy trends.
 
@@ -662,6 +758,14 @@ async def get_vehicle_analytics(
         fuel_economy = await get_fuel_economy_trend(db, vin)
         fuel_alerts = build_fuel_alerts(fuel_economy)
 
+    # Get engine-hours economy trend + accumulated-hours series. Always
+    # computed (no is_fifth_wheel-style branch) — naturally null/empty for a
+    # pure-distance vehicle since it has no engine_hours-bearing fuel records
+    # or hours_records rows, same "derive at read, no cache" convention the
+    # dashboard's hours figures already use.
+    hours_economy = await get_hours_economy_trend(db, vin)
+    hours_accumulated = await get_hours_accumulated_series(db, vin)
+
     # Get service history timeline
     service_history = await get_service_history_timeline(db, vin)
 
@@ -741,6 +845,8 @@ async def get_vehicle_analytics(
         cost_projection=cost_projection,
         fuel_economy=fuel_economy,
         fuel_alerts=fuel_alerts,
+        hours_economy=hours_economy,
+        hours_accumulated=hours_accumulated,
         service_history=service_history,
         predictions=predictions,
         total_km_driven=total_km_driven,

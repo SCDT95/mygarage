@@ -45,6 +45,7 @@ def _make_fuel_record(**kwargs):
         "vin": "1HGBH41JXMN109186",
         "date": date(2024, 1, 15),
         "odometer_km": Decimal("80467.20"),  # 50000 mi
+        "engine_hours": None,
         "liters": Decimal("47.32"),  # 12.5 gal
         "propane_liters": None,
         "tank_size_kg": None,
@@ -348,6 +349,197 @@ class TestCalculateFuelEconomy:
         # not the 52.95-only 6.43 the old per-fill-up path produced.
         assert stats["average_l_per_100km"] == Decimal("9.43")
         assert stats["recent_l_per_100km"] == Decimal("9.43")
+
+
+@pytest.mark.unit
+@pytest.mark.analytics
+class TestCalculateHoursEconomyWithPandas:
+    """Hours mirror of TestCalculateFuelEconomy — wraps
+    compute_full_tank_hours_economy in the same (df, stats) shape as
+    calculate_fuel_economy_with_pandas, one row per full-tank endpoint.
+    """
+
+    def test_basic_hours_economy_calculation(self):
+        """Two full-tank intervals -> two points, in engine_hours/date order."""
+        records = [
+            _make_fuel_record(
+                date=date(2026, 1, 1),
+                engine_hours=Decimal("100.0"),
+                liters=Decimal("20.000"),
+                cost=Decimal("30.00"),
+                is_full_tank=True,
+            ),
+            _make_fuel_record(
+                date=date(2026, 1, 10),
+                engine_hours=Decimal("120.0"),
+                liters=Decimal("15.000"),
+                cost=Decimal("25.00"),
+                is_full_tank=True,
+            ),
+            _make_fuel_record(
+                date=date(2026, 1, 20),
+                engine_hours=Decimal("140.0"),
+                liters=Decimal("10.000"),
+                cost=Decimal("20.00"),
+                is_full_tank=True,
+            ),
+        ]
+
+        df, stats = analytics_service.calculate_hours_economy_with_pandas(records)
+
+        assert len(df) == 2
+        # record2: Δ=20h, l=15/20=0.75, cost=25/20=1.25
+        # record3: Δ=20h, l=10/20=0.50, cost=20/20=1.00
+        assert list(df["l_per_hr"]) == [Decimal("0.75"), Decimal("0.50")]
+        assert list(df["cost_per_hr"]) == [Decimal("1.25"), Decimal("1.00")]
+        assert list(df["engine_hours"]) == [Decimal("120.0"), Decimal("140.0")]
+
+        assert stats["best_l_per_hr"] == Decimal("0.50")
+        assert stats["worst_l_per_hr"] == Decimal("0.75")
+        assert stats["recent_l_per_hr"] == Decimal("0.50")
+        assert stats["recent_cost_per_hr"] == Decimal("1.00")
+
+    def test_values_stay_decimal_not_float(self):
+        """Constraint: no float round-trip for hours figures (unlike the
+        distance path, which downgrades to float for its realistic-range
+        filter)."""
+        records = [
+            _make_fuel_record(
+                date=date(2026, 1, 1),
+                engine_hours=Decimal("100.0"),
+                liters=Decimal("20.000"),
+                cost=Decimal("30.00"),
+                is_full_tank=True,
+            ),
+            _make_fuel_record(
+                date=date(2026, 1, 10),
+                engine_hours=Decimal("110.0"),
+                liters=Decimal("10.000"),
+                cost=Decimal("15.00"),
+                is_full_tank=True,
+            ),
+        ]
+
+        df, stats = analytics_service.calculate_hours_economy_with_pandas(records)
+
+        assert isinstance(df.iloc[0]["l_per_hr"], Decimal)
+        assert isinstance(df.iloc[0]["cost_per_hr"], Decimal)
+        assert isinstance(stats["best_l_per_hr"], Decimal)
+
+    def test_zero_liters_endpoint_keeps_point_with_null_l_per_hr(self):
+        """Distance-trend convention: a genuinely no-figure endpoint (partial,
+        missed, no-hours, non-increasing meter) is omitted from the series
+        entirely by compute_full_tank_hours_economy. A zero-liters endpoint is
+        different: cost_per_hr is still real data, so the point is KEPT with
+        l_per_hr nulled rather than dropped — and it must not contaminate
+        best/worst/recent_l_per_hr/trend, mirroring how
+        calculate_average_hours_economy excludes it from the average."""
+        records = [
+            _make_fuel_record(
+                date=date(2026, 1, 1),
+                engine_hours=Decimal("100.0"),
+                liters=Decimal("20.000"),
+                cost=Decimal("30.00"),
+                is_full_tank=True,
+            ),
+            _make_fuel_record(
+                date=date(2026, 1, 10),
+                engine_hours=Decimal("120.0"),
+                liters=Decimal("0.000"),
+                cost=Decimal("15.00"),
+                is_full_tank=True,
+            ),
+        ]
+
+        df, stats = analytics_service.calculate_hours_economy_with_pandas(records)
+
+        assert len(df) == 1, "the zero-liters endpoint is still a point (cost_per_hr is real)"
+        row = df.iloc[0]
+        assert row["l_per_hr"] is None
+        assert row["cost_per_hr"] == Decimal("0.75")  # 15 / 20
+
+        assert stats["best_l_per_hr"] is None
+        assert stats["worst_l_per_hr"] is None
+        assert stats["recent_l_per_hr"] is None
+        assert stats["recent_cost_per_hr"] == Decimal("0.75")
+        assert stats["trend"] == "stable"
+
+    def test_records_without_engine_hours_excluded(self):
+        """A fill with no engine_hours is off the hours axis and does not
+        fold into the surrounding interval (mirrors
+        test_records_missing_mileage_or_gallons)."""
+        records = [
+            _make_fuel_record(
+                date=date(2026, 1, 1),
+                engine_hours=Decimal("100.0"),
+                liters=Decimal("20.000"),
+                cost=Decimal("30.00"),
+                is_full_tank=True,
+            ),
+            _make_fuel_record(
+                date=date(2026, 1, 5),
+                engine_hours=None,
+                liters=Decimal("5.000"),
+                cost=Decimal("8.00"),
+                is_full_tank=False,
+            ),
+            _make_fuel_record(
+                date=date(2026, 1, 10),
+                engine_hours=Decimal("120.0"),
+                liters=Decimal("15.000"),
+                cost=Decimal("25.00"),
+                is_full_tank=True,
+            ),
+        ]
+
+        df, stats = analytics_service.calculate_hours_economy_with_pandas(records)
+
+        assert len(df) == 1
+        row = df.iloc[0]
+        assert row["l_per_hr"] == Decimal("0.75")  # 15 / 20, the hours-less partial excluded
+        assert row["cost_per_hr"] == Decimal("1.25")  # 25 / 20
+
+    def test_insufficient_records_returns_empty(self):
+        records = [
+            _make_fuel_record(engine_hours=Decimal("100.0"), liters=Decimal("20.0")),
+        ]
+
+        df, stats = analytics_service.calculate_hours_economy_with_pandas(records)
+
+        assert df.empty
+        assert stats == {}
+
+    def test_empty_records_returns_empty(self):
+        df, stats = analytics_service.calculate_hours_economy_with_pandas([])
+
+        assert df.empty
+        assert stats == {}
+
+    def test_no_realistic_range_filter_unlike_distance(self):
+        """Unlike L/100km, a very high or very low L/hr is not filtered —
+        there is no universal realistic band across engine sizes."""
+        records = [
+            _make_fuel_record(
+                date=date(2026, 1, 1),
+                engine_hours=Decimal("100.0"),
+                liters=Decimal("500.000"),
+                cost=Decimal("700.00"),
+                is_full_tank=True,
+            ),
+            _make_fuel_record(
+                date=date(2026, 1, 2),
+                engine_hours=Decimal("101.0"),
+                liters=Decimal("400.000"),
+                cost=Decimal("560.00"),
+                is_full_tank=True,
+            ),
+        ]
+
+        df, stats = analytics_service.calculate_hours_economy_with_pandas(records)
+
+        # Δ=1h, l_per_hr=400.00 — an implausible MPG-equivalent, kept anyway.
+        assert len(df) == 1
+        assert df.iloc[0]["l_per_hr"] == Decimal("400.00")
 
 
 @pytest.mark.unit
