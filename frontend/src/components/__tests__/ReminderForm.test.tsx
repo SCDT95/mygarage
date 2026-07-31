@@ -14,6 +14,14 @@ vi.mock('../../hooks/useUnitPreference', () => ({
   useUnitPreference: () => ({ system: 'imperial', showBoth: false }),
 }))
 vi.mock('sonner', () => ({ toast: { success: vi.fn(), error: vi.fn() } }))
+// Task 15 — ReminderForm now fetches the vehicle for usage_unit/secondary_usage_enabled
+// (mirrors FuelRecordForm/ServiceVisitForm). This suite is all date-type reminders on a
+// distance-tracking (default) vehicle, so a resolved-but-empty response is enough — the
+// ReminderForm.hours.test.tsx suite exercises the hours-specific behavior.
+const mockedApiGet = vi.fn().mockResolvedValue({ data: { usage_unit: 'distance', secondary_usage_enabled: false } })
+vi.mock('../../services/api', () => ({
+  default: { get: (...args: unknown[]) => mockedApiGet(...args) },
+}))
 
 import ReminderForm from '../ReminderForm'
 
@@ -35,9 +43,9 @@ describe('ReminderForm — create vs update routing (SDQ-C)', () => {
     fireEvent.change(screen.getByLabelText('reminder.dueDate *'), { target: { value: '2026-06-01' } })
     fireEvent.click(screen.getByRole('button', { name: 'common:create' }))
     await vi.waitFor(() => expect(createMock).toHaveBeenCalledTimes(1))
-    // strict payload — a date-type reminder leaves due_mileage_km + notes undefined (never objectContaining, LD6)
+    // strict payload — a date-type reminder leaves due_mileage_km/due_hours/notes undefined (never objectContaining, LD6)
     expect(createMock.mock.calls[0][0]).toStrictEqual({
-      title: 'Oil change', reminder_type: 'date', due_date: '2026-06-01', due_mileage_km: undefined, notes: undefined,
+      title: 'Oil change', reminder_type: 'date', due_date: '2026-06-01', due_mileage_km: undefined, due_hours: undefined, notes: undefined,
     })
     expect(updateMock).not.toHaveBeenCalled()
     await vi.waitFor(() => expect(onSuccess).toHaveBeenCalledTimes(1))
@@ -49,7 +57,7 @@ describe('ReminderForm — create vs update routing (SDQ-C)', () => {
     fireEvent.click(screen.getByRole('button', { name: 'common:update' }))
     await vi.waitFor(() => expect(updateMock).toHaveBeenCalledTimes(1))
     expect(updateMock.mock.calls[0][0]).toStrictEqual({
-      id: 3, title: 'Registration', reminder_type: 'date', due_date: '2026-09-01', due_mileage_km: undefined, notes: undefined,
+      id: 3, title: 'Registration', reminder_type: 'date', due_date: '2026-09-01', due_mileage_km: undefined, due_hours: undefined, notes: undefined,
     })
     expect(createMock).not.toHaveBeenCalled()
     await vi.waitFor(() => expect(onSuccess).toHaveBeenCalledTimes(1))

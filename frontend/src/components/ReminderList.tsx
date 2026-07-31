@@ -4,7 +4,7 @@
 
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Bell, Plus, Check, X, Edit, Trash2, Clock, Gauge, Zap } from 'lucide-react'
+import { Bell, Plus, Check, X, Edit, Trash2, Clock, Gauge, Zap, Timer } from 'lucide-react'
 import { toast } from 'sonner'
 import { useReminders, useMarkReminderDone, useMarkReminderDismissed, useDeleteReminder } from '../hooks/useReminders'
 import { useLatestMileage } from '../hooks/useLatestMileage'
@@ -29,6 +29,7 @@ const STATUS_TABS: { id: ReminderStatus | 'all'; labelKey: string }[] = [
 const TYPE_ICONS: Record<string, typeof Bell> = {
   date: Clock,
   mileage: Gauge,
+  hours: Timer,
   both: Bell,
   smart: Zap,
 }
@@ -150,6 +151,16 @@ export default function ReminderList({ vin }: ReminderListProps) {
                         {reminder.due_mileage_km && (
                           <span className="text-xs text-text-mute">
                             {t('reminderList.due')}: <Mono size="xs" tone="muted">{UnitFormatter.formatDistance(parseFloat(String(reminder.due_mileage_km)), system, showBoth)}</Mono>
+                          </span>
+                        )}
+                        {/* Task 15 — hours-based target. Dimensionless: no UnitFormatter
+                            conversion, unlike due_mileage_km above — fixed "hr" unit,
+                            same convention as the engine-hours reading elsewhere. */}
+                        {reminder.due_hours && (
+                          <span className="text-xs text-text-mute">
+                            <Mono size="xs" tone="muted">
+                              {t('reminderList.dueAtHours', { n: Number(reminder.due_hours).toFixed(1) })}
+                            </Mono>
                           </span>
                         )}
                         {reminder.estimated_due_date && (

@@ -4,19 +4,27 @@
  * Mileage input is always an interval ("miles until due"). When currentMileage
  * is available, the form converts interval → absolute on submit. On edit, it
  * reverse-computes the remaining interval for display.
+ *
+ * The engine-hours target (Task 15) has no such baseline — there is no
+ * tracked "current hours" here — so it is a plain absolute due_hours value,
+ * submitted verbatim. `smart` reminders target the vehicle's PRIMARY usage
+ * dimension (mileage or hours, from getUsageTracking), never both at once.
  */
 
 import { useTranslation } from 'react-i18next'
-import { useState, type SyntheticEvent } from 'react'
+import { useEffect, useState, type SyntheticEvent } from 'react'
 import { Save, AlertTriangle } from 'lucide-react'
 import FormModalWrapper from './FormModalWrapper'
 import { Button, Field, Input, Textarea } from './ui'
 import { toast } from 'sonner'
 import { useCreateReminder, useUpdateReminder } from '../hooks/useReminders'
 import type { Reminder, ReminderType } from '../types/reminder'
+import type { Vehicle } from '../types/vehicle'
 import { useUnitPreference } from '../hooks/useUnitPreference'
 import { UnitConverter, UnitFormatter } from '../utils/units'
 import { toCanonicalKm } from '../utils/decimalSafe'
+import { getUsageTracking } from '../utils/usageTracking'
+import api from '../services/api'
 import { getActiveLocale } from '@/constants/i18n'
 
 interface ReminderFormProps {
@@ -28,15 +36,19 @@ interface ReminderFormProps {
 }
 
 /**
- * Reminder type choices. `labelKey`/`descriptionKey` are resolved through t()
- * at render time — never store the English here.
+ * All reminder-type definitions, keyed by value. `labelKey`/`descriptionKey`
+ * are resolved through t() at render time — never store the English here.
+ * The component filters/orders these per-vehicle via getUsageTracking (Task
+ * 15) — hours-only vehicles never offer mileage/both, distance-only vehicles
+ * never offer hours.
  */
-const REMINDER_TYPES: { value: ReminderType; labelKey: string; descriptionKey: string }[] = [
-  { value: 'date', labelKey: 'reminderForm.typeDate', descriptionKey: 'reminderForm.typeDateDescription' },
-  { value: 'mileage', labelKey: 'reminderForm.typeMileage', descriptionKey: 'reminderForm.typeMileageDescription' },
-  { value: 'both', labelKey: 'reminderForm.typeBoth', descriptionKey: 'reminderForm.typeBothDescription' },
-  { value: 'smart', labelKey: 'reminderForm.typeSmart', descriptionKey: 'reminderForm.typeSmartDescription' },
-]
+const REMINDER_TYPE_DEFS: Record<ReminderType, { labelKey: string; descriptionKey: string }> = {
+  date: { labelKey: 'reminderForm.typeDate', descriptionKey: 'reminderForm.typeDateDescription' },
+  mileage: { labelKey: 'reminderForm.typeMileage', descriptionKey: 'reminderForm.typeMileageDescription' },
+  hours: { labelKey: 'reminderForm.typeHours', descriptionKey: 'reminderForm.typeHoursDescription' },
+  both: { labelKey: 'reminderForm.typeBoth', descriptionKey: 'reminderForm.typeBothDescription' },
+  smart: { labelKey: 'reminderForm.typeSmart', descriptionKey: 'reminderForm.typeSmartDescription' },
+}
 
 export default function ReminderForm({ vin, reminder, currentMileage, onClose, onSuccess }: ReminderFormProps) {
   const { t } = useTranslation('forms')
@@ -49,6 +61,42 @@ export default function ReminderForm({ vin, reminder, currentMileage, onClose, o
   const currentDisplay = currentMileage != null
     ? (system === 'imperial' ? UnitConverter.kmToMiles(currentMileage) ?? currentMileage : currentMileage)
     : null
+
+  // Task 15 — which usage dimension(s) this vehicle tracks, driving the
+  // reminder-type options + due_hours field visibility below. Defaults mirror
+  // getUsageTracking's own distance-primary default so the form doesn't
+  // flash the wrong options before the vehicle fetch resolves. Independent
+  // `/vehicles/{vin}` fetch, mirroring FuelRecordForm/ServiceVisitForm (Tasks
+  // 13/14) rather than threading a new prop through ReminderList.
+  const [vehicleUsageUnit, setVehicleUsageUnit] = useState<string>('distance')
+  const [vehicleSecondaryUsageEnabled, setVehicleSecondaryUsageEnabled] = useState<boolean>(false)
+  useEffect(() => {
+    const fetchVehicleUsage = async () => {
+      try {
+        const response = await api.get(`/vehicles/${vin}`)
+        const vehicleData: Vehicle = response.data
+        setVehicleUsageUnit(vehicleData.usage_unit || 'distance')
+        setVehicleSecondaryUsageEnabled(!!vehicleData.secondary_usage_enabled)
+      } catch {
+        // Silent fail - non-critical for field visibility
+      }
+    }
+    fetchVehicleUsage()
+  }, [vin])
+  const { tracksDistance, tracksHours, primary } = getUsageTracking({
+    usage_unit: vehicleUsageUnit,
+    secondary_usage_enabled: vehicleSecondaryUsageEnabled,
+  })
+
+  // Type options filtered by which dimension(s) this vehicle tracks: hours-only
+  // never offers mileage/both (backend rejects those combos for an hours-only
+  // vehicle anyway), distance-only never offers hours, dual offers everything.
+  const reminderTypeOrder: ReminderType[] = tracksDistance && tracksHours
+    ? ['date', 'mileage', 'hours', 'both', 'smart']
+    : tracksHours
+      ? ['date', 'hours', 'smart']
+      : ['date', 'mileage', 'both', 'smart']
+  const reminderTypeOptions = reminderTypeOrder.map((value) => ({ value, ...REMINDER_TYPE_DEFS[value] }))
 
   const [error, setError] = useState<string | null>(null)
   const [submitting, setSubmitting] = useState(false)
@@ -73,12 +121,33 @@ export default function ReminderForm({ vin, reminder, currentMileage, onClose, o
   })()
   const [mileageInterval, setMileageInterval] = useState<number | undefined>(initialInterval)
 
+  // Task 15 — due_hours target. Engine hours are dimensionless (no unit
+  // conversion, no "current + interval" baseline math like mileage above —
+  // there is no tracked "current hours" here), so this is submitted verbatim
+  // as the absolute due_hours target the backend stores.
+  const initialDueHours = (() => {
+    const dh = reminder?.due_hours
+    if (dh == null) return undefined
+    const dhNum = typeof dh === 'string' ? parseFloat(dh) : dh
+    return isNaN(dhNum) ? undefined : dhNum
+  })()
+  const [dueHours, setDueHours] = useState<number | undefined>(initialDueHours)
+
   const [notes, setNotes] = useState(reminder?.notes ?? '')
 
   // Compute target for display in user's units
   const absoluteTarget = hasMileage && mileageInterval && currentDisplay != null
     ? currentDisplay + mileageInterval
     : mileageInterval
+
+  // Task 15 — smart reminders target the vehicle's PRIMARY dimension (keeps
+  // the backend's exactly-one-of{mileage,hours} rule trivially satisfied: we
+  // never populate both). A dual vehicle defaults to distance-primary unless
+  // usage_unit === 'hours'.
+  const smartUsesHours = reminderType === 'smart' && primary === 'hours'
+  const needsMileageField = reminderType === 'mileage' || reminderType === 'both' ||
+    (reminderType === 'smart' && !smartUsesHours)
+  const needsHoursField = reminderType === 'hours' || smartUsesHours
 
   const handleSubmit = async (e: SyntheticEvent<HTMLFormElement>) => {
     e.preventDefault()
@@ -94,17 +163,26 @@ export default function ReminderForm({ vin, reminder, currentMileage, onClose, o
       return
     }
 
-    if (['mileage', 'both', 'smart'].includes(reminderType) && !mileageInterval) {
+    if (needsMileageField && !mileageInterval) {
       setError(t('reminder.milesRequired'))
       return
     }
 
+    if (needsHoursField && !dueHours) {
+      setError(t('reminder.hoursRequired'))
+      return
+    }
+
     // Convert user-entered interval (display unit) to canonical km, then add
-    // baseline canonical km for absolute target.
+    // baseline canonical km for absolute target. Never sent for an hours-only
+    // or smart-hours reminder — the backend rejects both metrics at once.
     const intervalKm = toCanonicalKm(mileageInterval ?? null, system)
-    const due_mileage_km = hasMileage && intervalKm != null
-      ? currentMileage + intervalKm
-      : intervalKm ?? undefined
+    const due_mileage_km = needsMileageField
+      ? (hasMileage && intervalKm != null ? currentMileage + intervalKm : intervalKm ?? undefined)
+      : undefined
+    // due_hours is submitted verbatim — dimensionless, no canonical conversion
+    // — and only for the type/metric combos that target it.
+    const due_hours = needsHoursField ? dueHours : undefined
 
     setSubmitting(true)
     try {
@@ -115,6 +193,7 @@ export default function ReminderForm({ vin, reminder, currentMileage, onClose, o
           reminder_type: reminderType,
           due_date: dueDate || undefined,
           due_mileage_km,
+          due_hours,
           notes: notes || undefined,
         })
         toast.success(t('reminder.updated'))
@@ -124,6 +203,7 @@ export default function ReminderForm({ vin, reminder, currentMileage, onClose, o
           reminder_type: reminderType,
           due_date: dueDate || undefined,
           due_mileage_km,
+          due_hours,
           notes: notes || undefined,
         })
         toast.success(t('reminder.created'))
@@ -177,7 +257,7 @@ export default function ReminderForm({ vin, reminder, currentMileage, onClose, o
             {t('reminder.reminderType')}
           </label>
           <div className="grid grid-cols-2 gap-2">
-            {REMINDER_TYPES.map((type) => (
+            {reminderTypeOptions.map((type) => (
               <button
                 key={type.value}
                 type="button"
@@ -208,7 +288,7 @@ export default function ReminderForm({ vin, reminder, currentMileage, onClose, o
           </Field>
         )}
 
-        {['mileage', 'both', 'smart'].includes(reminderType) && (
+        {needsMileageField && (
           <div>
             <Field
               id="reminder-mileage"
@@ -250,6 +330,24 @@ export default function ReminderForm({ vin, reminder, currentMileage, onClose, o
               </p>
             )}
           </div>
+        )}
+
+        {/* Task 15 — engine-hours target. Dimensionless: no unit conversion and
+            no current-hours baseline (unlike the mileage field above), so the
+            entered value is the absolute due_hours target submitted verbatim. */}
+        {needsHoursField && (
+          <Field id="reminder-hours" label={t('reminder.dueHours')} unit="hr" required>
+            <Input
+              id="reminder-hours"
+              type="number"
+              value={dueHours ?? ''}
+              onChange={(e) => setDueHours(e.target.value ? parseFloat(e.target.value) : undefined)}
+              min="0"
+              step="0.1"
+              placeholder="850"
+              disabled={submitting}
+            />
+          </Field>
         )}
 
         {reminderType === 'smart' && (

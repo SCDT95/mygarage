@@ -810,6 +810,7 @@
     "dismissError": "Failed to dismiss reminder",
     "dismissed": "Reminder dismissed",
     "due": "Due",
+    "dueAtHours": "due at {{n}} hr",
     "estimated": "Est",
     "linkedToService": "Linked to service record",
     "loading": "Loading reminders...",
