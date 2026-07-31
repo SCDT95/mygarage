@@ -10,6 +10,7 @@ from app.routes.def_routes import router as def_router
 from app.routes.documents import router as documents_router
 from app.routes.export import router as export_router
 from app.routes.fuel import router as fuel_router
+from app.routes.hours import router as hours_router
 from app.routes.import_data import router as import_router
 from app.routes.insurance import router as insurance_router
 from app.routes.notes import router as notes_router
@@ -40,6 +41,7 @@ __all__ = [
     "photos_router",
     "fuel_router",
     "odometer_router",
+    "hours_router",
     "documents_router",
     "notes_router",
     "dashboard_router",
