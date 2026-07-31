@@ -38,6 +38,9 @@ class FuelRecord(Base):
     # legacy date-only consumers (lists, reports, CSV export) keep working.
     filled_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     odometer_km: Mapped[Decimal | None] = mapped_column(Numeric(10, 2))
+    # Engine-hours reading at this fill-up (hour-metered vehicles). Dimensionless
+    # — no unit conversion. Migration 083.
+    engine_hours: Mapped[Decimal | None] = mapped_column(Numeric(10, 1))
     liters: Mapped[Decimal | None] = mapped_column(Numeric(9, 3))
     propane_liters: Mapped[Decimal | None] = mapped_column(Numeric(9, 3))
     tank_size_kg: Mapped[Decimal | None] = mapped_column(Numeric(6, 2))

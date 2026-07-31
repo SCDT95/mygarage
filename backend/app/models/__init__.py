@@ -8,6 +8,7 @@ from app.models.document import Document
 from app.models.drive_session import DriveSession
 from app.models.dtc_definition import DTCDefinition
 from app.models.fuel import FuelRecord
+from app.models.hours import HoursRecord
 from app.models.insurance import InsurancePolicy
 from app.models.livelink_device import LiveLinkDevice
 from app.models.livelink_firmware_cache import LiveLinkFirmwareCache
@@ -49,6 +50,7 @@ __all__ = [
     "SpotRental",
     "SpotRentalBilling",
     "FuelRecord",
+    "HoursRecord",
     "OdometerRecord",
     "TaxRecord",
     "Note",

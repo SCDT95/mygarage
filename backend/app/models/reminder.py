@@ -33,6 +33,8 @@ class Reminder(Base):
     reminder_type: Mapped[str] = mapped_column(String(10), nullable=False)
     due_date: Mapped[date | None] = mapped_column(Date, nullable=True)
     due_mileage_km: Mapped[Decimal | None] = mapped_column(Numeric(10, 2), nullable=True)
+    # Hours target for reminder_type='hours' (hour-metered vehicles). Migration 083.
+    due_hours: Mapped[Decimal | None] = mapped_column(Numeric(10, 1), nullable=True)
     status: Mapped[str] = mapped_column(String(10), nullable=False, default="pending")
     notes: Mapped[str | None] = mapped_column(Text, nullable=True)
     last_notified_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)

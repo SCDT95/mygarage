@@ -98,6 +98,11 @@ EXPORT_COVERAGE_SPECS: list[ExportCoverageSpec] = [
             "vin",
             # Internal bookkeeping not meaningful in user-facing exports:
             "created_at",
+            # Added by migration 083 (hours-usage foundation). CSV round-trip
+            # for engine_hours is wired in the later hours CSV phase (plan §9);
+            # excluded until then so the schema column lands without prematurely
+            # touching the exporter.
+            "engine_hours",
             # Alternate-unit fields covered by Liters; format is canonical metric:
             "propane_liters",
             "tank_size_kg",

@@ -27,6 +27,7 @@ if TYPE_CHECKING:
     from app.models.def_record import DEFRecord
     from app.models.document import Document
     from app.models.fuel import FuelRecord
+    from app.models.hours import HoursRecord
     from app.models.insurance import InsurancePolicy
     from app.models.note import Note
     from app.models.odometer import OdometerRecord
@@ -54,6 +55,10 @@ class Vehicle(Base):
     # holds the latest hour reading when usage_unit == 'hours'. See migration 080.
     usage_unit: Mapped[str] = mapped_column(String(10), default="distance", nullable=False)
     current_hours: Mapped[Decimal | None] = mapped_column(Numeric(10, 1), nullable=True)
+    # Whether this vehicle also tracks the *other* usage dimension (the one that
+    # isn't ``usage_unit``). Default off → existing vehicles stay single-track.
+    # See migration 083.
+    secondary_usage_enabled: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     year: Mapped[int | None] = mapped_column(Integer)
     make: Mapped[str | None] = mapped_column(String(50))
     model: Mapped[str | None] = mapped_column(String(50))
@@ -153,6 +158,9 @@ class Vehicle(Base):
     )
     odometer_records: Mapped[list[OdometerRecord]] = relationship(
         "OdometerRecord", back_populates="vehicle", cascade="all, delete-orphan"
+    )
+    hours_records: Mapped[list[HoursRecord]] = relationship(
+        "HoursRecord", back_populates="vehicle", cascade="all, delete-orphan"
     )
     tax_records: Mapped[list[TaxRecord]] = relationship(
         "TaxRecord", back_populates="vehicle", cascade="all, delete-orphan"

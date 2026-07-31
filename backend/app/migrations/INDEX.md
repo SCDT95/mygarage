@@ -93,3 +93,4 @@ migrations must swallow their own operational errors.
 | `080_add_usage_unit_hours` | **FATAL** — Add per-vehicle usage tracking dimension (usage_unit + current_hours). |
 | `081_accent_color_nullable` | Reset defaulted users.accent_color 'blue' to NULL (unset != chosen). |
 | `082_add_theme` | **FATAL** — Add per-account light/dark theme preference (theme) to user settings. |
+| `083_add_hours_tracking` | **FATAL** — Add engine-hours usage tracking (hours_records, engine_hours, due_hours, secondary_usage_enabled). |

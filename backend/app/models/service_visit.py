@@ -41,6 +41,9 @@ class ServiceVisit(Base):
     vendor_id: Mapped[int | None] = mapped_column(Integer, ForeignKey("vendors.id"))
     date: Mapped[dt.date] = mapped_column(Date, nullable=False)
     odometer_km: Mapped[Decimal | None] = mapped_column(Numeric(10, 2))
+    # Engine-hours reading at this service visit (hour-metered vehicles).
+    # Dimensionless — no unit conversion. Migration 083.
+    engine_hours: Mapped[Decimal | None] = mapped_column(Numeric(10, 1))
     total_cost: Mapped[Decimal | None] = mapped_column(Numeric(10, 2))
     tax_amount: Mapped[Decimal | None] = mapped_column(Numeric(10, 2))
     shop_supplies: Mapped[Decimal | None] = mapped_column(Numeric(10, 2))
