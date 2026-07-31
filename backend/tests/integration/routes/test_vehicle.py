@@ -4,8 +4,15 @@ Integration tests for vehicle routes.
 Tests vehicle CRUD operations, access control, and archive workflows.
 """
 
+from datetime import date
+from decimal import Decimal
+
 import pytest
 from httpx import AsyncClient
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from app.models import HoursRecord
 
 
 @pytest.mark.integration
@@ -81,29 +88,104 @@ class TestVehicleRoutes:
         assert response.status_code == 201
         assert response.json()["usage_unit"] == "distance"
 
-    async def test_create_and_update_hours_tracking(
-        self, client: AsyncClient, auth_headers, sample_vehicle_payload
+    async def test_create_and_update_hours_tracking_writes_manual_hours_row(
+        self,
+        client: AsyncClient,
+        auth_headers,
+        sample_vehicle_payload,
+        db_session: AsyncSession,
     ):
-        """usage_unit='hours' + current_hours round-trip on both create and update."""
+        """R2-H1: current_hours is retired as a source-of-truth column write.
+        A submitted current_hours on create/update upserts TODAY's manual
+        hours_records row instead — and latest_hours (never
+        vehicle.current_hours) is what detail-stats displays. A repeated
+        same-day PUT updates the SAME row, never a second one."""
+        vin = "1HGCM82633A100002"
         payload = {
             **sample_vehicle_payload,
-            "vin": "1HGCM82633A100002",
+            "vin": vin,
             "usage_unit": "hours",
             "current_hours": 123.5,
         }
         resp = await client.post("/api/vehicles", json=payload, headers=auth_headers)
         assert resp.status_code == 201
-        data = resp.json()
-        assert data["usage_unit"] == "hours"
-        assert float(data["current_hours"]) == 123.5
+        assert resp.json()["usage_unit"] == "hours"
 
+        today = date.today()
+
+        async def _manual_rows() -> list[HoursRecord]:
+            result = await db_session.execute(
+                select(HoursRecord).where(
+                    HoursRecord.vin == vin,
+                    HoursRecord.source == "manual",
+                    HoursRecord.date == today,
+                )
+            )
+            return list(result.scalars().all())
+
+        rows = await _manual_rows()
+        assert len(rows) == 1
+        assert rows[0].engine_hours == Decimal("123.5")
+        first_row_id = rows[0].id
+
+        detail = (
+            await client.get(f"/api/vehicles/{vin}/detail-stats", headers=auth_headers)
+        ).json()
+        assert detail["latest_hours"] == "123.5"
+
+        # Same-day PUT: must update the SAME manual row, never create a second.
         upd = await client.put(
-            f"/api/vehicles/{payload['vin']}",
+            f"/api/vehicles/{vin}",
             json={"current_hours": 200.0},
             headers=auth_headers,
         )
         assert upd.status_code == 200
-        assert float(upd.json()["current_hours"]) == 200.0
+
+        rows_after = await _manual_rows()
+        assert len(rows_after) == 1, "same-day update must not proliferate manual rows"
+        assert rows_after[0].id == first_row_id
+        assert rows_after[0].engine_hours == Decimal("200.0")
+
+        detail_after = (
+            await client.get(f"/api/vehicles/{vin}/detail-stats", headers=auth_headers)
+        ).json()
+        assert detail_after["latest_hours"] == "200.0"
+
+        # A third same-day PUT still updates the ONE row.
+        upd2 = await client.put(
+            f"/api/vehicles/{vin}",
+            json={"current_hours": 210.3},
+            headers=auth_headers,
+        )
+        assert upd2.status_code == 200
+        rows_final = await _manual_rows()
+        assert len(rows_final) == 1
+        assert rows_final[0].id == first_row_id
+        assert rows_final[0].engine_hours == Decimal("210.3")
+
+    async def test_omitted_current_hours_on_update_does_not_write_a_row(
+        self, client: AsyncClient, auth_headers, sample_vehicle_payload, db_session: AsyncSession
+    ):
+        """exclude_unset semantics: a PUT that never mentions current_hours
+        must not touch hours_records at all."""
+        vin = "1HGCM82633A100011"
+        payload = {**sample_vehicle_payload, "vin": vin, "usage_unit": "hours"}
+        resp = await client.post("/api/vehicles", json=payload, headers=auth_headers)
+        assert resp.status_code == 201
+
+        upd = await client.put(
+            f"/api/vehicles/{vin}",
+            json={"license_plate": "NOHOURS-1"},
+            headers=auth_headers,
+        )
+        assert upd.status_code == 200
+
+        rows = (
+            (await db_session.execute(select(HoursRecord).where(HoursRecord.vin == vin)))
+            .scalars()
+            .all()
+        )
+        assert rows == []
 
     async def test_create_vehicle_rejects_bad_usage_unit(
         self, client: AsyncClient, auth_headers, sample_vehicle_payload
@@ -180,7 +262,6 @@ class TestVehicleArchiveRoutes:
 
     async def _create_archivable_vehicle(self, db_session, user_id: int, vin: str) -> None:
         """Helper: create a fresh vehicle for archive tests."""
-        from sqlalchemy import select
 
         from app.models.vehicle import Vehicle
 

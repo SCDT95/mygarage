@@ -385,7 +385,16 @@ class VehicleDetailStats(BaseModel):
     overdue_count: int
     upcoming_count: int
     usage_unit: str  # 'distance' | 'hours' — drives the odometer/hours relabel
-    current_hours: Decimal | None  # required-but-nullable — latest hours when usage_unit == 'hours'
+    # Kept for API compat only — NO LONGER the display source (R2-H1). The
+    # canonical reading is `latest_hours` below, via `latest_engine_hours_and_date`.
+    current_hours: Decimal | None  # required-but-nullable — legacy column value
+    # Canonical latest engine-hours reading (the §1 helper) + hours-economy
+    # figures — required-but-nullable (M2) — NO `= None` default. Null for a
+    # pure-distance vehicle.
+    latest_hours: Decimal | None
+    average_l_per_hr: Decimal | None
+    average_cost_per_hr: Decimal | None
+    secondary_usage_enabled: bool
     latest_odometer_km: Decimal | None  # required-but-nullable (M2) — NO `= None` default
     latest_odometer_date: date | None  # required-but-nullable (M2) — NO `= None` default
     last_service_date: date | None  # required-but-nullable (M2) — NO `= None` default

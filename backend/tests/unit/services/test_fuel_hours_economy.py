@@ -14,9 +14,12 @@ from datetime import date
 from decimal import Decimal
 
 import pytest
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.fuel import FuelRecord
+from app.models.vehicle import Vehicle
 from app.services.fuel_service import (
+    calculate_average_hours_economy,
     calculate_hours_economy,
     compute_full_tank_hours_economy,
 )
@@ -152,6 +155,27 @@ class TestComputeFullTankHoursEconomy:
         assert l_per_hr == Decimal("0.75")
         assert cost_per_hr == Decimal("1.25")
 
+    def test_zero_liters_interval_yields_none_l_per_hr_but_keeps_cost_per_hr(self) -> None:
+        """P3 backlog fix: a zero-liters full-tank interval must not compute
+        l_per_hr as 0.00 (which would drag average_l_per_hr toward zero) — it
+        yields NO l_per_hr figure at all. cost_per_hr is still valid over the
+        same Δhours (e.g. a $0-fuel top-off logged purely for the hours
+        reading, or a paid stop where the cost was billed separately).
+
+        prev(100h, $30) -> cur(120h, 0.000L, $15.00): Δ = 20h.
+        l_per_hr = None (interval_liters == 0); cost_per_hr = 15/20 = 0.75.
+        """
+        prev = _fr("100.0", "20.000", "30.00")
+        cur = _fr("120.0", "0.000", "15.00")
+
+        results = compute_full_tank_hours_economy([prev, cur])
+
+        assert len(results) == 1, "the record itself is still a scored endpoint"
+        rec, l_per_hr, cost_per_hr = results[0]
+        assert rec.engine_hours == Decimal("120.0")
+        assert l_per_hr is None
+        assert cost_per_hr == Decimal("0.75")
+
 
 @pytest.mark.unit
 @pytest.mark.fuel
@@ -202,4 +226,110 @@ class TestCalculateHoursEconomy:
         l_per_hr, cost_per_hr = figure
         assert l_per_hr == Decimal("3.33")
         assert cost_per_hr == Decimal("3.33")
+        assert l_per_hr is not None
         assert l_per_hr.as_tuple().exponent == -2
+
+    def test_zero_liters_returns_none_l_per_hr_but_keeps_cost_per_hr(self) -> None:
+        """P3 backlog fix: interval_liters <= 0 -> l_per_hr is None (no figure
+        at all, never 0.00), but cost_per_hr is still computed over the same
+        Δhours — cost/hr is valid with zero liquid fuel."""
+        prev = _fr("100.0", "20.000", "30.00")
+        cur = _fr("120.0", "0.000", "40.00")
+        figure = calculate_hours_economy(cur, prev, Decimal("0.000"), Decimal("40.00"))
+        assert figure is not None
+        l_per_hr, cost_per_hr = figure
+        assert l_per_hr is None
+        assert cost_per_hr == Decimal("2.00")  # 40 / 20
+
+
+@pytest.mark.unit
+@pytest.mark.fuel
+@pytest.mark.asyncio
+class TestCalculateAverageHoursEconomySkipsZeroLiters:
+    """P3 backlog fix at the vehicle-average level (db-backed)."""
+
+    async def test_zero_liters_interval_excluded_from_l_per_hr_average_not_cost(
+        self, db_session: AsyncSession
+    ) -> None:
+        """Two intervals: a normal one (l/hr=1.00, cost/hr=1.50) and a
+        zero-liters one (l/hr=None, cost/hr=2.00). average_l_per_hr must be
+        the normal interval ALONE (1.00), not dragged toward 0 by averaging
+        in a phantom 0.00; average_cost_per_hr averages BOTH intervals
+        (1.75), since cost/hr is never suppressed for want of liters.
+        """
+        vin = "HOURSAVGZERO000001"
+        db_session.add(Vehicle(vin=vin, nickname="Avg Zero Liters", vehicle_type="Car"))
+        await db_session.flush()
+        db_session.add_all(
+            [
+                FuelRecord(
+                    vin=vin,
+                    date=date(2026, 1, 1),
+                    engine_hours=Decimal("100.0"),
+                    liters=Decimal("20.000"),
+                    cost=Decimal("30.00"),
+                    is_full_tank=True,
+                ),
+                # Interval 1 (100h -> 120h, Δ=20h): l/hr = 20/20 = 1.00, cost/hr = 30/20 = 1.50.
+                FuelRecord(
+                    vin=vin,
+                    date=date(2026, 1, 5),
+                    engine_hours=Decimal("120.0"),
+                    liters=Decimal("20.000"),
+                    cost=Decimal("30.00"),
+                    is_full_tank=True,
+                ),
+                # Interval 2 (120h -> 140h, Δ=20h): 0 liters -> l/hr None; cost/hr = 40/20 = 2.00.
+                FuelRecord(
+                    vin=vin,
+                    date=date(2026, 1, 10),
+                    engine_hours=Decimal("140.0"),
+                    liters=Decimal("0.000"),
+                    cost=Decimal("40.00"),
+                    is_full_tank=True,
+                ),
+            ]
+        )
+        await db_session.commit()
+
+        avg_l_per_hr, avg_cost_per_hr = await calculate_average_hours_economy(db_session, vin)
+
+        assert avg_l_per_hr == Decimal("1.00")
+        assert avg_cost_per_hr == Decimal("1.75")  # mean(1.50, 2.00)
+
+    async def test_all_zero_liters_yields_none_average_l_per_hr_but_averages_cost(
+        self, db_session: AsyncSession
+    ) -> None:
+        """When EVERY scored interval is zero-liters, average_l_per_hr must be
+        None (never a ZeroDivisionError, never a phantom 0.00) while
+        average_cost_per_hr still averages the valid cost/hr figures."""
+        vin = "HOURSAVGZERO000002"
+        db_session.add(Vehicle(vin=vin, nickname="Avg All Zero", vehicle_type="Car"))
+        await db_session.flush()
+        db_session.add_all(
+            [
+                FuelRecord(
+                    vin=vin,
+                    date=date(2026, 2, 1),
+                    engine_hours=Decimal("50.0"),
+                    liters=Decimal("15.000"),
+                    cost=Decimal("20.00"),
+                    is_full_tank=True,
+                ),
+                # 50h -> 70h, Δ=20h, 0 liters -> l/hr None; cost/hr = 20/20 = 1.00.
+                FuelRecord(
+                    vin=vin,
+                    date=date(2026, 2, 5),
+                    engine_hours=Decimal("70.0"),
+                    liters=Decimal("0.000"),
+                    cost=Decimal("20.00"),
+                    is_full_tank=True,
+                ),
+            ]
+        )
+        await db_session.commit()
+
+        avg_l_per_hr, avg_cost_per_hr = await calculate_average_hours_economy(db_session, vin)
+
+        assert avg_l_per_hr is None
+        assert avg_cost_per_hr == Decimal("1.00")

@@ -27,7 +27,8 @@ from app.schemas.dashboard import (
     VehicleStatistics,
 )
 from app.services.auth import require_auth
-from app.services.fuel_service import compute_full_tank_economy
+from app.services.fuel_service import calculate_average_hours_economy, compute_full_tank_economy
+from app.services.hours_service import latest_engine_hours_and_date
 from app.services.odometer_service import latest_odometer_km_and_date
 from app.services.service_visit_service import service_visit_cost_load_options
 
@@ -94,6 +95,11 @@ async def calculate_vehicle_stats(
     # Latest odometer reading (km) + its date — one deterministic fetch shared
     # with detail-stats (date DESC, id DESC tie-break; odometer_service). R2-B1.
     latest_odometer_km, latest_odometer_date = await latest_odometer_km_and_date(db, vehicle.vin)
+
+    # Canonical latest engine-hours reading (§1 helper) — NEVER vehicle.current_hours
+    # (R2-H1). Null for a pure-distance vehicle (no hours_records rows).
+    latest_hours, _latest_hours_date = await latest_engine_hours_and_date(db, vehicle.vin)
+    average_l_per_hr, average_cost_per_hr = await calculate_average_hours_economy(db, vehicle.vin)
 
     # Count upcoming and overdue reminders
     today = date_type.today()
@@ -163,6 +169,10 @@ async def calculate_vehicle_stats(
         main_photo_url=main_photo_url,
         usage_unit=vehicle.usage_unit,
         current_hours=vehicle.current_hours,
+        latest_hours=latest_hours,
+        average_l_per_hr=average_l_per_hr,
+        average_cost_per_hr=average_cost_per_hr,
+        secondary_usage_enabled=vehicle.secondary_usage_enabled,
         total_service_records=service_count or 0,
         total_fuel_records=fuel_count or 0,
         total_odometer_records=odometer_count or 0,

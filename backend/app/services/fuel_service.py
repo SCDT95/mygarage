@@ -159,7 +159,7 @@ def calculate_hours_economy(
     previous_record: FuelRecord | None,
     interval_liters: Decimal,
     interval_cost: Decimal,
-) -> tuple[Decimal, Decimal] | None:
+) -> tuple[Decimal | None, Decimal] | None:
     """L/hr + cost/hr for a full-tank record, over the engine-hours delta.
 
     The hours analog of :func:`calculate_l_per_100km`: same full-tank / missed /
@@ -168,20 +168,29 @@ def calculate_hours_economy(
     from TWO interval numerators over the same Δhours:
 
     - ``interval_liters`` = every liter added since the previous full-tank
-      endpoint (partials + this fill), so ``l_per_hr = interval_liters / Δhours``.
+      endpoint (partials + this fill), so ``l_per_hr = interval_liters / Δhours``
+      — UNLESS ``interval_liters <= 0``, in which case ``l_per_hr`` is
+      ``None`` (P3 backlog fix): a zero-liters interval has no fuel-economy
+      figure at all, and letting it compute to ``0.00`` would drag
+      ``average_l_per_hr`` toward zero instead of being excluded from it.
     - ``interval_cost`` = every net cost since that endpoint, so
-      ``cost_per_hr = interval_cost / Δhours``. ``cost`` is already net of any
-      rebate (see :class:`~app.models.fuel.FuelRecord`), so no rebate math here.
+      ``cost_per_hr = interval_cost / Δhours`` — ALWAYS computed when the
+      interval itself is valid (non-increasing-meter guards above still
+      apply). Unlike liters, a zero/near-zero cost is a legitimate figure
+      (e.g. a free top-off), so ``cost_per_hr`` is never suppressed for
+      want of liters. ``cost`` is already net of any rebate (see
+      :class:`~app.models.fuel.FuelRecord`), so no rebate math here.
 
     Because there are two numerators, this does NOT gate on either being
     present (unlike the distance calc's single ``liters`` guard): a valid
-    interval always yields both figures — ``0`` when a numerator is empty —
-    so a cost figure is never dropped for want of liters or vice versa. The
-    endpoint / missed / hauling rules (which is-full-tank is an endpoint, a
-    missed fill re-anchors without a figure, hauling folds when excluded) live
-    in :func:`compute_full_tank_hours_economy` and match the distance calc
-    exactly. Returns ``None`` (no figure) for a partial, a missed fill-up, a
-    missing endpoint, or a non-increasing meter.
+    interval always yields a ``cost_per_hr`` figure, and an ``l_per_hr``
+    figure whenever ``interval_liters`` is positive — so a cost figure is
+    never dropped for want of liters. The endpoint / missed / hauling rules
+    (which is-full-tank is an endpoint, a missed fill re-anchors without a
+    figure, hauling folds when excluded) live in
+    :func:`compute_full_tank_hours_economy` and match the distance calc
+    exactly. Returns ``None`` (no figure at all) for a partial, a missed
+    fill-up, a missing endpoint, or a non-increasing meter.
     """
     # Only full-tank endpoints score (defensive; the accumulator only calls
     # this at endpoints). Mirrors calculate_l_per_100km.
@@ -203,9 +212,9 @@ def calculate_hours_economy(
     if delta_hours <= 0:
         return None
 
-    l_per_hr = interval_liters / delta_hours
-    cost_per_hr = interval_cost / delta_hours
-    return round(l_per_hr, 2), round(cost_per_hr, 2)
+    l_per_hr = round(interval_liters / delta_hours, 2) if interval_liters > 0 else None
+    cost_per_hr = round(interval_cost / delta_hours, 2)
+    return l_per_hr, cost_per_hr
 
 
 def compute_full_tank_economy(
@@ -259,7 +268,7 @@ def compute_full_tank_economy(
 def compute_full_tank_hours_economy(
     records_asc: list[FuelRecord],
     exclude_hauling: bool = False,
-) -> list[tuple[FuelRecord, Decimal, Decimal]]:
+) -> list[tuple[FuelRecord, Decimal | None, Decimal]]:
     """L/hr + cost/hr for each full-tank record, in a single O(n) pass.
 
     The engine-hours mirror of :func:`compute_full_tank_economy`. ``records_asc``
@@ -280,11 +289,16 @@ def compute_full_tank_hours_economy(
     - A fill-up with no ``engine_hours`` is off the hours axis and is skipped
       entirely (its fuel does not fold in) — the analog of skipping
       ``odometer_km is None`` in the distance pass.
+    - A zero-liters interval (P3 backlog fix) yields ``l_per_hr = None`` — no
+      fuel-economy figure — while ``cost_per_hr`` is still computed; see
+      :func:`calculate_hours_economy`.
 
-    Returns ``(record, l_per_hr, cost_per_hr)`` triples in hours order, only for
-    endpoints that produced a valid figure.
+    Returns ``(record, l_per_hr, cost_per_hr)`` triples in hours order, for
+    every endpoint that produced a figure at all. ``l_per_hr`` may itself be
+    ``None`` within a returned triple (zero-liters interval); ``cost_per_hr``
+    is never ``None`` when the triple is returned.
     """
-    results: list[tuple[FuelRecord, Decimal, Decimal]] = []
+    results: list[tuple[FuelRecord, Decimal | None, Decimal]] = []
     prev_endpoint: FuelRecord | None = None
     liters_since = Decimal(0)  # fuel added strictly after prev_endpoint
     cost_since = Decimal(0)  # net cost added strictly after prev_endpoint
@@ -410,8 +424,14 @@ async def calculate_average_hours_economy(
         exclude_hauling: If True (default), exclude ``is_hauling=True`` records
             for more representative daily-use economy.
 
-    Returns ``(average_l_per_hr, average_cost_per_hr)`` — ``(None, None)`` when
-    no full-tank interval produced a figure (e.g. a pure-distance vehicle).
+    Returns ``(average_l_per_hr, average_cost_per_hr)``. ``average_l_per_hr``
+    is ``None`` when no full-tank interval produced an ``l_per_hr`` figure
+    (e.g. a pure-distance vehicle, OR every interval was zero-liters — P3
+    backlog fix: a zero-liters interval's ``None`` l_per_hr is SKIPPED here
+    rather than averaged in as ``0``, so it can't drag the average toward
+    zero). ``average_cost_per_hr`` is averaged over every valid interval
+    independently (cost/hr is never suppressed for want of liters), so it can
+    be non-``None`` even when ``average_l_per_hr`` is ``None``.
     """
     result = await db.execute(
         select(FuelRecord)
@@ -425,12 +445,11 @@ async def calculate_average_hours_economy(
     if not figures:
         return None, None
 
-    l_values = [l_per_hr for _, l_per_hr, _ in figures]
+    l_values = [l_per_hr for _, l_per_hr, _ in figures if l_per_hr is not None]
     cost_values = [cost_per_hr for _, _, cost_per_hr in figures]
-    return (
-        round(sum(l_values) / len(l_values), 2),
-        round(sum(cost_values) / len(cost_values), 2),
-    )
+    average_l_per_hr = round(sum(l_values) / len(l_values), 2) if l_values else None
+    average_cost_per_hr = round(sum(cost_values) / len(cost_values), 2) if cost_values else None
+    return average_l_per_hr, average_cost_per_hr
 
 
 class FuelRecordService:

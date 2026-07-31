@@ -3,9 +3,18 @@ from decimal import Decimal
 
 import pytest
 from httpx import AsyncClient
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.models import DEFRecord, FuelRecord, OdometerRecord, Reminder, ServiceVisit, Vehicle
+from app.models import (
+    DEFRecord,
+    FuelRecord,
+    HoursRecord,
+    OdometerRecord,
+    Reminder,
+    ServiceVisit,
+    Vehicle,
+)
 from app.models.vehicle_share import VehicleShare
 
 
@@ -47,6 +56,10 @@ class TestVehicleDetailStats:
             "upcoming_count",
             "usage_unit",
             "current_hours",
+            "latest_hours",
+            "average_l_per_hr",
+            "average_cost_per_hr",
+            "secondary_usage_enabled",
             "latest_odometer_km",
             "latest_odometer_date",
             "last_service_date",
@@ -70,6 +83,12 @@ class TestVehicleDetailStats:
         # Usage tracking defaults to distance; no hours reading on a fresh vehicle.
         assert body["usage_unit"] == "distance"
         assert body["current_hours"] is None
+        # Part A: hours stats fields, null/false for a pure-distance vehicle
+        # with no hours_records.
+        assert body["latest_hours"] is None
+        assert body["average_l_per_hr"] is None
+        assert body["average_cost_per_hr"] is None
+        assert body["secondary_usage_enabled"] is False
 
     async def test_read_share_grants_access(
         self,
@@ -463,3 +482,86 @@ class TestVehicleDetailStats:
         """No token -> 401 (require_auth). Never leaks stats to anonymous callers."""
         response = await client.get(f"/api/vehicles/{test_vehicle['vin']}/detail-stats")
         assert response.status_code == 401
+
+    async def test_hours_fields_present_and_agree_with_dashboard(
+        self, client: AsyncClient, non_admin_headers, non_admin_user, db_session: AsyncSession
+    ):
+        """Part A: latest_hours (via latest_engine_hours_and_date — the MAX
+        reading, not the newest-dated one) + average_l_per_hr/average_cost_per_hr
+        (via the fuel hours-economy average) + secondary_usage_enabled must be
+        populated identically on BOTH the detail-stats payload AND the
+        garage-list VehicleStatistics card."""
+        vin = await _seed_vehicle(db_session, non_admin_user["id"], "5NPE24AF0FH100013")
+        vehicle = (await db_session.execute(select(Vehicle).where(Vehicle.vin == vin))).scalar_one()
+        vehicle.usage_unit = "hours"
+        vehicle.secondary_usage_enabled = True
+        await db_session.commit()
+
+        today = date.today()
+        db_session.add_all(
+            [
+                # A lower reading dated LATER must still lose to the max reading
+                # (the helper's ORDER BY engine_hours DESC rule) — proves this
+                # isn't just picking the newest-dated row.
+                HoursRecord(vin=vin, date=today, engine_hours=Decimal("90.0"), source="manual"),
+                HoursRecord(
+                    vin=vin,
+                    date=today - timedelta(days=10),
+                    engine_hours=Decimal("150.0"),
+                    source="manual",
+                ),
+                FuelRecord(
+                    vin=vin,
+                    date=today - timedelta(days=10),
+                    engine_hours=Decimal("100.0"),
+                    liters=Decimal("20.000"),
+                    cost=Decimal("30.00"),
+                    is_full_tank=True,
+                ),
+                FuelRecord(
+                    vin=vin,
+                    date=today,
+                    engine_hours=Decimal("150.0"),
+                    liters=Decimal("25.000"),
+                    cost=Decimal("40.00"),
+                    is_full_tank=True,
+                ),
+            ]
+        )
+        await db_session.commit()
+
+        detail = (
+            await client.get(f"/api/vehicles/{vin}/detail-stats", headers=non_admin_headers)
+        ).json()
+        dashboard = (await client.get("/api/dashboard", headers=non_admin_headers)).json()
+        card = next(v for v in dashboard["vehicles"] if v["vin"] == vin)
+
+        # Max reading wins (150.0), not the newest date's lower reading (90.0).
+        assert detail["latest_hours"] == "150.0"
+        assert card["latest_hours"] == "150.0"
+        # Δ=50h; l_per_hr = 25/50 = 0.50; cost_per_hr = 40/50 = 0.80.
+        assert detail["average_l_per_hr"] == "0.50"
+        assert card["average_l_per_hr"] == "0.50"
+        assert detail["average_cost_per_hr"] == "0.80"
+        assert card["average_cost_per_hr"] == "0.80"
+        assert detail["secondary_usage_enabled"] is True
+        assert card["secondary_usage_enabled"] is True
+
+    async def test_latest_hours_ignores_stale_current_hours_column(
+        self, client: AsyncClient, non_admin_headers, non_admin_user, db_session: AsyncSession
+    ):
+        """R2-H1: latest_hours must be derived from hours_records via the
+        canonical helper, NEVER from the retired vehicles.current_hours
+        column — even when that column holds a stale legacy value with no
+        matching hours_records row. current_hours is kept in the response
+        for API compat only, unrelated to latest_hours."""
+        vin = await _seed_vehicle(db_session, non_admin_user["id"], "5NPE24AF0FH100014")
+        vehicle = (await db_session.execute(select(Vehicle).where(Vehicle.vin == vin))).scalar_one()
+        vehicle.current_hours = Decimal("999.9")  # stale legacy value, no hours_records row
+        await db_session.commit()
+
+        body = (
+            await client.get(f"/api/vehicles/{vin}/detail-stats", headers=non_admin_headers)
+        ).json()
+        assert body["latest_hours"] is None
+        assert body["current_hours"] == "999.9"

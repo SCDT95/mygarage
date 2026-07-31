@@ -17,7 +17,17 @@ class VehicleStatistics(BaseModel):
 
     # Usage tracking dimension — drives the odometer/hours relabel on the card
     usage_unit: str = "distance"
+    # Kept for API compat only — NO LONGER the display source (R2-H1). The
+    # canonical current-hours reading is `latest_hours` below, derived via
+    # `latest_engine_hours_and_date` from `hours_records`, never this column.
     current_hours: Decimal | None = None
+    # Canonical latest engine-hours reading (the §1 helper) + hours-economy
+    # figures, mirroring latest_odometer_km / average_l_per_100km below.
+    # Null for a pure-distance vehicle.
+    latest_hours: Decimal | None = None
+    average_l_per_hr: Decimal | None = None
+    average_cost_per_hr: Decimal | None = None
+    secondary_usage_enabled: bool = False
 
     # Counts
     total_service_records: int

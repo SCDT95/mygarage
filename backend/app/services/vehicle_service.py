@@ -23,6 +23,7 @@ from app.models.user import User
 from app.models.vehicle import Vehicle
 from app.models.vehicle_share import VehicleShare
 from app.schemas.vehicle import VehicleCreate, VehicleUpdate
+from app.services.hours_service import set_manual_current_hours
 from app.utils.logging_utils import sanitize_for_log
 
 logger = logging.getLogger(__name__)
@@ -166,6 +167,11 @@ class VehicleService:
 
             # Create vehicle with ownership assigned to current user
             vehicle_dict = vehicle_data.model_dump()
+            # R2-H1: current_hours is retired as a source-of-truth column write —
+            # pop it out of the setattr dict and route it into the authoritative
+            # hours_records history instead (see set_manual_current_hours). It
+            # stays in VehicleCreate/VehicleBase for API compat only.
+            submitted_current_hours: Decimal | None = vehicle_dict.pop("current_hours", None)
             _check_def_capacity_gate(
                 fuel_type=vehicle_dict.get("fuel_type"),
                 fuel_type_secondary=vehicle_dict.get("fuel_type_secondary"),
@@ -180,6 +186,13 @@ class VehicleService:
 
             vehicle = Vehicle(**vehicle_dict)
             self.db.add(vehicle)
+            if submitted_current_hours is not None:
+                # Flush first so vehicle.vin exists for the hours row's FK
+                # (PRAGMA foreign_keys=ON in prod/tests) before it's inserted.
+                await self.db.flush()
+                await set_manual_current_hours(
+                    self.db, vehicle.vin, submitted_current_hours, commit=False
+                )
             await self.db.commit()
             await self.db.refresh(vehicle)
 
@@ -238,6 +251,13 @@ class VehicleService:
 
             # Update fields (only fields explicitly present in the payload)
             update_data = vehicle_data.model_dump(exclude_unset=True)
+            # R2-H1: current_hours is retired as a source-of-truth column write —
+            # pop it out of the setattr dict (exclude_unset means an omitted
+            # current_hours does nothing) and route a submitted value into the
+            # authoritative hours_records history instead. An explicit `null`
+            # is popped too (never setattr'd) but does not create a row — a
+            # manual hours reading can't be a null Decimal.
+            submitted_current_hours: Decimal | None = update_data.pop("current_hours", None)
             _check_def_capacity_gate(
                 fuel_type=update_data.get("fuel_type", vehicle.fuel_type),
                 fuel_type_secondary=update_data.get(
@@ -250,6 +270,11 @@ class VehicleService:
             )
             for field, value in update_data.items():
                 setattr(vehicle, field, value)
+
+            if submitted_current_hours is not None:
+                await set_manual_current_hours(
+                    self.db, vehicle.vin, submitted_current_hours, commit=False
+                )
 
             await self.db.commit()
             await self.db.refresh(vehicle)

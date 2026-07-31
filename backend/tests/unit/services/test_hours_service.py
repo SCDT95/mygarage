@@ -12,10 +12,12 @@ from datetime import date
 from decimal import Decimal
 
 import pytest
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models import HoursRecord, Vehicle
-from app.services.hours_service import latest_engine_hours_and_date
+from app.models.fuel import FuelRecord
+from app.services.hours_service import latest_engine_hours_and_date, set_manual_current_hours
 
 # clean_hours_records is a shared fixture in tests/unit/conftest.py (also
 # used by tests/unit/utils/test_hours_sync.py).
@@ -117,3 +119,135 @@ class TestLatestEngineHoursAndDate:
         # the vehicle takes its hours row with it.
         await db_session.delete(other_vehicle)
         await db_session.commit()
+
+
+@pytest.mark.unit
+@pytest.mark.asyncio
+class TestSetManualCurrentHours:
+    """R2-H1: the current_hours-retirement interception target.
+
+    ``services/vehicle_service.py`` pops ``current_hours`` out of the
+    create/update setattr path and routes it here instead, so a submitted
+    reading lands in the authoritative ``hours_records`` history that
+    ``latest_engine_hours_and_date`` derives "current" from.
+    """
+
+    async def test_creates_todays_manual_row_when_absent(
+        self, db_session: AsyncSession, test_vehicle, clean_hours_records
+    ):
+        vin = test_vehicle["vin"]
+        record = await set_manual_current_hours(db_session, vin, Decimal("123.5"))
+        await db_session.commit()
+
+        assert record.vin == vin
+        assert record.date == date.today()
+        assert record.engine_hours == Decimal("123.5")
+        assert record.source == "manual"
+        assert record.fuel_record_id is None
+        assert record.service_visit_id is None
+
+        latest, latest_date = await latest_engine_hours_and_date(db_session, vin)
+        assert latest == Decimal("123.5")
+        assert latest_date == date.today()
+
+    async def test_repeated_same_day_call_updates_the_same_row_not_a_second(
+        self, db_session: AsyncSession, test_vehicle, clean_hours_records
+    ):
+        """The idempotency guarantee: PUT twice same day -> ONE row, updated.
+
+        Two vehicle-update calls on the same day must never proliferate
+        manual hours rows.
+        """
+        vin = test_vehicle["vin"]
+        first = await set_manual_current_hours(db_session, vin, Decimal("100.0"))
+        await db_session.commit()
+        second = await set_manual_current_hours(db_session, vin, Decimal("150.0"))
+        await db_session.commit()
+
+        assert first.id == second.id
+        assert second.engine_hours == Decimal("150.0")
+
+        rows = (
+            (
+                await db_session.execute(
+                    select(HoursRecord).where(
+                        HoursRecord.vin == vin, HoursRecord.source == "manual"
+                    )
+                )
+            )
+            .scalars()
+            .all()
+        )
+        assert len(rows) == 1
+        assert rows[0].engine_hours == Decimal("150.0")
+
+        # A third call the same day still updates the SAME single row.
+        third = await set_manual_current_hours(db_session, vin, Decimal("175.3"))
+        await db_session.commit()
+        assert third.id == first.id
+        rows_after_third = (
+            (
+                await db_session.execute(
+                    select(HoursRecord).where(
+                        HoursRecord.vin == vin, HoursRecord.source == "manual"
+                    )
+                )
+            )
+            .scalars()
+            .all()
+        )
+        assert len(rows_after_third) == 1
+        assert rows_after_third[0].engine_hours == Decimal("175.3")
+
+    async def test_does_not_match_or_overwrite_a_synced_row_same_day(
+        self, db_session: AsyncSession, test_vehicle, clean_hours_records
+    ):
+        """A fuel-synced row on the SAME day carries a non-null FK, so the
+        manual upsert's identity filter (both FKs null) must not match it —
+        it creates its OWN manual row instead, leaving the synced row alone."""
+        vin = test_vehicle["vin"]
+        fuel = FuelRecord(vin=vin, date=date.today(), liters=Decimal("10.000"))
+        db_session.add(fuel)
+        await db_session.commit()
+
+        synced = HoursRecord(
+            vin=vin,
+            date=date.today(),
+            engine_hours=Decimal("50.0"),
+            source="fuel",
+            fuel_record_id=fuel.id,
+        )
+        db_session.add(synced)
+        await db_session.commit()
+
+        manual = await set_manual_current_hours(db_session, vin, Decimal("60.0"))
+        await db_session.commit()
+
+        assert manual.id != synced.id
+        assert manual.source == "manual"
+
+        rows = (
+            (await db_session.execute(select(HoursRecord).where(HoursRecord.vin == vin)))
+            .scalars()
+            .all()
+        )
+        assert len(rows) == 2
+        synced_row = next(r for r in rows if r.id == synced.id)
+        assert synced_row.engine_hours == Decimal("50.0"), "synced row must be untouched"
+
+        # Cleanup — FuelRecord is not covered by clean_hours_records.
+        await db_session.delete(fuel)
+        await db_session.commit()
+
+    async def test_commit_true_commits_and_refreshes(
+        self, db_session: AsyncSession, test_vehicle, clean_hours_records
+    ):
+        """The commit flag mirrors hours_sync's contract: True commits+refreshes
+        within its own unit of work (default False composes into a caller's
+        transaction — see vehicle_service.py's create/update paths)."""
+        vin = test_vehicle["vin"]
+        record = await set_manual_current_hours(db_session, vin, Decimal("42.0"), commit=True)
+
+        assert record.id is not None
+        latest, _ = await latest_engine_hours_and_date(db_session, vin)
+        assert latest == Decimal("42.0")

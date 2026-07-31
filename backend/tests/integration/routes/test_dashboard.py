@@ -144,6 +144,22 @@ class TestDashboardRoutes:
         assert "upcoming_maintenance_count" in test_vehicle_stats
         assert "overdue_maintenance_count" in test_vehicle_stats
 
+    async def test_pure_distance_vehicle_has_null_hours_fields(
+        self, client: AsyncClient, db_session: AsyncSession
+    ):
+        """Part A: a vehicle with no hours_records rows must never leak an
+        hours figure — latest_hours/average_l_per_hr/average_cost_per_hr stay
+        null and secondary_usage_enabled defaults false on the garage-list
+        VehicleStatistics card."""
+        vin, headers = await _isolated_fleet(db_session)
+        response = await client.get("/api/dashboard", headers=headers)
+        assert response.status_code == 200
+        card = next(v for v in response.json()["vehicles"] if v["vin"] == vin)
+        assert card["latest_hours"] is None
+        assert card["average_l_per_hr"] is None
+        assert card["average_cost_per_hr"] is None
+        assert card["secondary_usage_enabled"] is False
+
     async def test_dashboard_after_adding_service_visit(
         self, client: AsyncClient, auth_headers, test_vehicle
     ):

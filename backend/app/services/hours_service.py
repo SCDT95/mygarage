@@ -46,3 +46,74 @@ async def latest_engine_hours_and_date(
     if row is None:
         return None, None
     return row[0], row[1]
+
+
+async def set_manual_current_hours(
+    db: AsyncSession,
+    vin: str,
+    engine_hours: Decimal,
+    *,
+    commit: bool = False,
+) -> HoursRecord:
+    """Upsert TODAY's manual engine-hours reading, idempotently (R2-H1).
+
+    Retires ``vehicles.current_hours`` as a write target — the vehicle
+    create/update flow (``services/vehicle_service.py``) intercepts a
+    submitted ``current_hours`` value out of its setattr path and calls this
+    instead, so the reading lands in the authoritative ``hours_records``
+    history that :func:`latest_engine_hours_and_date` derives "current" from,
+    rather than a dead column nothing reads for display anymore.
+
+    Locates the existing manual row for this vin dated today — ``source ==
+    'manual'`` with BOTH ``fuel_record_id`` and ``service_visit_id`` null,
+    the same identity a fuel/service-synced row (``app.utils.hours_sync``)
+    never carries — and updates its ``engine_hours`` in place. A repeated
+    call the SAME day (e.g. two vehicle updates in one session) updates that
+    ONE row rather than creating a second: at most one manual row per vin
+    per day. Creates one when absent.
+
+    Args:
+        commit: When True, commits and refreshes within its own unit of
+            work. When False (the default — vehicle create/update composes
+            this into their own transaction) only flushes, so the row is
+            visible to the caller's own commit.
+
+    Returns:
+        The created or updated ``HoursRecord``.
+    """
+    today = date.today()
+    existing = (
+        await db.execute(
+            select(HoursRecord).where(
+                HoursRecord.vin == vin,
+                HoursRecord.date == today,
+                HoursRecord.source == "manual",
+                HoursRecord.fuel_record_id.is_(None),
+                HoursRecord.service_visit_id.is_(None),
+            )
+        )
+    ).scalar_one_or_none()
+
+    if existing is not None:
+        existing.engine_hours = engine_hours
+        if commit:
+            await db.commit()
+            await db.refresh(existing)
+        else:
+            await db.flush()
+        return existing
+
+    record = HoursRecord(
+        vin=vin,
+        date=today,
+        engine_hours=engine_hours,
+        notes="[manual current-hours entry]",
+        source="manual",
+    )
+    db.add(record)
+    if commit:
+        await db.commit()
+        await db.refresh(record)
+    else:
+        await db.flush()
+    return record

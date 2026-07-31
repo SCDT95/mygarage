@@ -34,6 +34,8 @@ from app.services.auth import (
     get_vehicle_or_403,
     require_auth,
 )
+from app.services.fuel_service import calculate_average_hours_economy
+from app.services.hours_service import latest_engine_hours_and_date
 from app.services.odometer_service import latest_odometer_km_and_date
 from app.services.service_visit_service import service_visit_cost_load_options
 from app.services.vehicle_service import VehicleService
@@ -120,11 +122,19 @@ async def _vehicle_detail_stats(db: AsyncSession, vin: str) -> VehicleDetailStat
     # the caller has already gated the vin's existence.
     usage_row = (
         await db.execute(
-            select(Vehicle.usage_unit, Vehicle.current_hours).where(Vehicle.vin == vin)
+            select(
+                Vehicle.usage_unit, Vehicle.current_hours, Vehicle.secondary_usage_enabled
+            ).where(Vehicle.vin == vin)
         )
     ).first()
     usage_unit = usage_row[0] if usage_row else "distance"
     current_hours = usage_row[1] if usage_row else None
+    secondary_usage_enabled = usage_row[2] if usage_row else False
+
+    # Canonical latest engine-hours reading (§1 helper) — NEVER vehicle.current_hours
+    # (R2-H1). Null for a pure-distance vehicle (no hours_records rows).
+    latest_hours, _latest_hours_date = await latest_engine_hours_and_date(db, vin)
+    average_l_per_hr, average_cost_per_hr = await calculate_average_hours_economy(db, vin)
 
     # Latest odometer reading (km) + its date — ONE deterministic fetch via the
     # SHARED helper (date DESC, id DESC), the SAME selection the dashboard's
@@ -235,6 +245,10 @@ async def _vehicle_detail_stats(db: AsyncSession, vin: str) -> VehicleDetailStat
         upcoming_count=upcoming_count,
         usage_unit=usage_unit,
         current_hours=current_hours,
+        latest_hours=latest_hours,
+        average_l_per_hr=average_l_per_hr,
+        average_cost_per_hr=average_cost_per_hr,
+        secondary_usage_enabled=secondary_usage_enabled,
         latest_odometer_km=latest_odometer_km,
         latest_odometer_date=latest_odometer_date,
         last_service_date=last_service_date,
