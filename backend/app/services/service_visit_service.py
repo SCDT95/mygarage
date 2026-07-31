@@ -6,7 +6,7 @@ import logging
 from decimal import ROUND_HALF_UP, Decimal
 
 from fastapi import HTTPException
-from sqlalchemy import func, select
+from sqlalchemy import delete, func, select
 from sqlalchemy.exc import IntegrityError, OperationalError
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import joinedload, selectinload
@@ -27,6 +27,7 @@ from app.schemas.service_visit import (
 from app.services import reminder_service
 from app.services.supply_service import SupplyService
 from app.utils.cache import invalidate_cache_for_vehicle
+from app.utils.hours_sync import remove_synced_hours, sync_hours_from_record
 from app.utils.logging_utils import sanitize_for_log
 from app.utils.odometer_sync import sync_odometer_from_record
 
@@ -191,6 +192,7 @@ class ServiceVisitService:
                 vendor_id=visit_data.vendor_id,
                 date=visit_data.date,
                 odometer_km=visit_data.odometer_km,
+                engine_hours=visit_data.engine_hours,
                 total_cost=visit_data.total_cost,
                 tax_amount=visit_data.tax_amount,
                 shop_supplies=visit_data.shop_supplies,
@@ -253,28 +255,52 @@ class ServiceVisitService:
 
             logger.info("Created service visit %s for %s", visit.id, sanitize_for_log(vin))
 
-            # Auto-sync odometer
-            if visit.date and visit.odometer_km:
+            # Auto-sync odometer + engine-hours, composed into one transaction:
+            # commit=False on each sync call, single commit closes it out
+            # (mirrors fuel_service.add_fuel_record's pattern). Best-effort,
+            # like the odometer-only sync this replaces: on failure, log and
+            # continue rather than fail the whole request. Deliberately does
+            # NOT roll back on failure -- Session.rollback() expires every
+            # object in the identity map, not just `visit`, which would also
+            # expire `current_user` (loaded earlier by the auth layer on this
+            # same session) and crash the get_service_visit reload right
+            # below with an async lazy-load (MissingGreenlet). visit_id is
+            # captured as a plain int so nothing here depends on `visit`
+            # staying unexpired either way.
+            visit_id = visit.id
+            if visit.date:
                 try:
-                    await sync_odometer_from_record(
+                    if visit.odometer_km:
+                        await sync_odometer_from_record(
+                            db=self.db,
+                            vin=vin,
+                            date=visit.date,
+                            odometer_km=visit.odometer_km,
+                            source_type="service_visit",
+                            source_id=visit_id,
+                            commit=False,
+                        )
+                    await sync_hours_from_record(
                         db=self.db,
                         vin=vin,
                         date=visit.date,
-                        odometer_km=visit.odometer_km,
+                        engine_hours=visit.engine_hours,
                         source_type="service_visit",
-                        source_id=visit.id,
+                        source_id=visit_id,
+                        commit=False,
                     )
+                    await self.db.commit()
                 except Exception as e:
                     logger.warning(
-                        "Failed to auto-sync odometer for visit %s: %s",
-                        visit.id,
+                        "Failed to auto-sync odometer/hours for visit %s: %s",
+                        visit_id,
                         sanitize_for_log(e),
                     )
 
             await invalidate_cache_for_vehicle(vin)
 
             # Reload with relationships
-            return await self.get_service_visit(vin, visit.id, current_user)
+            return await self.get_service_visit(vin, visit_id, current_user)
 
         except HTTPException:
             raise
@@ -419,20 +445,41 @@ class ServiceVisitService:
 
             logger.info("Updated service visit %s for %s", visit_id, sanitize_for_log(vin))
 
-            # Auto-sync odometer
-            if visit.date and visit.odometer_km:
+            # Auto-sync odometer + engine-hours, composed into one transaction:
+            # commit=False on each sync call, single commit closes it out
+            # (mirrors fuel_service.update_fuel_record's pattern). Hours sync
+            # runs unconditionally (not gated on a non-null reading) so
+            # clearing engine_hours to None deletes the synced row.
+            # Best-effort, like the odometer-only sync this replaces: on
+            # failure, log and continue rather than fail the whole request.
+            # Deliberately does NOT roll back on failure -- see the matching
+            # comment in create_service_visit (Session.rollback() would
+            # expire `current_user` too, crashing the reload right below).
+            if visit.date:
                 try:
-                    await sync_odometer_from_record(
+                    if visit.odometer_km:
+                        await sync_odometer_from_record(
+                            db=self.db,
+                            vin=vin,
+                            date=visit.date,
+                            odometer_km=visit.odometer_km,
+                            source_type="service_visit",
+                            source_id=visit_id,
+                            commit=False,
+                        )
+                    await sync_hours_from_record(
                         db=self.db,
                         vin=vin,
                         date=visit.date,
-                        odometer_km=visit.odometer_km,
+                        engine_hours=visit.engine_hours,
                         source_type="service_visit",
-                        source_id=visit.id,
+                        source_id=visit_id,
+                        commit=False,
                     )
+                    await self.db.commit()
                 except Exception as e:
                     logger.warning(
-                        "Failed to auto-sync odometer for visit %s: %s",
+                        "Failed to auto-sync odometer/hours for visit %s: %s",
                         visit_id,
                         sanitize_for_log(e),
                     )
@@ -479,6 +526,23 @@ class ServiceVisitService:
         """
         Delete a service visit.
 
+        Also cleans up records this visit auto-synced:
+        - the auto-synced ``odometer_records`` row for this visit's
+          ``(vin, date)`` — marker-guarded (``[AUTO-SYNC from service_visit
+          #{id}]``, or the legacy ``[AUTO-SYNC from service #{id}]`` marker)
+          so a manual odometer reading is NEVER deleted, even one sharing
+          the exact same ``(vin, date)``. Service-sourced odometer rows
+          carry no FK (unlike fuel-sourced ones via ``fuel_record_id``), so
+          nothing cascades them away on their own — this fixes the
+          pre-existing distance-track orphan bug, bringing it to parity
+          with the hours track's real FK cascade.
+        - the synced ``hours_records`` row via ``remove_synced_hours``.
+          Belt-and-suspenders: ``hours_records.service_visit_id`` is an
+          ON DELETE CASCADE FK, so the row is already removed once the
+          visit delete below commits (PG enforced; SQLite via
+          ``PRAGMA foreign_keys=ON``, active in prod) — called explicitly
+          too for SQLite-without-the-pragma parity.
+
         Args:
             vin: Vehicle VIN
             visit_id: Service visit ID
@@ -487,6 +551,7 @@ class ServiceVisitService:
         Raises:
             HTTPException: 404 if not found, 403 if not authorized
         """
+        from app.models.odometer import OdometerRecord
         from app.services.auth import get_vehicle_or_403
 
         vin = vin.upper().strip()
@@ -494,6 +559,25 @@ class ServiceVisitService:
         try:
             await get_vehicle_or_403(vin, current_user, self.db, require_write=True)
             visit = await self.get_service_visit(vin, visit_id, current_user)
+
+            # Phase 4b: delete the auto-synced odometer row for this visit's
+            # (vin, date) -- ONLY if it still carries THIS visit's AUTO-SYNC
+            # marker. Never touches a manual row, even one sharing the exact
+            # same (vin, date).
+            auto_sync_markers = (
+                f"[AUTO-SYNC from service_visit #{visit_id}]",
+                f"[AUTO-SYNC from service #{visit_id}]",  # legacy marker
+            )
+            await self.db.execute(
+                delete(OdometerRecord)
+                .where(OdometerRecord.vin == vin)
+                .where(OdometerRecord.date == visit.date)
+                .where(OdometerRecord.notes.in_(auto_sync_markers))
+            )
+
+            # Belt-and-suspenders hours cleanup (see docstring) -- composed
+            # into the same transaction as the visit delete below.
+            await remove_synced_hours(self.db, "service_visit", visit_id, commit=False)
 
             await self.db.delete(visit)
             await self.db.commit()
@@ -818,6 +902,7 @@ class ServiceVisitService:
             vendor_id=visit.vendor_id,
             date=visit.date,
             odometer_km=visit.odometer_km,
+            engine_hours=visit.engine_hours,
             total_cost=visit.total_cost,
             tax_amount=visit.tax_amount,
             shop_supplies=visit.shop_supplies,

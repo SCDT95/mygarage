@@ -169,6 +169,15 @@ class ServiceVisitBase(BaseModel):
     odometer_km: Decimal | None = Field(
         None, description="Odometer reading in kilometers", ge=0, le=99999999.99
     )
+    engine_hours: Decimal | None = Field(
+        None,
+        description=(
+            "Engine-hours reading at this service visit (hour-metered vehicles). "
+            "Dimensionless — no unit conversion. Auto-syncs to hours history."
+        ),
+        ge=0,
+        le=9999999.9,
+    )
     notes: str | None = Field(None, description="Visit notes", max_length=5000)
     service_category: ServiceCategory | None = Field(None, description="Primary service category")
     insurance_claim_number: str | None = Field(
@@ -257,6 +266,12 @@ class ServiceVisitUpdate(BaseModel):
     date: date_type | None = Field(None, description="Visit date")
     odometer_km: Decimal | None = Field(
         None, description="Odometer reading in kilometers", ge=0, le=99999999.99
+    )
+    engine_hours: Decimal | None = Field(
+        None,
+        description="Engine-hours reading at this service visit (hour-metered vehicles)",
+        ge=0,
+        le=9999999.9,
     )
     notes: str | None = Field(None, description="Visit notes", max_length=5000)
     service_category: ServiceCategory | None = Field(None, description="Primary service category")
