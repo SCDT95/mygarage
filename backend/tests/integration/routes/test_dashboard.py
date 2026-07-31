@@ -11,7 +11,15 @@ import pytest
 from httpx import AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.models import DEFRecord, FuelRecord, Reminder, ServiceVisit, Vehicle
+from app.models import (
+    DEFRecord,
+    FuelRecord,
+    HoursRecord,
+    OdometerRecord,
+    Reminder,
+    ServiceVisit,
+    Vehicle,
+)
 
 
 async def _isolated_fleet(db_session: AsyncSession) -> tuple[str, dict[str, str]]:
@@ -159,6 +167,156 @@ class TestDashboardRoutes:
         assert card["average_l_per_hr"] is None
         assert card["average_cost_per_hr"] is None
         assert card["secondary_usage_enabled"] is False
+
+    async def test_dashboard_hours_reminder_overdue_is_counted(
+        self, client: AsyncClient, db_session: AsyncSession
+    ):
+        """Phase 6b: a pure `hours` reminder (due_hours, no due_date) with
+        current_hours >= due_hours counts toward overdue_maintenance_count,
+        exactly like a mileage reminder does today."""
+        vin, headers = await _isolated_fleet(db_session)
+        db_session.add(HoursRecord(vin=vin, date=date.today(), engine_hours=Decimal("600.0")))
+        db_session.add(
+            Reminder(
+                vin=vin,
+                title="Dashboard Hours Overdue Test",
+                reminder_type="hours",
+                due_hours=Decimal("500.0"),
+                status="pending",
+            )
+        )
+        await db_session.commit()
+
+        response = await client.get("/api/dashboard", headers=headers)
+        assert response.status_code == 200
+        card = next(v for v in response.json()["vehicles"] if v["vin"] == vin)
+        assert card["overdue_maintenance_count"] == 1
+        assert card["upcoming_maintenance_count"] == 0
+
+    async def test_dashboard_hours_reminder_not_yet_due_is_not_overdue(
+        self, client: AsyncClient, db_session: AsyncSession
+    ):
+        """A pure hours reminder below its target is upcoming, not overdue."""
+        vin, headers = await _isolated_fleet(db_session)
+        db_session.add(HoursRecord(vin=vin, date=date.today(), engine_hours=Decimal("100.0")))
+        db_session.add(
+            Reminder(
+                vin=vin,
+                title="Dashboard Hours Not Due Test",
+                reminder_type="hours",
+                due_hours=Decimal("500.0"),
+                status="pending",
+            )
+        )
+        await db_session.commit()
+
+        response = await client.get("/api/dashboard", headers=headers)
+        assert response.status_code == 200
+        card = next(v for v in response.json()["vehicles"] if v["vin"] == vin)
+        assert card["overdue_maintenance_count"] == 0
+        assert card["upcoming_maintenance_count"] == 1
+
+    async def test_dashboard_mixed_date_mileage_hours_reminders_all_evaluated(
+        self, client: AsyncClient, db_session: AsyncSession
+    ):
+        """Regression: date, mileage, AND hours reminders on the SAME vehicle
+        each evaluate independently and correctly — the new hours branch
+        doesn't cross-contaminate the pre-existing date/mileage checks."""
+        vin, headers = await _isolated_fleet(db_session)
+        db_session.add(OdometerRecord(vin=vin, date=date.today(), odometer_km=Decimal("60000")))
+        db_session.add(HoursRecord(vin=vin, date=date.today(), engine_hours=Decimal("50.0")))
+        db_session.add_all(
+            [
+                Reminder(
+                    vin=vin,
+                    title="Overdue by date",
+                    reminder_type="date",
+                    due_date=date.today() - timedelta(days=1),
+                    status="pending",
+                ),
+                Reminder(
+                    vin=vin,
+                    title="Not overdue by mileage",
+                    reminder_type="mileage",
+                    due_mileage_km=Decimal("100000"),
+                    status="pending",
+                ),
+                Reminder(
+                    vin=vin,
+                    title="Overdue by hours",
+                    reminder_type="hours",
+                    due_hours=Decimal("40.0"),
+                    status="pending",
+                ),
+                Reminder(
+                    vin=vin,
+                    title="Not overdue by hours",
+                    reminder_type="hours",
+                    due_hours=Decimal("500.0"),
+                    status="pending",
+                ),
+            ]
+        )
+        await db_session.commit()
+
+        response = await client.get("/api/dashboard", headers=headers)
+        assert response.status_code == 200
+        card = next(v for v in response.json()["vehicles"] if v["vin"] == vin)
+        # 2 overdue (date + hours), 2 upcoming (mileage + hours).
+        assert card["overdue_maintenance_count"] == 2
+        assert card["upcoming_maintenance_count"] == 2
+
+    async def test_dashboard_fetches_current_hours_once_per_vehicle(
+        self, client: AsyncClient, db_session: AsyncSession, monkeypatch
+    ):
+        """No N+1: latest_engine_hours_and_date is called exactly once per
+        vehicle regardless of how many pending hours reminders it has —
+        dashboard.py already fetches it once for the `latest_hours` display
+        figure and must reuse that SAME reading for the reminder evaluation,
+        not re-query per reminder."""
+        import app.routes.dashboard as dashboard_module
+
+        vin, headers = await _isolated_fleet(db_session)
+        db_session.add(HoursRecord(vin=vin, date=date.today(), engine_hours=Decimal("500.0")))
+        db_session.add_all(
+            [
+                Reminder(
+                    vin=vin,
+                    title="A",
+                    reminder_type="hours",
+                    due_hours=Decimal("100.0"),
+                    status="pending",
+                ),
+                Reminder(
+                    vin=vin,
+                    title="B",
+                    reminder_type="hours",
+                    due_hours=Decimal("200.0"),
+                    status="pending",
+                ),
+                Reminder(
+                    vin=vin,
+                    title="C",
+                    reminder_type="hours",
+                    due_hours=Decimal("999.0"),
+                    status="pending",
+                ),
+            ]
+        )
+        await db_session.commit()
+
+        calls: dict[str, int] = {"n": 0}
+        original = dashboard_module.latest_engine_hours_and_date
+
+        async def counting(db, vin_arg):
+            calls["n"] += 1
+            return await original(db, vin_arg)
+
+        monkeypatch.setattr(dashboard_module, "latest_engine_hours_and_date", counting)
+
+        response = await client.get("/api/dashboard", headers=headers)
+        assert response.status_code == 200
+        assert calls["n"] == 1
 
     async def test_dashboard_after_adding_service_visit(
         self, client: AsyncClient, auth_headers, test_vehicle

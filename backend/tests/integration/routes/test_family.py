@@ -4,11 +4,16 @@ Integration tests for family routes.
 Tests vehicle transfers, sharing, and family dashboard endpoints.
 """
 
+from datetime import date, timedelta
+from decimal import Decimal
+
 import pytest
 import pytest_asyncio
 from httpx import AsyncClient
 from sqlalchemy import delete, select
 
+from app.models.hours import HoursRecord
+from app.models.reminder import Reminder
 from app.models.user import User
 from app.models.vehicle import Vehicle
 from app.models.vehicle_share import VehicleShare
@@ -109,6 +114,25 @@ async def family_vehicle(db_session, family_admin) -> dict:
         "user_id": vehicle.user_id,
         "nickname": vehicle.nickname,
     }
+
+
+@pytest_asyncio.fixture
+async def clean_family_vehicle_schedule(db_session, family_vehicle):
+    """Isolate Reminder + HoursRecord rows for the shared family_vehicle vin
+    (Phase 6b hours-reminder-visibility tests). ``family_vehicle`` is a
+    module-constant vin reused across the whole file, so schedule-affecting
+    rows must be cleaned up before/after each test the same way
+    ``clean_reminders``/``clean_hours_records`` isolate ``test_vehicle``
+    elsewhere in the suite.
+    """
+    vin = family_vehicle["vin"]
+    await db_session.execute(delete(Reminder).where(Reminder.vin == vin))
+    await db_session.execute(delete(HoursRecord).where(HoursRecord.vin == vin))
+    await db_session.commit()
+    yield
+    await db_session.execute(delete(Reminder).where(Reminder.vin == vin))
+    await db_session.execute(delete(HoursRecord).where(HoursRecord.vin == vin))
+    await db_session.commit()
 
 
 @pytest.mark.integration
@@ -339,6 +363,156 @@ class TestFamilyDashboard:
         )
 
         assert response.status_code == 403
+
+    async def test_family_dashboard_hours_reminder_overdue_is_counted(
+        self,
+        client: AsyncClient,
+        family_admin,
+        family_vehicle,
+        db_session,
+        clean_family_vehicle_schedule,
+    ):
+        """Phase 6b: a pure `hours` reminder (due_hours, no due_date) with
+        current_hours >= due_hours counts toward the vehicle's
+        overdue_maintenance on the family dashboard, exactly like a mileage
+        reminder does today."""
+        vin = family_vehicle["vin"]
+        db_session.add(HoursRecord(vin=vin, date=date.today(), engine_hours=Decimal("600.0")))
+        db_session.add(
+            Reminder(
+                vin=vin,
+                title="Family Hours Overdue Test",
+                reminder_type="hours",
+                due_hours=Decimal("500.0"),
+                status="pending",
+            )
+        )
+        await db_session.commit()
+
+        response = await client.get("/api/family/dashboard", headers=family_admin["headers"])
+        assert response.status_code == 200
+        member = next(
+            m for m in response.json()["members"] if m["username"] == family_admin["username"]
+        )
+        vehicle_summary = next(v for v in member["vehicles"] if v["vin"] == vin)
+        assert vehicle_summary["overdue_maintenance"] == 1
+
+    async def test_family_dashboard_hours_reminder_not_yet_due_is_not_overdue(
+        self,
+        client: AsyncClient,
+        family_admin,
+        family_vehicle,
+        db_session,
+        clean_family_vehicle_schedule,
+    ):
+        """A pure hours reminder below its target does not count as overdue."""
+        vin = family_vehicle["vin"]
+        db_session.add(HoursRecord(vin=vin, date=date.today(), engine_hours=Decimal("100.0")))
+        db_session.add(
+            Reminder(
+                vin=vin,
+                title="Family Hours Not Due Test",
+                reminder_type="hours",
+                due_hours=Decimal("500.0"),
+                status="pending",
+            )
+        )
+        await db_session.commit()
+
+        response = await client.get("/api/family/dashboard", headers=family_admin["headers"])
+        assert response.status_code == 200
+        member = next(
+            m for m in response.json()["members"] if m["username"] == family_admin["username"]
+        )
+        vehicle_summary = next(v for v in member["vehicles"] if v["vin"] == vin)
+        assert vehicle_summary["overdue_maintenance"] == 0
+
+    async def test_family_dashboard_mileage_and_date_reminders_unaffected(
+        self,
+        client: AsyncClient,
+        family_admin,
+        family_vehicle,
+        db_session,
+        clean_family_vehicle_schedule,
+    ):
+        """Regression: pre-existing date + mileage overdue evaluation on the
+        family dashboard is unchanged by the hours addition."""
+        vin = family_vehicle["vin"]
+        db_session.add(
+            Reminder(
+                vin=vin,
+                title="Overdue by date",
+                reminder_type="date",
+                due_date=date.today() - timedelta(days=1),
+                status="pending",
+            )
+        )
+        await db_session.commit()
+
+        response = await client.get("/api/family/dashboard", headers=family_admin["headers"])
+        assert response.status_code == 200
+        member = next(
+            m for m in response.json()["members"] if m["username"] == family_admin["username"]
+        )
+        vehicle_summary = next(v for v in member["vehicles"] if v["vin"] == vin)
+        assert vehicle_summary["overdue_maintenance"] == 1
+
+    async def test_family_dashboard_fetches_current_hours_once_per_vehicle(
+        self,
+        client: AsyncClient,
+        family_admin,
+        family_vehicle,
+        db_session,
+        clean_family_vehicle_schedule,
+        monkeypatch,
+    ):
+        """No N+1: latest_engine_hours_and_date is called exactly once for
+        our vehicle regardless of how many pending hours reminders it has,
+        not once per reminder. Counts by vin (not globally) so the shared,
+        cross-file integration DB can't pollute the assertion."""
+        import app.services.family_dashboard_service as family_dashboard_module
+
+        vin = family_vehicle["vin"]
+        db_session.add(HoursRecord(vin=vin, date=date.today(), engine_hours=Decimal("500.0")))
+        db_session.add_all(
+            [
+                Reminder(
+                    vin=vin,
+                    title="A",
+                    reminder_type="hours",
+                    due_hours=Decimal("100.0"),
+                    status="pending",
+                ),
+                Reminder(
+                    vin=vin,
+                    title="B",
+                    reminder_type="hours",
+                    due_hours=Decimal("200.0"),
+                    status="pending",
+                ),
+                Reminder(
+                    vin=vin,
+                    title="C",
+                    reminder_type="hours",
+                    due_hours=Decimal("999.0"),
+                    status="pending",
+                ),
+            ]
+        )
+        await db_session.commit()
+
+        calls: list[str] = []
+        original = family_dashboard_module.latest_engine_hours_and_date
+
+        async def counting(db, vin_arg):
+            calls.append(vin_arg)
+            return await original(db, vin_arg)
+
+        monkeypatch.setattr(family_dashboard_module, "latest_engine_hours_and_date", counting)
+
+        response = await client.get("/api/family/dashboard", headers=family_admin["headers"])
+        assert response.status_code == 200
+        assert calls.count(vin) == 1
 
     async def test_get_dashboard_members(self, client: AsyncClient, family_admin):
         """Test getting dashboard members for management."""

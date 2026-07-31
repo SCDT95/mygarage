@@ -24,6 +24,11 @@ from app.models.user import User
 from app.models.vehicle_share import VehicleShare
 from app.schemas.calendar import CalendarEvent, CalendarResponse, CalendarSummary
 from app.services.auth import require_auth
+from app.services.reminder_service import (
+    calculate_hours_driving_rate,
+    calculate_smart_estimated_date,
+    get_current_hours,
+)
 
 router = APIRouter(prefix="/api", tags=["calendar"])
 
@@ -115,10 +120,17 @@ async def get_calendar_events(
             event_date = reminder.due_date
             is_estimated = False
             due_mileage_km = reminder.due_mileage_km
+            due_hours = reminder.due_hours
 
             # For mileage-only reminders, estimate date
             if event_date is None and due_mileage_km is not None:
                 event_date = await estimate_date_from_mileage(reminder.vin, due_mileage_km, db)
+                is_estimated = event_date is not None
+
+            # For hours-only reminders, estimate date from the engine-hours
+            # accumulation rate (mirrors the mileage branch above).
+            if event_date is None and due_hours is not None:
+                event_date = await estimate_date_from_hours(reminder.vin, due_hours, db)
                 is_estimated = event_date is not None
 
             # Skip if no date can be determined
@@ -157,6 +169,12 @@ async def get_calendar_events(
                 if current_odometer_km is not None:
                     km_until_due = due_mileage_km - current_odometer_km
 
+            hours_until_due: Decimal | None = None
+            if due_hours is not None:
+                current_hours = await get_current_hours(reminder.vin, db)
+                if current_hours is not None:
+                    hours_until_due = due_hours - current_hours
+
             events.append(
                 CalendarEvent(
                     id=f"reminder-{reminder.id}",
@@ -174,9 +192,11 @@ async def get_calendar_events(
                     category="maintenance",
                     notes=reminder.notes,
                     due_mileage_km=due_mileage_km,
+                    due_hours=due_hours,
                     status=status,
                     days_until_due=days_until_due,
                     km_until_due=km_until_due,
+                    hours_until_due=hours_until_due,
                 )
             )
 
@@ -216,6 +236,7 @@ async def get_calendar_events(
                     category="legal",
                     notes=None,
                     due_mileage_km=None,
+                    due_hours=None,
                 )
             )
 
@@ -257,6 +278,7 @@ async def get_calendar_events(
                     category="legal",
                     notes=None,
                     due_mileage_km=None,
+                    due_hours=None,
                 )
             )
 
@@ -315,6 +337,7 @@ async def get_calendar_events(
                     category="history",
                     notes=visit.notes,
                     due_mileage_km=None,
+                    due_hours=None,
                 )
             )
 
@@ -410,6 +433,43 @@ async def estimate_date_from_mileage(
     days_until_due = int(float(km_remaining) / avg_km_per_day)
 
     return date.today() + timedelta(days=days_until_due)
+
+
+async def estimate_date_from_hours(vin: str, due_hours: Decimal, db: AsyncSession) -> date | None:
+    """Estimate due date for an hours-based reminder.
+
+    Mirrors ``estimate_date_from_mileage`` above, but reuses the
+    reminder_service helpers instead of a calendar-local rate calculator:
+    the canonical current-hours reading (``get_current_hours``) in place of
+    the odometer, and the 90-day-window engine-hours rate
+    (``calculate_hours_driving_rate``) in place of
+    ``calculate_average_km_per_day``. The actual projection is
+    ``calculate_smart_estimated_date`` — the same formula
+    ``estimate_date_from_mileage`` duplicates inline — called with
+    ``date.max`` as the hard-date ceiling, a no-op cap since a pure
+    ``hours`` reminder has no date to cap against (only ``smart`` reminders
+    have a real hard_date, and those already surface via ``due_date``
+    directly without ever reaching this function).
+    """
+    current_hours = await get_current_hours(vin, db)
+
+    if current_hours is None:
+        return None
+
+    hours_remaining = due_hours - current_hours
+
+    if hours_remaining <= 0:
+        # Already past due
+        return date.today()
+
+    # Get average engine-hours per day
+    avg_hours_per_day = await calculate_hours_driving_rate(vin, db)
+
+    if not avg_hours_per_day or avg_hours_per_day <= 0:
+        # Can't estimate without a rate
+        return None
+
+    return calculate_smart_estimated_date(current_hours, due_hours, avg_hours_per_day, date.max)
 
 
 @router.get("/calendar/export")

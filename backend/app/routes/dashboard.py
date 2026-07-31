@@ -30,6 +30,7 @@ from app.services.auth import require_auth
 from app.services.fuel_service import calculate_average_hours_economy, compute_full_tank_economy
 from app.services.hours_service import latest_engine_hours_and_date
 from app.services.odometer_service import latest_odometer_km_and_date
+from app.services.reminder_service import is_reminder_overdue
 from app.services.service_visit_service import service_visit_cost_load_options
 
 router = APIRouter(prefix="/api/dashboard", tags=["dashboard"])
@@ -108,24 +109,19 @@ async def calculate_vehicle_stats(
     )
     pending_reminders = pending_reminders_result.scalars().all()
 
-    # Reuse the SAME fetched reading for the mileage-reminder evaluation so the
-    # displayed reading and the mileage eval can never disagree — and so the
-    # dashboard card and the detail hero agree on a same-date-reading vehicle. R2-B1.
+    # Reuse the SAME fetched readings for the reminder evaluation so the
+    # displayed reading and the overdue eval can never disagree — and so the
+    # dashboard card and the detail hero agree on a same-date-reading vehicle.
+    # R2-B1 (mileage); Phase 6b extends this to `latest_hours`, already
+    # fetched above for the hours-economy figures — no extra query per
+    # vehicle for the hours-reminder check.
     current_odometer_km = latest_odometer_km
+    current_engine_hours = latest_hours
 
     upcoming_count = 0
     overdue_count = 0
     for reminder in pending_reminders:
-        is_overdue = False
-        if reminder.due_date and reminder.due_date <= today:
-            is_overdue = True
-        if (
-            reminder.due_mileage_km
-            and current_odometer_km
-            and current_odometer_km >= reminder.due_mileage_km
-        ):
-            is_overdue = True
-        if is_overdue:
+        if is_reminder_overdue(reminder, current_odometer_km, current_engine_hours, today):
             overdue_count += 1
         else:
             upcoming_count += 1

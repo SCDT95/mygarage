@@ -25,6 +25,8 @@ from app.schemas.family import (
     FamilyMemberUpdateRequest,
     FamilyVehicleSummary,
 )
+from app.services.hours_service import latest_engine_hours_and_date
+from app.services.reminder_service import is_reminder_overdue
 from app.utils.logging_utils import sanitize_for_log
 
 logger = logging.getLogger(__name__)
@@ -174,6 +176,14 @@ class FamilyDashboardService:
         )
         current_odometer_km = odometer_result.scalar_one_or_none()
 
+        # Canonical latest engine-hours reading (§1 helper) for schedule
+        # status calculations — fetched ONCE per vehicle here, mirroring
+        # current_odometer_km above, and reused for every pending reminder's
+        # overdue evaluation below rather than re-queried per reminder.
+        current_hours, _current_hours_date = await latest_engine_hours_and_date(
+            self.db, vehicle.vin
+        )
+
         # Get pending reminders for this vehicle
         reminder_result = await self.db.execute(
             select(Reminder).where(Reminder.vin == vehicle.vin, Reminder.status == "pending")
@@ -187,17 +197,7 @@ class FamilyDashboardService:
         soonest_due_date: date | None = None
 
         for reminder in reminders:
-            is_overdue = False
-            if reminder.due_date and reminder.due_date <= today:
-                is_overdue = True
-            if (
-                reminder.due_mileage_km
-                and current_odometer_km
-                and current_odometer_km >= reminder.due_mileage_km
-            ):
-                is_overdue = True
-
-            if is_overdue:
+            if is_reminder_overdue(reminder, current_odometer_km, current_hours, today):
                 overdue_count += 1
             elif reminder.due_date:
                 if soonest_due_date is None or reminder.due_date < soonest_due_date:

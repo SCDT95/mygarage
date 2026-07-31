@@ -37,9 +37,15 @@ class CalendarEvent(BaseModel):
     due_mileage_km: Decimal | None = Field(
         None, description="Due odometer reading (km) for mileage-based reminders (Phase 3)"
     )
+    due_hours: Decimal | None = Field(
+        None, description="Due engine-hours reading for hours-based reminders (Phase 6b)"
+    )
     status: str | None = Field(None, description="Maintenance status (overdue, due_soon, etc.)")
     days_until_due: int | None = Field(None, description="Days until due date")
     km_until_due: Decimal | None = Field(None, description="Kilometers until due odometer reading")
+    hours_until_due: Decimal | None = Field(
+        None, description="Engine-hours until due hours reading (Phase 6b)"
+    )
 
 
 class CalendarSummary(BaseModel):

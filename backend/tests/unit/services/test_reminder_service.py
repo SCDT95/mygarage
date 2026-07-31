@@ -239,6 +239,86 @@ class TestCalculateHoursDrivingRate:
 
 
 # ---------------------------------------------------------------------------
+# is_reminder_overdue — Phase 6b shared helper (dashboard + family dashboard)
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.unit
+class TestIsReminderOverdue:
+    """Pure-function tests for the shared overdue check extracted to end the
+    dashboard.py / family_dashboard_service.py duplication (Phase 6b). Field-
+    presence gated, mirroring how both call sites evaluated it inline before
+    extraction: a reminder is overdue if ANY of due_date/due_mileage_km/
+    due_hours has been reached, regardless of reminder_type.
+    """
+
+    def _reminder(self, **kwargs) -> Reminder:
+        base = {
+            "vin": "1HGBH41JXMN109186",
+            "title": "Test reminder",
+            "reminder_type": "date",
+            "status": "pending",
+        }
+        base.update(kwargs)
+        return Reminder(**base)
+
+    def test_overdue_by_date(self):
+        from app.services.reminder_service import is_reminder_overdue
+
+        reminder = self._reminder(due_date=date(2020, 1, 1))
+        assert is_reminder_overdue(reminder, None, None, today=date(2024, 1, 1)) is True
+
+    def test_not_overdue_by_future_date(self):
+        from app.services.reminder_service import is_reminder_overdue
+
+        reminder = self._reminder(due_date=date(2024, 6, 1))
+        assert is_reminder_overdue(reminder, None, None, today=date(2024, 1, 1)) is False
+
+    def test_overdue_by_mileage(self):
+        from app.services.reminder_service import is_reminder_overdue
+
+        reminder = self._reminder(
+            reminder_type="mileage", due_date=None, due_mileage_km=Decimal("50000")
+        )
+        assert is_reminder_overdue(reminder, Decimal("55000"), None, today=date.today()) is True
+
+    def test_not_overdue_by_mileage_when_below_target(self):
+        from app.services.reminder_service import is_reminder_overdue
+
+        reminder = self._reminder(
+            reminder_type="mileage", due_date=None, due_mileage_km=Decimal("50000")
+        )
+        assert is_reminder_overdue(reminder, Decimal("40000"), None, today=date.today()) is False
+
+    def test_overdue_by_hours(self):
+        from app.services.reminder_service import is_reminder_overdue
+
+        reminder = self._reminder(reminder_type="hours", due_date=None, due_hours=Decimal("500.0"))
+        assert is_reminder_overdue(reminder, None, Decimal("600.0"), today=date.today()) is True
+
+    def test_not_overdue_by_hours_when_below_target(self):
+        from app.services.reminder_service import is_reminder_overdue
+
+        reminder = self._reminder(reminder_type="hours", due_date=None, due_hours=Decimal("500.0"))
+        assert is_reminder_overdue(reminder, None, Decimal("100.0"), today=date.today()) is False
+
+    def test_no_readings_never_overdue_by_usage(self):
+        """None current_km / current_hours must never crash and must never
+        count as overdue (mirrors the pre-extraction inline `and` guards)."""
+        from app.services.reminder_service import is_reminder_overdue
+
+        reminder = self._reminder(reminder_type="hours", due_date=None, due_hours=Decimal("500.0"))
+        assert is_reminder_overdue(reminder, None, None, today=date.today()) is False
+
+    def test_defaults_today_when_not_provided(self):
+        """Without an explicit `today` override, uses date.today()."""
+        from app.services.reminder_service import is_reminder_overdue
+
+        reminder = self._reminder(due_date=date.today() - timedelta(days=1))
+        assert is_reminder_overdue(reminder, None, None) is True
+
+
+# ---------------------------------------------------------------------------
 # enrich_with_estimate — smart projection (backward-compat + hours)
 # ---------------------------------------------------------------------------
 

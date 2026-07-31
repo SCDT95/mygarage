@@ -5,12 +5,60 @@ Tests calendar event aggregation and iCal export.
 """
 
 from datetime import date, timedelta
+from decimal import Decimal
 
 import pytest
 from httpx import AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.models import Reminder
+from app.models import HoursRecord, OdometerRecord, Reminder, Vehicle
+
+
+async def _isolated_vehicle(db_session: AsyncSession) -> tuple[str, dict[str, str]]:
+    """Create a throwaway non-admin owner + one vehicle and return
+    ``(vin, auth_headers)`` whose ``/api/calendar`` scope is EXACTLY that
+    vehicle. Mirrors ``test_dashboard.py``'s ``_isolated_fleet`` — the
+    integration test DB is session-scoped and accumulates rows across
+    files/tests, so a fresh, uniquely-named owner keeps hours-history-
+    dependent assertions (rate computed from ONLY this vin's HoursRecord
+    rows) from being polluted by other tests' data on the shared
+    ``test_vehicle`` vin.
+    """
+    import uuid
+
+    from app.models.user import User
+    from app.services.auth import create_access_token
+
+    suffix = uuid.uuid4().hex[:12]
+    password_hash = (
+        "$argon2id$v=19$m=102400,t=2,p=8$NNbLa8SMLODWY2Es68EvLw$"
+        "hiGLA+DtO213EMAMi8D8gXvvyjP8EVMFIHWp7SlUVnI"
+    )
+    user = User(
+        username=f"cal_{suffix}",
+        email=f"cal_{suffix}@example.com",
+        hashed_password=password_hash,
+        is_active=True,
+        is_admin=False,
+    )
+    db_session.add(user)
+    await db_session.commit()
+    await db_session.refresh(user)
+
+    # "CALDR" + 12 hex chars = exactly 17 chars, no I/O/Q -> a valid unique VIN.
+    vin = f"CALDR{suffix.upper()}"
+    db_session.add(
+        Vehicle(
+            vin=vin,
+            user_id=user.id,
+            nickname=f"Calendar {suffix}",
+            vehicle_type="Car",
+        )
+    )
+    await db_session.commit()
+
+    token = create_access_token(data={"sub": str(user.id), "username": user.username})
+    return vin, {"Authorization": f"Bearer {token}"}
 
 
 @pytest.mark.integration
@@ -162,6 +210,209 @@ class TestCalendarRoutes:
         test_events = [e for e in data["events"] if "Overdue Brake Check" in e.get("title", "")]
         assert len(test_events) >= 1
         assert test_events[0]["urgency"] == "overdue"
+
+    async def test_calendar_hours_reminder_with_history_gets_estimated_event(
+        self, client: AsyncClient, db_session: AsyncSession
+    ):
+        """Phase 6b: a pure `hours` reminder (due_hours, no due_date) with
+        enough engine-hours history to compute a rate gets an ESTIMATED
+        calendar event date, analogous to mileage's estimate_date_from_mileage."""
+        vin, headers = await _isolated_vehicle(db_session)
+        db_session.add_all(
+            [
+                HoursRecord(
+                    vin=vin, date=date.today() - timedelta(days=20), engine_hours=Decimal("100.0")
+                ),
+                HoursRecord(vin=vin, date=date.today(), engine_hours=Decimal("300.0")),
+            ]
+        )
+        db_session.add(
+            Reminder(
+                vin=vin,
+                title="Hydraulic Service Hours Test",
+                reminder_type="hours",
+                due_hours=Decimal("500.0"),
+                status="pending",
+            )
+        )
+        await db_session.commit()
+
+        response = await client.get(
+            "/api/calendar",
+            params={
+                "event_types": "maintenance",
+                "start_date": (date.today() - timedelta(days=30)).isoformat(),
+                "end_date": (date.today() + timedelta(days=365)).isoformat(),
+            },
+            headers=headers,
+        )
+
+        assert response.status_code == 200
+        data = response.json()
+        test_events = [
+            e for e in data["events"] if "Hydraulic Service Hours Test" in e.get("title", "")
+        ]
+        assert len(test_events) == 1
+        event = test_events[0]
+
+        # Rate = (300 - 100) / 20 days = 10.0 hr/day. Remaining = 500 - 300 =
+        # 200 hr -> 20 days from today.
+        assert event["is_estimated"] is True
+        assert event["date"] == (date.today() + timedelta(days=20)).isoformat()
+        assert event["due_hours"] == "500.0"
+        assert event["hours_until_due"] == "200.0"
+
+    async def test_calendar_hours_reminder_insufficient_history_no_crash(
+        self, client: AsyncClient, db_session: AsyncSession
+    ):
+        """No hours history at all -> current hours unknown -> no estimate
+        possible -> the reminder yields no calendar event (mirrors the
+        mileage no-odometer-record case), and the endpoint does not crash."""
+        vin, headers = await _isolated_vehicle(db_session)
+        db_session.add(
+            Reminder(
+                vin=vin,
+                title="No History Hours Test",
+                reminder_type="hours",
+                due_hours=Decimal("500.0"),
+                status="pending",
+            )
+        )
+        await db_session.commit()
+
+        response = await client.get(
+            "/api/calendar",
+            params={
+                "event_types": "maintenance",
+                "start_date": (date.today() - timedelta(days=30)).isoformat(),
+                "end_date": (date.today() + timedelta(days=365)).isoformat(),
+            },
+            headers=headers,
+        )
+
+        assert response.status_code == 200
+        data = response.json()
+        test_events = [e for e in data["events"] if "No History Hours Test" in e.get("title", "")]
+        assert test_events == []
+
+    async def test_calendar_hours_reminder_single_reading_no_rate_no_crash(
+        self, client: AsyncClient, db_session: AsyncSession
+    ):
+        """Exactly one hours reading -> current hours known but no rate can
+        be computed (needs >= 2 points) -> no estimate -> no event, mirroring
+        the mileage single-odometer-record case. No crash."""
+        vin, headers = await _isolated_vehicle(db_session)
+        db_session.add(HoursRecord(vin=vin, date=date.today(), engine_hours=Decimal("100.0")))
+        db_session.add(
+            Reminder(
+                vin=vin,
+                title="Single Reading Hours Test",
+                reminder_type="hours",
+                due_hours=Decimal("500.0"),
+                status="pending",
+            )
+        )
+        await db_session.commit()
+
+        response = await client.get(
+            "/api/calendar",
+            params={
+                "event_types": "maintenance",
+                "start_date": (date.today() - timedelta(days=30)).isoformat(),
+                "end_date": (date.today() + timedelta(days=365)).isoformat(),
+            },
+            headers=headers,
+        )
+
+        assert response.status_code == 200
+        data = response.json()
+        test_events = [
+            e for e in data["events"] if "Single Reading Hours Test" in e.get("title", "")
+        ]
+        assert test_events == []
+
+    async def test_calendar_smart_hours_reminder_surfaces_via_due_date(
+        self, client: AsyncClient, db_session: AsyncSession
+    ):
+        """A 'smart' reminder targeting hours (due_date + due_hours, no
+        due_mileage_km) already has a due_date, so it must surface via that
+        date directly — never dropped, never re-estimated."""
+        vin, headers = await _isolated_vehicle(db_session)
+        due_date = date.today() + timedelta(days=10)
+        db_session.add(
+            Reminder(
+                vin=vin,
+                title="Smart Hours Test",
+                reminder_type="smart",
+                due_date=due_date,
+                due_hours=Decimal("500.0"),
+                status="pending",
+            )
+        )
+        await db_session.commit()
+
+        response = await client.get(
+            "/api/calendar",
+            params={
+                "event_types": "maintenance",
+                "start_date": (date.today() - timedelta(days=30)).isoformat(),
+                "end_date": (date.today() + timedelta(days=365)).isoformat(),
+            },
+            headers=headers,
+        )
+
+        assert response.status_code == 200
+        data = response.json()
+        test_events = [e for e in data["events"] if "Smart Hours Test" in e.get("title", "")]
+        assert len(test_events) == 1
+        event = test_events[0]
+        assert event["date"] == due_date.isoformat()
+        assert event["is_estimated"] is False
+
+    async def test_calendar_mileage_reminder_with_history_still_estimates(
+        self, client: AsyncClient, db_session: AsyncSession
+    ):
+        """Regression: the pre-existing mileage estimate path is unaffected
+        by the new hours branch sitting alongside it."""
+        vin, headers = await _isolated_vehicle(db_session)
+        db_session.add_all(
+            [
+                OdometerRecord(
+                    vin=vin, date=date.today() - timedelta(days=10), odometer_km=Decimal("50000")
+                ),
+                OdometerRecord(vin=vin, date=date.today(), odometer_km=Decimal("51000")),
+            ]
+        )
+        db_session.add(
+            Reminder(
+                vin=vin,
+                title="Mileage Regression Test",
+                reminder_type="mileage",
+                due_mileage_km=Decimal("53000"),
+                status="pending",
+            )
+        )
+        await db_session.commit()
+
+        response = await client.get(
+            "/api/calendar",
+            params={
+                "event_types": "maintenance",
+                "start_date": (date.today() - timedelta(days=30)).isoformat(),
+                "end_date": (date.today() + timedelta(days=365)).isoformat(),
+            },
+            headers=headers,
+        )
+
+        assert response.status_code == 200
+        data = response.json()
+        test_events = [e for e in data["events"] if "Mileage Regression Test" in e.get("title", "")]
+        assert len(test_events) == 1
+        event = test_events[0]
+        # Rate = (51000 - 50000) / 10 days = 100 km/day. Remaining = 2000 km
+        # -> 20 days from today.
+        assert event["is_estimated"] is True
+        assert event["date"] == (date.today() + timedelta(days=20)).isoformat()
 
     async def test_calendar_event_structure(
         self, client: AsyncClient, auth_headers, test_vehicle, db_session: AsyncSession

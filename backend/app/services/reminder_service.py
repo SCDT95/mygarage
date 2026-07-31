@@ -145,6 +145,51 @@ async def get_current_hours(vin: str, db: AsyncSession) -> Decimal | None:
     return engine_hours
 
 
+def is_reminder_overdue(
+    reminder: Reminder,
+    current_km: Decimal | None,
+    current_hours: Decimal | None,
+    today: date | None = None,
+) -> bool:
+    """Whether a pending reminder is overdue right now (Phase 6b).
+
+    The single boolean overdue check shared by ``routes/dashboard.py`` and
+    ``services/family_dashboard_service.py`` — both duplicated this inline
+    (date + mileage only) before this helper existed, which is exactly why a
+    pure ``hours`` reminder never showed up as overdue on either surface
+    despite ``check_due_reminders`` already firing notifications for it
+    (Phase 5). Extracted here rather than in a route/service module so both
+    call sites (and any future one) share ONE definition.
+
+    Field-presence gated, not ``reminder_type`` gated: a reminder is overdue
+    if ANY of its set due-fields (date / mileage / hours) has been reached.
+    This is equivalent to gating on ``reminder_type`` since
+    ``validate_reminder_state`` only ever lets compatible fields be set for
+    a given type (e.g. a ``'mileage'`` reminder never has ``due_hours`` set).
+
+    Args:
+        reminder: The pending reminder to evaluate.
+        current_km: The vehicle's current odometer reading (km), or
+            ``None`` if no reading exists yet.
+        current_hours: The vehicle's current engine-hours reading, or
+            ``None`` if no reading exists yet.
+        today: Override for "today" (tests only); defaults to
+            ``date.today()``.
+
+    Returns:
+        ``True`` if the reminder is overdue by date, mileage, or hours.
+    """
+    if today is None:
+        today = date.today()
+    if reminder.due_date and reminder.due_date <= today:
+        return True
+    if reminder.due_mileage_km and current_km and current_km >= reminder.due_mileage_km:
+        return True
+    if reminder.due_hours and current_hours and current_hours >= reminder.due_hours:
+        return True
+    return False
+
+
 def calculate_smart_estimated_date(
     current_odometer_km: Decimal,
     target_odometer_km: Decimal,
