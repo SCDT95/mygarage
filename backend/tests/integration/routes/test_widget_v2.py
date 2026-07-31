@@ -15,6 +15,7 @@ from httpx import AsyncClient
 from sqlalchemy import select
 
 from app.models.fuel import FuelRecord
+from app.models.hours import HoursRecord
 from app.models.odometer import OdometerRecord
 from app.models.settings import Setting
 from app.models.user import User
@@ -175,3 +176,63 @@ class TestWidgetV2Vehicle:
         await set_auth_mode("local")
         resp = await client.get("/api/v2/widget/summary")
         assert resp.status_code == 401
+
+
+@pytest.mark.integration
+@pytest.mark.asyncio
+class TestWidgetV2HoursFields:
+    """Task 8 Part A over HTTP: hours stats on the v2 per-vehicle rollup."""
+
+    async def test_hours_vehicle_exposes_hours_fields(
+        self, client: AsyncClient, db_session, widget_owner, set_auth_mode
+    ):
+        await set_auth_mode("local")
+        v = await _make_vehicle(db_session, widget_owner)
+        db_session.add(HoursRecord(vin=v.vin, date=date(2026, 1, 20), engine_hours=Decimal("42.5")))
+        db_session.add_all(
+            [
+                FuelRecord(
+                    vin=v.vin,
+                    date=date(2026, 1, 1),
+                    engine_hours=Decimal("20.0"),
+                    liters=Decimal("10.000"),
+                    cost=Decimal("15.00"),
+                    is_full_tank=True,
+                ),
+                FuelRecord(
+                    vin=v.vin,
+                    date=date(2026, 1, 15),
+                    engine_hours=Decimal("40.0"),
+                    liters=Decimal("10.000"),
+                    cost=Decimal("15.00"),
+                    is_full_tank=True,
+                ),
+            ]
+        )
+        await db_session.commit()
+        plaintext = await _make_key(db_session, widget_owner)
+
+        resp = await client.get(f"/api/v2/widget/vehicle/{v.vin}", headers={"X-API-Key": plaintext})
+        assert resp.status_code == 200
+        d = resp.json()
+        assert d["latest_hours"] == "42.5"
+        assert d["average_l_per_hr"] is not None
+        assert d["average_cost_per_hr"] is not None
+
+    async def test_pure_distance_vehicle_has_null_hours_fields(
+        self, client: AsyncClient, db_session, widget_owner, set_auth_mode
+    ):
+        await set_auth_mode("local")
+        v = await _make_vehicle(db_session, widget_owner)
+        await _seed_two_full_tanks(db_session, v.vin)
+        await _seed_odometer(db_session, v.vin)
+        plaintext = await _make_key(db_session, widget_owner)
+
+        resp = await client.get(f"/api/v2/widget/vehicle/{v.vin}", headers={"X-API-Key": plaintext})
+        assert resp.status_code == 200
+        d = resp.json()
+        assert d["latest_hours"] is None
+        assert d["average_l_per_hr"] is None
+        assert d["average_cost_per_hr"] is None
+        # Distance fields stay unaffected by the addition.
+        assert d["odometer_km"] is not None

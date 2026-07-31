@@ -42,6 +42,9 @@ from app.schemas.widget import (
     WidgetVehicleRef,
     WidgetVehicleV2,
 )
+from app.services.fuel_service import calculate_average_hours_economy
+from app.services.hours_service import latest_engine_hours_and_date
+from app.services.reminder_service import get_current_hours, is_reminder_overdue
 from app.utils.units import UnitConverter
 
 RECENT_MPG_WINDOW = 3
@@ -75,6 +78,13 @@ class _VehicleCore:
     v1 (imperial) and v2 (both unit systems) format this identically-sourced
     data differently. Computed once so the odometer/consumption pairing logic
     lives in a single place.
+
+    ``latest_hours``/``average_l_per_hr``/``average_cost_per_hr`` (Task 8) are
+    hours-only additions: v1's ``vehicle()`` formatter never reads them (v1 is
+    frozen), only ``vehicle_v2()`` does. They are fetched here regardless of
+    which caller invoked ``_vehicle_core`` so ``latest_hours`` can double as
+    the current-hours reading for the overdue-count check below — one fetch,
+    not two.
     """
 
     label: str
@@ -85,6 +95,9 @@ class _VehicleCore:
     odometer_date: date_type | None
     recent_l100km: Decimal | None
     average_l100km: Decimal | None
+    latest_hours: Decimal | None
+    average_l_per_hr: Decimal | None
+    average_cost_per_hr: Decimal | None
     upcoming_maintenance: int
     overdue_maintenance: int
     service_records: int
@@ -233,7 +246,16 @@ class WidgetAggregationService:
         odometer_km, odometer_date = await self._latest_odometer_reading(vin)
         recent_l100km, average_l100km = await self._consumption_l100km(vin)
         current_odometer_km = int(odometer_km) if odometer_km is not None else None
-        overdue, upcoming = await self._overdue_upcoming([vin], current_odometer_km)
+
+        # Canonical latest engine-hours reading (Task 8 §1 helper) + hours
+        # economy. Null for a pure-distance vehicle (no hours_records rows).
+        # Fetched once and reused below for the overdue-count check so the
+        # displayed reading and the reminder evaluation can never disagree —
+        # no extra query per vehicle for the hours-reminder check.
+        latest_hours, _latest_hours_date = await latest_engine_hours_and_date(self.db, vin)
+        average_l_per_hr, average_cost_per_hr = await calculate_average_hours_economy(self.db, vin)
+
+        overdue, upcoming = await self._overdue_upcoming([vin], current_odometer_km, latest_hours)
 
         return _VehicleCore(
             label=_vehicle_label(vehicle),
@@ -244,6 +266,9 @@ class WidgetAggregationService:
             odometer_date=odometer_date,
             recent_l100km=recent_l100km,
             average_l100km=average_l100km,
+            latest_hours=latest_hours,
+            average_l_per_hr=average_l_per_hr,
+            average_cost_per_hr=average_cost_per_hr,
             upcoming_maintenance=upcoming,
             overdue_maintenance=overdue,
             service_records=service_count,
@@ -261,6 +286,8 @@ class WidgetAggregationService:
         """Per-vehicle rollup (imperial). Returns None if VIN not owned/allowed.
 
         The route maps None → 404 (not 403) to avoid confirming existence.
+        v1's ``WidgetVehicle`` schema intentionally has no hours fields — the
+        legacy endpoint is frozen (Task 8). Hours land in v2 only, below.
         """
         core = await self._vehicle_core(user_id, vin, allowed_vins)
         if core is None:
@@ -311,6 +338,9 @@ class WidgetAggregationService:
             average_km_per_l=UnitConverter.l100km_to_kmpl(core.average_l100km),
             recent_mpg=UnitConverter.l100km_to_mpg(core.recent_l100km),
             average_mpg=UnitConverter.l100km_to_mpg(core.average_l100km),
+            latest_hours=core.latest_hours,
+            average_l_per_hr=core.average_l_per_hr,
+            average_cost_per_hr=core.average_cost_per_hr,
             upcoming_maintenance=core.upcoming_maintenance,
             overdue_maintenance=core.overdue_maintenance,
             service_records=core.service_records,
@@ -370,60 +400,67 @@ class WidgetAggregationService:
     async def _reminder_totals(self, vins: list[str]) -> tuple[int, int]:
         """Sum overdue and upcoming pending reminders across `vins`.
 
-        Overdue derivation per reminder:
-          (due_date <= today) OR (due_mileage_km <= latest odometer_km for that VIN)
-        Each VIN's current odometer_km comes from a separate latest-odometer query;
-        the reminder query then filters with a per-VIN comparison.
+        Overdue derivation per reminder (Task 8: routed through the shared
+        `is_reminder_overdue` helper, so this now also honors ``due_hours``):
+          (due_date <= today) OR (due_mileage_km <= current odometer_km)
+          OR (due_hours <= current engine hours)
+        Each VIN's current odometer_km / engine hours comes from its own
+        latest-reading query, fetched ONCE per VIN here (not per reminder) —
+        the reminder query then classifies with a per-VIN comparison.
         """
         if not vins:
             return 0, 0
 
-        # Per-VIN latest odometer_km for mileage-based overdue checks.
+        # Per-VIN latest odometer_km / engine hours for mileage/hours-based
+        # overdue checks — one fetch per VIN, reused for every reminder.
         odometer_by_vin: dict[str, int] = {}
+        hours_by_vin: dict[str, Decimal] = {}
         for vin in vins:
             current_km = await self._latest_odometer_km(vin)
             if current_km is not None:
                 odometer_by_vin[vin] = current_km
+            current_hours = await get_current_hours(vin, self.db)
+            if current_hours is not None:
+                hours_by_vin[vin] = current_hours
 
         overdue_total = 0
         upcoming_total = 0
         for vin in vins:
             current_odometer_km = odometer_by_vin.get(vin)
-            overdue, upcoming = await self._overdue_upcoming([vin], current_odometer_km)
+            current_hours = hours_by_vin.get(vin)
+            overdue, upcoming = await self._overdue_upcoming(
+                [vin], current_odometer_km, current_hours
+            )
             overdue_total += overdue
             upcoming_total += upcoming
         return overdue_total, upcoming_total
 
     async def _overdue_upcoming(
-        self, vins: list[str], current_odometer_km: int | None
+        self,
+        vins: list[str],
+        current_odometer_km: int | None,
+        current_hours: Decimal | None,
     ) -> tuple[int, int]:
         """Classify pending reminders for the given VIN(s).
 
-        A reminder counts as overdue when either its due_date is on or before
-        today, or its due_mileage_km is at or below the vehicle's current
-        odometer_km. Everything else pending counts as upcoming. Matches the
-        Python derivation in `routes/dashboard.py`.
+        Delegates the per-reminder overdue determination to the shared
+        `is_reminder_overdue` helper (date, mileage, OR hours — Task 8,
+        P5-review gap) so a pure `hours` reminder counts here exactly like it
+        already does on the dashboard/detail-stats surfaces. Everything else
+        pending counts as upcoming.
         """
         if not vins:
             return 0, 0
         today = date_type.today()
-        stmt = select(Reminder.due_date, Reminder.due_mileage_km).where(
-            Reminder.vin.in_(vins), Reminder.status == "pending"
+        current_km_decimal = (
+            Decimal(current_odometer_km) if current_odometer_km is not None else None
         )
-        rows = (await self.db.execute(stmt)).all()
+        stmt = select(Reminder).where(Reminder.vin.in_(vins), Reminder.status == "pending")
+        reminders = (await self.db.execute(stmt)).scalars().all()
         overdue = 0
         upcoming = 0
-        for due_date, due_mileage_km in rows:
-            is_overdue = False
-            if due_date is not None and due_date <= today:
-                is_overdue = True
-            if (
-                due_mileage_km is not None
-                and current_odometer_km is not None
-                and current_odometer_km >= due_mileage_km
-            ):
-                is_overdue = True
-            if is_overdue:
+        for reminder in reminders:
+            if is_reminder_overdue(reminder, current_km_decimal, current_hours, today):
                 overdue += 1
             else:
                 upcoming += 1

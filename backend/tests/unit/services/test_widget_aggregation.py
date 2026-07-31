@@ -23,6 +23,7 @@ from sqlalchemy import select
 
 from app.models.document import Document
 from app.models.fuel import FuelRecord
+from app.models.hours import HoursRecord
 from app.models.note import Note
 from app.models.odometer import OdometerRecord
 from app.models.photo import VehiclePhoto
@@ -701,3 +702,361 @@ class TestVehicleV2:
         svc = WidgetAggregationService(db_session)
         result = await svc.vehicle_v2(aggregation_user.id, "NOTOWNED00000000X", allowed_vins=None)
         assert result is None
+
+
+@pytest.mark.unit
+class TestVehicleV2HoursFields:
+    """Part A (Task 8): v2 widget hours stats — nullable latest_hours /
+    average_l_per_hr / average_cost_per_hr, populated per the vehicle's
+    tracked dimension(s). v1's WidgetVehicle schema has no hours fields at
+    all, so there is nothing to null-check there (see TestV1ShapeLock in
+    tests/integration/routes/test_widget.py for the shape lock)."""
+
+    @pytest.mark.asyncio
+    async def test_hours_vehicle_exposes_hours_fields(self, db_session, aggregation_user):
+        vehicle = await _make_vehicle(db_session, aggregation_user)
+        vin = vehicle.vin
+
+        # Canonical latest reading (highest engine_hours on record).
+        db_session.add(HoursRecord(vin=vin, date=date(2026, 1, 20), engine_hours=Decimal("120.5")))
+        # One scorable full-tank interval: 100h -> 120h, 20L / 20h = 1.00 L/hr,
+        # $30 / 20h = $1.50/hr (parity with test_fuel_hours_economy.py).
+        db_session.add_all(
+            [
+                FuelRecord(
+                    vin=vin,
+                    date=date(2026, 1, 1),
+                    engine_hours=Decimal("100.0"),
+                    liters=Decimal("20.000"),
+                    cost=Decimal("30.00"),
+                    is_full_tank=True,
+                ),
+                FuelRecord(
+                    vin=vin,
+                    date=date(2026, 1, 15),
+                    engine_hours=Decimal("120.0"),
+                    liters=Decimal("20.000"),
+                    cost=Decimal("30.00"),
+                    is_full_tank=True,
+                ),
+            ]
+        )
+        await db_session.commit()
+
+        svc = WidgetAggregationService(db_session)
+        result = await svc.vehicle_v2(aggregation_user.id, vin, allowed_vins=None)
+
+        assert result is not None
+        assert result.latest_hours == Decimal("120.5")
+        assert result.average_l_per_hr == Decimal("1.00")
+        assert result.average_cost_per_hr == Decimal("1.50")
+
+    @pytest.mark.asyncio
+    async def test_pure_distance_vehicle_has_null_hours_fields(self, db_session, aggregation_user):
+        """A vehicle with zero hours_records rows must never leak an hours
+        figure — distance fields stay populated as normal."""
+        vehicle = await _make_vehicle(db_session, aggregation_user)
+        vin = vehicle.vin
+        db_session.add(
+            OdometerRecord(vin=vin, odometer_km=Decimal("16500"), date=date(2026, 1, 15))
+        )
+        await db_session.commit()
+
+        svc = WidgetAggregationService(db_session)
+        result = await svc.vehicle_v2(aggregation_user.id, vin, allowed_vins=None)
+        assert result is not None
+        assert result.latest_hours is None
+        assert result.average_l_per_hr is None
+        assert result.average_cost_per_hr is None
+        assert result.odometer_km is not None
+
+    @pytest.mark.asyncio
+    async def test_pure_hours_vehicle_has_null_distance_economy_fields(
+        self, db_session, aggregation_user
+    ):
+        """A pure-hours vehicle (no odometer readings) must null out every
+        distance-economy field while its hours fields populate."""
+        vehicle = await _make_vehicle(db_session, aggregation_user)
+        vin = vehicle.vin
+        db_session.add(HoursRecord(vin=vin, date=date(2026, 1, 10), engine_hours=Decimal("50.0")))
+        db_session.add_all(
+            [
+                FuelRecord(
+                    vin=vin,
+                    date=date(2026, 1, 1),
+                    engine_hours=Decimal("30.0"),
+                    liters=Decimal("10.000"),
+                    cost=Decimal("15.00"),
+                    is_full_tank=True,
+                ),
+                FuelRecord(
+                    vin=vin,
+                    date=date(2026, 1, 10),
+                    engine_hours=Decimal("50.0"),
+                    liters=Decimal("10.000"),
+                    cost=Decimal("15.00"),
+                    is_full_tank=True,
+                ),
+            ]
+        )
+        await db_session.commit()
+
+        svc = WidgetAggregationService(db_session)
+        result = await svc.vehicle_v2(aggregation_user.id, vin, allowed_vins=None)
+        assert result is not None
+        assert result.latest_hours == Decimal("50.0")
+        assert result.average_l_per_hr is not None
+        assert result.average_cost_per_hr is not None
+        # No OdometerRecord and no FuelRecord.odometer_km at all -> every
+        # distance field on the v2 response stays null.
+        assert result.odometer is None
+        assert result.odometer_km is None
+        assert result.recent_mpg is None
+        assert result.average_mpg is None
+        assert result.recent_l_per_100km is None
+        assert result.average_l_per_100km is None
+
+    @pytest.mark.asyncio
+    async def test_dual_vehicle_has_both_distance_and_hours_fields(
+        self, db_session, aggregation_user
+    ):
+        vehicle = await _make_vehicle(db_session, aggregation_user)
+        vin = vehicle.vin
+        db_session.add(
+            OdometerRecord(vin=vin, odometer_km=_mi_to_km(10300), date=date(2026, 1, 15))
+        )
+        db_session.add(HoursRecord(vin=vin, date=date(2026, 1, 15), engine_hours=Decimal("80.0")))
+        db_session.add_all(
+            [
+                FuelRecord(
+                    vin=vin,
+                    date=date(2026, 1, 1),
+                    odometer_km=_mi_to_km(10000),
+                    engine_hours=Decimal("60.0"),
+                    liters=_gal_to_l(Decimal("10.0")),
+                    price_per_unit=Decimal("3.50"),
+                    cost=Decimal("35.00"),
+                    is_full_tank=True,
+                ),
+                FuelRecord(
+                    vin=vin,
+                    date=date(2026, 1, 15),
+                    odometer_km=_mi_to_km(10300),
+                    engine_hours=Decimal("80.0"),
+                    liters=_gal_to_l(Decimal("10.0")),
+                    price_per_unit=Decimal("3.50"),
+                    cost=Decimal("35.00"),
+                    is_full_tank=True,
+                ),
+            ]
+        )
+        await db_session.commit()
+
+        svc = WidgetAggregationService(db_session)
+        result = await svc.vehicle_v2(aggregation_user.id, vin, allowed_vins=None)
+        assert result is not None
+        assert result.latest_hours == Decimal("80.0")
+        assert result.average_l_per_hr is not None
+        assert result.average_cost_per_hr is not None
+        assert result.odometer_km is not None
+        assert result.recent_mpg is not None
+
+
+@pytest.mark.unit
+class TestVehicleV2HoursAwareOverdueCount:
+    """Part B (Task 8, P5-review gap): the overdue count now routes through
+    the shared `is_reminder_overdue` helper so a pure-hours reminder counts,
+    matching dashboard/detail-stats. Date/mileage classification is a
+    regression check against TestReminderClassification above."""
+
+    @pytest.mark.asyncio
+    async def test_pure_hours_overdue_reminder_is_counted(self, db_session, aggregation_user):
+        vehicle = await _make_vehicle(db_session, aggregation_user)
+        vin = vehicle.vin
+        db_session.add(HoursRecord(vin=vin, date=date.today(), engine_hours=Decimal("600.0")))
+        db_session.add(
+            Reminder(
+                vin=vin,
+                title="Hours Overdue",
+                reminder_type="hours",
+                due_hours=Decimal("500.0"),
+                status="pending",
+            )
+        )
+        await db_session.commit()
+
+        svc = WidgetAggregationService(db_session)
+        result = await svc.vehicle_v2(aggregation_user.id, vin, allowed_vins=None)
+        assert result is not None
+        assert result.overdue_maintenance == 1
+        assert result.upcoming_maintenance == 0
+
+    @pytest.mark.asyncio
+    async def test_pure_hours_reminder_not_yet_due_is_upcoming(self, db_session, aggregation_user):
+        vehicle = await _make_vehicle(db_session, aggregation_user)
+        vin = vehicle.vin
+        db_session.add(HoursRecord(vin=vin, date=date.today(), engine_hours=Decimal("100.0")))
+        db_session.add(
+            Reminder(
+                vin=vin,
+                title="Hours Not Due",
+                reminder_type="hours",
+                due_hours=Decimal("500.0"),
+                status="pending",
+            )
+        )
+        await db_session.commit()
+
+        svc = WidgetAggregationService(db_session)
+        result = await svc.vehicle_v2(aggregation_user.id, vin, allowed_vins=None)
+        assert result is not None
+        assert result.overdue_maintenance == 0
+        assert result.upcoming_maintenance == 1
+
+    @pytest.mark.asyncio
+    async def test_date_mileage_hours_reminders_all_evaluated_independently(
+        self, db_session, aggregation_user
+    ):
+        """Regression: date, mileage, AND hours reminders on the SAME vehicle
+        each classify correctly — the hours branch must not cross-contaminate
+        the pre-existing date/mileage checks."""
+        vehicle = await _make_vehicle(db_session, aggregation_user)
+        vin = vehicle.vin
+        db_session.add(OdometerRecord(vin=vin, date=date.today(), odometer_km=Decimal("60000")))
+        db_session.add(HoursRecord(vin=vin, date=date.today(), engine_hours=Decimal("50.0")))
+        past = date.today() - timedelta(days=5)
+        future = date.today() + timedelta(days=30)
+        db_session.add_all(
+            [
+                Reminder(
+                    vin=vin,
+                    title="overdue by date",
+                    reminder_type="date",
+                    due_date=past,
+                    status="pending",
+                ),
+                Reminder(
+                    vin=vin,
+                    title="overdue by mileage",
+                    reminder_type="mileage",
+                    due_mileage_km=Decimal("40000"),
+                    status="pending",
+                ),
+                Reminder(
+                    vin=vin,
+                    title="overdue by hours",
+                    reminder_type="hours",
+                    due_hours=Decimal("40.0"),
+                    status="pending",
+                ),
+                Reminder(
+                    vin=vin,
+                    title="upcoming date",
+                    reminder_type="date",
+                    due_date=future,
+                    status="pending",
+                ),
+                Reminder(
+                    vin=vin,
+                    title="upcoming mileage",
+                    reminder_type="mileage",
+                    due_mileage_km=Decimal("90000"),
+                    status="pending",
+                ),
+                Reminder(
+                    vin=vin,
+                    title="upcoming hours",
+                    reminder_type="hours",
+                    due_hours=Decimal("999.0"),
+                    status="pending",
+                ),
+            ]
+        )
+        await db_session.commit()
+
+        svc = WidgetAggregationService(db_session)
+        result = await svc.vehicle_v2(aggregation_user.id, vin, allowed_vins=None)
+        assert result is not None
+        assert result.overdue_maintenance == 3
+        assert result.upcoming_maintenance == 3
+
+    @pytest.mark.asyncio
+    async def test_summary_overdue_total_counts_hours_reminder(self, db_session, aggregation_user):
+        """The garage-wide summary() total must also become hours-aware —
+        it shares `_overdue_upcoming` with the per-vehicle rollup."""
+        svc = WidgetAggregationService(db_session)
+        baseline = await svc.summary(aggregation_user.id, allowed_vins=None)
+
+        vehicle = await _make_vehicle(db_session, aggregation_user)
+        vin = vehicle.vin
+        db_session.add(HoursRecord(vin=vin, date=date.today(), engine_hours=Decimal("300.0")))
+        db_session.add(
+            Reminder(
+                vin=vin,
+                title="Summary Hours Overdue",
+                reminder_type="hours",
+                due_hours=Decimal("250.0"),
+                status="pending",
+            )
+        )
+        await db_session.commit()
+
+        after = await svc.summary(aggregation_user.id, allowed_vins=None)
+        assert after.total_overdue_maintenance - baseline.total_overdue_maintenance == 1
+
+    @pytest.mark.asyncio
+    async def test_no_n_plus_one_on_current_hours_fetch(
+        self, db_session, aggregation_user, monkeypatch
+    ):
+        """No N+1: `latest_engine_hours_and_date` is called exactly once for
+        `vehicle_v2()` regardless of how many pending hours reminders the
+        vehicle has — the value is fetched once for `latest_hours` and reused
+        for the overdue-count evaluation, not re-queried per reminder."""
+        import app.services.widget_aggregation as widget_aggregation_module
+
+        vehicle = await _make_vehicle(db_session, aggregation_user)
+        vin = vehicle.vin
+        db_session.add(HoursRecord(vin=vin, date=date.today(), engine_hours=Decimal("500.0")))
+        db_session.add_all(
+            [
+                Reminder(
+                    vin=vin,
+                    title="A",
+                    reminder_type="hours",
+                    due_hours=Decimal("100.0"),
+                    status="pending",
+                ),
+                Reminder(
+                    vin=vin,
+                    title="B",
+                    reminder_type="hours",
+                    due_hours=Decimal("200.0"),
+                    status="pending",
+                ),
+                Reminder(
+                    vin=vin,
+                    title="C",
+                    reminder_type="hours",
+                    due_hours=Decimal("999.0"),
+                    status="pending",
+                ),
+            ]
+        )
+        await db_session.commit()
+
+        calls: dict[str, int] = {"n": 0}
+        original = widget_aggregation_module.latest_engine_hours_and_date
+
+        async def counting(db, vin_arg):
+            calls["n"] += 1
+            return await original(db, vin_arg)
+
+        monkeypatch.setattr(widget_aggregation_module, "latest_engine_hours_and_date", counting)
+
+        svc = WidgetAggregationService(db_session)
+        result = await svc.vehicle_v2(aggregation_user.id, vin, allowed_vins=None)
+        assert result is not None
+        # current hours = 500.0: due_hours 100/200 are overdue, 999 is not.
+        assert result.overdue_maintenance == 2
+        assert result.upcoming_maintenance == 1
+        assert calls["n"] == 1

@@ -6,6 +6,7 @@ snake_case so they map directly to homepage's `field:` references.
 """
 
 from datetime import date
+from decimal import Decimal
 
 from pydantic import BaseModel
 
@@ -72,6 +73,14 @@ class WidgetVehicleV2(BaseModel):
     (``odometer`` in miles, ``recent_mpg``/``average_mpg``) so v2 is a strict
     superset and the legacy imperial endpoint can be retired losslessly. The
     homepage customapi widget picks which 4 fields to display.
+
+    Engine-hours fields (Task 8): ``latest_hours``/``average_l_per_hr``/
+    ``average_cost_per_hr`` are hours-only additions — v1 never gains these,
+    since it is frozen. Hours are dimensionless (no imperial/metric split),
+    so unlike the distance fields above there is no second unit-system
+    variant to add; ``Decimal`` end to end, matching
+    ``schemas/dashboard.py``'s ``VehicleStatistics``. Null for a
+    pure-distance vehicle (no ``hours_records`` rows).
     """
 
     label: str
@@ -89,6 +98,10 @@ class WidgetVehicleV2(BaseModel):
     average_km_per_l: float | None = None
     recent_mpg: float | None = None
     average_mpg: float | None = None
+
+    latest_hours: Decimal | None = None
+    average_l_per_hr: Decimal | None = None
+    average_cost_per_hr: Decimal | None = None
 
     upcoming_maintenance: int
     overdue_maintenance: int

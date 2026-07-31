@@ -295,6 +295,49 @@ class TestVehicleDetailEndpoint:
         resp = await client.get(f"/api/widget/vehicle/{v2.vin}", headers={"X-API-Key": plaintext})
         assert resp.status_code == 404
 
+    async def test_v1_shape_locked_no_hours_fields(
+        self, client: AsyncClient, db_session, widget_owner, set_auth_mode
+    ):
+        """Task 8 constraint: hours land in the v2 widget ONLY. Even a vehicle
+        with real hours data must not leak latest_hours/average_l_per_hr/
+        average_cost_per_hr onto the legacy (frozen, imperial) v1 response —
+        those keys must not exist in the v1 `WidgetVehicle` shape at all."""
+        from decimal import Decimal
+
+        from app.models.hours import HoursRecord
+
+        await set_auth_mode("local")
+        plaintext = await _make_key(db_session, widget_owner)
+        v = await _make_vehicle(db_session, widget_owner)
+        db_session.add(HoursRecord(vin=v.vin, date=date(2026, 1, 1), engine_hours=Decimal("42.0")))
+        await db_session.commit()
+
+        resp = await client.get(f"/api/widget/vehicle/{v.vin}", headers={"X-API-Key": plaintext})
+        assert resp.status_code == 200
+        data = resp.json()
+        for field in ("latest_hours", "average_l_per_hr", "average_cost_per_hr"):
+            assert field not in data
+        # v1's known field set is otherwise exactly what it was pre-Task-8.
+        assert set(data.keys()) == {
+            "label",
+            "year",
+            "make",
+            "model",
+            "odometer",
+            "odometer_date",
+            "recent_mpg",
+            "average_mpg",
+            "upcoming_maintenance",
+            "overdue_maintenance",
+            "service_records",
+            "fuel_records",
+            "last_service_date",
+            "last_fuel_date",
+            "documents",
+            "notes",
+            "photos",
+        }
+
     async def test_ownership_transfer_drift_invalidates_immediately(
         self, client: AsyncClient, db_session, widget_owner, set_auth_mode
     ):
