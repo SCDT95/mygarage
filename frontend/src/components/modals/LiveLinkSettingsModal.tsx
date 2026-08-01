@@ -28,7 +28,7 @@ import {
 } from 'lucide-react'
 import { livelinkService } from '@/services/livelinkService'
 import { vehicleService } from '@/services/vehicleService'
-import { Select, Drawer } from '@/components/ui'
+import { Select, Drawer, Toggle } from '@/components/ui'
 import type {
   LiveLinkSettings,
   LiveLinkSettingsUpdate,
@@ -402,19 +402,15 @@ export default function LiveLinkSettingsModal({ isOpen, onClose }: LiveLinkSetti
 
                 <div className="space-y-4">
                   {/* Enable Toggle */}
-                  <label className="flex items-center gap-3">
-                    <input
-                      type="checkbox"
+                  <div>
+                    <Toggle
+                      label={t('modal.enableLiveLink')}
                       checked={settings?.enabled ?? false}
-                      onChange={(e) => handleSaveSettings({ enabled: e.target.checked })}
+                      onChange={(next) => handleSaveSettings({ enabled: next })}
                       disabled={saving}
-                      className="w-4 h-4 text-primary bg-garage-bg border-garage-border rounded focus:ring-primary focus:ring-2"
                     />
-                    <div>
-                      <span className="text-garage-text font-medium">{t('modal.enableLiveLink')}</span>
-                      <p className="text-xs text-garage-text-muted">{t('modal.acceptTelemetry')}</p>
-                    </div>
-                  </label>
+                    <p className="text-xs text-garage-text-muted mt-1">{t('modal.acceptTelemetry')}</p>
+                  </div>
 
                   {/* Ingestion URL */}
                   <div>
@@ -520,19 +516,15 @@ export default function LiveLinkSettingsModal({ isOpen, onClose }: LiveLinkSetti
 
                 <div className="space-y-4">
                   {/* Enable Toggle */}
-                  <label className="flex items-center gap-3">
-                    <input
-                      type="checkbox"
+                  <div>
+                    <Toggle
+                      label={t('modal.enableMqttSubscription')}
                       checked={mqttSettings?.enabled ?? false}
-                      onChange={(e) => handleSaveMqttSettings({ enabled: e.target.checked })}
+                      onChange={(next) => handleSaveMqttSettings({ enabled: next })}
                       disabled={savingMqtt}
-                      className="w-4 h-4 text-primary bg-garage-bg border-garage-border rounded focus:ring-primary focus:ring-2"
                     />
-                    <div>
-                      <span className="text-garage-text font-medium">{t('modal.enableMqttSubscription')}</span>
-                      <p className="text-xs text-garage-text-muted">{t('modal.mqttDescription')}</p>
-                    </div>
-                  </label>
+                    <p className="text-xs text-garage-text-muted mt-1">{t('modal.mqttDescription')}</p>
+                  </div>
 
                   {/* Broker Settings */}
                   <div className="grid grid-cols-2 gap-4">
@@ -609,16 +601,12 @@ export default function LiveLinkSettingsModal({ isOpen, onClose }: LiveLinkSetti
                       />
                     </div>
                     <div className="flex items-center">
-                      <label className="flex items-center gap-3">
-                        <input
-                          type="checkbox"
-                          checked={mqttSettings?.use_tls ?? false}
-                          onChange={(e) => handleSaveMqttSettings({ use_tls: e.target.checked })}
-                          disabled={savingMqtt}
-                          className="w-4 h-4 text-primary bg-garage-bg border-garage-border rounded focus:ring-primary focus:ring-2"
-                        />
-                        <span className="text-garage-text font-medium text-sm">{t('modal.useTls')}</span>
-                      </label>
+                      <Toggle
+                        label={t('modal.useTls')}
+                        checked={mqttSettings?.use_tls ?? false}
+                        onChange={(next) => handleSaveMqttSettings({ use_tls: next })}
+                        disabled={savingMqtt}
+                      />
                     </div>
                   </div>
 
@@ -747,23 +735,17 @@ export default function LiveLinkSettingsModal({ isOpen, onClose }: LiveLinkSetti
                     />
                   </div>
                   <div className="flex items-center">
-                    <label className="flex items-center gap-3">
-                      <input
-                        type="checkbox"
+                    <div>
+                      <Toggle
+                        label={t('modal.livelink.dailyAggregation')}
                         checked={settings?.daily_aggregation_enabled ?? true}
-                        onChange={(e) => handleSaveSettings({ daily_aggregation_enabled: e.target.checked })}
+                        onChange={(next) => handleSaveSettings({ daily_aggregation_enabled: next })}
                         disabled={saving}
-                        className="w-4 h-4 text-primary bg-garage-bg border-garage-border rounded focus:ring-primary focus:ring-2"
                       />
-                      <div>
-                        <span className="text-garage-text font-medium text-sm">
-                          {t('modal.livelink.dailyAggregation')}
-                        </span>
-                        <p className="text-xs text-garage-text-muted">
-                          {t('modal.livelink.dailyAggregationDesc')}
-                        </p>
-                      </div>
-                    </label>
+                      <p className="text-xs text-garage-text-muted mt-1">
+                        {t('modal.livelink.dailyAggregationDesc')}
+                      </p>
+                    </div>
                   </div>
                 </div>
               </section>
@@ -836,46 +818,30 @@ export default function LiveLinkSettingsModal({ isOpen, onClose }: LiveLinkSetti
                   </div>
                   <div /> {/* Empty cell for grid alignment */}
                   <div className="col-span-2 grid grid-cols-2 gap-3">
-                    <label className="flex items-center gap-2">
-                      <input
-                        type="checkbox"
-                        checked={settings?.notify_new_device ?? true}
-                        onChange={(e) => handleSaveSettings({ notify_new_device: e.target.checked })}
-                        disabled={saving}
-                        className="w-4 h-4 text-primary bg-garage-bg border-garage-border rounded"
-                      />
-                      <span className="text-sm text-garage-text">{t('modal.livelink.notifyNewDevice')}</span>
-                    </label>
-                    <label className="flex items-center gap-2">
-                      <input
-                        type="checkbox"
-                        checked={settings?.notify_device_offline ?? true}
-                        onChange={(e) => handleSaveSettings({ notify_device_offline: e.target.checked })}
-                        disabled={saving}
-                        className="w-4 h-4 text-primary bg-garage-bg border-garage-border rounded"
-                      />
-                      <span className="text-sm text-garage-text">{t('modal.livelink.notifyDeviceOffline')}</span>
-                    </label>
-                    <label className="flex items-center gap-2">
-                      <input
-                        type="checkbox"
-                        checked={settings?.notify_threshold_alerts ?? true}
-                        onChange={(e) => handleSaveSettings({ notify_threshold_alerts: e.target.checked })}
-                        disabled={saving}
-                        className="w-4 h-4 text-primary bg-garage-bg border-garage-border rounded"
-                      />
-                      <span className="text-sm text-garage-text">{t('modal.livelink.notifyThresholdAlerts')}</span>
-                    </label>
-                    <label className="flex items-center gap-2">
-                      <input
-                        type="checkbox"
-                        checked={settings?.notify_firmware_update ?? true}
-                        onChange={(e) => handleSaveSettings({ notify_firmware_update: e.target.checked })}
-                        disabled={saving}
-                        className="w-4 h-4 text-primary bg-garage-bg border-garage-border rounded"
-                      />
-                      <span className="text-sm text-garage-text">{t('modal.livelink.notifyFirmwareUpdate')}</span>
-                    </label>
+                    <Toggle
+                      label={t('modal.livelink.notifyNewDevice')}
+                      checked={settings?.notify_new_device ?? true}
+                      onChange={(next) => handleSaveSettings({ notify_new_device: next })}
+                      disabled={saving}
+                    />
+                    <Toggle
+                      label={t('modal.livelink.notifyDeviceOffline')}
+                      checked={settings?.notify_device_offline ?? true}
+                      onChange={(next) => handleSaveSettings({ notify_device_offline: next })}
+                      disabled={saving}
+                    />
+                    <Toggle
+                      label={t('modal.livelink.notifyThresholdAlerts')}
+                      checked={settings?.notify_threshold_alerts ?? true}
+                      onChange={(next) => handleSaveSettings({ notify_threshold_alerts: next })}
+                      disabled={saving}
+                    />
+                    <Toggle
+                      label={t('modal.livelink.notifyFirmwareUpdate')}
+                      checked={settings?.notify_firmware_update ?? true}
+                      onChange={(next) => handleSaveSettings({ notify_firmware_update: next })}
+                      disabled={saving}
+                    />
                   </div>
                 </div>
               </section>
@@ -888,21 +854,15 @@ export default function LiveLinkSettingsModal({ isOpen, onClose }: LiveLinkSetti
                 </div>
 
                 <div className="space-y-4">
-                  <label className="flex items-center gap-3">
-                    <input
-                      type="checkbox"
+                  <div>
+                    <Toggle
+                      label={t('modal.livelink.autoCheckUpdates')}
                       checked={settings?.firmware_check_enabled ?? true}
-                      onChange={(e) => handleSaveSettings({ firmware_check_enabled: e.target.checked })}
+                      onChange={(next) => handleSaveSettings({ firmware_check_enabled: next })}
                       disabled={saving}
-                      className="w-4 h-4 text-primary bg-garage-bg border-garage-border rounded focus:ring-primary focus:ring-2"
                     />
-                    <div>
-                      <span className="text-garage-text font-medium text-sm">
-                        {t('modal.livelink.autoCheckUpdates')}
-                      </span>
-                      <p className="text-xs text-garage-text-muted">{t('modal.livelink.autoCheckUpdatesDesc')}</p>
-                    </div>
-                  </label>
+                    <p className="text-xs text-garage-text-muted mt-1">{t('modal.livelink.autoCheckUpdatesDesc')}</p>
+                  </div>
 
                   <div className="flex items-center gap-4">
                     <div>
@@ -1186,15 +1146,13 @@ function DeviceRow({
                 className="px-2 py-1 bg-garage-bg border border-garage-border rounded text-xs text-garage-text w-40 focus:ring-1 focus:ring-primary"
               />
             </div>
-            <label className="flex items-center gap-2 mb-1">
-              <input
-                type="checkbox"
+            <div className="mb-1">
+              <Toggle
+                label={t('modal.livelink.autoSdBackfill')}
                 checked={sdEnabled}
-                onChange={(e) => setSdEnabled(e.target.checked)}
-                className="w-4 h-4 text-primary bg-garage-bg border-garage-border rounded focus:ring-primary focus:ring-2"
+                onChange={setSdEnabled}
               />
-              <span className="text-xs text-garage-text">{t('modal.livelink.autoSdBackfill')}</span>
-            </label>
+            </div>
             <button
               onClick={handleSaveSdConfig}
               disabled={savingSd || sdAddress.trim() === ''}

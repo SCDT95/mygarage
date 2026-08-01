@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
-import { CheckCircle, AlertCircle, Plug, Shield, Check, X, Plus, Radio, Settings, ArrowUpCircle } from 'lucide-react'
+import { CheckCircle, AlertCircle, Plug, Shield, Check, X, Plus, Radio, Settings, ArrowUpCircle, HelpCircle } from 'lucide-react'
 import { useSettings } from '@/contexts/SettingsContext'
 import { useAuth } from '@/contexts/AuthContext'
 import api from '@/services/api'
@@ -10,7 +10,7 @@ import AddProviderModal from '../modals/AddProviderModal'
 import EditProviderModal from '../modals/EditProviderModal'
 import LiveLinkSettingsModal from '../modals/LiveLinkSettingsModal'
 import WidgetKeysPanel from '../settings/WidgetKeysPanel'
-import { Select, Toggle } from '../ui'
+import { Select, Toggle, Drawer } from '../ui'
 
 // Sample VIN for testing NHTSA API connection
 const TEST_VIN = '1HGCM82633A123456'
@@ -53,6 +53,8 @@ export default function SettingsIntegrationsTab() {
   const [selectedProvider, setSelectedProvider] = useState<POIProvider | null>(null)
   const [isEditModalOpen, setIsEditModalOpen] = useState(false)
   const [isLiveLinkModalOpen, setIsLiveLinkModalOpen] = useState(false)
+  // Which card's "About" help sidecar is open (null = closed).
+  const [helpDrawer, setHelpDrawer] = useState<'carcomplaints' | 'livelink' | null>(null)
 
   // LiveLink state
   const [livelinkSettings, setLivelinkSettings] = useState<LiveLinkSettings | null>(null)
@@ -353,6 +355,14 @@ export default function SettingsIntegrationsTab() {
               {t('integrations.carComplaintsDesc')}
             </p>
           </div>
+          <button
+            type="button"
+            onClick={() => setHelpDrawer('carcomplaints')}
+            aria-label={t('integrations.aboutCarComplaints')}
+            className="shrink-0 inline-flex h-7 w-7 items-center justify-center rounded-full border border-garage-border text-garage-text-muted hover:text-(--accent-fg) hover:border-(--accent-line) transition-colors"
+          >
+            <HelpCircle className="w-4 h-4" />
+          </button>
         </div>
 
         <div className="space-y-6">
@@ -365,16 +375,6 @@ export default function SettingsIntegrationsTab() {
             />
             <p className="mt-1 text-sm text-garage-text-muted">
               {t('integrations.enableCarComplaintsDesc')}
-            </p>
-          </div>
-
-          <div className="bg-(--accent-soft) rounded-lg p-4 border border-(--accent-line)">
-            <h3 className="text-sm font-medium text-garage-text mb-2">{t('integrations.aboutCarComplaints')}</h3>
-            <p className="text-sm text-garage-text-muted">
-              {t('integrationsTab.aboutCarComplaintsBody')}
-            </p>
-            <p className="text-sm text-garage-text-muted mt-2">
-              <strong>{t('integrationsTab.noteLabel')}</strong> {t('integrationsTab.carComplaintsVehicleNote')}
             </p>
           </div>
         </div>
@@ -392,6 +392,14 @@ export default function SettingsIntegrationsTab() {
                 {t('integrations.livelinkDesc')}
               </p>
             </div>
+            <button
+              type="button"
+              onClick={() => setHelpDrawer('livelink')}
+              aria-label={t('integrations.aboutLiveLink')}
+              className="shrink-0 inline-flex h-7 w-7 items-center justify-center rounded-full border border-garage-border text-garage-text-muted hover:text-(--accent-fg) hover:border-(--accent-line) transition-colors"
+            >
+              <HelpCircle className="w-4 h-4" />
+            </button>
           </div>
 
           <div className="space-y-6">
@@ -456,17 +464,6 @@ export default function SettingsIntegrationsTab() {
                 </div>
               </>
             )}
-
-            {/* Info Box */}
-            <div className="bg-(--accent-soft) rounded-lg p-4 border border-(--accent-line)">
-              <h3 className="text-sm font-medium text-garage-text mb-2">{t('integrations.aboutLiveLink')}</h3>
-              <p className="text-sm text-garage-text-muted">
-                {t('integrationsTab.aboutLiveLinkBody')}
-              </p>
-              <p className="text-sm text-garage-text-muted mt-2">
-                <strong>{t('integrationsTab.requiresLabel')}</strong> {t('integrationsTab.livelinkFirmwareRequirement')}
-              </p>
-            </div>
           </div>
         </div>
         )}
@@ -564,6 +561,41 @@ export default function SettingsIntegrationsTab() {
         isOpen={isLiveLinkModalOpen}
         onClose={() => setIsLiveLinkModalOpen(false)}
       />
+
+      {/* About / help sidecar — opened from each card's upper-right help button. */}
+      <Drawer
+        open={helpDrawer !== null}
+        onClose={() => setHelpDrawer(null)}
+        title={
+          helpDrawer === 'livelink'
+            ? t('integrations.aboutLiveLink')
+            : t('integrations.aboutCarComplaints')
+        }
+        icon={HelpCircle}
+        width="sm"
+        closeLabel={t('common:close')}
+      >
+        {helpDrawer === 'carcomplaints' && (
+          <div className="space-y-3">
+            <p className="text-sm text-garage-text-muted">
+              {t('integrationsTab.aboutCarComplaintsBody')}
+            </p>
+            <p className="text-sm text-garage-text-muted">
+              <strong>{t('integrationsTab.noteLabel')}</strong> {t('integrationsTab.carComplaintsVehicleNote')}
+            </p>
+          </div>
+        )}
+        {helpDrawer === 'livelink' && (
+          <div className="space-y-3">
+            <p className="text-sm text-garage-text-muted">
+              {t('integrationsTab.aboutLiveLinkBody')}
+            </p>
+            <p className="text-sm text-garage-text-muted">
+              <strong>{t('integrationsTab.requiresLabel')}</strong> {t('integrationsTab.livelinkFirmwareRequirement')}
+            </p>
+          </div>
+        )}
+      </Drawer>
     </div>
   )
 }
