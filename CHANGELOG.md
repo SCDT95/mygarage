@@ -24,6 +24,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Dropped 14 unreachable components, schemas and types (~1790 lines) left behind by earlier refactors, along with the translation keys only they used.
 
 ### Fixed
+- Fuel summary on hours-tracked vehicles no longer shows a distance-based cost-per-mile stat, and the imperial fuel rate now reads GPH.
 - OIDC: login failed with "Failed to verify ID token" against providers whose issuer ends in a slash (Rauthy), because the saved issuer URL has it stripped. The `iss` claim is now checked against the discovery document.
 - Theme: the `primary` colour token was never defined, so roughly 560 uses of `bg-primary` / `text-primary` / `border-primary` rendered uncoloured.
 - Dates, numbers and units now follow the selected language rather than the browser's locale.
