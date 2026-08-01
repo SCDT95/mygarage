@@ -34,10 +34,6 @@ vi.mock('@/contexts/AuthContext', () => ({
   }),
 }))
 
-vi.mock('@/hooks/useThemePreference', () => ({
-  useThemePreference: () => ({ theme: 'light', setTheme: vi.fn(), toggleTheme: vi.fn() }),
-}))
-
 // Children with their own data fetching; not under test here.
 vi.mock('@/components/ArchivedVehiclesList', () => ({ default: () => null }))
 vi.mock('@/components/modals/OIDCModal', () => ({ default: () => null }))

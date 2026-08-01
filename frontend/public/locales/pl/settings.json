@@ -22,12 +22,6 @@
     "enable": "Włącz szczegółowe logowanie i rozbudowane komunikaty o błędach",
     "warning": "⚠️ Aby zmiany odniosły skutek, wymagane jest ponowne uruchomienie aplikacji. Włączaj tylko w celu rozwiązywania problemów."
   },
-  "theme": {
-    "label": "Motyw",
-    "dark": "Ciemny",
-    "light": "Jasny",
-    "description": "Wybierz między jasnym a ciemnym motywem. Twoje preferencje są zapisywane automatycznie."
-  },
   "units": {
     "label": "System jednostek",
     "imperial": "Imperialny",

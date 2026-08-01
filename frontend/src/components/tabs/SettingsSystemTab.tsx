@@ -1,9 +1,8 @@
 import { useState, useCallback, useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Server, CheckCircle, AlertCircle, Info, Shield, Users, AlertTriangle, Key, Wrench, Fuel, Bell, FileText, StickyNote, Camera, Sun, Moon, Ruler, Clock, Archive, Smartphone, Globe, DollarSign } from 'lucide-react'
+import { Server, CheckCircle, AlertCircle, Info, Shield, Users, AlertTriangle, Key, Wrench, Fuel, Bell, FileText, StickyNote, Camera, Ruler, Clock, Archive, Smartphone, Globe, DollarSign } from 'lucide-react'
 import { useAuth } from '@/contexts/AuthContext'
 import { useSettings } from '@/contexts/SettingsContext'
-import { useThemePreference } from '@/hooks/useThemePreference'
 import type { DashboardResponse } from '@/types/dashboard'
 import api from '@/services/api'
 import { toast } from 'sonner'
@@ -12,7 +11,7 @@ import { SUPPORTED_LANGUAGES, SUPPORTED_CURRENCIES, languageToLocale } from '@/c
 import OIDCModal from '@/components/modals/OIDCModal'
 import FamilyManagementModal from '@/components/modals/FamilyManagementModal'
 import ArchivedVehiclesList from '@/components/ArchivedVehiclesList'
-import { Select } from '../ui'
+import { Select, Toggle } from '../ui'
 
 type RawSetting = {
   key: string
@@ -24,7 +23,6 @@ export default function SettingsSystemTab() {
   const { i18n } = useTranslation()
   const { isAuthenticated, isAdmin, user: currentUser, refreshUser } = useAuth()
   const { triggerSave, registerSaveHandler, unregisterSaveHandler } = useSettings()
-  const { theme, setTheme } = useThemePreference()
   const [formData, setFormData] = useState({
     timezone: 'UTC',
     debug: 'false',
@@ -556,9 +554,9 @@ export default function SettingsSystemTab() {
         {/* Debug Mode Setting */}
         <div>
           <div className="flex items-center gap-3 mb-2">
-            <label htmlFor="debug" className="text-sm font-medium text-garage-text">
+            <span className="text-sm font-medium text-garage-text">
               {t('debug.label')}
-            </label>
+            </span>
             <div className="relative group">
               <Info className="w-4 h-4 text-garage-text-muted cursor-help" />
               <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-3 py-2 bg-gray-900 text-white text-xs rounded-lg opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap z-10">
@@ -566,54 +564,14 @@ export default function SettingsSystemTab() {
               </div>
             </div>
           </div>
-          <label className="flex items-center gap-3 cursor-pointer">
-            <input
-              id="debug"
-              type="checkbox"
-              checked={formData.debug === 'true'}
-              onChange={(e) => setFormData({ ...formData, debug: e.target.checked ? 'true' : 'false' })}
-              className="w-4 h-4 text-primary bg-garage-bg border-garage-border rounded focus:ring-primary focus:ring-2"
-            />
-            <span className="text-sm text-garage-text">
-              {t('debug.enable')}
-            </span>
-          </label>
-          <p className="mt-2 ml-7 text-sm text-garage-text-muted">
-            {t('debug.warning')}
-          </p>
-        </div>
-
-        {/* Theme Setting */}
-        <div>
-          <label className="block text-sm font-medium text-garage-text mb-3">
-            {t('theme.label')}
-          </label>
-          <div className="flex gap-3">
-            <button
-              onClick={() => setTheme('dark')}
-              className={`flex-1 flex items-center justify-center gap-2 px-4 py-3 rounded-lg border-2 transition-all ${
-                theme === 'dark'
-                  ? 'border-primary bg-primary/10 text-primary'
-                  : 'border-garage-border bg-garage-bg text-garage-text hover:border-garage-border'
-              }`}
-            >
-              <Moon className="w-5 h-5" />
-              <span className="font-medium">{t('theme.dark')}</span>
-            </button>
-            <button
-              onClick={() => setTheme('light')}
-              className={`flex-1 flex items-center justify-center gap-2 px-4 py-3 rounded-lg border-2 transition-all ${
-                theme === 'light'
-                  ? 'border-primary bg-primary/10 text-primary'
-                  : 'border-garage-border bg-garage-bg text-garage-text hover:border-garage-border'
-              }`}
-            >
-              <Sun className="w-5 h-5" />
-              <span className="font-medium">{t('theme.light')}</span>
-            </button>
-          </div>
+          <Toggle
+            id="debug"
+            label={t('debug.enable')}
+            checked={formData.debug === 'true'}
+            onChange={(next) => setFormData({ ...formData, debug: next ? 'true' : 'false' })}
+          />
           <p className="mt-2 text-sm text-garage-text-muted">
-            {t('theme.description')}
+            {t('debug.warning')}
           </p>
         </div>
 
@@ -655,21 +613,15 @@ export default function SettingsSystemTab() {
             }
           </p>
 
-          {/* Show Both Units Checkbox */}
+          {/* Show Both Units Toggle */}
           <div className="mt-4">
-            <label className="flex items-center gap-3 cursor-pointer">
-              <input
-                type="checkbox"
-                checked={showBothUnits}
-                onChange={(e) => handleShowBothUnitsChange(e.target.checked)}
-                disabled={unitPreferenceSaving}
-                className="w-4 h-4 text-primary bg-garage-bg border-garage-border rounded focus:ring-primary focus:ring-2"
-              />
-              <span className="text-sm text-garage-text">
-                {t('units.showBoth')}
-              </span>
-            </label>
-            <p className="mt-1 ml-7 text-sm text-garage-text-muted">
+            <Toggle
+              label={t('units.showBoth')}
+              checked={showBothUnits}
+              onChange={handleShowBothUnitsChange}
+              disabled={unitPreferenceSaving}
+            />
+            <p className="mt-1 text-sm text-garage-text-muted">
               {t('units.showBothDescription')}
             </p>
           </div>
@@ -837,21 +789,17 @@ export default function SettingsSystemTab() {
             </div>
           </div>
 
-          <label className="flex items-start gap-3 cursor-pointer">
-            <input
-              type="checkbox"
+          <div>
+            <Toggle
+              label={t('mobile.quickEntry')}
               checked={mobileQuickEntry}
-              onChange={e => handleMobileQuickEntryChange(e.target.checked)}
+              onChange={handleMobileQuickEntryChange}
               disabled={mobileQuickEntrySaving}
-              className="w-4 h-4 mt-0.5 text-primary bg-garage-bg border-garage-border rounded focus:ring-primary focus:ring-2"
             />
-            <div>
-              <span className="text-sm font-medium text-garage-text">{t('mobile.quickEntry')}</span>
-              <p className="mt-0.5 text-sm text-garage-text-muted">
-                {t('mobile.quickEntryDescription')}
-              </p>
-            </div>
-          </label>
+            <p className="mt-1 text-sm text-garage-text-muted">
+              {t('mobile.quickEntryDescription')}
+            </p>
+          </div>
         </div>
       )}
 

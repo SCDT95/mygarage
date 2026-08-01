@@ -22,9 +22,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Redesigned the Address Book: category filter chips (with Gas Station and RV Park) replace the dropdown and the separate Gas Stations button, contact cards open an edit sidecar, and Add/Edit are slide-in panels.
 - Redesigned the garage Analytics page: Cost by Category is a donut with a per-category breakdown, Running Costs by Vehicle reads cleaner without a scrollbar, and the spending-trend average lines now span the full range.
 - Toggle switches now read as the accent colour when on and red when off, everywhere they appear; the Find POI "Use My Location" button is sized to its label.
+- Settings → System Configuration: the Debug, "show both units" and mobile quick-entry checkboxes are now toggle switches.
 
 ### Removed
 - Dropped 14 unreachable components, schemas and types (~1790 lines) left behind by earlier refactors, along with the translation keys only they used.
+- Settings → System Configuration: removed the light/dark theme selector — the theme toggle in the top bar is now the single control.
 
 ### Fixed
 - Fuel summary on hours-tracked vehicles no longer shows a distance-based cost-per-mile stat, and the imperial fuel rate now reads GPH.

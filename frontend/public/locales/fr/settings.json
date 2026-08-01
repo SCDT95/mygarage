@@ -23,12 +23,6 @@
     "enable": "Activer la journalisation détaillée et les messages d'erreur complets",
     "warning": "⚠️ Nécessite un redémarrage de l'application pour prendre effet. À activer uniquement pour le dépannage."
   },
-  "theme": {
-    "label": "Thème",
-    "dark": "Sombre",
-    "light": "Clair",
-    "description": "Choisissez entre le thème clair et sombre. Votre préférence est enregistrée automatiquement."
-  },
   "units": {
     "label": "Système d'unités",
     "imperial": "Impérial",

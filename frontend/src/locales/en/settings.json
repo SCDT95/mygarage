@@ -23,12 +23,6 @@
     "enable": "Enable verbose logging and detailed error messages",
     "warning": "⚠️ Requires application restart to take effect. Only enable for troubleshooting."
   },
-  "theme": {
-    "label": "Theme",
-    "dark": "Dark",
-    "light": "Light",
-    "description": "Choose between light and dark theme. Your preference is saved automatically."
-  },
   "units": {
     "label": "Unit System",
     "imperial": "Imperial",

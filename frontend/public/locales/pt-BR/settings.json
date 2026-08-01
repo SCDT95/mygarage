@@ -22,12 +22,6 @@
     "enable": "Ativar log detalhado e mensagens de erro estendidas",
     "warning": "⚠️ Para que as alterações tenham efeito, é necessário reiniciar o aplicativo. Ative apenas para fins de solução de problemas."
   },
-  "theme": {
-    "label": "Tema",
-    "dark": "Escuro",
-    "light": "Claro",
-    "description": "Escolha entre o tema claro e o escuro. Suas preferências são salvas automaticamente."
-  },
   "units": {
     "label": "Sistema de unidades",
     "imperial": "Imperial",

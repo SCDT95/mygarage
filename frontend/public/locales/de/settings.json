@@ -22,12 +22,6 @@
     "enable": "Ausführliche Protokollierung und detaillierte Fehlermeldungen aktivieren",
     "warning": "⚠️ Erfordert einen Neustart der Anwendung, um wirksam zu werden. Nur zur Fehlerbehebung aktivieren."
   },
-  "theme": {
-    "label": "Design",
-    "dark": "Dunkel",
-    "light": "Hell",
-    "description": "Wähle zwischen hellem und dunklem Design. Deine Präferenz wird automatisch gespeichert."
-  },
   "units": {
     "label": "Einheitensystem",
     "imperial": "Imperial",
