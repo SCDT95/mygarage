@@ -16,8 +16,7 @@ import { useUnitPreference } from '@/hooks/useUnitPreference'
 import { useCurrencyPreference } from '@/hooks/useCurrencyPreference'
 import { canonicalToDisplay, supplyUnitLabel } from '@/utils/supplyUnits'
 import { makeSupplySchema, SUPPLY_UNIT_TYPES, type SupplyFormData } from '@/schemas/supplies'
-import { FormError } from '@/components/FormError'
-import { Select } from '@/components/ui'
+import { Select, Field, Input, Textarea, Checkbox, Button } from '@/components/ui'
 import FormModalWrapper from '@/components/FormModalWrapper'
 import SupplyHistoryModal from '@/components/SupplyHistoryModal'
 import type { Supply, SupplyCreate, SupplyUpdate } from '@/types/supplies'
@@ -308,154 +307,108 @@ export function SupplyForm({ supply, onClose, onSuccess }: SupplyFormProps) {
       width="md"
       footer={
         <>
-          <button
-            type="button"
-            onClick={onClose}
-            className="px-5 py-3 btn btn-secondary rounded-lg"
-            disabled={isSubmitting}
-          >
+          <Button variant="secondary" onClick={onClose} disabled={isSubmitting}>
             {t('common:cancel')}
-          </button>
-          <button
+          </Button>
+          <Button
             type="submit"
             form="supply-form"
+            variant="primary"
+            icon={Save}
+            loading={isSubmitting}
             disabled={isSubmitting}
-            className="flex items-center gap-2 px-5 py-3 btn btn-primary rounded-lg disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            <Save className="w-4 h-4" />
-            <span>{isSubmitting ? t('common:saving') : isEdit ? t('common:update') : t('common:create')}</span>
-          </button>
+            {isSubmitting ? t('common:saving') : isEdit ? t('common:update') : t('common:create')}
+          </Button>
         </>
       }
     >
-      <form id="supply-form" onSubmit={handleSubmit(onSubmit)} className="p-6 space-y-4">
-          {error && (
-            <div className="bg-danger/10 border border-danger rounded-lg p-3">
-              <p className="text-sm text-danger">{error}</p>
-            </div>
-          )}
-
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label htmlFor="name" className="block text-sm font-medium text-garage-text mb-1">
-                {t('supplies.name')} <span className="text-danger">*</span>
-              </label>
-              <input
-                type="text"
-                id="name"
-                {...register('name')}
-                placeholder={t('suppliesPage.namePlaceholder')}
-                className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-primary bg-garage-bg text-garage-text ${
-                  errors.name ? 'border-red-500' : 'border-garage-border'
-                }`}
-                disabled={isSubmitting}
-              />
-              <FormError error={errors.name} />
-            </div>
-
-            <div>
-              <label htmlFor="unit_type" className="block text-sm font-medium text-garage-text mb-1">
-                {t('supplies.unitType')} <span className="text-danger">*</span>
-              </label>
-              <Select
-                id="unit_type"
-                {...register('unit_type')}
-                disabled={isSubmitting || isEdit}
-                invalid={!!errors.unit_type}
-                options={SUPPLY_UNIT_TYPES.map((unitType) => ({
-                  value: unitType,
-                  label: unitType === 'volume' ? t('supplies.unitTypeVolume') : t('supplies.unitTypeCount'),
-                }))}
-              />
-              <FormError error={errors.unit_type} />
-              {isEdit && (
-                <p className="text-xs text-garage-text-muted mt-1">{t('supplies.unitTypeImmutable')}</p>
-              )}
-            </div>
+      <form id="supply-form" onSubmit={handleSubmit(onSubmit)} className="space-y-4 p-6">
+        {error && (
+          <div className="rounded-lg border border-danger bg-danger/10 p-3">
+            <p className="text-sm text-danger">{error}</p>
           </div>
+        )}
 
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label htmlFor="part_number" className="block text-sm font-medium text-garage-text mb-1">
-                {t('supplies.partNumber')}
-              </label>
-              <input
-                type="text"
-                id="part_number"
-                {...register('part_number')}
-                className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-primary bg-garage-bg text-garage-text ${
-                  errors.part_number ? 'border-red-500' : 'border-garage-border'
-                }`}
-                disabled={isSubmitting}
-              />
-              <FormError error={errors.part_number} />
-            </div>
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+          <Field id="name" label={t('supplies.name')} required error={errors.name}>
+            <Input
+              id="name"
+              type="text"
+              {...register('name')}
+              placeholder={t('suppliesPage.namePlaceholder')}
+              invalid={!!errors.name}
+              disabled={isSubmitting}
+            />
+          </Field>
 
-            <div>
-              <label htmlFor="category" className="block text-sm font-medium text-garage-text mb-1">
-                {t('supplies.category')}
-              </label>
-              <input
-                type="text"
-                id="category"
-                {...register('category')}
-                placeholder={t('suppliesPage.categoryPlaceholder')}
-                className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-primary bg-garage-bg text-garage-text ${
-                  errors.category ? 'border-red-500' : 'border-garage-border'
-                }`}
-                disabled={isSubmitting}
-              />
-              <FormError error={errors.category} />
-            </div>
-          </div>
-
-          <div>
-            <label htmlFor="vin" className="block text-sm font-medium text-garage-text mb-1">
-              {t('supplies.vehicle')}
-            </label>
+          <Field
+            id="unit_type"
+            label={t('supplies.unitType')}
+            required
+            error={errors.unit_type}
+            hint={isEdit ? t('supplies.unitTypeImmutable') : undefined}
+          >
             <Select
-              id="vin"
-              {...register('vin')}
-              disabled={isSubmitting}
-              invalid={!!errors.vin}
-              placeholder={t('supplies.sharedAcrossVehicles')}
-              options={vehicles.map((v) => ({ value: v.vin, label: vehicleLabel(v) }))}
+              id="unit_type"
+              {...register('unit_type')}
+              disabled={isSubmitting || isEdit}
+              invalid={!!errors.unit_type}
+              options={SUPPLY_UNIT_TYPES.map((unitType) => ({
+                value: unitType,
+                label: unitType === 'volume' ? t('supplies.unitTypeVolume') : t('supplies.unitTypeCount'),
+              }))}
             />
-            <FormError error={errors.vin} />
-          </div>
+          </Field>
+        </div>
 
-          <div>
-            <label htmlFor="notes" className="block text-sm font-medium text-garage-text mb-1">
-              {t('common:notes')}
-            </label>
-            <textarea
-              id="notes"
-              rows={3}
-              {...register('notes')}
-              className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-primary bg-garage-bg text-garage-text ${
-                errors.notes ? 'border-red-500' : 'border-garage-border'
-              }`}
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+          <Field id="part_number" label={t('supplies.partNumber')} error={errors.part_number}>
+            <Input
+              id="part_number"
+              type="text"
+              {...register('part_number')}
+              invalid={!!errors.part_number}
               disabled={isSubmitting}
             />
-            <FormError error={errors.notes} />
-          </div>
+          </Field>
 
-          {isEdit && (
-            <div className="flex items-center">
-              <input
-                type="checkbox"
-                id="is_active"
-                checked={isActive}
-                onChange={(e) => setIsActive(e.target.checked)}
-                className="h-4 w-4 text-primary focus:ring-primary border-garage-border rounded bg-garage-bg"
-                disabled={isSubmitting}
-              />
-              <label htmlFor="is_active" className="ml-2 block text-sm text-garage-text">
-                {t('supplies.activeToggle')}
-              </label>
-            </div>
-          )}
+          <Field id="category" label={t('supplies.category')} error={errors.category}>
+            <Input
+              id="category"
+              type="text"
+              {...register('category')}
+              placeholder={t('suppliesPage.categoryPlaceholder')}
+              invalid={!!errors.category}
+              disabled={isSubmitting}
+            />
+          </Field>
+        </div>
 
+        <Field id="vin" label={t('supplies.vehicle')} error={errors.vin}>
+          <Select
+            id="vin"
+            {...register('vin')}
+            disabled={isSubmitting}
+            invalid={!!errors.vin}
+            placeholder={t('supplies.sharedAcrossVehicles')}
+            options={vehicles.map((v) => ({ value: v.vin, label: vehicleLabel(v) }))}
+          />
+        </Field>
+
+        <Field id="notes" label={t('common:notes')} error={errors.notes}>
+          <Textarea id="notes" rows={3} {...register('notes')} invalid={!!errors.notes} disabled={isSubmitting} />
+        </Field>
+
+        {isEdit && (
+          <Checkbox
+            id="is_active"
+            label={t('supplies.activeToggle')}
+            checked={isActive}
+            onChange={(e) => setIsActive(e.target.checked)}
+            disabled={isSubmitting}
+          />
+        )}
       </form>
     </FormModalWrapper>
   )

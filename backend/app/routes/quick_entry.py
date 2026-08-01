@@ -43,7 +43,7 @@ class QuickEntryVehicleList(BaseModel):
 @router.get("/vehicles", response_model=QuickEntryVehicleList)
 async def list_quick_entry_vehicles(
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(require_auth),
+    current_user: User | None = Depends(require_auth),
 ) -> QuickEntryVehicleList:
     """Return writable, non-archived vehicles for the Quick Entry page.
 
@@ -52,36 +52,44 @@ async def list_quick_entry_vehicles(
     - Has write-share access to
 
     Excludes archived vehicles in both cases.
+
+    When auth is disabled (``auth_mode='none'`` — ``require_auth`` returns
+    ``None``), there is no user to scope to, so all non-archived vehicles are
+    returned, matching ``VehicleService.list_vehicles``.
     """
-    # Owned, non-archived vehicles
-    owned_result = await db.execute(
-        select(Vehicle).where(
-            Vehicle.user_id == current_user.id,
-            Vehicle.archived_at.is_(None),
+    if current_user is None:
+        all_result = await db.execute(select(Vehicle).where(Vehicle.archived_at.is_(None)))
+        all_vehicles = list(all_result.scalars().all())
+    else:
+        # Owned, non-archived vehicles
+        owned_result = await db.execute(
+            select(Vehicle).where(
+                Vehicle.user_id == current_user.id,
+                Vehicle.archived_at.is_(None),
+            )
         )
-    )
-    owned = list(owned_result.scalars().all())
+        owned = list(owned_result.scalars().all())
 
-    # Write-shared, non-archived vehicles (exclude already-owned to avoid duplicates)
-    owned_vins = {v.vin for v in owned}
-    shared_query = (
-        select(Vehicle)
-        .join(
-            VehicleShare,
-            VehicleShare.vehicle_vin == Vehicle.vin,
+        # Write-shared, non-archived vehicles (exclude already-owned to avoid duplicates)
+        owned_vins = {v.vin for v in owned}
+        shared_query = (
+            select(Vehicle)
+            .join(
+                VehicleShare,
+                VehicleShare.vehicle_vin == Vehicle.vin,
+            )
+            .where(
+                VehicleShare.user_id == current_user.id,
+                VehicleShare.permission == "write",
+                Vehicle.archived_at.is_(None),
+            )
         )
-        .where(
-            VehicleShare.user_id == current_user.id,
-            VehicleShare.permission == "write",
-            Vehicle.archived_at.is_(None),
-        )
-    )
-    if owned_vins:
-        shared_query = shared_query.where(Vehicle.vin.not_in(owned_vins))
-    shared_result = await db.execute(shared_query)
-    shared = list(shared_result.scalars().all())
+        if owned_vins:
+            shared_query = shared_query.where(Vehicle.vin.not_in(owned_vins))
+        shared_result = await db.execute(shared_query)
+        shared = list(shared_result.scalars().all())
 
-    all_vehicles = owned + shared
+        all_vehicles = owned + shared
 
     result = []
     for vehicle in all_vehicles:

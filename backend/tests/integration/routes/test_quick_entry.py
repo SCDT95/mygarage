@@ -207,6 +207,23 @@ class TestQuickEntryVehicles:
         vins = [v["vin"] for v in response.json()["vehicles"]]
         assert test_vehicle["vin"] in vins
 
+    async def test_auth_disabled_returns_all_vehicles(self, client: AsyncClient, test_vehicle):
+        """auth_mode='none' → require_auth returns None → all non-archived
+        vehicles, without dereferencing current_user (regression: the endpoint
+        used to 500 with AttributeError on current_user.id)."""
+        from app.main import app
+        from app.services.auth import require_auth
+
+        app.dependency_overrides[require_auth] = lambda: None
+        try:
+            response = await client.get("/api/quick-entry/vehicles")  # no auth headers
+        finally:
+            app.dependency_overrides.pop(require_auth, None)
+
+        assert response.status_code == 200
+        vins = [v["vin"] for v in response.json()["vehicles"]]
+        assert test_vehicle["vin"] in vins
+
     async def test_excludes_archived_vehicles(
         self, client: AsyncClient, auth_headers, test_user, db_session
     ):

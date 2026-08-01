@@ -2636,6 +2636,10 @@ export interface paths {
          *     - Has write-share access to
          *
          *     Excludes archived vehicles in both cases.
+         *
+         *     When auth is disabled (``auth_mode='none'`` — ``require_auth`` returns
+         *     ``None``), there is no user to scope to, so all non-archived vehicles are
+         *     returned, matching ``VehicleService.list_vehicles``.
          */
         get: operations["list_quick_entry_vehicles_api_quick_entry_vehicles_get"];
         put?: never;
