@@ -279,6 +279,92 @@ class TestServiceVisitDeleteCleansUpSyncedRecords:
         assert remaining_hours[0].source == "manual"
         assert remaining_hours[0].service_visit_id is None
 
+    async def test_delete_after_date_edit_removes_synced_odometer_row_at_old_date(
+        self, client: AsyncClient, auth_headers, test_user, db_session: AsyncSession
+    ) -> None:
+        """Regression: the sync helper matches on (vin, date), so editing a
+        visit's date after odometer sync leaves the ORIGINAL synced row
+        behind at the OLD date and creates a second synced row at the NEW
+        date. A delete that filters on date == visit.date would only catch
+        the new-date row and orphan the old-date one forever. The fix drops
+        the date predicate -- the marker alone uniquely identifies every row
+        this visit ever synced, so delete must clean up both."""
+        vin = "SVCHOURS000000007"
+        await _make_vehicle(db_session, int(test_user["id"]), vin)  # type: ignore[arg-type]
+        old_date = date(2026, 3, 5)
+        new_date = date(2026, 4, 10)
+
+        created = (
+            await client.post(
+                f"/api/vehicles/{vin}/service-visits",
+                json={
+                    "date": old_date.isoformat(),
+                    "odometer_km": 3000.0,
+                    "line_items": [{"description": "Oil change", "cost": 45.0}],
+                },
+                headers=auth_headers,
+            )
+        ).json()
+        visit_id = created["id"]
+        marker = f"[AUTO-SYNC from service_visit #{visit_id}]"
+
+        # Synced row lands at the ORIGINAL date.
+        old_odo = (
+            await db_session.execute(
+                select(OdometerRecord).where(
+                    OdometerRecord.vin == vin, OdometerRecord.date == old_date
+                )
+            )
+        ).scalar_one()
+        assert old_odo.notes == marker
+
+        # A manual odometer row at an unrelated date -- never a candidate,
+        # must survive the eventual delete.
+        db_session.add(
+            OdometerRecord(
+                vin=vin,
+                date=date(2026, 1, 1),
+                odometer_km=Decimal("111.00"),
+                notes="Manual reading, unrelated date",
+                source="manual",
+            )
+        )
+        await db_session.commit()
+
+        # Edit only the visit's date. sync_odometer_from_record matches on
+        # (vin, date): with nothing at new_date it creates a SECOND synced
+        # row there, carrying the SAME marker -- the row at old_date is left
+        # in place untouched. This is the sync's actual date-edit behavior,
+        # confirmed here rather than assumed.
+        resp = await client.put(
+            f"/api/vehicles/{vin}/service-visits/{visit_id}",
+            json={"date": new_date.isoformat()},
+            headers=auth_headers,
+        )
+        assert resp.status_code == 200, resp.text
+
+        synced_after_edit = {
+            r.date for r in await _odometer_rows(db_session, vin) if r.notes == marker
+        }
+        assert synced_after_edit == {old_date, new_date}, (
+            "date edit should leave the old-date synced row in place AND create a "
+            "new one at the new date"
+        )
+
+        resp = await client.delete(
+            f"/api/vehicles/{vin}/service-visits/{visit_id}", headers=auth_headers
+        )
+        assert resp.status_code == 204, resp.text
+
+        remaining = await _odometer_rows(db_session, vin)
+        # Both synced rows (old date AND new date) are gone -- with the old
+        # date == visit.date filter, the old-date row would have survived
+        # as a permanent orphan.
+        assert all(r.notes != marker for r in remaining)
+        # The unrelated manual row survives.
+        assert len(remaining) == 1
+        assert remaining[0].notes == "Manual reading, unrelated date"
+
     async def test_delete_visit_with_no_synced_odometer_leaves_manual_rows_alone(
         self, client: AsyncClient, auth_headers, test_user, db_session: AsyncSession
     ) -> None:

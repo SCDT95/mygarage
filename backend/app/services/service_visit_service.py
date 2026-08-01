@@ -527,11 +527,16 @@ class ServiceVisitService:
         Delete a service visit.
 
         Also cleans up records this visit auto-synced:
-        - the auto-synced ``odometer_records`` row for this visit's
-          ``(vin, date)`` — marker-guarded (``[AUTO-SYNC from service_visit
-          #{id}]``, or the legacy ``[AUTO-SYNC from service #{id}]`` marker)
-          so a manual odometer reading is NEVER deleted, even one sharing
-          the exact same ``(vin, date)``. Service-sourced odometer rows
+        - the auto-synced ``odometer_records`` row(s) for this visit —
+          marker-guarded (``[AUTO-SYNC from service_visit #{id}]``, or the
+          legacy ``[AUTO-SYNC from service #{id}]`` marker) so a manual
+          odometer reading is NEVER deleted, even one sharing the exact
+          same ``(vin, date)``. Matches on ``vin`` + marker only, NOT
+          ``date`` — the marker already uniquely identifies the row(s) this
+          visit synced, and if the visit's date was edited after the sync,
+          the synced row lives at the OLD date while ``visit.date`` now
+          reflects the NEW one; a ``date == visit.date`` predicate would
+          miss it and orphan it forever. Service-sourced odometer rows
           carry no FK (unlike fuel-sourced ones via ``fuel_record_id``), so
           nothing cascades them away on their own — this fixes the
           pre-existing distance-track orphan bug, bringing it to parity
@@ -560,10 +565,14 @@ class ServiceVisitService:
             await get_vehicle_or_403(vin, current_user, self.db, require_write=True)
             visit = await self.get_service_visit(vin, visit_id, current_user)
 
-            # Phase 4b: delete the auto-synced odometer row for this visit's
-            # (vin, date) -- ONLY if it still carries THIS visit's AUTO-SYNC
-            # marker. Never touches a manual row, even one sharing the exact
-            # same (vin, date).
+            # Phase 4b: delete the auto-synced odometer row(s) for this visit
+            # -- ONLY rows that still carry THIS visit's AUTO-SYNC marker.
+            # No date predicate: the marker alone uniquely identifies the
+            # row(s) this visit synced (regardless of which date they sit
+            # at), so it can't over-delete, and it also catches a synced row
+            # left behind at an OLD date after the visit's date was edited
+            # (a date == visit.date filter would miss that row and orphan
+            # it). Never touches a manual row.
             auto_sync_markers = (
                 f"[AUTO-SYNC from service_visit #{visit_id}]",
                 f"[AUTO-SYNC from service #{visit_id}]",  # legacy marker
@@ -571,7 +580,6 @@ class ServiceVisitService:
             await self.db.execute(
                 delete(OdometerRecord)
                 .where(OdometerRecord.vin == vin)
-                .where(OdometerRecord.date == visit.date)
                 .where(OdometerRecord.notes.in_(auto_sync_markers))
             )
 
