@@ -5,6 +5,9 @@ interface ExportMenuProps {
   onExportCSV: () => void
   onExportPDF: () => void
   disabled?: boolean
+  /** Trigger styling, forwarded to Dropdown. `accent` renders the solid-accent
+   *  button (used where Export is the primary header action). */
+  variant?: 'default' | 'accent'
 }
 
 /**
@@ -18,13 +21,14 @@ interface ExportMenuProps {
  * unchanged so the two callers (Analytics.tsx, GarageAnalytics.tsx) need no
  * edits.
  */
-export default function ExportMenu({ onExportCSV, onExportPDF, disabled = false }: ExportMenuProps) {
+export default function ExportMenu({ onExportCSV, onExportPDF, disabled = false, variant = 'default' }: ExportMenuProps) {
   const { t } = useTranslation('common')
 
   return (
     <Dropdown
       label={t('exportMenu.export')}
       disabled={disabled}
+      variant={variant}
       items={[
         { id: 'csv', label: 'CSV', onSelect: onExportCSV },
         { id: 'pdf', label: 'PDF', onSelect: onExportPDF },

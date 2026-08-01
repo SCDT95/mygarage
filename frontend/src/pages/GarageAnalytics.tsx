@@ -16,8 +16,9 @@ import {
   Line,
 } from 'recharts'
 import type { GarageAnalytics } from '../types/analytics'
-import GarageAnalyticsHelpModal from '../components/GarageAnalyticsHelpModal'
+import GarageAnalyticsHelpDrawer from '../components/GarageAnalyticsHelpDrawer'
 import ExportMenu from '../components/ExportMenu'
+import { Button } from '../components/ui'
 import { formatCurrencyZero as formatCurrency } from '../utils/formatUtils'
 import { trailingAverage } from '../utils/rollingAverage'
 import { useCurrencyPreference } from '../hooks/useCurrencyPreference'
@@ -35,7 +36,7 @@ export default function GarageAnalytics() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [fromCache, setFromCache] = useState(false)
-  const [showHelpModal, setShowHelpModal] = useState(false)
+  const [showHelp, setShowHelp] = useState(false)
 
   const exportToCSV = () => {
     if (!analytics) return
@@ -276,14 +277,10 @@ export default function GarageAnalytics() {
         </div>
 
         <div className="flex gap-2">
-          <button
-            onClick={() => setShowHelpModal(true)}
-            className="px-4 py-2 bg-garage-surface border border-garage-border text-garage-text rounded-lg hover:bg-garage-surface-light transition-colors flex items-center gap-2"
-          >
-            <HelpCircle className="w-4 h-4" />
+          <Button variant="secondary" icon={HelpCircle} onClick={() => setShowHelp(true)}>
             {t('garage.help')}
-          </button>
-          <ExportMenu onExportCSV={exportToCSV} onExportPDF={exportToPDF} />
+          </Button>
+          <ExportMenu onExportCSV={exportToCSV} onExportPDF={exportToPDF} variant="accent" />
         </div>
       </div>
 
@@ -617,8 +614,8 @@ export default function GarageAnalytics() {
         </div>
       )}
 
-      {/* Help Modal */}
-      <GarageAnalyticsHelpModal isOpen={showHelpModal} onClose={() => setShowHelpModal(false)} />
+      {/* Help sidecar */}
+      <GarageAnalyticsHelpDrawer open={showHelp} onClose={() => setShowHelp(false)} />
     </div>
   )
 }

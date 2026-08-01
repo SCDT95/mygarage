@@ -36,7 +36,7 @@ vi.mock('../../hooks/useCurrencyPreference', () => ({
   useCurrencyPreference: () => ({ currencyCode: 'USD', locale: 'en-US' }),
 }))
 vi.mock('../../hooks/useTimeFormat', () => ({ useTimeFormat: () => ({ timeFormat: '12h' }) }))
-vi.mock('../../components/GarageAnalyticsHelpModal', () => ({ default: () => null }))
+vi.mock('../../components/GarageAnalyticsHelpDrawer', () => ({ default: () => null }))
 vi.mock('../../components/ExportMenu', () => ({ default: () => null }))
 // t() returns the key (deterministic); data values render as themselves.
 vi.mock('react-i18next', () => ({

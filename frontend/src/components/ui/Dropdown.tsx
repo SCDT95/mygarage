@@ -31,6 +31,19 @@ interface DropdownProps {
   trigger?: ReactNode
   align?: 'left' | 'right'
   disabled?: boolean
+  /** Trigger styling. `default` is the neutral surface button; `accent`
+   *  renders the solid-accent (primary) style — same height, so it stays
+   *  aligned with sibling `h-btn-md` controls. */
+  variant?: 'default' | 'accent'
+}
+
+// Trigger button styling. Both variants are `h-btn-md px-4 text-sm`, matching
+// the Button primitive's `md` size so a Dropdown sits flush with sibling buttons.
+const TRIGGER_BASE =
+  'ui-focus-ring ui-motion ui-disabled inline-flex h-btn-md cursor-pointer items-center gap-2 rounded-control px-4 text-sm'
+const TRIGGER_VARIANT: Record<'default' | 'accent', string> = {
+  default: 'ui-hover-surface border border-border bg-surface-2 text-text',
+  accent: 'ui-hover-solid bg-(--accent-solid) text-(--accent-on-solid) font-semibold hover:shadow-accent',
 }
 
 /**
@@ -66,6 +79,7 @@ export default function Dropdown({
   trigger,
   align = 'right',
   disabled = false,
+  variant = 'default',
 }: DropdownProps) {
   const [open, setOpen] = useState(false)
   const [focused, setFocused] = useState(0)
@@ -146,7 +160,7 @@ export default function Dropdown({
             openMenu(items.length - 1)
           }
         }}
-        className="ui-focus-ring ui-motion ui-disabled ui-hover-surface inline-flex h-btn-md cursor-pointer items-center gap-2 rounded-control border border-border bg-surface-2 px-4 text-sm text-text"
+        className={`${TRIGGER_BASE} ${TRIGGER_VARIANT[variant]}`}
       >
         {trigger ?? (
           <>
