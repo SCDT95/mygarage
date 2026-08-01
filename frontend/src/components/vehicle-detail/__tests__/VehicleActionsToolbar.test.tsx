@@ -8,7 +8,7 @@ function setup(overrides: Partial<ComponentProps<typeof VehicleActionsToolbar>> 
     isAdmin: true, importing: false, exporting: false, isOnline: true,
     showFuelAction: true, hasStandardEquipment: true, hasOptionalEquipment: true,
     onLogService: vi.fn(), onAddFuel: vi.fn(), onReminder: vi.fn(),
-    onExpandEquipment: vi.fn(), onEdit: vi.fn(), onAnalytics: vi.fn(),
+    onEditEquipment: vi.fn(), onEdit: vi.fn(), onAnalytics: vi.fn(),
     onImport: vi.fn(), onExport: vi.fn(), onOpenModal: vi.fn(), onOpenMobileMenu: vi.fn(),
     ...overrides,
   }
@@ -38,8 +38,8 @@ describe('VehicleActionsToolbar', () => {
     expect(props.onLogService).toHaveBeenCalledTimes(1)
     expect(props.onAddFuel).toHaveBeenCalledTimes(1)
     expect(props.onReminder).toHaveBeenCalledTimes(1)
-    expect(props.onExpandEquipment).toHaveBeenCalledWith('standard')
-    expect(props.onExpandEquipment).toHaveBeenCalledWith('optional')
+    expect(props.onEditEquipment).toHaveBeenCalledWith('standard')
+    expect(props.onEditEquipment).toHaveBeenCalledWith('optional')
   })
 
   it('hides Add Fuel when showFuelAction is false', () => {

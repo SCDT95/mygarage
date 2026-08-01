@@ -79,6 +79,29 @@ class TestVehicleRoutes:
         data = response.json()
         assert data["license_plate"] == "UPDATED-123"
 
+    async def test_update_vehicle_persists_equipment(
+        self, client: AsyncClient, auth_headers, test_vehicle
+    ):
+        """Standard/optional equipment must be editable via a partial PUT.
+
+        The fields live on VehicleResponse; unless VehicleUpdate also declares
+        them, Pydantic's default extra='ignore' silently drops the keys and the
+        save is a no-op (the vehicle-detail equipment sidecar regression).
+        """
+        response = await client.put(
+            f"/api/vehicles/{test_vehicle['vin']}",
+            json={
+                "standard_equipment": {"items": ["ABS", "Airbags"]},
+                "optional_equipment": {"Comfort": ["Sunroof"]},
+            },
+            headers=auth_headers,
+        )
+
+        assert response.status_code == 200
+        data = response.json()
+        assert data["standard_equipment"] == {"items": ["ABS", "Airbags"]}
+        assert data["optional_equipment"] == {"Comfort": ["Sunroof"]}
+
     async def test_create_vehicle_defaults_usage_unit_to_distance(
         self, client: AsyncClient, auth_headers, sample_vehicle_payload
     ):

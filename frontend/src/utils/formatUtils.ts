@@ -85,3 +85,20 @@ export function formatCurrencyZero(
   const zeroFormatted = formatWithIntl(0, currencyCode, locale, false)
   return formatCurrency(value, { fallback: zeroFormatted, zeroIsValid: true, currencyCode, locale })
 }
+
+/**
+ * Format a raw window-sticker value (from the NHTSA/OCR options-detail map):
+ * arrays join with commas, a purely-numeric string renders as currency
+ * (including 0, since a $0 option is meaningful), anything else passes through
+ * unchanged. Returns null for empty/absent values so callers can omit the field.
+ */
+export function formatStickerValue(
+  raw: unknown,
+  { currencyCode, locale }: { currencyCode?: string; locale?: string } = {}
+): string | null {
+  const text = Array.isArray(raw) ? raw.join(', ') : typeof raw === 'string' ? raw : null
+  if (!text) return null
+  return /^\d+(\.\d+)?$/.test(text)
+    ? formatCurrency(text, { currencyCode, locale, zeroIsValid: true })
+    : text
+}

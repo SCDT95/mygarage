@@ -1,11 +1,11 @@
-import { lazy, Suspense, useEffect, useRef } from 'react'
+import { lazy, Suspense } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Link } from 'react-router-dom'
 import { Calendar, FileText, Radio } from 'lucide-react'
 import { Card, CardHeader, Mono, Button } from '../ui'
 import type { Vehicle } from '../../types/vehicle'
 import type { LastLocation } from '../../types/trips'
-import { formatCurrency } from '../../utils/formatUtils'
+import { formatCurrency, formatStickerValue } from '../../utils/formatUtils'
 import { UnitFormatter } from '../../utils/units'
 import { useUnitPreference } from '../../hooks/useUnitPreference'
 import { formatDateForDisplay } from '../../utils/dateUtils'
@@ -14,7 +14,6 @@ import { useDateLocale } from '../../hooks/useDateLocale'
 import { useTimeFormat } from '../../hooks/useTimeFormat'
 import { formatDateTime } from '../../utils/parseAPITimestamp'
 import TransferHistorySection from '../TransferHistorySection'
-import type { EquipmentExpandSignal } from '../../pages/VehicleDetail'
 
 // Lazy-load map component — keeps Leaflet's ~150KB out of the main bundle
 const LastLocationMap = lazy(() => import('../maps/LastLocationMap'))
@@ -23,35 +22,23 @@ interface VehicleOverviewTabProps {
   vin: string
   vehicle: Vehicle
   lastLocation: LastLocation | null
-  expandEquipment: EquipmentExpandSignal | null
   onOpenModal: (modal: 'torqueSource' | 'windowSticker') => void
   onDownloadWindowSticker: () => void
 }
 
 /**
- * Vehicle Detail Overview tab content. Mechanically extracted from
- * VehicleDetail.tsx (P5 Task 1, verbatim — no restyle). Equipment expand/scroll
- * wiring lands in Task 4 (behavioral only); the Card/CardHeader/Mono restyle
- * lands in Task 7, which preserves the refs + effect below.
+ * Vehicle Detail Overview tab content. Standard/optional equipment now live in
+ * an editor sidecar (EquipmentDrawer) opened from the Equipment pills, not in a
+ * read-only collapsible card here.
  */
 export default function VehicleOverviewTab({
-  vin, vehicle, lastLocation, expandEquipment, onOpenModal, onDownloadWindowSticker,
+  vin, vehicle, lastLocation, onOpenModal, onDownloadWindowSticker,
 }: VehicleOverviewTabProps) {
   const { t } = useTranslation('vehicles')
   const { system: unitSystem } = useUnitPreference()
   const dateLocale = useDateLocale()
   const { currencyCode, locale } = useCurrencyPreference()
   const { timeFormat } = useTimeFormat()
-  const standardRef = useRef<HTMLDetailsElement>(null)
-  const optionalRef = useRef<HTMLDetailsElement>(null)
-
-  useEffect(() => {
-    if (!expandEquipment) return
-    const el = expandEquipment.which === 'standard' ? standardRef.current : optionalRef.current
-    if (!el) return
-    el.open = true
-    el.scrollIntoView({ behavior: 'smooth', block: 'start' })
-  }, [expandEquipment])
 
   // Recomputed locally (was VehicleDetail.tsx:444) — the Overview reads it for
   // the VIN-decoded / powertrain / non-motorized-fuel-type gates.
@@ -62,14 +49,6 @@ export default function VehicleOverviewTab({
   const formatDate = (dateString?: string | null) => {
     if (!dateString) return t('detail.notSpecified')
     return formatDateForDisplay(dateString, { year: 'numeric', month: 'long', day: 'numeric' }, dateLocale)
-  }
-
-  const formatStickerValue = (raw: unknown): string | null => {
-    const text = Array.isArray(raw) ? raw.join(', ') : typeof raw === 'string' ? raw : null
-    if (!text) return null
-    return /^\d+(\.\d+)?$/.test(text)
-      ? formatCurrency(text, { currencyCode, locale, zeroIsValid: true })
-      : text
   }
 
   return (
@@ -251,69 +230,13 @@ export default function VehicleOverviewTab({
         </Card>
       )}
 
-      {/* Standard Equipment — Collapsible (Task-4 ref + expand effect preserved) */}
-      {vehicle.standard_equipment && typeof vehicle.standard_equipment === 'object' && Object.keys(vehicle.standard_equipment).length > 0 && (
-        <details ref={standardRef} className="group rounded-card border border-border bg-surface p-6 break-inside-avoid">
-          <summary className="cursor-pointer list-none flex items-center justify-between text-xl font-semibold text-text">
-            <span>{t('detail.standardEquipment')}</span>
-            <span className="text-sm font-normal text-text-mute group-open:rotate-180 transition-transform">▼</span>
-          </summary>
-          <div className="space-y-3 mt-4">
-            {Object.entries(vehicle.standard_equipment).map(([category, items]) => (
-              <div key={category}>
-                {category !== 'items' && (<p className="text-sm font-medium text-(--accent-fg) mb-2">{category}</p>)}
-                {Array.isArray(items) ? (
-                  <ul className="list-disc list-inside space-y-1">
-                    {items.map((item, idx) => (<li key={idx} className="text-sm text-text">{item}</li>))}
-                  </ul>
-                ) : (
-                  <p className="text-sm text-text">{String(items)}</p>
-                )}
-              </div>
-            ))}
-          </div>
-        </details>
-      )}
-
-      {/* Optional Equipment with Pricing — Collapsible (Task-4 ref + expand effect preserved) */}
-      {vehicle.optional_equipment && typeof vehicle.optional_equipment === 'object' && Object.keys(vehicle.optional_equipment).length > 0 && (
-        <details ref={optionalRef} className="group rounded-card border border-border bg-surface p-6 break-inside-avoid">
-          <summary className="cursor-pointer list-none flex items-center justify-between text-xl font-semibold text-text">
-            <span>{t('detail.optionalEquipment')}</span>
-            <span className="text-sm font-normal text-text-mute group-open:rotate-180 transition-transform">▼</span>
-          </summary>
-          <div className="space-y-2 mt-4">
-            {Object.entries(vehicle.optional_equipment).map(([category, items]) => (
-              <div key={category}>
-                {category !== 'items' && (<p className="text-sm font-medium text-(--accent-fg) mb-2">{category}</p>)}
-                {Array.isArray(items) ? (
-                  <ul className="space-y-1">
-                    {(items as string[]).map((item, idx) => {
-                      const price = formatStickerValue(vehicle.window_sticker_options_detail?.[item])
-                      return (
-                        <li key={idx} className="text-sm text-text flex justify-between">
-                          <span>{item}</span>
-                          {price && <Mono size="sm" tone="muted">{price}</Mono>}
-                        </li>
-                      )
-                    })}
-                  </ul>
-                ) : (
-                  <p className="text-sm text-text">{String(items)}</p>
-                )}
-              </div>
-            ))}
-          </div>
-        </details>
-      )}
-
       {/* Packages */}
       {vehicle.window_sticker_packages && typeof vehicle.window_sticker_packages === 'object' && Object.keys(vehicle.window_sticker_packages).length > 0 && (
         <Card breakInside>
           <CardHeader title={t('detail.packages')} />
           <div className="space-y-2">
             {Object.entries(vehicle.window_sticker_packages).map(([packageName, rawValue]) => {
-              const value = formatStickerValue(rawValue)
+              const value = formatStickerValue(rawValue, { currencyCode, locale })
               return (
                 <div key={packageName} className="flex justify-between items-center">
                   <span className="text-sm text-text">{packageName}</span>

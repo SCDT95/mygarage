@@ -604,65 +604,42 @@ describe('VehicleDetail', () => {
     )
   })
 
-  it('Standard/Optional expand AND scroll the read-only equipment <details> (SDQ-2, M6)', async () => {
-    const scrollSpy = vi.fn()
-    const original = Element.prototype.scrollIntoView
-    Element.prototype.scrollIntoView = scrollSpy
-    try {
-      mockedVehicleService.get.mockResolvedValue({
-        ...mockVehicle,
-        standard_equipment: { items: ['ABS', 'Airbags'] },
-        optional_equipment: { items: ['Sunroof'] },
-      })
-      renderVehicleDetail()
-      await waitFor(() => expect(screen.getByText('Test Car')).toBeInTheDocument())
-      // Overview is the default tab, so both <details> are mounted with refs.
+  it('Standard/Optional open the equipment editor sidecar with the current items (SDQ-2)', async () => {
+    mockedVehicleService.get.mockResolvedValue({
+      ...mockVehicle,
+      standard_equipment: { items: ['ABS', 'Airbags'] },
+      optional_equipment: { items: ['Sunroof'] },
+    })
+    renderVehicleDetail()
+    await waitFor(() => expect(screen.getByText('Test Car')).toBeInTheDocument())
 
-      // Standard: opens its <details> AND scrolls it into view. Deleting the
-      // scrollIntoView(...) line from the Task-4 effect makes the count stay 0.
-      fireEvent.click(screen.getByRole('button', { name: 'detail.hero.standard' }))
-      await waitFor(() =>
-        expect(screen.getByText('detail.standardEquipment').closest('details')?.open).toBe(true),
-      )
-      await waitFor(() => expect(scrollSpy).toHaveBeenCalledTimes(1))
+    // The read-only dropdown is gone; the Standard pill opens the editor drawer
+    // (labelled with the list) showing the current items + the edit subtitle.
+    fireEvent.click(screen.getByRole('button', { name: 'detail.hero.standard' }))
+    const standardDialog = await screen.findByRole('dialog', { name: 'detail.standardEquipment' })
+    expect(within(standardDialog).getByText('detail.equipment.editSubtitle')).toBeInTheDocument()
+    expect(within(standardDialog).getByText('ABS')).toBeInTheDocument()
+    expect(within(standardDialog).getByText('Airbags')).toBeInTheDocument()
 
-      // Optional: opens + scrolls the SECOND, distinct target.
-      fireEvent.click(screen.getByRole('button', { name: 'detail.hero.optional' }))
-      await waitFor(() =>
-        expect(screen.getByText('detail.optionalEquipment').closest('details')?.open).toBe(true),
-      )
-      await waitFor(() => expect(scrollSpy).toHaveBeenCalledTimes(2))
-
-      // Repeat-click Standard: the new signal object (nonce) re-fires the effect,
-      // so a repeat click is NOT a silent no-op -> a third scroll.
-      fireEvent.click(screen.getByRole('button', { name: 'detail.hero.standard' }))
-      await waitFor(() => expect(scrollSpy).toHaveBeenCalledTimes(3))
-    } finally {
-      Element.prototype.scrollIntoView = original
-    }
+    // The Optional pill switches the same drawer to the optional list.
+    fireEvent.click(screen.getByRole('button', { name: 'detail.hero.optional' }))
+    const optionalDialog = await screen.findByRole('dialog', { name: 'detail.optionalEquipment' })
+    expect(within(optionalDialog).getByText('Sunroof')).toBeInTheDocument()
+    expect(within(optionalDialog).queryByText('ABS')).not.toBeInTheDocument()
   })
 
-  it('with only optional equipment: Standard button hidden, Optional opens + scrolls (B7/M6)', async () => {
-    const scrollSpy = vi.fn()
-    const original = Element.prototype.scrollIntoView
-    Element.prototype.scrollIntoView = scrollSpy
-    try {
-      mockedVehicleService.get.mockResolvedValue({
-        ...mockVehicle,
-        standard_equipment: null,
-        optional_equipment: { items: ['Sunroof'] },
-      })
-      renderVehicleDetail()
-      await waitFor(() => expect(screen.getByText('Test Car')).toBeInTheDocument())
-      // No standard list -> no Standard button; Optional present and functional.
-      expect(screen.queryByRole('button', { name: 'detail.hero.standard' })).not.toBeInTheDocument()
-      fireEvent.click(screen.getByRole('button', { name: 'detail.hero.optional' }))
-      await waitFor(() =>
-        expect(screen.getByText('detail.optionalEquipment').closest('details')?.open).toBe(true),
-      )
-      await waitFor(() => expect(scrollSpy).toHaveBeenCalledTimes(1))
-    } finally {
-      Element.prototype.scrollIntoView = original
-    }
+  it('with only optional equipment: Standard button hidden, Optional opens the editor (B7)', async () => {
+    mockedVehicleService.get.mockResolvedValue({
+      ...mockVehicle,
+      standard_equipment: null,
+      optional_equipment: { items: ['Sunroof'] },
+    })
+    renderVehicleDetail()
+    await waitFor(() => expect(screen.getByText('Test Car')).toBeInTheDocument())
+    // No standard list -> no Standard button; Optional present and functional.
+    expect(screen.queryByRole('button', { name: 'detail.hero.standard' })).not.toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: 'detail.hero.optional' }))
+    const dialog = await screen.findByRole('dialog', { name: 'detail.optionalEquipment' })
+    expect(within(dialog).getByText('Sunroof')).toBeInTheDocument()
   })
 })

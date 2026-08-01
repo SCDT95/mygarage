@@ -14350,6 +14350,13 @@ export interface components {
              */
             nickname?: string | null;
             /**
+             * Optional Equipment
+             * @description Optional equipment (category -> list of items)
+             */
+            optional_equipment?: {
+                [key: string]: unknown;
+            } | null;
+            /**
              * Purchase Date
              * @description Date purchased
              */
@@ -14375,6 +14382,13 @@ export interface components {
              * @description Sale price
              */
             sold_price?: number | string | null;
+            /**
+             * Standard Equipment
+             * @description Standard equipment (category -> list of items)
+             */
+            standard_equipment?: {
+                [key: string]: unknown;
+            } | null;
             /**
              * Transmission Speeds
              * @description Transmission speeds

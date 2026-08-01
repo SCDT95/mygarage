@@ -16,7 +16,7 @@ interface VehicleActionsToolbarProps {
   onLogService: () => void
   onAddFuel: () => void
   onReminder: () => void
-  onExpandEquipment: (which: 'standard' | 'optional') => void
+  onEditEquipment: (which: 'standard' | 'optional') => void
   onEdit: () => void
   onAnalytics: () => void
   onImport: () => void
@@ -37,7 +37,7 @@ interface VehicleActionsToolbarProps {
 export default function VehicleActionsToolbar({
   isAdmin, importing, exporting, isOnline, showFuelAction,
   hasStandardEquipment, hasOptionalEquipment,
-  onLogService, onAddFuel, onReminder, onExpandEquipment, onEdit, onAnalytics,
+  onLogService, onAddFuel, onReminder, onEditEquipment, onEdit, onAnalytics,
   onImport, onExport, onOpenModal, onOpenMobileMenu,
 }: VehicleActionsToolbarProps) {
   const { t } = useTranslation('vehicles')
@@ -68,12 +68,12 @@ export default function VehicleActionsToolbar({
           <div className="ml-auto flex items-center gap-2 rounded-control border border-border py-1 pl-3 pr-2">
             <span className="text-[11px] font-bold uppercase tracking-[.05em] text-text-mute">{t('detail.hero.equipment')}</span>
             {hasStandardEquipment && (
-              <Button variant="secondary" size="sm" icon={List} onClick={() => onExpandEquipment('standard')}>
+              <Button variant="secondary" size="sm" icon={List} onClick={() => onEditEquipment('standard')}>
                 {t('detail.hero.standard')}
               </Button>
             )}
             {hasOptionalEquipment && (
-              <Button variant="secondary" size="sm" icon={Plus} onClick={() => onExpandEquipment('optional')}>
+              <Button variant="secondary" size="sm" icon={Plus} onClick={() => onEditEquipment('optional')}>
                 {t('detail.hero.optional')}
               </Button>
             )}

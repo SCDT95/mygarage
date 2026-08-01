@@ -70,6 +70,7 @@ import WindowStickerUpload from '../components/WindowStickerUpload'
 import VehicleRemoveModal from '../components/modals/VehicleRemoveModal'
 import VehicleTransferWizard from '../components/modals/VehicleTransferWizard'
 import VehicleSharingModal from '../components/modals/VehicleSharingModal'
+import EquipmentDrawer from '../components/vehicle-detail/EquipmentDrawer'
 import TorqueSourceModal from '../components/modals/TorqueSourceModal'
 import { useOnlineStatus } from '../hooks/useOnlineStatus'
 import { useAuth } from '../contexts/AuthContext'
@@ -113,12 +114,6 @@ export type ModalType = 'remove' | 'transfer' | 'sharing' | 'windowSticker' | 't
 export type PrimaryTabType = 'overview' | 'media' | 'maintenance' | 'fuel' | 'tracking' | 'financial' | 'livelink'
 export type SubTabType = 'photos' | 'documents' | 'service' | 'fuel' | 'def' | 'propane' | 'odometer' | 'hours' | 'notes' | 'warranties' | 'insurance' | 'tax' | 'tolls' | 'spotrentals' | 'suppliesused' | 'recalls' | 'reports' | 'reminders' | 'live' | 'dtcs' | 'sessions' | 'charts' | 'trips'
 
-// Hero action buttons switch to the relevant tab + sub-tab (SDQ-1). The
-// Equipment pill (SDQ-2) signals VehicleOverviewTab to expand + scroll a
-// read-only equipment list; the nonce makes a repeat click re-trigger the
-// effect even when `which` is unchanged.
-export interface EquipmentExpandSignal { which: 'standard' | 'optional'; nonce: number }
-
 export default function VehicleDetail() {
   const { t } = useTranslation('vehicles')
   const { vin } = useParams<{ vin: string }>()
@@ -138,7 +133,7 @@ export default function VehicleDetail() {
   const [hasLiveLinkDevice, setHasLiveLinkDevice] = useState(false)
   const [lastLocation, setLastLocation] = useState<LastLocation | null>(null)
   const [detailStats, setDetailStats] = useState<VehicleDetailStats | null>(null)
-  const [expandEquipment, setExpandEquipment] = useState<EquipmentExpandSignal | null>(null)
+  const [equipmentDrawer, setEquipmentDrawer] = useState<'standard' | 'optional' | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const isOnline = useOnlineStatus()
 
@@ -435,13 +430,10 @@ export default function VehicleDetail() {
     setActiveSubTab(sub)
   }
 
-  // Equipment pill (SDQ-2): switch to Overview, then signal the Overview tab to
-  // expand + scroll the requested read-only equipment list. The nonce makes a
-  // repeat click re-trigger the effect.
+  // Equipment pill (SDQ-2): open the equipment editor sidecar for the requested
+  // list. The drawer is portalled, so it works from any tab — no tab switch.
   const handleEquipmentClick = (which: 'standard' | 'optional') => {
-    setActivePrimaryTab('overview')
-    setActiveSubTab(null)
-    setExpandEquipment({ which, nonce: Date.now() })
+    setEquipmentDrawer(which)
   }
 
   // Download window sticker with authentication
@@ -660,7 +652,7 @@ export default function VehicleDetail() {
           onLogService={() => goToSection('maintenance', 'service')}
           onAddFuel={() => goToSection('fuel', isMotorized ? 'fuel' : hasDEF ? 'def' : hasPropane ? 'propane' : 'fuel')}
           onReminder={() => goToSection('tracking', 'reminders')}
-          onExpandEquipment={handleEquipmentClick}
+          onEditEquipment={handleEquipmentClick}
           onEdit={() => navigate(`/vehicles/${vin}/edit`)}
           onAnalytics={() => navigate(`/vehicles/${vin}/analytics`)}
           onImport={handleImportClick}
@@ -701,7 +693,6 @@ export default function VehicleDetail() {
             vin={vin!}
             vehicle={vehicle}
             lastLocation={lastLocation}
-            expandEquipment={expandEquipment}
             onOpenModal={setOpenModal}
             onDownloadWindowSticker={handleDownloadWindowSticker}
           />
@@ -770,6 +761,18 @@ export default function VehicleDetail() {
           onClose={() => setOpenModal(null)}
           vin={vin}
           vehicleNickname={vehicle.nickname}
+        />
+      )}
+
+      {/* Equipment editor sidecar (opened from the Equipment pills) */}
+      {vin && vehicle && (
+        <EquipmentDrawer
+          open={equipmentDrawer !== null}
+          which={equipmentDrawer ?? 'standard'}
+          vehicle={vehicle}
+          vin={vin}
+          onClose={() => setEquipmentDrawer(null)}
+          onUpdated={setVehicle}
         />
       )}
 

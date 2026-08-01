@@ -19418,6 +19418,19 @@
             "description": "User-friendly display name",
             "title": "Nickname"
           },
+          "optional_equipment": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Optional equipment (category -> list of items)",
+            "title": "Optional Equipment"
+          },
           "purchase_date": {
             "anyOf": [
               {
@@ -19481,6 +19494,19 @@
             ],
             "description": "Sale price",
             "title": "Sold Price"
+          },
+          "standard_equipment": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Standard equipment (category -> list of items)",
+            "title": "Standard Equipment"
           },
           "transmission_speeds": {
             "anyOf": [

@@ -188,6 +188,15 @@
     "notSpecified": "Not specified",
     "offlineCachedData": "Offline: showing cached data",
     "optionalEquipment": "Optional Equipment",
+    "equipment": {
+      "editSubtitle": "Edit this vehicle's equipment",
+      "addPlaceholder": "Add equipment...",
+      "add": "Add",
+      "done": "Done",
+      "remove": "Remove {{item}}",
+      "empty": "No equipment yet. Add items below.",
+      "saveError": "Couldn't save equipment. Please try again."
+    },
     "packages": "Packages",
     "powertrain": "Powertrain",
     "purchaseInformation": "Purchase Information",

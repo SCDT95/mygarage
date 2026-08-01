@@ -163,6 +163,15 @@ class VehicleUpdate(VehicleBase):
         None, description="User-friendly display name", min_length=1, max_length=100
     )
     vehicle_type: VehicleType | None = Field(None, description="Type of vehicle")
+    # Equipment is editable from the vehicle-detail sidecar. Declared here (not
+    # only on VehicleResponse) so partial PUTs actually persist it — Pydantic's
+    # default extra='ignore' silently drops unknown keys otherwise.
+    standard_equipment: dict[str, Any] | None = Field(
+        None, description="Standard equipment (category -> list of items)"
+    )
+    optional_equipment: dict[str, Any] | None = Field(
+        None, description="Optional equipment (category -> list of items)"
+    )
 
     @field_validator("fuel_type", "fuel_type_secondary", mode="before")
     @classmethod
