@@ -6,7 +6,7 @@ import {
   ResponsiveContainer,
   PieChart as RechartsPieChart,
   Pie,
-  Sector,
+  Cell,
   Tooltip,
   BarChart as RechartsBarChart,
   Bar,
@@ -16,11 +16,11 @@ import {
   Legend,
   Line,
 } from 'recharts'
-import type { PieLabelRenderProps, SectorProps } from 'recharts'
-import type { GarageAnalytics, GarageMonthlyTrend } from '../types/analytics'
+import type { GarageAnalytics } from '../types/analytics'
 import GarageAnalyticsHelpModal from '../components/GarageAnalyticsHelpModal'
 import ExportMenu from '../components/ExportMenu'
-import { formatCurrency as formatCurrencyBase, formatCurrencyZero as formatCurrency } from '../utils/formatUtils'
+import { formatCurrencyZero as formatCurrency } from '../utils/formatUtils'
+import { trailingAverage } from '../utils/rollingAverage'
 import { useCurrencyPreference } from '../hooks/useCurrencyPreference'
 import { useTimeFormat } from '../hooks/useTimeFormat'
 import { formatDateTime } from '../utils/parseAPITimestamp'
@@ -127,18 +127,6 @@ export default function GarageAnalytics() {
     }
   }
 
-  const calculateRollingAverage = (data: GarageMonthlyTrend[], period: number) => {
-    return data.map((_, idx) => {
-      if (idx < period - 1) return null
-      const slice = data.slice(idx - period + 1, idx + 1)
-      const sum = slice.reduce(
-        (acc, item) => acc + parseFloat(item.service) + parseFloat(item.fuel) + parseFloat(item.def_cost),
-        0
-      )
-      return sum / period
-    })
-  }
-
   useEffect(() => {
     const fetchAnalytics = async () => {
       const cacheKey = 'garage-analytics-cache'
@@ -223,22 +211,43 @@ export default function GarageAnalytics() {
 
   const { total_costs, cost_breakdown_by_category, cost_by_vehicle, monthly_trends } = analytics
 
-  // Prepare chart data
-  const pieData = cost_breakdown_by_category
-    .map((item) => ({
-      name: item.category,
+  // Cost-by-category: assign each category a stable colour by its ORIGINAL
+  // (backend) order, so a slice's colour stays matched to its sidebar swatch
+  // even after we sort largest-first below.
+  const categoryMeta = cost_breakdown_by_category
+    .map((item, index) => ({
+      category: item.category,
+      amount: item.amount,
       value: parseFloat(item.amount),
+      color: COLORS[index % COLORS.length],
     }))
-    .filter((item) => item.value > 0)
+    .filter((c) => c.value > 0)
+  const categoryTotal = categoryMeta.reduce((sum, c) => sum + c.value, 0)
+  const sortedCategories = [...categoryMeta]
+    .sort((a, b) => b.value - a.value)
+    .map((c) => ({ ...c, percent: categoryTotal > 0 ? (c.value / categoryTotal) * 100 : 0 }))
+  const largestCategory = sortedCategories[0] ?? null
+  const avgPerVehicle = analytics.vehicle_count > 0 ? categoryTotal / analytics.vehicle_count : 0
+  const formatPercent = (pct: number) => (pct > 0 && pct < 1 ? '<1%' : `${Math.round(pct)}%`)
 
+  // Donut slices follow the sidebar order (largest-first), same stable colour.
+  const pieData = sortedCategories.map((c) => ({ name: c.category, value: c.value, color: c.color }))
+
+  // Running costs: nickname + total, top 10. Bar-list widths are relative to
+  // the largest running cost.
   const barData = cost_by_vehicle.slice(0, 10).map((vehicle) => ({
     name: vehicle.nickname,
     totalCost: parseFloat(vehicle.total_cost),
   }))
+  const maxVehicleCost = barData.reduce((max, v) => Math.max(max, v.totalCost), 0)
 
-  // Pre-calculate rolling averages
-  const rollingAvg3 = calculateRollingAverage(monthly_trends, 3)
-  const rollingAvg6 = calculateRollingAverage(monthly_trends, 6)
+  // Monthly trend: trailing averages over the available window so both lines
+  // span the full chart width (no leading nulls that make them start late).
+  const monthlyTotals = monthly_trends.map(
+    (trend) => parseFloat(trend.service) + parseFloat(trend.fuel) + parseFloat(trend.def_cost)
+  )
+  const rollingAvg3 = trailingAverage(monthlyTotals, 3)
+  const rollingAvg6 = trailingAverage(monthlyTotals, 6)
 
   const formatMonthLabel = (value: string) => {
     const parsed = new Date(`${value} 1`)
@@ -347,123 +356,141 @@ export default function GarageAnalytics() {
       </div>
 
       {/* Cost Breakdown Charts */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
-        {/* Pie Chart - Cost by Category */}
-        <div className="bg-garage-surface border border-garage-border rounded-lg p-6">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
+        {/* Donut - Cost by Category */}
+        <div className="bg-garage-surface border border-garage-border rounded-lg p-6 lg:col-span-1">
           <h2 className="text-xl font-bold mb-4 text-garage-text">{t('garage.costByCategory')}</h2>
-          {pieData.length > 0 ? (
-            <>
-              <ResponsiveContainer width="100%" height={300}>
-                <RechartsPieChart>
-                  <Pie
-                    data={pieData}
-                    cx="50%"
-                    cy="50%"
-                    labelLine={false}
-                    label={(props: PieLabelRenderProps) => {
-                      const { name, percent } = props
-                      if (typeof percent !== 'number') {
-                        return name?.toString() ?? ''
-                      }
-                      const labelName = name?.toString() ?? t('garage.otherCategory')
-                      return `${labelName} ${(percent * 100).toFixed(0)}%`
-                    }}
-                    outerRadius={100}
-                    dataKey="value"
-                    shape={(props: SectorProps & { index?: number }) => (
-                      <Sector {...props} fill={COLORS[(props.index ?? 0) % COLORS.length]} />
-                    )}
-                  />
-                  <Tooltip
-                    cursor={false}
-                    wrapperStyle={{ outline: 'none' }}
-                    content={({ active, payload }) => {
-                      if (active && payload && payload.length) {
-                        const data = payload[0]
-                        return (
-                          <div style={customTooltipStyle}>
-                            <p style={{ fontWeight: '600', marginBottom: '4px' }}>{data.name}</p>
-                            <p style={{ fontSize: '14px', color: '#9ca3af' }}>
-                              {formatCurrency(data.value as number, { currencyCode, locale })}
-                            </p>
-                          </div>
-                        )
-                      }
-                      return null
-                    }}
-                  />
-                </RechartsPieChart>
-              </ResponsiveContainer>
-              <div className="mt-4 space-y-2">
-                {cost_breakdown_by_category.map((item, index) => (
-                  <div key={index} className="flex items-center justify-between text-sm">
-                    <div className="flex items-center gap-2">
-                      <div
-                        className="w-3 h-3 rounded-full"
-                        style={{ backgroundColor: COLORS[index % COLORS.length] }}
+          {categoryTotal > 0 ? (
+            <div className="flex flex-col sm:flex-row lg:flex-col gap-6">
+              {/* Donut + summary tiles */}
+              <div className="flex flex-col sm:w-1/2 lg:w-full">
+                <div className="relative w-full" style={{ height: 200 }}>
+                  <ResponsiveContainer width="100%" height="100%">
+                    <RechartsPieChart>
+                      <Pie
+                        data={pieData}
+                        cx="50%"
+                        cy="50%"
+                        innerRadius={62}
+                        outerRadius={90}
+                        paddingAngle={2}
+                        dataKey="value"
+                        stroke="none"
+                      >
+                        {pieData.map((entry) => (
+                          <Cell key={entry.name} fill={entry.color} />
+                        ))}
+                      </Pie>
+                      <Tooltip
+                        cursor={false}
+                        wrapperStyle={{ outline: 'none' }}
+                        content={({ active, payload }) => {
+                          if (active && payload && payload.length) {
+                            const data = payload[0]
+                            return (
+                              <div style={customTooltipStyle}>
+                                <p style={{ fontWeight: '600', marginBottom: '4px' }}>{data.name}</p>
+                                <p style={{ fontSize: '14px', color: '#9ca3af' }}>
+                                  {formatCurrency(data.value as number, { currencyCode, locale })}
+                                </p>
+                              </div>
+                            )
+                          }
+                          return null
+                        }}
                       />
-                      <span className="text-garage-text">{item.category}</span>
-                    </div>
-                    <span className="text-garage-text-muted font-medium">
-                      {formatCurrency(item.amount, { currencyCode, locale })}
+                    </RechartsPieChart>
+                  </ResponsiveContainer>
+                  {/* Center total */}
+                  <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
+                    <span className="text-[11px] uppercase tracking-wide text-garage-text-muted">
+                      {t('garage.donutTotal')}
                     </span>
+                    <span className="text-lg font-bold text-garage-text">
+                      {formatCurrency(categoryTotal, { currencyCode, locale })}
+                    </span>
+                  </div>
+                </div>
+                {/* Largest + Avg/vehicle tiles */}
+                <div className="grid grid-cols-2 gap-3 mt-4 w-full">
+                  <div className="border border-garage-border rounded-lg p-3">
+                    <p className="text-xs text-garage-text-muted mb-1">{t('garage.largest')}</p>
+                    {largestCategory && (
+                      <>
+                        <p className="text-sm font-semibold text-garage-text">{largestCategory.category}</p>
+                        <p className="text-xs text-garage-text-muted">
+                          {formatCurrency(largestCategory.amount, { currencyCode, locale })} ·{' '}
+                          {formatPercent(largestCategory.percent)}
+                        </p>
+                      </>
+                    )}
+                  </div>
+                  <div className="border border-garage-border rounded-lg p-3">
+                    <p className="text-xs text-garage-text-muted mb-1">{t('garage.avgPerVehicle')}</p>
+                    <p className="text-sm font-semibold text-garage-text">
+                      {formatCurrency(avgPerVehicle, { currencyCode, locale })}
+                    </p>
+                  </div>
+                </div>
+              </div>
+              {/* Sidebar category list */}
+              <div className="sm:w-1/2 lg:w-full space-y-3">
+                {sortedCategories.map((c) => (
+                  <div key={c.category}>
+                    <div className="flex items-center justify-between text-sm mb-1">
+                      <span className="flex items-center gap-2 text-garage-text">
+                        <span
+                          className="w-2.5 h-2.5 rounded-full shrink-0"
+                          style={{ backgroundColor: c.color }}
+                        />
+                        {c.category}
+                      </span>
+                      <span className="flex items-center gap-2 shrink-0">
+                        <span className="text-garage-text-muted tabular-nums">{formatPercent(c.percent)}</span>
+                        <span className="text-garage-text font-medium tabular-nums">
+                          {formatCurrency(c.amount, { currencyCode, locale })}
+                        </span>
+                      </span>
+                    </div>
+                    <div className="h-1.5 rounded-full bg-garage-border/40 overflow-hidden">
+                      <div
+                        className="h-full rounded-full"
+                        style={{ width: `${Math.max(c.percent, 2)}%`, backgroundColor: c.color }}
+                      />
+                    </div>
                   </div>
                 ))}
               </div>
-            </>
+            </div>
           ) : (
             <p className="text-garage-text-muted text-center py-8">{t('garage.noCostData')}</p>
           )}
         </div>
 
-        {/* Bar Chart - Running Costs by Vehicle */}
-        <div className="bg-garage-surface border border-garage-border rounded-lg p-6">
+        {/* Running Costs by Vehicle */}
+        <div className="bg-garage-surface border border-garage-border rounded-lg p-6 lg:col-span-2">
           <h2 className="text-xl font-bold mb-4 text-garage-text">{t('garage.runningCostsByVehicle')}</h2>
           {barData.length > 0 ? (
             <>
-              <ResponsiveContainer width="100%" height={Math.max(150, barData.length * 50)}>
-                <RechartsBarChart
-                  data={barData}
-                  layout="vertical"
-                  margin={{ top: 5, right: 30, left: 20, bottom: 5 }}
-                >
-                  <CartesianGrid strokeDasharray="3 3" stroke="#333" horizontal={false} />
-                  <XAxis
-                    type="number"
-                    stroke="#9E9E9E"
-                    style={{ fontSize: '12px' }}
-                    tickFormatter={(value) => formatCurrencyBase(value, { currencyCode, locale, wholeDollars: true })}
-                  />
-                  <YAxis
-                    type="category"
-                    dataKey="name"
-                    stroke="#9E9E9E"
-                    style={{ fontSize: '12px' }}
-                    width={150}
-                  />
-                  <Tooltip
-                    cursor={false}
-                    wrapperStyle={{ outline: 'none' }}
-                    content={({ active, payload }) => {
-                      if (active && payload && payload.length) {
-                        const data = payload[0]
-                        return (
-                          <div style={customTooltipStyle}>
-                            <p style={{ fontWeight: '600', marginBottom: '4px' }}>
-                              {data.payload.name}
-                            </p>
-                            <p style={{ fontSize: '14px', color: '#9ca3af' }}>
-                              {t('garage.runningCostsTooltip')}: {formatCurrency(data.value as number, { currencyCode, locale })}
-                            </p>
-                          </div>
-                        )
-                      }
-                      return null
-                    }}
-                  />
-                  <Bar dataKey="totalCost" fill="#3B82F6" />
-                </RechartsBarChart>
-              </ResponsiveContainer>
+              {/* Bar list — name + inline total, width relative to the top spender */}
+              <div className="space-y-3">
+                {barData.map((vehicle) => (
+                  <div key={vehicle.name}>
+                    <div className="flex items-center justify-between text-sm mb-1">
+                      <span className="text-garage-text font-medium">{vehicle.name}</span>
+                      <span className="text-garage-text font-semibold tabular-nums">
+                        {formatCurrency(vehicle.totalCost, { currencyCode, locale })}
+                      </span>
+                    </div>
+                    <div className="h-2 rounded-full bg-garage-border/40 overflow-hidden">
+                      <div
+                        className="h-full rounded-full bg-primary"
+                        style={{ width: `${maxVehicleCost > 0 ? (vehicle.totalCost / maxVehicleCost) * 100 : 0}%` }}
+                      />
+                    </div>
+                  </div>
+                ))}
+              </div>
 
               {/* Vehicle Cost Breakdown Table */}
               <div className="mt-6 overflow-x-auto">
@@ -589,11 +616,12 @@ export default function GarageAnalytics() {
                 }}
               />
               <Legend wrapperStyle={{ paddingTop: '10px', fontSize: '12px' }} />
-              <Bar dataKey="Service" name={t('garage.cards.maintenance')} fill="#3B82F6" stackId="a" />
-              <Bar dataKey="Fuel" name={t('garage.cards.fuel')} fill="#10B981" stackId="a" />
-              <Bar dataKey="DEF" name={t('garage.cards.def')} fill="#14B8A6" stackId="a" />
+              <Bar dataKey="Service" name={t('garage.cards.maintenance')} fill="#3B82F6" stackId="a" maxBarSize={40} />
+              <Bar dataKey="Fuel" name={t('garage.cards.fuel')} fill="#10B981" stackId="a" maxBarSize={40} />
+              <Bar dataKey="DEF" name={t('garage.cards.def')} fill="#14B8A6" stackId="a" maxBarSize={40} />
 
-              {/* Rolling average trend lines - data from trendData via chart's data prop */}
+              {/* Rolling average trend lines. trailingAverage() emits a value for
+                  every month (no leading nulls), so the lines span the full width. */}
               {trendData.length >= 3 && (
                 <Line
                   type="monotone"
@@ -603,7 +631,7 @@ export default function GarageAnalytics() {
                   strokeDasharray="5 5"
                   dot={false}
                   name={t('garage.rollingAvg3')}
-                  connectNulls={false}
+                  connectNulls
                 />
               )}
               {trendData.length >= 6 && (
@@ -615,7 +643,7 @@ export default function GarageAnalytics() {
                   strokeDasharray="5 5"
                   dot={false}
                   name={t('garage.rollingAvg6')}
-                  connectNulls={false}
+                  connectNulls
                 />
               )}
             </RechartsBarChart>
