@@ -2,21 +2,62 @@ import { useState, useEffect, useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
-import { Plus, Search, Edit, Trash2, X, Save, Phone, Mail, Globe, MapPin, BookUser } from 'lucide-react'
+import {
+  Plus,
+  Phone,
+  Mail,
+  Globe,
+  MapPin,
+  BookUser,
+  ChevronRight,
+  Save,
+  Trash2,
+  Wrench,
+  Caravan,
+  Store,
+  Package,
+  Shield,
+  Fuel,
+} from 'lucide-react'
 import { toast } from 'sonner'
 import type { AddressBookEntry, AddressBookEntryCreate } from '../types/addressBook'
 import { addressBookSchema, type AddressBookFormData, ADDRESS_BOOK_CATEGORIES } from '../schemas/addressBook'
-import { FormError } from '../components/FormError'
-import { Select } from '../components/ui'
+import { Chip, Button, Field, Input, Textarea, Select, SearchField } from '../components/ui'
+import type { IconType } from '../components/ui/types'
+import FormModalWrapper from '../components/FormModalWrapper'
 import api from '../services/api'
+
+// Icon per canonical category, used on both the filter chips and the card badge.
+const CATEGORY_ICONS: Record<string, IconType> = {
+  Service: Wrench,
+  'RV Park': Caravan,
+  Dealer: Store,
+  Parts: Package,
+  Insurance: Shield,
+  'Gas Station': Fuel,
+}
+
+// A discovery-sourced entry may carry a poi_category but no manual category.
+// Map the two POI types that correspond to a chip so those entries still land
+// in the right one without a data migration.
+function poiCategoryLabel(poi: string | null | undefined): string {
+  if (poi === 'gas_station') return 'Gas Station'
+  if (poi === 'rv_park' || poi === 'rv_shop') return 'RV Park'
+  return ''
+}
+
+// The category a card badge and the chip filter operate on: the manual
+// category if set, else derived from the POI type.
+export function displayCategory(entry: Pick<AddressBookEntry, 'category' | 'poi_category'>): string {
+  return entry.category?.trim() || poiCategoryLabel(entry.poi_category)
+}
 
 export default function AddressBook() {
   const { t } = useTranslation('common')
   const [entries, setEntries] = useState<AddressBookEntry[]>([])
   const [loading, setLoading] = useState(true)
   const [searchTerm, setSearchTerm] = useState('')
-  const [categoryFilter, setCategoryFilter] = useState('')
-  const [poiCategoryFilter, setPoiCategoryFilter] = useState('')
+  const [selectedCategory, setSelectedCategory] = useState('') // '' = All
   const [showForm, setShowForm] = useState(false)
   const [editingEntry, setEditingEntry] = useState<AddressBookEntry | null>(null)
 
@@ -24,9 +65,6 @@ export default function AddressBook() {
     try {
       const params = new URLSearchParams()
       if (searchTerm) params.append('search', searchTerm)
-      if (categoryFilter) params.append('category', categoryFilter)
-      if (poiCategoryFilter) params.append('poi_category', poiCategoryFilter)
-
       const response = await api.get(`/address-book?${params}`)
       setEntries(response.data.entries || [])
     } catch {
@@ -34,7 +72,7 @@ export default function AddressBook() {
     } finally {
       setLoading(false)
     }
-  }, [searchTerm, categoryFilter, poiCategoryFilter])
+  }, [searchTerm])
 
   useEffect(() => {
     loadEntries()
@@ -60,172 +98,136 @@ export default function AddressBook() {
     handleCloseForm()
   }
 
-  const handleDelete = async (id: number) => {
-    if (!confirm(t('addressBook.confirmDelete'))) return
-
-    try {
-      await api.delete(`/address-book/${id}`)
-      loadEntries()
-    } catch (err) {
-      toast.error(err instanceof Error ? err.message : t('addressBook.deleteError'))
-    }
+  const categoryLabel = (value: string): string => {
+    const found = ADDRESS_BOOK_CATEGORIES.find((c) => c.value === value)
+    return found ? t(found.labelKey) : value
   }
+
+  // Category filtering is client-side (address books are small) so it can key
+  // on displayCategory — unifying manual categories and POI-derived ones.
+  const visibleEntries = selectedCategory
+    ? entries.filter((e) => displayCategory(e) === selectedCategory)
+    : entries
 
   return (
     <div className="container mx-auto px-4 py-8">
       {/* Header */}
       <div className="mb-6">
-        <h1 className="text-3xl font-bold mb-2 text-garage-text">{t('addressBook.title')}</h1>
-        <p className="text-garage-text-muted">
-          {t('addressBook.subtitle')}
-        </p>
+        <h1 className="mb-2 text-3xl font-bold text-text">{t('addressBook.title')}</h1>
+        <p className="text-text-mute">{t('addressBook.subtitle')}</p>
       </div>
 
-      {/* Controls */}
-      <div className="mb-6">
-        <div className="flex flex-col sm:flex-row gap-4 mb-6">
-          <div className="flex-1 relative">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-garage-text-muted" />
-            <input
-              type="text"
-              placeholder={t('addressBook.searchPlaceholder')}
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full pl-10 pr-4 py-2 border border-garage-border rounded-lg bg-garage-surface text-garage-text focus:outline-none focus:ring-2 focus:ring-primary"
-            />
-          </div>
-
-          <Select
-            value={categoryFilter}
-            onChange={(e) => setCategoryFilter(e.target.value)}
-            placeholder={t('addressBook.allCategories')}
-            options={[
-              { value: 'Service', label: t('addressBook.categoryService') },
-              { value: 'Parts', label: t('addressBook.categoryParts') },
-              { value: 'Dealer', label: t('addressBook.categoryDealer') },
-              { value: 'Insurance', label: t('addressBook.categoryInsurance') },
-              { value: 'Other', label: t('addressBook.categoryOther') },
-            ]}
-          />
-
-          {/* Gas Stations filter (issue #69) */}
-          <button
-            type="button"
-            onClick={() =>
-              setPoiCategoryFilter((prev) => (prev === 'gas_station' ? '' : 'gas_station'))
-            }
-            className={`px-4 py-2 border rounded-lg transition-colors ${
-              poiCategoryFilter === 'gas_station'
-                ? 'bg-primary text-(--accent-on-solid) border-primary'
-                : 'bg-garage-surface text-garage-text border-garage-border hover:border-primary'
-            }`}
-            title={t('addressBook.gasStationsFilterHint')}
-          >
-            {t('addressBook.gasStations')}
-          </button>
-
-          <button
-            onClick={handleAddClick}
-            className="flex items-center gap-2 px-5 py-3 btn btn-primary rounded-lg"
-          >
-            <Plus className="w-5 h-5" />
-            {t('addressBook.addContact')}
-          </button>
+      {/* Search + Add */}
+      <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center">
+        <div className="flex-1">
+          <SearchField value={searchTerm} onChange={setSearchTerm} placeholder={t('addressBook.searchPlaceholder')} />
         </div>
+        <Button variant="primary" icon={Plus} onClick={handleAddClick}>
+          {t('addressBook.addContact')}
+        </Button>
+      </div>
 
-        {/* Entries List */}
-        {loading ? (
-          <div className="text-center py-12 text-garage-text-muted">{t('addressBook.loading')}</div>
-        ) : entries.length === 0 ? (
-          <div className="text-center py-12">
-            <BookUser className="w-16 h-16 text-garage-text-muted mx-auto mb-4" />
-            <p className="text-garage-text-muted mb-4">
-              {searchTerm || categoryFilter ? t('addressBook.noMatchingContacts') : t('addressBook.noContacts')}
-            </p>
-            <button
-              onClick={handleAddClick}
-              className="inline-flex items-center gap-2 px-5 py-3 btn btn-primary rounded-lg"
-            >
-              <Plus className="w-5 h-5" />
-              {t('addressBook.addFirstContact')}
-            </button>
-          </div>
-        ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {entries.map((entry) => (
+      {/* Category filter chips */}
+      <div className="mb-6 flex flex-wrap gap-2" role="group" aria-label={t('addressBook.filterByCategory')}>
+        <Chip selected={selectedCategory === ''} onClick={() => setSelectedCategory('')}>
+          {t('addressBook.categoryAll')}
+        </Chip>
+        {ADDRESS_BOOK_CATEGORIES.map((c) => (
+          <Chip
+            key={c.value}
+            icon={CATEGORY_ICONS[c.value]}
+            selected={selectedCategory === c.value}
+            onClick={() => setSelectedCategory(c.value)}
+          >
+            {t(c.labelKey)}
+          </Chip>
+        ))}
+      </div>
+
+      {/* Entries */}
+      {loading ? (
+        <div className="py-12 text-center text-text-mute">{t('addressBook.loading')}</div>
+      ) : visibleEntries.length === 0 ? (
+        <div className="py-12 text-center">
+          <BookUser aria-hidden="true" className="mx-auto mb-4 h-16 w-16 text-text-mute" />
+          <p className="mb-4 text-text-mute">
+            {searchTerm || selectedCategory ? t('addressBook.noMatchingContacts') : t('addressBook.noContacts')}
+          </p>
+          <Button variant="primary" icon={Plus} onClick={handleAddClick}>
+            {t('addressBook.addFirstContact')}
+          </Button>
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
+          {visibleEntries.map((entry) => {
+            const cat = displayCategory(entry)
+            const CatIcon = cat ? CATEGORY_ICONS[cat] : undefined
+            return (
               <div
                 key={entry.id}
-                className="bg-garage-surface border border-garage-border rounded-lg p-4 hover:border-primary/50 transition-colors"
+                className="relative isolate rounded-card border border-border bg-surface p-4 ui-motion hover:border-(--accent-line) hover:shadow-card-hover"
               >
-                <div className="flex items-start justify-between mb-3">
-                  <div className="flex-1">
-                    <h3 className="font-semibold text-garage-text text-lg">{entry.business_name}</h3>
-                    {entry.name && (
-                      <div className="flex items-center gap-2 text-garage-text-muted text-sm mt-1">
-                        <span>{entry.name}</span>
-                      </div>
-                    )}
+                <div className="mb-3 flex items-start justify-between gap-2">
+                  <div>
+                    <h3 className="text-lg font-semibold text-text">{entry.business_name}</h3>
+                    {entry.name && <p className="mt-0.5 text-sm text-text-mute">{entry.name}</p>}
                   </div>
-                  <div className="flex gap-2">
-                    <button
-                      onClick={() => handleEditClick(entry)}
-                      className="text-garage-text-muted hover:text-primary transition-colors"
-                      title={t('addressBookPage.edit')}
-                    >
-                      <Edit className="w-4 h-4" />
-                    </button>
-                    <button
-                      onClick={() => handleDelete(entry.id)}
-                      className="text-garage-text-muted hover:text-danger transition-colors"
-                      title={t('addressBookPage.delete')}
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </button>
-                  </div>
+                  {/* Stretched action button — a click anywhere on the card opens
+                      the edit sidecar (STATIC, so after:inset-0 anchors to the
+                      relative card root). The contact links below carry z-10 to
+                      stay independently clickable above it. */}
+                  <button
+                    type="button"
+                    onClick={() => handleEditClick(entry)}
+                    aria-label={t('addressBook.editContactNamed', { name: entry.business_name })}
+                    className="ui-focus-ring cursor-pointer rounded-control p-1 text-text-mute hover:text-text after:absolute after:inset-0 after:content-['']"
+                  >
+                    <ChevronRight aria-hidden="true" className="h-5 w-5" />
+                  </button>
                 </div>
 
                 <div className="space-y-2 text-sm">
-                  {entry.category && (
-                    <div className="inline-block px-2 py-1 bg-primary/10 text-primary rounded text-xs">
-                      {entry.category}
-                    </div>
+                  {cat && (
+                    <Chip icon={CatIcon} tone="accent">
+                      {categoryLabel(cat)}
+                    </Chip>
                   )}
 
                   {entry.email && (
-                    <div className="flex items-center gap-2 text-garage-text-muted">
-                      <Mail className="w-4 h-4" />
-                      <a href={`mailto:${entry.email}`} className="hover:text-primary transition-colors">
-                        {entry.email}
-                      </a>
-                    </div>
+                    <a
+                      href={`mailto:${entry.email}`}
+                      className="relative z-10 flex items-center gap-2 text-text-mute hover:text-(--accent-fg)"
+                    >
+                      <Mail aria-hidden="true" className="h-4 w-4 shrink-0" />
+                      <span className="truncate">{entry.email}</span>
+                    </a>
                   )}
 
                   {entry.phone && (
-                    <div className="flex items-center gap-2 text-garage-text-muted">
-                      <Phone className="w-4 h-4" />
-                      <a href={`tel:${entry.phone}`} className="hover:text-primary transition-colors">
-                        {entry.phone}
-                      </a>
-                    </div>
+                    <a
+                      href={`tel:${entry.phone}`}
+                      className="relative z-10 flex items-center gap-2 text-text-mute hover:text-(--accent-fg)"
+                    >
+                      <Phone aria-hidden="true" className="h-4 w-4 shrink-0" />
+                      <span>{entry.phone}</span>
+                    </a>
                   )}
 
                   {entry.website && (
-                    <div className="flex items-center gap-2 text-garage-text-muted">
-                      <Globe className="w-4 h-4" />
-                      <a
-                        href={entry.website}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="hover:text-primary transition-colors truncate"
-                      >
-                        {entry.website}
-                      </a>
-                    </div>
+                    <a
+                      href={entry.website}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="relative z-10 flex items-center gap-2 text-(--accent-fg) hover:underline"
+                    >
+                      <Globe aria-hidden="true" className="h-4 w-4 shrink-0" />
+                      <span className="truncate">{entry.website}</span>
+                    </a>
                   )}
 
                   {(entry.address || entry.city || entry.state || entry.zip_code) && (
-                    <div className="flex items-start gap-2 text-garage-text-muted">
-                      <MapPin className="w-4 h-4 mt-0.5 flex-shrink-0" />
+                    <div className="flex items-start gap-2 text-text-mute">
+                      <MapPin aria-hidden="true" className="mt-0.5 h-4 w-4 shrink-0" />
                       <div>
                         {entry.address && <div>{entry.address}</div>}
                         <div>
@@ -239,24 +241,18 @@ export default function AddressBook() {
                   )}
 
                   {entry.notes && (
-                    <p className="text-garage-text-muted text-xs mt-2 pt-2 border-t border-garage-border">
-                      {entry.notes}
-                    </p>
+                    <p className="mt-2 border-t border-border pt-2 text-xs text-text-mute">{entry.notes}</p>
                   )}
                 </div>
               </div>
-            ))}
-          </div>
-        )}
-      </div>
+            )
+          })}
+        </div>
+      )}
 
-      {/* Form Modal */}
+      {/* Add / Edit sidecar */}
       {showForm && (
-        <AddressBookForm
-          entry={editingEntry}
-          onClose={handleCloseForm}
-          onSuccess={handleFormSuccess}
-        />
+        <AddressBookForm entry={editingEntry} onClose={handleCloseForm} onSuccess={handleFormSuccess} />
       )}
     </div>
   )
@@ -274,13 +270,11 @@ export function AddressBookForm({ entry, onClose, onSuccess }: AddressBookFormPr
   const isEdit = !!entry
   const [error, setError] = useState<string | null>(null)
 
-  // Gas context = untagged or already a gas station. Any other poi_category
-  // (auto_shop/rv_shop/ev_charging/propane) is preserved: the checkbox is
-  // hidden and the payload omits poi_category. The backend enforces this too
-  // (Task 3), so a stale snapshot can't clobber either.
-  const existingPoi = entry?.poi_category ?? ''
-  const gasContext = existingPoi === '' || existingPoi === 'gas_station'
-  const [isGasStation, setIsGasStation] = useState(existingPoi === 'gas_station')
+  // Pre-select the category from displayCategory (so editing a POI-derived
+  // gas station shows "Gas Station"), but only when it is one of the canonical
+  // options — a legacy/custom value falls back to the empty placeholder.
+  const initialCategory = entry ? displayCategory(entry) : ''
+  const defaultCategory = ADDRESS_BOOK_CATEGORIES.some((c) => c.value === initialCategory) ? initialCategory : ''
 
   const {
     register,
@@ -298,16 +292,17 @@ export function AddressBookForm({ entry, onClose, onSuccess }: AddressBookFormPr
       city: entry?.city || '',
       state: entry?.state || '',
       zip_code: entry?.zip_code || '',
-      category: entry?.category || '',
+      category: defaultCategory,
       notes: entry?.notes || '',
     },
   })
 
   const onSubmit = async (data: AddressBookFormData) => {
     setError(null)
-
     try {
-      // Zod has already validated all fields - no manual checks needed!
+      // poi_category is intentionally never sent from here: manual gas stations
+      // use category='Gas Station', and omitting poi_category preserves any
+      // discovery-set value on the backend (PUT merge).
       const payload: AddressBookEntryCreate = {
         business_name: data.business_name,
         name: data.name,
@@ -319,7 +314,6 @@ export function AddressBookForm({ entry, onClose, onSuccess }: AddressBookFormPr
         state: data.state,
         zip_code: data.zip_code,
         category: data.category,
-        ...(gasContext ? { poi_category: isGasStation ? 'gas_station' : null } : {}),
         notes: data.notes,
         source: 'manual',
       }
@@ -336,253 +330,180 @@ export function AddressBookForm({ entry, onClose, onSuccess }: AddressBookFormPr
     }
   }
 
+  const handleDelete = async () => {
+    if (!entry) return
+    if (!confirm(t('addressBook.confirmDelete'))) return
+    try {
+      await api.delete(`/address-book/${entry.id}`)
+      onSuccess()
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : t('addressBook.deleteError'))
+    }
+  }
+
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center p-4 z-50">
-      <div className="bg-garage-surface rounded-lg shadow-2xl max-w-full sm:max-w-2xl w-full max-h-[90vh] overflow-y-auto border border-garage-border">
-        <div className="sticky top-0 bg-garage-surface border-b border-garage-border px-6 py-4 flex justify-between items-center rounded-t-lg">
-          <h2 className="text-xl font-semibold text-garage-text">
-            {isEdit ? t('addressBook.editContact') : t('addressBook.addContact')}
-          </h2>
-          <button onClick={onClose} className="text-garage-text-muted hover:text-garage-text">
-            <X className="w-5 h-5" />
-          </button>
+    <FormModalWrapper
+      title={isEdit ? t('addressBook.editContact') : t('addressBook.addContact')}
+      onClose={onClose}
+      width="sm"
+      footer={
+        <div className="flex w-full items-center justify-between gap-3">
+          <div className="flex gap-3">
+            <Button
+              type="submit"
+              form="address-book-form"
+              variant="primary"
+              icon={Save}
+              loading={isSubmitting}
+              disabled={isSubmitting}
+            >
+              {isEdit ? t('addressBook.saveChanges') : t('common:create')}
+            </Button>
+            <Button variant="secondary" onClick={onClose} disabled={isSubmitting}>
+              {t('common:cancel')}
+            </Button>
+          </div>
+          {isEdit && (
+            <Button variant="danger" icon={Trash2} onClick={handleDelete} disabled={isSubmitting}>
+              {t('common:delete')}
+            </Button>
+          )}
+        </div>
+      }
+    >
+      <form id="address-book-form" onSubmit={handleSubmit(onSubmit)} className="space-y-4 p-6">
+        {error && (
+          <div className="rounded-lg border border-danger bg-danger/10 p-3">
+            <p className="text-sm text-danger">{error}</p>
+          </div>
+        )}
+
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+          <Field id="business_name" label={t('addressBook.businessName')} required error={errors.business_name}>
+            <Input
+              id="business_name"
+              type="text"
+              {...register('business_name')}
+              placeholder={t('addressBookPage.businessNamePlaceholder')}
+              invalid={!!errors.business_name}
+              disabled={isSubmitting}
+            />
+          </Field>
+          <Field id="name" label={t('addressBook.contactName')} error={errors.name}>
+            <Input
+              id="name"
+              type="text"
+              {...register('name')}
+              placeholder={t('addressBookPage.contactNamePlaceholder')}
+              invalid={!!errors.name}
+              disabled={isSubmitting}
+            />
+          </Field>
         </div>
 
-        <form onSubmit={handleSubmit(onSubmit)} className="p-6 space-y-4">
-          {error && (
-            <div className="bg-danger/10 border border-danger rounded-lg p-3">
-              <p className="text-sm text-danger">{error}</p>
-            </div>
-          )}
+        <Field id="category" label={t('addressBook.category')} error={errors.category}>
+          <Select
+            id="category"
+            {...register('category')}
+            disabled={isSubmitting}
+            invalid={!!errors.category}
+            placeholder={t('addressBook.selectCategory')}
+            options={ADDRESS_BOOK_CATEGORIES.map((cat) => ({ value: cat.value, label: t(cat.labelKey) }))}
+          />
+        </Field>
 
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label htmlFor="business_name" className="block text-sm font-medium text-garage-text mb-1">
-                {t('addressBook.businessName')} <span className="text-danger">*</span>
-              </label>
-              <input
-                type="text"
-                id="business_name"
-                {...register('business_name')}
-                placeholder={t('addressBookPage.businessNamePlaceholder')}
-                className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-primary bg-garage-bg text-garage-text ${
-                  errors.business_name ? 'border-red-500' : 'border-garage-border'
-                }`}
-                disabled={isSubmitting}
-              />
-              <FormError error={errors.business_name} />
-            </div>
-
-            <div>
-              <label htmlFor="name" className="block text-sm font-medium text-garage-text mb-1">
-                {t('addressBook.contactName')}
-              </label>
-              <input
-                type="text"
-                id="name"
-                {...register('name')}
-                placeholder={t('addressBookPage.contactNamePlaceholder')}
-                className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-primary bg-garage-bg text-garage-text ${
-                  errors.name ? 'border-red-500' : 'border-garage-border'
-                }`}
-                disabled={isSubmitting}
-              />
-              <FormError error={errors.name} />
-            </div>
-          </div>
-
-          <div>
-            <label htmlFor="category" className="block text-sm font-medium text-garage-text mb-1">
-              {t('addressBook.category')}
-            </label>
-            <Select
-              id="category"
-              {...register('category')}
-              disabled={isSubmitting}
-              invalid={!!errors.category}
-              placeholder={t('addressBook.selectCategory')}
-              options={ADDRESS_BOOK_CATEGORIES.map((cat) => ({ value: cat.value, label: t(cat.labelKey) }))}
-            />
-            <FormError error={errors.category} />
-          </div>
-
-          {gasContext && (
-            <div className="flex items-center">
-              <input
-                type="checkbox"
-                id="poi_gas_station"
-                checked={isGasStation}
-                onChange={(e) => setIsGasStation(e.target.checked)}
-                className="h-4 w-4 text-primary focus:ring-primary border-garage-border rounded bg-garage-bg"
-                disabled={isSubmitting}
-              />
-              <label htmlFor="poi_gas_station" className="ml-2 block text-sm text-garage-text">
-                {t('addressBook.gasStationFlag')}
-              </label>
-            </div>
-          )}
-
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label htmlFor="email" className="block text-sm font-medium text-garage-text mb-1">
-                {t('addressBook.email')}
-              </label>
-              <input
-                type="email"
-                id="email"
-                {...register('email')}
-                placeholder="contact@example.com"
-                className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-primary bg-garage-bg text-garage-text ${
-                  errors.email ? 'border-red-500' : 'border-garage-border'
-                }`}
-                disabled={isSubmitting}
-              />
-              <FormError error={errors.email} />
-            </div>
-
-            <div>
-              <label htmlFor="phone" className="block text-sm font-medium text-garage-text mb-1">
-                {t('addressBook.phone')}
-              </label>
-              <input
-                type="tel"
-                id="phone"
-                {...register('phone')}
-                placeholder="(555) 123-4567"
-                className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-primary bg-garage-bg text-garage-text ${
-                  errors.phone ? 'border-red-500' : 'border-garage-border'
-                }`}
-                disabled={isSubmitting}
-              />
-              <FormError error={errors.phone} />
-            </div>
-          </div>
-
-          <div>
-            <label htmlFor="website" className="block text-sm font-medium text-garage-text mb-1">
-              {t('addressBook.website')}
-            </label>
-            <input
-              type="url"
-              id="website"
-              {...register('website')}
-              placeholder="https://example.com"
-              className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-primary bg-garage-bg text-garage-text ${
-                errors.website ? 'border-red-500' : 'border-garage-border'
-              }`}
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+          <Field id="email" label={t('addressBook.email')} error={errors.email}>
+            <Input
+              id="email"
+              type="email"
+              {...register('email')}
+              placeholder="contact@example.com"
+              invalid={!!errors.email}
               disabled={isSubmitting}
             />
-            <FormError error={errors.website} />
-          </div>
-
-          <div>
-            <label htmlFor="address" className="block text-sm font-medium text-garage-text mb-1">
-              {t('addressBook.streetAddress')}
-            </label>
-            <input
-              type="text"
-              id="address"
-              {...register('address')}
-              placeholder={t('addressBookPage.streetAddressPlaceholder')}
-              className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-primary bg-garage-bg text-garage-text ${
-                errors.address ? 'border-red-500' : 'border-garage-border'
-              }`}
+          </Field>
+          <Field id="phone" label={t('addressBook.phone')} error={errors.phone}>
+            <Input
+              id="phone"
+              type="tel"
+              {...register('phone')}
+              placeholder="(555) 123-4567"
+              invalid={!!errors.phone}
               disabled={isSubmitting}
             />
-            <FormError error={errors.address} />
-          </div>
+          </Field>
+        </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-            <div className="sm:col-span-2">
-              <label htmlFor="city" className="block text-sm font-medium text-garage-text mb-1">
-                {t('addressBook.city')}
-              </label>
-              <input
-                type="text"
+        <Field id="website" label={t('addressBook.website')} error={errors.website}>
+          <Input
+            id="website"
+            type="url"
+            {...register('website')}
+            placeholder="https://example.com"
+            invalid={!!errors.website}
+            disabled={isSubmitting}
+          />
+        </Field>
+
+        <Field id="address" label={t('addressBook.streetAddress')} error={errors.address}>
+          <Input
+            id="address"
+            type="text"
+            {...register('address')}
+            placeholder={t('addressBookPage.streetAddressPlaceholder')}
+            invalid={!!errors.address}
+            disabled={isSubmitting}
+          />
+        </Field>
+
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+          <div className="sm:col-span-2">
+            <Field id="city" label={t('addressBook.city')} error={errors.city}>
+              <Input
                 id="city"
+                type="text"
                 {...register('city')}
                 placeholder={t('addressBookPage.cityPlaceholder')}
-                className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-primary bg-garage-bg text-garage-text ${
-                  errors.city ? 'border-red-500' : 'border-garage-border'
-                }`}
+                invalid={!!errors.city}
                 disabled={isSubmitting}
               />
-              <FormError error={errors.city} />
-            </div>
-
-            <div>
-              <label htmlFor="state" className="block text-sm font-medium text-garage-text mb-1">
-                {t('addressBook.state')}
-              </label>
-              <input
-                type="text"
-                id="state"
-                {...register('state')}
-                placeholder={t('addressBook.statePlaceholder')}
-                className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-primary bg-garage-bg text-garage-text ${
-                  errors.state ? 'border-red-500' : 'border-garage-border'
-                }`}
-                disabled={isSubmitting}
-              />
-              <FormError error={errors.state} />
-            </div>
+            </Field>
           </div>
-
-          <div>
-            <label htmlFor="zip" className="block text-sm font-medium text-garage-text mb-1">
-              {t('addressBook.zipCode')}
-            </label>
-            <input
+          <Field id="state" label={t('addressBook.state')} error={errors.state}>
+            <Input
+              id="state"
               type="text"
-              id="zip"
-              {...register('zip_code')}
-              placeholder="62701"
-              className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-primary bg-garage-bg text-garage-text ${
-                errors.zip_code ? 'border-red-500' : 'border-garage-border'
-              }`}
+              {...register('state')}
+              placeholder={t('addressBook.statePlaceholder')}
+              invalid={!!errors.state}
               disabled={isSubmitting}
             />
-            <FormError error={errors.zip_code} />
-          </div>
+          </Field>
+        </div>
 
-          <div>
-            <label htmlFor="notes" className="block text-sm font-medium text-garage-text mb-1">
-              {t('addressBook.notes')}
-            </label>
-            <textarea
-              id="notes"
-              rows={3}
-              {...register('notes')}
-              placeholder={t('addressBook.notesPlaceholder')}
-              className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-primary bg-garage-bg text-garage-text ${
-                errors.notes ? 'border-red-500' : 'border-garage-border'
-              }`}
-              disabled={isSubmitting}
-            />
-            <FormError error={errors.notes} />
-          </div>
+        <Field id="zip" label={t('addressBook.zipCode')} error={errors.zip_code}>
+          <Input
+            id="zip"
+            type="text"
+            {...register('zip_code')}
+            placeholder="62701"
+            invalid={!!errors.zip_code}
+            disabled={isSubmitting}
+          />
+        </Field>
 
-          <div className="flex gap-3 pt-4">
-            <button
-              type="submit"
-              disabled={isSubmitting}
-              className="flex items-center gap-2 px-5 py-3 btn btn-primary rounded-lg disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              <Save className="w-4 h-4" />
-              <span>{isSubmitting ? t('common:saving') : isEdit ? t('common:update') : t('common:create')}</span>
-            </button>
-
-            <button
-              type="button"
-              onClick={onClose}
-              className="px-5 py-3 btn btn-secondary rounded-lg"
-              disabled={isSubmitting}
-            >
-              {t('common:cancel')}
-            </button>
-          </div>
-        </form>
-      </div>
-    </div>
+        <Field id="notes" label={t('addressBook.notes')} error={errors.notes}>
+          <Textarea
+            id="notes"
+            rows={3}
+            {...register('notes')}
+            placeholder={t('addressBook.notesPlaceholder')}
+            invalid={!!errors.notes}
+            disabled={isSubmitting}
+          />
+        </Field>
+      </form>
+    </FormModalWrapper>
   )
 }

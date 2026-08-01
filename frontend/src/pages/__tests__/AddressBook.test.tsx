@@ -1,62 +1,102 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { render, fireEvent, waitFor } from '../../__tests__/test-utils'  // no `screen` — tests select by id
-import { AddressBookForm } from '../AddressBook'   // export the form (Step 3)
+import { render, fireEvent, waitFor } from '../../__tests__/test-utils' // selects by id (i18n mock renders keys)
+import { AddressBookForm, displayCategory } from '../AddressBook'
 
-// vi.mock is hoisted above module-level consts, so spies must be created with
-// vi.hoisted or the factory closes over uninitialized bindings (Codex R1-F4).
-const { post, put } = vi.hoisted(() => ({ post: vi.fn(), put: vi.fn() }))
-vi.mock('../../services/api', () => ({ default: { post, put } }))
+// vi.mock is hoisted above module-level consts, so spies must be created with vi.hoisted.
+const { post, put, del } = vi.hoisted(() => ({ post: vi.fn(), put: vi.fn(), del: vi.fn() }))
+vi.mock('../../services/api', () => ({ default: { post, put, delete: del } }))
 
 beforeEach(() => {
   vi.clearAllMocks()
   post.mockResolvedValue({ data: {} })
   put.mockResolvedValue({ data: {} })
+  del.mockResolvedValue({ data: {} })
 })
 
-const form = (c: HTMLElement) => c.querySelector('form') as HTMLFormElement
-// Select by id, NOT label text — the global i18n test mock renders keys, so
-// getByLabelText(/gas station/i) would not match the aria-label (Codex R1-F1).
-const gasBox = () => document.getElementById('poi_gas_station') as HTMLInputElement | null
+// The form portals through the Drawer, so query the document, not a container.
+const formEl = () => document.getElementById('address-book-form') as HTMLFormElement
+const categorySelect = () => document.getElementById('category') as HTMLSelectElement
+const businessInput = () => document.getElementById('business_name') as HTMLInputElement
+const buttonWithText = (text: string) =>
+  Array.from(document.querySelectorAll('button')).find((b) => b.textContent?.includes(text))
 
-describe('AddressBookForm gas-station checkbox', () => {
-  it('checked for a gas_station entry', () => {
+describe('displayCategory', () => {
+  it('uses the manual category when set', () => {
+    expect(displayCategory({ category: 'Service', poi_category: null })).toBe('Service')
+  })
+  it('derives Gas Station / RV Park from the POI type when there is no manual category', () => {
+    expect(displayCategory({ category: null, poi_category: 'gas_station' })).toBe('Gas Station')
+    expect(displayCategory({ category: '', poi_category: 'rv_shop' })).toBe('RV Park')
+    expect(displayCategory({ category: null, poi_category: 'rv_park' })).toBe('RV Park')
+  })
+  it('returns empty for an unmapped POI type (no chip)', () => {
+    expect(displayCategory({ category: null, poi_category: 'auto_shop' })).toBe('')
+    expect(displayCategory({ category: '   ', poi_category: null })).toBe('')
+  })
+})
+
+describe('AddressBookForm — category (no more gas-station checkbox)', () => {
+  it('drops the gas-station checkbox entirely', () => {
     render(<AddressBookForm entry={{ id: 1, business_name: 'Shell', poi_category: 'gas_station' } as never} onClose={() => {}} onSuccess={() => {}} />)
-    expect(gasBox()).toBeChecked()
+    expect(document.getElementById('poi_gas_station')).toBeNull()
   })
 
-  it('unchecked for an untagged entry', () => {
-    render(<AddressBookForm entry={{ id: 2, business_name: 'Bob', poi_category: null } as never} onClose={() => {}} onSuccess={() => {}} />)
-    expect(gasBox()).not.toBeChecked()
+  it('pre-selects "Gas Station" for a poi_category=gas_station entry with no manual category', () => {
+    render(<AddressBookForm entry={{ id: 1, business_name: 'Shell', category: null, poi_category: 'gas_station' } as never} onClose={() => {}} onSuccess={() => {}} />)
+    expect(categorySelect().value).toBe('Gas Station')
   })
 
-  it('does NOT render the checkbox for a non-gas POI category (protects auto_shop etc.)', () => {
-    render(<AddressBookForm entry={{ id: 3, business_name: 'Joe Auto', poi_category: 'auto_shop' } as never} onClose={() => {}} onSuccess={() => {}} />)
-    expect(gasBox()).toBeNull()
+  it('pre-selects "RV Park" for an rv_shop POI entry', () => {
+    render(<AddressBookForm entry={{ id: 2, business_name: 'Riverside', category: null, poi_category: 'rv_shop' } as never} onClose={() => {}} onSuccess={() => {}} />)
+    expect(categorySelect().value).toBe('RV Park')
   })
 
-  it('editing a non-gas entry never serializes poi_category (clobber proof; Codex R1-H1)', async () => {
-    const { container } = render(<AddressBookForm entry={{ id: 3, business_name: 'Joe Auto', poi_category: 'auto_shop' } as never} onClose={() => {}} onSuccess={() => {}} />)
-    fireEvent.submit(form(container))
+  it('uses the manual category when one is set', () => {
+    render(<AddressBookForm entry={{ id: 3, business_name: 'Summit', category: 'Service', poi_category: null } as never} onClose={() => {}} onSuccess={() => {}} />)
+    expect(categorySelect().value).toBe('Service')
+  })
+})
+
+describe('AddressBookForm — submit never serializes poi_category', () => {
+  it('editing a POI entry omits poi_category (backend preserves the discovery value) and keeps category', async () => {
+    render(<AddressBookForm entry={{ id: 3, business_name: 'Joe Auto', category: 'Service', poi_category: 'auto_shop' } as never} onClose={() => {}} onSuccess={() => {}} />)
+    fireEvent.submit(formEl())
     await waitFor(() => expect(put).toHaveBeenCalled())
     const body = put.mock.calls.at(-1)?.[1] as Record<string, unknown>
-    expect('poi_category' in body).toBe(false)  // omitted → backend preserves auto_shop
+    expect('poi_category' in body).toBe(false)
+    expect(body.category).toBe('Service')
   })
 
-  it('checking the box on an untagged entry submits poi_category="gas_station" (Codex R1-H2)', async () => {
-    const { container } = render(<AddressBookForm entry={{ id: 4, business_name: 'New Fuel', poi_category: null } as never} onClose={() => {}} onSuccess={() => {}} />)
-    fireEvent.click(gasBox() as HTMLInputElement)
-    fireEvent.submit(form(container))
-    await waitFor(() => expect(put).toHaveBeenCalled())
-    const body = put.mock.calls.at(-1)?.[1] as Record<string, unknown>
-    expect(body.poi_category).toBe('gas_station')
+  it('adding routes to create with the chosen category and no poi_category', async () => {
+    render(<AddressBookForm entry={null} onClose={() => {}} onSuccess={() => {}} />)
+    fireEvent.change(businessInput(), { target: { value: 'New Fuel' } })
+    fireEvent.change(categorySelect(), { target: { value: 'Gas Station' } })
+    fireEvent.submit(formEl())
+    await waitFor(() => expect(post).toHaveBeenCalled())
+    expect(put).not.toHaveBeenCalled()
+    const body = post.mock.calls.at(-1)?.[1] as Record<string, unknown>
+    expect(body.business_name).toBe('New Fuel')
+    expect(body.category).toBe('Gas Station')
+    expect('poi_category' in body).toBe(false)
+  })
+})
+
+describe('AddressBookForm — delete + notes placeholder', () => {
+  it('deletes via the footer Delete button (edit mode) after confirm', async () => {
+    const onSuccess = vi.fn()
+    vi.spyOn(window, 'confirm').mockReturnValue(true)
+    render(<AddressBookForm entry={{ id: 7, business_name: 'Old Shop' } as never} onClose={() => {}} onSuccess={onSuccess} />)
+    const btn = buttonWithText('common:delete')
+    expect(btn).toBeTruthy()
+    fireEvent.click(btn as HTMLButtonElement)
+    await waitFor(() => expect(del).toHaveBeenCalledWith('/address-book/7'))
+    expect(onSuccess).toHaveBeenCalled()
   })
 
-  it('unchecking a gas_station entry submits poi_category=null to clear it (Codex R1-H2)', async () => {
-    const { container } = render(<AddressBookForm entry={{ id: 5, business_name: 'Shell', poi_category: 'gas_station' } as never} onClose={() => {}} onSuccess={() => {}} />)
-    fireEvent.click(gasBox() as HTMLInputElement)  // uncheck
-    fireEvent.submit(form(container))
-    await waitFor(() => expect(put).toHaveBeenCalled())
-    const body = put.mock.calls.at(-1)?.[1] as Record<string, unknown>
-    expect(body.poi_category).toBeNull()
+  it('renders a real notes placeholder (guards the [object Object] regression)', () => {
+    render(<AddressBookForm entry={null} onClose={() => {}} onSuccess={() => {}} />)
+    const notes = document.getElementById('notes') as HTMLTextAreaElement
+    expect(notes.placeholder).toBe('addressBook.notesPlaceholder')
+    expect(notes.placeholder).not.toContain('object Object')
   })
 })

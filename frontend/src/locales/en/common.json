@@ -98,7 +98,7 @@
   },
   "addressBook": {
     "title": "Address Book",
-    "subtitle": "Service shops, parts suppliers, dealers, and insurance contacts",
+    "subtitle": "Service shops, parts suppliers, dealers, and other contacts",
     "searchPlaceholder": "Search contacts...",
     "allCategories": "All Categories",
     "categoryService": "Service",
@@ -131,7 +131,12 @@
     "gasStationFlag": "Gas station",
     "gasStations": "Gas Stations",
     "gasStationsFilterHint": "Show only gas stations created from fuel records",
-    "categoryRvPark": "RV Park"
+    "categoryRvPark": "RV Park",
+    "categoryGasStation": "Gas Station",
+    "categoryAll": "All",
+    "filterByCategory": "Filter by category",
+    "editContactNamed": "Edit {{name}}",
+    "saveChanges": "Save Changes"
   },
   "supplies": {
     "title": "Supplies",

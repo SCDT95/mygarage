@@ -10,11 +10,11 @@ import { z } from 'zod'
  */
 export const ADDRESS_BOOK_CATEGORIES = [
   { value: 'Service', labelKey: 'common:addressBook.categoryService' },
-  { value: 'Parts', labelKey: 'common:addressBook.categoryParts' },
-  { value: 'Dealer', labelKey: 'common:addressBook.categoryDealer' },
-  { value: 'Insurance', labelKey: 'common:addressBook.categoryInsurance' },
   { value: 'RV Park', labelKey: 'common:addressBook.categoryRvPark' },
-  { value: 'Other', labelKey: 'common:addressBook.categoryOther' },
+  { value: 'Dealer', labelKey: 'common:addressBook.categoryDealer' },
+  { value: 'Parts', labelKey: 'common:addressBook.categoryParts' },
+  { value: 'Insurance', labelKey: 'common:addressBook.categoryInsurance' },
+  { value: 'Gas Station', labelKey: 'common:addressBook.categoryGasStation' },
 ] as const
 
 export type AddressBookCategory = (typeof ADDRESS_BOOK_CATEGORIES)[number]['value']
