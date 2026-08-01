@@ -23,6 +23,7 @@ import {
   AlertTriangle,
   HelpCircle,
   Droplets,
+  Clock,
 } from 'lucide-react'
 import {
   LineChart as RechartsLineChart,
@@ -390,7 +391,7 @@ export default function Analytics() {
     )
   }
 
-  const { cost_analysis, cost_projection, fuel_economy, fuel_alerts, service_history, predictions } = analytics
+  const { cost_analysis, cost_projection, fuel_economy, fuel_alerts, service_history, predictions, hours_economy, hours_accumulated } = analytics
 
   // Type-cast unstructured analysis fields (generated schema types them as { [key: string]: unknown })
   const propane = analytics.propane_analysis as PropaneAnalysis | null | undefined
@@ -1180,6 +1181,181 @@ export default function Analytics() {
                 ))}
               </tbody>
             </table>
+          </div>
+        </div>
+      )}
+
+      {/* Hours Efficiency (l/hr + cost/hr trend) — the hours analog of the Fuel
+          Economy Details section above. Gated on data presence rather than
+          isMotorized/usage_unit: VehicleAnalytics carries no usage_unit/
+          secondary_usage_enabled field, and a vehicle with no engine-hours-
+          bearing fuel records naturally yields an empty data_points array. */}
+      {hours_economy.data_points.length > 0 && (
+        <div className="bg-garage-surface border border-garage-border rounded-lg p-6 mb-8">
+          <div className="flex items-center gap-2 mb-4">
+            <Clock className="w-5 h-5 text-garage-text-muted" />
+            <h2 className="text-xl font-bold text-garage-text">{t('vehicle.hoursEconomyAnalysis')}</h2>
+          </div>
+
+          <div className="bg-garage-bg rounded-lg p-4">
+            <h3 className="text-sm font-medium text-garage-text-muted mb-4">{t('vehicle.hoursEconomyTrendTitle')}</h3>
+            <ResponsiveContainer width="100%" height={300}>
+              <RechartsLineChart
+                data={hours_economy.data_points.map(point => {
+                  // l_per_hr is nullable (a zero-liters interval still scores a
+                  // cost_per_hr) — keep the point but null out its rate, mirroring
+                  // the distance trend's no-figure handling; connectNulls bridges
+                  // the gap on the line. cost_per_hr is never null for a point
+                  // that exists in the series at all.
+                  const rawLPerHr = point.l_per_hr != null ? parseFloat(point.l_per_hr) : null
+                  const validLPerHr = rawLPerHr !== null && !isNaN(rawLPerHr) ? rawLPerHr : null
+                  const costPerHr = parseFloat(point.cost_per_hr)
+                  return {
+                    date: formatDateForDisplay(point.date, { month: 'short', day: 'numeric' }, dateLocale),
+                    lPerHr: validLPerHr,
+                    displayFuelRate: validLPerHr !== null
+                      ? (system === 'metric' ? validLPerHr : UnitConverter.litersToGallons(validLPerHr))
+                      : null,
+                    costPerHr: isNaN(costPerHr) ? null : costPerHr,
+                  }
+                })}
+                margin={{ top: 5, right: 20, left: 10, bottom: 5 }}
+              >
+                <CartesianGrid strokeDasharray="3 3" stroke="#333" />
+                <XAxis
+                  dataKey="date"
+                  stroke="#9E9E9E"
+                  style={{ fontSize: '12px' }}
+                />
+                <YAxis
+                  yAxisId="rate"
+                  stroke="#9E9E9E"
+                  style={{ fontSize: '12px' }}
+                  label={{ value: UnitFormatter.getFuelRateUnit(system), angle: -90, position: 'insideLeft', fill: '#9E9E9E' }}
+                />
+                <YAxis
+                  yAxisId="cost"
+                  orientation="right"
+                  stroke="#9E9E9E"
+                  style={{ fontSize: '12px' }}
+                  label={{ value: t('vehicle.costPerHourAxis', { currency: currencySymbol }), angle: 90, position: 'insideRight', fill: '#9E9E9E' }}
+                />
+                <Tooltip
+                  cursor={false}
+                  wrapperStyle={{ outline: 'none' }}
+                  content={({ active, payload, label }) => {
+                    if (active && payload && payload.length) {
+                      const point = payload[0].payload as { lPerHr: number | null; costPerHr: number | null }
+                      return (
+                        <div style={{ backgroundColor: '#1a1f28', border: '1px solid #3a4050', borderRadius: '8px', padding: '12px', color: '#e4e6eb' }}>
+                          <p style={{ fontWeight: '600', marginBottom: '8px' }}>{label}</p>
+                          <p style={{ fontSize: '14px', color: '#9ca3af' }}>
+                            {UnitFormatter.formatFuelRate(point.lPerHr, system, showBoth)}
+                          </p>
+                          {point.costPerHr != null && (
+                            <p style={{ fontSize: '14px', color: '#9ca3af', marginTop: '4px' }}>
+                              {t('vehicle.costPerHourValue', { value: formatCurrency(point.costPerHr, { currencyCode, locale }) })}
+                            </p>
+                          )}
+                        </div>
+                      )
+                    }
+                    return null
+                  }}
+                />
+                <Legend
+                  wrapperStyle={{ paddingTop: '10px', fontSize: '12px', color: '#9E9E9E' }}
+                />
+                <Line
+                  yAxisId="rate"
+                  type="monotone"
+                  dataKey="displayFuelRate"
+                  stroke="#3B82F6"
+                  strokeWidth={2}
+                  dot={{ fill: '#3B82F6', r: 4 }}
+                  activeDot={{ r: 6 }}
+                  name={t('vehicle.fuelRateUnitLabel', { unit: UnitFormatter.getFuelRateUnit(system) })}
+                  connectNulls
+                />
+                <Line
+                  yAxisId="cost"
+                  type="monotone"
+                  dataKey="costPerHr"
+                  stroke="#F59E0B"
+                  strokeWidth={2}
+                  dot={{ fill: '#F59E0B', r: 4 }}
+                  activeDot={{ r: 6 }}
+                  name={t('vehicle.costPerHourLabel')}
+                  connectNulls
+                />
+              </RechartsLineChart>
+            </ResponsiveContainer>
+          </div>
+        </div>
+      )}
+
+      {/* Hours Accumulated — the hours analog of an odometer-over-time series;
+          no equivalent point series exists for distance (total_km_driven /
+          average_km_per_month on VehicleAnalytics are summary scalars). */}
+      {hours_accumulated.length > 0 && (
+        <div className="bg-garage-surface border border-garage-border rounded-lg p-6 mb-8">
+          <div className="flex items-center gap-2 mb-4">
+            <Clock className="w-5 h-5 text-garage-text-muted" />
+            <h2 className="text-xl font-bold text-garage-text">{t('vehicle.hoursAccumulatedTitle')}</h2>
+          </div>
+
+          <div className="bg-garage-bg rounded-lg p-4">
+            <ResponsiveContainer width="100%" height={300}>
+              <RechartsLineChart
+                data={hours_accumulated.map(point => ({
+                  date: formatDateForDisplay(point.date, { month: 'short', day: 'numeric' }, dateLocale),
+                  engineHours: parseFloat(point.engine_hours),
+                }))}
+                margin={{ top: 5, right: 20, left: 10, bottom: 5 }}
+              >
+                <CartesianGrid strokeDasharray="3 3" stroke="#333" />
+                <XAxis
+                  dataKey="date"
+                  stroke="#9E9E9E"
+                  style={{ fontSize: '12px' }}
+                />
+                <YAxis
+                  stroke="#9E9E9E"
+                  style={{ fontSize: '12px' }}
+                  label={{ value: t('vehicle.engineHoursAxis'), angle: -90, position: 'insideLeft', fill: '#9E9E9E' }}
+                />
+                <Tooltip
+                  cursor={false}
+                  wrapperStyle={{ outline: 'none' }}
+                  content={({ active, payload, label }) => {
+                    if (active && payload && payload.length) {
+                      const value = payload[0].value as number
+                      return (
+                        <div style={{ backgroundColor: '#1a1f28', border: '1px solid #3a4050', borderRadius: '8px', padding: '12px', color: '#e4e6eb' }}>
+                          <p style={{ fontWeight: '600', marginBottom: '8px' }}>{label}</p>
+                          <p style={{ fontSize: '14px', color: '#9ca3af' }}>
+                            {t('vehicle.engineHoursReading', { value: value.toFixed(1) })}
+                          </p>
+                        </div>
+                      )
+                    }
+                    return null
+                  }}
+                />
+                <Legend
+                  wrapperStyle={{ paddingTop: '10px', fontSize: '12px', color: '#9E9E9E' }}
+                />
+                <Line
+                  type="monotone"
+                  dataKey="engineHours"
+                  stroke="#8B5CF6"
+                  strokeWidth={2}
+                  dot={{ fill: '#8B5CF6', r: 4 }}
+                  activeDot={{ r: 6 }}
+                  name={t('vehicle.engineHoursAxis')}
+                />
+              </RechartsLineChart>
+            </ResponsiveContainer>
           </div>
         </div>
       )}
