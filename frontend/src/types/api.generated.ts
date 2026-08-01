@@ -14320,6 +14320,11 @@ export interface components {
              */
             drive_type?: string | null;
             /**
+             * Exterior Color
+             * @description Exterior color
+             */
+            exterior_color?: string | null;
+            /**
              * Fuel Type
              * @description Fuel type (primary capability)
              */
@@ -14334,6 +14339,11 @@ export interface components {
              * @description GVWR class
              */
             gvwr_class?: string | null;
+            /**
+             * Interior Color
+             * @description Interior color
+             */
+            interior_color?: string | null;
             /**
              * License Plate
              * @description License plate number
@@ -14409,6 +14419,26 @@ export interface components {
                 [key: string]: unknown;
             } | null;
             /**
+             * Sticker Drivetrain
+             * @description Drivetrain (window sticker)
+             */
+            sticker_drivetrain?: string | null;
+            /**
+             * Sticker Engine Description
+             * @description Engine description (window sticker)
+             */
+            sticker_engine_description?: string | null;
+            /**
+             * Sticker Transmission Description
+             * @description Transmission description (window sticker)
+             */
+            sticker_transmission_description?: string | null;
+            /**
+             * Tire Specs
+             * @description Tire specifications
+             */
+            tire_specs?: string | null;
+            /**
              * Transmission Speeds
              * @description Transmission speeds
              */
@@ -14433,6 +14463,21 @@ export interface components {
              * @description Type of vehicle
              */
             vehicle_type?: ("Car" | "Truck" | "SUV" | "Motorcycle" | "ATV" | "RV" | "Trailer" | "FifthWheel" | "TravelTrailer" | "Electric" | "Hybrid") | null;
+            /**
+             * Warranty Basic
+             * @description Basic warranty
+             */
+            warranty_basic?: string | null;
+            /**
+             * Warranty Powertrain
+             * @description Powertrain warranty
+             */
+            warranty_powertrain?: string | null;
+            /**
+             * Wheel Specs
+             * @description Wheel specifications
+             */
+            wheel_specs?: string | null;
             /**
              * Year
              * @description Model year

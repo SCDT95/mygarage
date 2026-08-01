@@ -188,6 +188,26 @@ class VehicleUpdate(VehicleBase):
     msrp_options: Decimal | None = Field(None, description="MSRP options total")
     msrp_total: Decimal | None = Field(None, description="MSRP total")
     destination_charge: Decimal | None = Field(None, description="Destination charge")
+    # Window-sticker / VIN-decoded descriptive fields, editable from the
+    # vehicle-detail card sidecars (Basic Information / Vehicle Details /
+    # Powertrain / Warranty). Same rationale as equipment/MSRP: they live only
+    # on VehicleResponse otherwise, so a partial PUT would silently drop them.
+    # max_length mirrors the model columns (app/models/vehicle.py).
+    exterior_color: str | None = Field(None, description="Exterior color", max_length=100)
+    interior_color: str | None = Field(None, description="Interior color", max_length=100)
+    wheel_specs: str | None = Field(None, description="Wheel specifications", max_length=100)
+    tire_specs: str | None = Field(None, description="Tire specifications", max_length=100)
+    warranty_basic: str | None = Field(None, description="Basic warranty", max_length=100)
+    warranty_powertrain: str | None = Field(None, description="Powertrain warranty", max_length=100)
+    sticker_engine_description: str | None = Field(
+        None, description="Engine description (window sticker)", max_length=150
+    )
+    sticker_transmission_description: str | None = Field(
+        None, description="Transmission description (window sticker)", max_length=150
+    )
+    sticker_drivetrain: str | None = Field(
+        None, description="Drivetrain (window sticker)", max_length=50
+    )
 
     @field_validator("fuel_type", "fuel_type_secondary", mode="before")
     @classmethod

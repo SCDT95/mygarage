@@ -3,6 +3,8 @@ import { useTranslation } from 'react-i18next'
 import { Link } from 'react-router-dom'
 import { Calendar, FileText, Radio } from 'lucide-react'
 import { Card, CardHeader, Mono, Button } from '../ui'
+import CardEditOverlay, { EDITABLE_CARD_CLASS } from './CardEditOverlay'
+import type { VehicleCardKey } from './VehicleFieldsDrawer'
 import type { Vehicle } from '../../types/vehicle'
 import type { LastLocation } from '../../types/trips'
 import { formatCurrency, formatStickerValue } from '../../utils/formatUtils'
@@ -26,6 +28,9 @@ interface VehicleOverviewTabProps {
   onDownloadWindowSticker: () => void
   /** Opens the pricing editor sidecar. Omitted → the Pricing card is read-only. */
   onEditPricing?: () => void
+  /** Opens the shared field editor sidecar for an info card (basic / details /
+   *  powertrain / warranty). Omitted → those cards are read-only. */
+  onEditCard?: (card: VehicleCardKey) => void
 }
 
 /**
@@ -34,7 +39,7 @@ interface VehicleOverviewTabProps {
  * read-only collapsible card here.
  */
 export default function VehicleOverviewTab({
-  vin, vehicle, lastLocation, onOpenModal, onDownloadWindowSticker, onEditPricing,
+  vin, vehicle, lastLocation, onOpenModal, onDownloadWindowSticker, onEditPricing, onEditCard,
 }: VehicleOverviewTabProps) {
   const { t } = useTranslation('vehicles')
   const { system: unitSystem } = useUnitPreference()
@@ -53,10 +58,21 @@ export default function VehicleOverviewTab({
     return formatDateForDisplay(dateString, { year: 'numeric', month: 'long', day: 'numeric' }, dateLocale)
   }
 
+  // Click-to-edit overlay for the four editable info cards. `sectionKey` is the
+  // card-title translation key, reused as the overlay's accessible name.
+  const editOverlay = (card: VehicleCardKey, sectionKey: string) =>
+    onEditCard && (
+      <CardEditOverlay
+        label={t('detail.cardEdit.title', { section: t(sectionKey) })}
+        onClick={() => onEditCard(card)}
+      />
+    )
+
   return (
     <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
       {/* Basic Information */}
-      <Card breakInside>
+      <Card breakInside className={onEditCard ? EDITABLE_CARD_CLASS : ''}>
+        {editOverlay('basic', 'detail.basicInformation')}
         <CardHeader title={t('detail.basicInformation')} />
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div><p className="text-sm text-text-mute">{t('edit.year')}</p><p className="font-medium text-text">{vehicle.year || t('detail.notSpecified')}</p></div>
@@ -76,18 +92,8 @@ export default function VehicleOverviewTab({
           button (Card is `relative`) — no visible corner control. Clicking
           anywhere opens the sidecar; the values below stay real, screen-reader-
           readable content, and the overlay button is the keyboard/AT action. */}
-      <Card
-        breakInside
-        className={onEditPricing ? 'relative cursor-pointer ui-motion ui-hover-line hover:shadow-card-hover' : ''}
-      >
-        {onEditPricing && (
-          <button
-            type="button"
-            onClick={onEditPricing}
-            aria-label={t('detail.pricing.editTitle')}
-            className="ui-focus-ring absolute inset-0 z-10 rounded-card cursor-pointer"
-          />
-        )}
+      <Card breakInside className={onEditPricing ? EDITABLE_CARD_CLASS : ''}>
+        {onEditPricing && <CardEditOverlay label={t('detail.pricing.editTitle')} onClick={onEditPricing} />}
         <CardHeader title={t('detail.pricing.title')} />
         <div className="space-y-3">
           <div>
@@ -153,7 +159,8 @@ export default function VehicleOverviewTab({
 
       {/* VIN Decoded Information */}
       {(vehicle.trim || vehicle.body_class || vehicle.drive_type || vehicle.doors || vehicle.gvwr_class || vehicle.wheel_specs || vehicle.tire_specs || (!isMotorized && vehicle.fuel_type)) && (
-        <Card breakInside>
+        <Card breakInside className={onEditCard ? EDITABLE_CARD_CLASS : ''}>
+          {editOverlay('details', 'detail.vehicleDetails')}
           <CardHeader title={t('detail.vehicleDetails')} />
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {vehicle.trim && (<div><p className="text-sm text-text-mute">{t('edit.trim')}</p><p className="font-medium text-text">{vehicle.trim}</p></div>)}
@@ -170,7 +177,8 @@ export default function VehicleOverviewTab({
 
       {/* Powertrain (motorized only) */}
       {isMotorized && (vehicle.displacement_l || vehicle.cylinders || vehicle.fuel_type || vehicle.sticker_engine_description || vehicle.transmission_type || vehicle.transmission_speeds || vehicle.sticker_transmission_description || vehicle.sticker_drivetrain) && (
-        <Card breakInside>
+        <Card breakInside className={onEditCard ? EDITABLE_CARD_CLASS : ''}>
+          {editOverlay('powertrain', 'detail.powertrain')}
           <CardHeader title={t('detail.powertrain')} />
           <div className="space-y-3">
             {(vehicle.displacement_l || vehicle.cylinders || vehicle.fuel_type || vehicle.sticker_engine_description) && (
@@ -209,7 +217,8 @@ export default function VehicleOverviewTab({
 
       {/* Warranty */}
       {(vehicle.warranty_powertrain || vehicle.warranty_basic) && (
-        <Card breakInside>
+        <Card breakInside className={onEditCard ? EDITABLE_CARD_CLASS : ''}>
+          {editOverlay('warranty', 'detail.warranty')}
           <CardHeader title={t('detail.warranty')} />
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {vehicle.warranty_basic && (<div><p className="text-sm text-text-mute">{t('detail.misc.basic')}</p><p className="font-medium text-text">{vehicle.warranty_basic}</p></div>)}

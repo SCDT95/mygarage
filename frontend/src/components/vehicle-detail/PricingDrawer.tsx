@@ -5,6 +5,7 @@ import { toast } from 'sonner'
 import FormModalWrapper from '../FormModalWrapper'
 import { Button, Field, Input } from '../ui'
 import vehicleService from '../../services/vehicleService'
+import { str, dateStr, emptyToNull } from '../../utils/formUtils'
 import type { Vehicle, VehicleUpdate } from '../../types/vehicle'
 
 interface PricingDrawerProps {
@@ -38,11 +39,6 @@ const EMPTY_FORM: PricingForm = {
   destination_charge: '',
   msrp_total: '',
 }
-
-const str = (value: unknown): string => (value == null ? '' : String(value))
-/** `<input type="date">` wants YYYY-MM-DD; tolerate a full ISO timestamp. */
-const dateStr = (value: unknown): string => (value == null ? '' : String(value).slice(0, 10))
-const emptyToNull = (value: string): string | null => (value.trim() === '' ? null : value.trim())
 
 function seedForm(v: Vehicle): PricingForm {
   return {

@@ -19342,6 +19342,19 @@
             "description": "Drive type (FWD, RWD, AWD, etc.)",
             "title": "Drive Type"
           },
+          "exterior_color": {
+            "anyOf": [
+              {
+                "maxLength": 100,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Exterior color",
+            "title": "Exterior Color"
+          },
           "fuel_type": {
             "anyOf": [
               {
@@ -19380,6 +19393,19 @@
             ],
             "description": "GVWR class",
             "title": "Gvwr Class"
+          },
+          "interior_color": {
+            "anyOf": [
+              {
+                "maxLength": 100,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Interior color",
+            "title": "Interior Color"
           },
           "license_plate": {
             "anyOf": [
@@ -19578,6 +19604,58 @@
             "description": "Standard equipment (category -> list of items)",
             "title": "Standard Equipment"
           },
+          "sticker_drivetrain": {
+            "anyOf": [
+              {
+                "maxLength": 50,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Drivetrain (window sticker)",
+            "title": "Sticker Drivetrain"
+          },
+          "sticker_engine_description": {
+            "anyOf": [
+              {
+                "maxLength": 150,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Engine description (window sticker)",
+            "title": "Sticker Engine Description"
+          },
+          "sticker_transmission_description": {
+            "anyOf": [
+              {
+                "maxLength": 150,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Transmission description (window sticker)",
+            "title": "Sticker Transmission Description"
+          },
+          "tire_specs": {
+            "anyOf": [
+              {
+                "maxLength": 100,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Tire specifications",
+            "title": "Tire Specs"
+          },
           "transmission_speeds": {
             "anyOf": [
               {
@@ -19657,6 +19735,45 @@
             ],
             "description": "Type of vehicle",
             "title": "Vehicle Type"
+          },
+          "warranty_basic": {
+            "anyOf": [
+              {
+                "maxLength": 100,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Basic warranty",
+            "title": "Warranty Basic"
+          },
+          "warranty_powertrain": {
+            "anyOf": [
+              {
+                "maxLength": 100,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Powertrain warranty",
+            "title": "Warranty Powertrain"
+          },
+          "wheel_specs": {
+            "anyOf": [
+              {
+                "maxLength": 100,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Wheel specifications",
+            "title": "Wheel Specs"
           },
           "year": {
             "anyOf": [

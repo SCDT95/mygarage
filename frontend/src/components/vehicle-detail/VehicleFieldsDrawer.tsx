@@ -1,0 +1,264 @@
+import { useEffect, useMemo, useRef, useState, type ChangeEvent } from 'react'
+import { useTranslation } from 'react-i18next'
+import { Info, FileText, Gauge, Shield, type LucideIcon } from 'lucide-react'
+import { toast } from 'sonner'
+import FormModalWrapper from '../FormModalWrapper'
+import { Button, Field, Input, Select, Textarea } from '../ui'
+import type { SelectOption } from '../ui'
+import vehicleService from '../../services/vehicleService'
+import { str, emptyToNull } from '../../utils/formUtils'
+import { FUEL_TYPE_VALUES, FUEL_TYPE_LABELS } from '../../constants/fuel'
+import type { Vehicle, VehicleUpdate } from '../../types/vehicle'
+
+/** The four Overview info cards that open this shared editor sidecar. */
+export type VehicleCardKey = 'basic' | 'details' | 'powertrain' | 'warranty'
+
+type FieldKind = 'text' | 'number' | 'select' | 'multiline'
+
+interface FieldSpec {
+  /** Vehicle column — present on both the update and response schemas. */
+  key: keyof VehicleUpdate & keyof Vehicle
+  /** vehicles-namespace translation key for the label. */
+  label: string
+  kind: FieldKind
+  /** Seed fallback order (first non-empty wins). Defaults to `[key]`. Used so
+   *  "Exterior color" seeds from the sticker field, then the legacy `color`. */
+  seedKeys?: (keyof Vehicle)[]
+  min?: string
+  max?: string
+}
+
+interface CardConfig {
+  titleKey: string
+  icon: LucideIcon
+  fields: FieldSpec[]
+}
+
+/**
+ * The field set each card edits. A function of `isMotorized` only for fuel
+ * type: a non-motorized vehicle has no Powertrain card, so it edits fuel type
+ * under Vehicle Details instead — mirroring where each card displays it.
+ */
+function getCardConfig(card: VehicleCardKey, isMotorized: boolean): CardConfig {
+  switch (card) {
+    case 'basic':
+      return {
+        titleKey: 'detail.basicInformation',
+        icon: Info,
+        fields: [
+          { key: 'year', label: 'edit.year', kind: 'number', min: '1900', max: '2100' },
+          { key: 'make', label: 'edit.make', kind: 'text' },
+          { key: 'model', label: 'edit.model', kind: 'text' },
+          { key: 'license_plate', label: 'edit.licensePlate', kind: 'text' },
+          {
+            key: 'exterior_color',
+            label: 'detail.misc.exteriorColor',
+            kind: 'text',
+            seedKeys: ['exterior_color', 'color'],
+          },
+          { key: 'interior_color', label: 'detail.misc.interiorColor', kind: 'text' },
+        ],
+      }
+    case 'details':
+      return {
+        titleKey: 'detail.vehicleDetails',
+        icon: FileText,
+        fields: [
+          { key: 'trim', label: 'edit.trim', kind: 'text' },
+          { key: 'body_class', label: 'edit.bodyClass', kind: 'text' },
+          { key: 'drive_type', label: 'edit.driveType', kind: 'text' },
+          { key: 'doors', label: 'edit.doors', kind: 'number' },
+          { key: 'gvwr_class', label: 'detail.misc.gvwrClass', kind: 'text' },
+          { key: 'wheel_specs', label: 'detail.misc.wheels', kind: 'text' },
+          { key: 'tire_specs', label: 'detail.misc.tires', kind: 'text' },
+          ...(isMotorized
+            ? []
+            : [{ key: 'fuel_type', label: 'edit.fuelType', kind: 'select' } as FieldSpec]),
+        ],
+      }
+    case 'powertrain':
+      return {
+        titleKey: 'detail.powertrain',
+        icon: Gauge,
+        fields: [
+          { key: 'displacement_l', label: 'detail.misc.displacement', kind: 'text' },
+          { key: 'cylinders', label: 'edit.cylinders', kind: 'number' },
+          { key: 'fuel_type', label: 'edit.fuelType', kind: 'select' },
+          { key: 'sticker_engine_description', label: 'detail.misc.engine', kind: 'multiline' },
+          { key: 'transmission_type', label: 'edit.transmissionType', kind: 'text' },
+          { key: 'transmission_speeds', label: 'edit.transmissionSpeeds', kind: 'text' },
+          {
+            key: 'sticker_transmission_description',
+            label: 'detail.misc.transmission',
+            kind: 'multiline',
+          },
+          { key: 'sticker_drivetrain', label: 'detail.misc.drivetrain', kind: 'text' },
+        ],
+      }
+    case 'warranty':
+      return {
+        titleKey: 'detail.warranty',
+        icon: Shield,
+        fields: [
+          { key: 'warranty_basic', label: 'detail.misc.basic', kind: 'text' },
+          { key: 'warranty_powertrain', label: 'detail.powertrain', kind: 'text' },
+        ],
+      }
+  }
+}
+
+/** Seed the string-valued form from the vehicle, honoring seedKeys fallbacks. */
+function seedForm(config: CardConfig, v: Vehicle): Record<string, string> {
+  const out: Record<string, string> = {}
+  for (const f of config.fields) {
+    const keys = f.seedKeys ?? [f.key]
+    let value = ''
+    for (const k of keys) {
+      const s = str(v[k])
+      if (s !== '') {
+        value = s
+        break
+      }
+    }
+    out[f.key] = value
+  }
+  return out
+}
+
+interface VehicleFieldsDrawerProps {
+  open: boolean
+  onClose: () => void
+  vehicle: Vehicle
+  vin: string
+  /** Which card's fields to edit. Retained during the close animation, so it
+   *  may briefly stay set while `open` is false. Null before the first open. */
+  card: VehicleCardKey | null
+  isMotorized: boolean
+  /** Receives the server's updated vehicle after a successful save. */
+  onUpdated: (vehicle: Vehicle) => void
+}
+
+/**
+ * Shared edit sidecar for the Overview info cards (Basic Information, Vehicle
+ * Details, Powertrain, Warranty). One config-driven form rather than four
+ * near-identical drawers. Like the pricing sidecar, edits are local until Save
+ * commits them in one partial PUT, then the drawer closes.
+ */
+export default function VehicleFieldsDrawer({
+  open,
+  onClose,
+  vehicle,
+  vin,
+  card,
+  isMotorized,
+  onUpdated,
+}: VehicleFieldsDrawerProps) {
+  const { t } = useTranslation('vehicles')
+  const [form, setForm] = useState<Record<string, string>>({})
+  const [saving, setSaving] = useState(false)
+  // Snapshot of the seeded values, so save can send only the fields the user
+  // actually changed (a true partial PUT). Load-bearing for the exterior-color
+  // duality: `exterior_color` seeds from the legacy `color`, so an untouched
+  // save must NOT write it back — that would promote `color` into
+  // `exterior_color` and permanently mask it under the `exterior_color || color`
+  // display precedence.
+  const initialRef = useRef<Record<string, string>>({})
+
+  const config = card ? getCardConfig(card, isMotorized) : null
+
+  useEffect(() => {
+    // Reseed from the vehicle each time the drawer opens on a card. Save closes
+    // it, so there is no open-state reseed race (mirrors PricingDrawer).
+    if (open && config) {
+      const seeded = seedForm(config, vehicle)
+      setForm(seeded)
+      initialRef.current = seeded
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, card])
+
+  const set =
+    (key: string) =>
+    (e: ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>): void =>
+      setForm((prev) => ({ ...prev, [key]: e.target.value }))
+
+  const handleSave = async (): Promise<void> => {
+    if (!config) return
+    // Dirty-diff: only changed fields go in the payload; unchanged ones are
+    // omitted and left untouched server-side (exclude_unset).
+    const payload: Record<string, string | number | null> = {}
+    for (const f of config.fields) {
+      const current = form[f.key] ?? ''
+      if (current === (initialRef.current[f.key] ?? '')) continue
+      const raw = current.trim()
+      payload[f.key] = f.kind === 'number' ? (raw === '' ? null : Number(raw)) : emptyToNull(current)
+    }
+    if (Object.keys(payload).length === 0) {
+      onClose()
+      return
+    }
+    setSaving(true)
+    try {
+      const updated = await vehicleService.update(vin, payload as VehicleUpdate)
+      onUpdated(updated)
+      onClose()
+    } catch {
+      toast.error(t('detail.cardEdit.saveError'))
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  const fuelOptions = useMemo<SelectOption[]>(
+    () =>
+      FUEL_TYPE_VALUES.map((value) => ({
+        value,
+        label: t(`forms:fuel.fuelTypes.${value}`, { defaultValue: FUEL_TYPE_LABELS[value] }),
+      })),
+    [t],
+  )
+
+  return (
+    <FormModalWrapper
+      isOpen={open}
+      onClose={onClose}
+      title={config ? t('detail.cardEdit.title', { section: t(config.titleKey) }) : ''}
+      icon={config?.icon ?? Info}
+      width="md"
+      footer={
+        <Button variant="primary" onClick={handleSave} loading={saving} disabled={!config}>
+          {t('common:save')}
+        </Button>
+      }
+    >
+      {config && (
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          {config.fields.map((f) => {
+            const id = `vfd_${f.key}`
+            const value = form[f.key] ?? ''
+            return (
+              <div key={f.key} className={f.kind === 'multiline' ? 'sm:col-span-2' : ''}>
+                <Field id={id} label={t(f.label)}>
+                  {f.kind === 'select' ? (
+                    <Select id={id} value={value} onChange={set(f.key)} placeholder="—" options={fuelOptions} />
+                  ) : f.kind === 'multiline' ? (
+                    <Textarea id={id} rows={2} value={value} onChange={set(f.key)} />
+                  ) : (
+                    <Input
+                      id={id}
+                      type={f.kind === 'number' ? 'number' : 'text'}
+                      min={f.min}
+                      max={f.max}
+                      value={value}
+                      onChange={set(f.key)}
+                    />
+                  )}
+                </Field>
+              </div>
+            )
+          })}
+        </div>
+      )}
+    </FormModalWrapper>
+  )
+}

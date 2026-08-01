@@ -134,6 +134,42 @@ class TestVehicleRoutes:
         assert float(data["destination_charge"]) == 1595.00
         assert float(data["msrp_total"]) == 44095.00
 
+    async def test_update_vehicle_persists_descriptive_specs(
+        self, client: AsyncClient, auth_headers, test_vehicle
+    ):
+        """Colors, wheel/tire specs, warranty, and window-sticker engine/
+        transmission descriptions are editable from the vehicle-detail card
+        sidecars. Like equipment/MSRP they live only on VehicleResponse, so
+        VehicleUpdate must declare them or extra='ignore' drops the save.
+        """
+        response = await client.put(
+            f"/api/vehicles/{test_vehicle['vin']}",
+            json={
+                "exterior_color": "Cherry Red",
+                "interior_color": "Black",
+                "wheel_specs": '18" Alloy',
+                "tire_specs": "245/45R18",
+                "warranty_basic": "3 yr / 36,000 mi",
+                "warranty_powertrain": "5 yr / 60,000 mi",
+                "sticker_engine_description": "2.0L Turbo I4",
+                "sticker_transmission_description": "8-Speed Automatic",
+                "sticker_drivetrain": "AWD",
+            },
+            headers=auth_headers,
+        )
+
+        assert response.status_code == 200
+        data = response.json()
+        assert data["exterior_color"] == "Cherry Red"
+        assert data["interior_color"] == "Black"
+        assert data["wheel_specs"] == '18" Alloy'
+        assert data["tire_specs"] == "245/45R18"
+        assert data["warranty_basic"] == "3 yr / 36,000 mi"
+        assert data["warranty_powertrain"] == "5 yr / 60,000 mi"
+        assert data["sticker_engine_description"] == "2.0L Turbo I4"
+        assert data["sticker_transmission_description"] == "8-Speed Automatic"
+        assert data["sticker_drivetrain"] == "AWD"
+
     async def test_create_vehicle_defaults_usage_unit_to_distance(
         self, client: AsyncClient, auth_headers, sample_vehicle_payload
     ):

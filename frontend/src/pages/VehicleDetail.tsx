@@ -72,6 +72,7 @@ import VehicleTransferWizard from '../components/modals/VehicleTransferWizard'
 import VehicleSharingModal from '../components/modals/VehicleSharingModal'
 import EquipmentDrawer from '../components/vehicle-detail/EquipmentDrawer'
 import PricingDrawer from '../components/vehicle-detail/PricingDrawer'
+import VehicleFieldsDrawer, { type VehicleCardKey } from '../components/vehicle-detail/VehicleFieldsDrawer'
 import TorqueSourceModal from '../components/modals/TorqueSourceModal'
 import { useOnlineStatus } from '../hooks/useOnlineStatus'
 import { useAuth } from '../contexts/AuthContext'
@@ -136,6 +137,11 @@ export default function VehicleDetail() {
   const [detailStats, setDetailStats] = useState<VehicleDetailStats | null>(null)
   const [equipmentDrawer, setEquipmentDrawer] = useState<'standard' | 'optional' | null>(null)
   const [pricingDrawerOpen, setPricingDrawerOpen] = useState(false)
+  // Which info card's editor sidecar is open. `fieldsCard` is kept set during
+  // the close animation (only `fieldsOpen` flips), so the drawer's content
+  // doesn't blank mid-exit.
+  const [fieldsCard, setFieldsCard] = useState<VehicleCardKey | null>(null)
+  const [fieldsOpen, setFieldsOpen] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const isOnline = useOnlineStatus()
 
@@ -438,6 +444,13 @@ export default function VehicleDetail() {
     setEquipmentDrawer(which)
   }
 
+  // Overview info-card click (Basic Information / Vehicle Details / Powertrain /
+  // Warranty): open the shared field editor sidecar for that card.
+  const openFieldsCard = (card: VehicleCardKey) => {
+    setFieldsCard(card)
+    setFieldsOpen(true)
+  }
+
   // Download window sticker with authentication
   const handleDownloadWindowSticker = async () => {
     if (!vin) return
@@ -698,6 +711,7 @@ export default function VehicleDetail() {
             onOpenModal={setOpenModal}
             onDownloadWindowSticker={handleDownloadWindowSticker}
             onEditPricing={() => setPricingDrawerOpen(true)}
+            onEditCard={openFieldsCard}
           />
         )}
 
@@ -779,13 +793,27 @@ export default function VehicleDetail() {
         />
       )}
 
-      {/* Pricing editor sidecar (opened from the Pricing card's Edit button) */}
+      {/* Pricing editor sidecar (opened from the Pricing card) */}
       {vin && vehicle && (
         <PricingDrawer
           open={pricingDrawerOpen}
           vehicle={vehicle}
           vin={vin}
           onClose={() => setPricingDrawerOpen(false)}
+          onUpdated={setVehicle}
+        />
+      )}
+
+      {/* Shared info-card editor sidecar (Basic Info / Details / Powertrain /
+          Warranty), opened by clicking the corresponding Overview card. */}
+      {vin && vehicle && (
+        <VehicleFieldsDrawer
+          open={fieldsOpen}
+          card={fieldsCard}
+          isMotorized={Boolean(isMotorized)}
+          vehicle={vehicle}
+          vin={vin}
+          onClose={() => setFieldsOpen(false)}
           onUpdated={setVehicle}
         />
       )}
