@@ -120,7 +120,12 @@ export default function AddressBook() {
       {/* Search + Add */}
       <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center">
         <div className="flex-1">
-          <SearchField value={searchTerm} onChange={setSearchTerm} placeholder={t('addressBook.searchPlaceholder')} />
+          <SearchField
+            value={searchTerm}
+            onChange={setSearchTerm}
+            label={t('addressBook.searchPlaceholder')}
+            placeholder={t('addressBook.searchPlaceholder')}
+          />
         </div>
         <Button variant="primary" icon={Plus} onClick={handleAddClick}>
           {t('addressBook.addContact')}
