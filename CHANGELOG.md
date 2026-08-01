@@ -12,7 +12,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - German: complete translation of all six namespaces; thanks [@SCDT95](https://github.com/SCDT95) (#125, #126).
 - Accent colour: pick from six UI accent colours in Quick Settings, saved to your account.
 - ATV is now a selectable vehicle type.
-- Hours-based usage tracking for hour-metered equipment — log engine hours instead of distance.
+- Engine-hours usage tracking for hour-metered vehicles (ATVs, side-by-sides, equipment) with full parity to distance — an hours history, fuel efficiency as fuel-per-hour and cost-per-hour, hours-based service records and reminders, analytics, the homepage widget, PDF reports and CSV import/export. A vehicle can now track distance and engine hours together (dual tracking).
 - French (fr) translation — thanks [@roondar](https://github.com/roondar) (#132).
 
 ### Changed
@@ -38,6 +38,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Toll transactions: the vendor-name lookup shadowed the translation function.
 - Settings: switching auth mode away from "none" silently failed to save.
 - Settings: changing an unrelated setting (timezone, debug) no longer rewrites the OIDC configuration.
+- Reminders: the notification scheduler could crash on a later run once any reminder had been notified, from a naive vs timezone-aware timestamp comparison.
+- Deleting a service visit no longer leaves its auto-synced odometer reading behind as an orphaned record.
 
 ### Security
 - Settings: sensitive values (OIDC client secret, notification tokens, SMTP password, POI API keys) are masked as `********` in API responses; saving a masked value keeps the stored secret.
