@@ -676,8 +676,11 @@ export default function VehicleDetail() {
         <VehiclePrimaryTabs tabs={primaryTabs} activeTab={activePrimaryTab} onTabClick={handlePrimaryTabClick} />
       </div>
 
-      {/* Sub-tabs (if applicable) */}
-      {activePrimaryTab !== 'overview' && subTabsConfig[activePrimaryTab] && (
+      {/* Sub-tabs (if applicable) — hidden when only one sub-tab is visible, so
+          a lone entry (e.g. a gasoline vehicle's Fuel group) doesn't render a
+          strip that just duplicates its parent tab. */}
+      {activePrimaryTab !== 'overview' && subTabsConfig[activePrimaryTab] &&
+        subTabsConfig[activePrimaryTab].filter((sub) => sub.visible !== false).length > 1 && (
         <SubTabNav
           tabs={subTabsConfig[activePrimaryTab]}
           activeTab={activeSubTab || ''}

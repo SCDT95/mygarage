@@ -284,7 +284,10 @@ describe('VehicleDetail', () => {
 
   // --- Fuel Primary Tab (#116) ---
 
-  it('shows Fuel as a primary tab defaulting to the Fuel sub-tab', async () => {
+  it('shows Fuel as a primary tab defaulting to the Fuel sub-tab (diesel: strip shows Fuel + DEF, Fuel selected)', async () => {
+    // The strip only renders with 2+ visible sub-tabs, so use a diesel vehicle
+    // (adds DEF). The default selection is still Fuel, not DEF.
+    mockedVehicleService.get.mockResolvedValue({ ...mockVehicle, fuel_type: 'diesel' })
     renderVehicleDetail()
 
     await waitFor(() => {
@@ -294,7 +297,7 @@ describe('VehicleDetail', () => {
     // Click the Fuel primary tab (mobile grid renders before desktop bar)
     fireEvent.click(screen.getAllByText('detail.tabs.fuel')[0])
 
-    // Sub-tab nav appears with Fuel selected as the default sub-tab
+    // Sub-tab nav appears with Fuel selected as the default sub-tab, DEF alongside
     await waitFor(() => {
       const subNav = screen.getByTestId('sub-tab-nav')
       expect(subNav).toBeInTheDocument()
@@ -302,6 +305,7 @@ describe('VehicleDetail', () => {
         'aria-selected',
         'true',
       )
+      expect(within(subNav).getByRole('tab', { name: 'DEF' })).toBeInTheDocument()
     })
   })
 
@@ -317,6 +321,19 @@ describe('VehicleDetail', () => {
       const fuelPrimary = screen.getAllByRole('tab', { name: 'detail.tabs.fuel' })
       expect(fuelPrimary.some((el) => el.getAttribute('aria-selected') === 'true')).toBe(true)
     })
+  })
+
+  it('suppresses the sub-tab strip when only one sub-tab is visible (gasoline Fuel group) — content still renders', async () => {
+    // Default mockVehicle: motorized gasoline Car -> the Fuel group has only the
+    // lone 'fuel' sub-tab visible (no DEF/Propane). A one-item strip would just
+    // duplicate its parent tab, so it is hidden; the FuelTab content still shows.
+    renderVehicleDetail()
+    await waitFor(() => expect(screen.getByText('Test Car')).toBeInTheDocument())
+
+    fireEvent.click(screen.getAllByText('detail.tabs.fuel')[0])
+
+    expect(await screen.findByText('FuelTab')).toBeInTheDocument()
+    expect(screen.queryByTestId('sub-tab-nav')).not.toBeInTheDocument()
   })
 
   it('no longer lists Fuel as a sub-tab under Maintenance', async () => {

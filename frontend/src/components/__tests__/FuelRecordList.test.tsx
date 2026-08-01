@@ -207,7 +207,7 @@ describe('FuelRecordList — hours usage tracking (Task 13)', () => {
     average_cost_per_hr: '2.75',
   }
 
-  it('shows the Fuel Rate column and per-row gal/hr, and hides Mileage/Fuel Economy, for an hours-tracking vehicle', async () => {
+  it('shows the Fuel Rate column and per-row fuel rate, and hides Mileage/Fuel Economy, for an hours-tracking vehicle', async () => {
     apiGetMock.mockResolvedValue({ data: { fuel_type: 'gasoline', usage_unit: 'hours', secondary_usage_enabled: false } })
     useFuelRecordsMock.mockReturnValue({ data: HOURS_DATA, isLoading: false, error: null })
     render(<FuelRecordList {...DEFAULT_PROPS} />)
@@ -219,7 +219,7 @@ describe('FuelRecordList — hours usage tracking (Task 13)', () => {
     expect(within(table()).queryByRole('columnheader', { name: 'fuelList.fuelEconomy' })).not.toBeInTheDocument()
   })
 
-  it('shows the Avg gal/hr and Cost/hr stat cards, and hides Avg Fuel Economy, for an hours-tracking vehicle', async () => {
+  it('shows the Avg fuel-rate and Cost/hr stat cards, and hides Avg Fuel Economy, for an hours-tracking vehicle', async () => {
     apiGetMock.mockResolvedValue({ data: { fuel_type: 'gasoline', usage_unit: 'hours', secondary_usage_enabled: false } })
     useFuelRecordsMock.mockReturnValue({ data: HOURS_DATA, isLoading: false, error: null })
     render(<FuelRecordList {...DEFAULT_PROPS} />)
@@ -256,6 +256,40 @@ describe('FuelRecordList — hours usage tracking (Task 13)', () => {
     expect(within(table()).getByRole('columnheader', { name: 'fuelList.fuelRate' })).toBeInTheDocument()
     expect(screen.getByText('fuelList.avgFuelEconomy')).toBeInTheDocument()
     expect(screen.getByText('$2.75')).toBeInTheDocument()
+  })
+
+  it('hides the cost-per-distance stat for a pure-hours vehicle even when odometer data is present, but keeps it for a distance vehicle', async () => {
+    // Two fills with DISTINCT odometers so costPerKm is computable — this proves
+    // the stat is gated on tracking MODE, not merely absent because it's null.
+    // A pure-hours ATV can still carry odometer values under its fuel rows (older
+    // distance data), which is exactly when the leak showed: a Cost/1k-Miles
+    // figure on a vehicle you don't track by distance.
+    const twoRecords = [
+      { ...record, id: 10, odometer_km: '1000', l_per_hr: '3.20', engine_hours: '100.0' },
+      { ...record, id: 11, odometer_km: '2000', l_per_hr: '3.30', engine_hours: '150.0' },
+    ] as FuelRecord[]
+
+    // Pure-hours: real getCostPerDistanceLabel('metric') === 'Cost/100 km' is hidden.
+    apiGetMock.mockResolvedValue({ data: { fuel_type: 'gasoline', usage_unit: 'hours', secondary_usage_enabled: false } })
+    useFuelRecordsMock.mockReturnValue({
+      data: { records: twoRecords, total: 2, average_l_per_100km: null, average_l_per_hr: '4.50', average_cost_per_hr: '2.75' },
+      isLoading: false,
+      error: null,
+    })
+    const hours = render(<FuelRecordList {...DEFAULT_PROPS} />)
+    await screen.findByText('4.50 L/hr') // hours state applied before asserting absence
+    expect(screen.queryByText('Cost/100 km')).not.toBeInTheDocument()
+    hours.unmount()
+
+    // Pure-distance, same records: the cost-per-distance stat returns.
+    apiGetMock.mockResolvedValue({ data: { fuel_type: 'gasoline', usage_unit: 'distance', secondary_usage_enabled: false } })
+    useFuelRecordsMock.mockReturnValue({
+      data: { records: twoRecords, total: 2, average_l_per_100km: '8.5' },
+      isLoading: false,
+      error: null,
+    })
+    render(<FuelRecordList {...DEFAULT_PROPS} />)
+    expect(await screen.findByText('Cost/100 km')).toBeInTheDocument()
   })
 })
 

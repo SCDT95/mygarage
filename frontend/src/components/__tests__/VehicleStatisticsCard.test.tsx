@@ -24,7 +24,7 @@ vi.mock('@/services/livelinkService', () => ({
 // `t('vehicleStats.hoursValue', { value })` / `t('...averageFuelEconomy', { unit })`
 // render the identical string regardless of the option — tests below need the
 // value/unit to come through to prove latest_hours (not the stale current_hours
-// column) drives the display, and to tell the MPG strip from the gal/hr strip.
+// column) drives the display, and to tell the MPG strip from the GPH strip.
 // Otherwise behaviour-identical to the global mock (bare key), so the
 // pre-existing tests stay green.
 vi.mock('react-i18next', () => ({
@@ -113,7 +113,7 @@ describe('VehicleStatisticsCard', () => {
     expect(screen.getByText('vehicleStatisticsCardExtra.averageFuelEconomy (MPG)')).toBeInTheDocument()
   })
 
-  it('shows Latest Hours from latest_hours (NOT the stale current_hours column) + gal/hr economy, hides odometer + MPG for a pure-hours vehicle', () => {
+  it('shows Latest Hours from latest_hours (NOT the stale current_hours column) + fuel-rate economy, hides odometer + MPG for a pure-hours vehicle', () => {
     render(
       <VehicleStatisticsCard
         stats={{
@@ -133,10 +133,10 @@ describe('VehicleStatisticsCard', () => {
     expect(screen.getByText('vehicleStats.hoursValue (123.5)')).toBeInTheDocument()
     expect(screen.queryByText('vehicleStats.hoursValue (999.9)')).not.toBeInTheDocument()
     expect(screen.queryByText('vehicleStats.latestOdometer')).not.toBeInTheDocument()
-    // Distance-based MPG strip is hidden for hour vehicles; gal/hr shown instead.
+    // Distance-based MPG strip is hidden for hour vehicles; GPH shown instead.
     expect(screen.queryByText('vehicleStatisticsCardExtra.averageFuelEconomy (MPG)')).not.toBeInTheDocument()
     const expectedRate = UnitFormatter.formatFuelRate(0.95, 'imperial', false)
-    expect(screen.getByText('vehicleStatisticsCardExtra.averageFuelEconomy (gal/hr)')).toBeInTheDocument()
+    expect(screen.getByText('vehicleStatisticsCardExtra.averageFuelEconomy (GPH)')).toBeInTheDocument()
     expect(screen.getByText(expectedRate)).toBeInTheDocument()
   })
 
@@ -159,7 +159,7 @@ describe('VehicleStatisticsCard', () => {
     expect(screen.getByText('vehicleStats.latestHours')).toBeInTheDocument()
     expect(screen.getByText('vehicleStats.hoursValue (321.75)')).toBeInTheDocument()
     expect(screen.getByText('vehicleStatisticsCardExtra.averageFuelEconomy (MPG)')).toBeInTheDocument()
-    expect(screen.getByText('vehicleStatisticsCardExtra.averageFuelEconomy (gal/hr)')).toBeInTheDocument()
+    expect(screen.getByText('vehicleStatisticsCardExtra.averageFuelEconomy (GPH)')).toBeInTheDocument()
   })
 
   it('never reads stats.current_hours (grep-style source check — the stale column is retired)', () => {

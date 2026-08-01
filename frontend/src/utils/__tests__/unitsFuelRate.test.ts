@@ -11,14 +11,14 @@ describe('UnitFormatter.formatFuelRate', () => {
     expect(UnitFormatter.formatFuelRate(3.2, 'metric')).toBe('3.20 L/hr')
   })
 
-  it('imperial: converts L/hr to gal/hr with 2 decimals (exact factor)', () => {
-    // 3.785411784 L/hr / 3.785411784 = 1.00 gal/hr exactly
-    expect(UnitFormatter.formatFuelRate(3.785411784, 'imperial')).toBe('1.00 gal/hr')
+  it('imperial: converts L/hr to GPH with 2 decimals (exact factor)', () => {
+    // 3.785411784 L/hr / 3.785411784 = 1.00 GPH (gallons/hour) exactly
+    expect(UnitFormatter.formatFuelRate(3.785411784, 'imperial')).toBe('1.00 GPH')
   })
 
   it('imperial: a realistic value converts and rounds correctly', () => {
-    // 12 L/hr / 3.785411784 = 3.1701... -> 3.17 gal/hr
-    expect(UnitFormatter.formatFuelRate(12, 'imperial')).toBe('3.17 gal/hr')
+    // 12 L/hr / 3.785411784 = 3.1701... -> 3.17 GPH
+    expect(UnitFormatter.formatFuelRate(12, 'imperial')).toBe('3.17 GPH')
   })
 
   it('accepts a string value (wire format) — same defensive string-parsing as formatFuelEconomy', () => {
@@ -29,12 +29,12 @@ describe('UnitFormatter.formatFuelRate', () => {
     expect(UnitFormatter.formatFuelRate('3.20' as unknown as number, 'metric')).toBe('3.20 L/hr')
   })
 
-  it('metric showBoth includes the gal/hr conversion in parens', () => {
-    expect(UnitFormatter.formatFuelRate(3.785411784, 'metric', true)).toBe('3.79 L/hr (1.00 gal/hr)')
+  it('metric showBoth includes the GPH conversion in parens', () => {
+    expect(UnitFormatter.formatFuelRate(3.785411784, 'metric', true)).toBe('3.79 L/hr (1.00 GPH)')
   })
 
   it('imperial showBoth includes the L/hr value in parens', () => {
-    expect(UnitFormatter.formatFuelRate(3.785411784, 'imperial', true)).toBe('1.00 gal/hr (3.79 L/hr)')
+    expect(UnitFormatter.formatFuelRate(3.785411784, 'imperial', true)).toBe('1.00 GPH (3.79 L/hr)')
   })
 
   it('returns N/A for null', () => {
@@ -55,8 +55,8 @@ describe('UnitFormatter.formatFuelRate', () => {
 })
 
 describe('UnitFormatter.getFuelRateUnit', () => {
-  it('imperial: gal/hr', () => {
-    expect(UnitFormatter.getFuelRateUnit('imperial')).toBe('gal/hr')
+  it('imperial: GPH', () => {
+    expect(UnitFormatter.getFuelRateUnit('imperial')).toBe('GPH')
   })
 
   it('metric: L/hr', () => {

@@ -198,7 +198,7 @@ function VehicleStatisticsCard({ stats }: VehicleStatisticsCardProps) {
         )}
 
         {/* Highlight strip — average fuel economy (accent). MPG is distance-
-            based (hidden for hour-metered vehicles); gal/hr is the hours
+            based (hidden for hour-metered vehicles); GPH/L·hr is the hours
             analog (Phase 13's formatFuelRate/getFuelRateUnit), hidden for
             distance-only vehicles. A dual-tracking vehicle shows both. */}
         {((usage.tracksDistance && stats.average_l_per_100km) ||

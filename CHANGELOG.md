@@ -18,6 +18,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 - Refreshed the interface onto a consistent design system — shared cards, forms, buttons, chips and tables with a single accent-driven theme.
 - The vehicle "Maintenance" stat tile is now labelled "Reminders".
+- The Fuel tab shows its sub-tab bar only when there's more than one sub-tab (e.g. DEF), instead of a lone "Fuel" entry that just repeated the tab.
 
 ### Removed
 - Dropped 14 unreachable components, schemas and types (~1790 lines) left behind by earlier refactors, along with the translation keys only they used.

@@ -29,7 +29,7 @@ export default function FuelRecordList({ vin, onAddClick, onEditClick }: FuelRec
   const [includeHauling, setIncludeHauling] = useState(false)
   const [vehicleFuelType, setVehicleFuelType] = useState<string>('')
   // Task 13 — which usage dimension(s) this vehicle tracks, driving mileage
-  // vs. gal/hr column + stat visibility below. Defaults mirror
+  // vs. fuel-rate column + stat visibility below. Defaults mirror
   // getUsageTracking's own distance-primary default so the table doesn't
   // flash the wrong columns before the vehicle fetch resolves.
   const [vehicleUsageUnit, setVehicleUsageUnit] = useState<string>('distance')
@@ -70,7 +70,7 @@ export default function FuelRecordList({ vin, onAddClick, onEditClick }: FuelRec
   const averageCostPerHr = data?.average_cost_per_hr != null ? parseFloat(String(data.average_cost_per_hr)) : null
 
   // Which usage dimension(s) this vehicle tracks — drives mileage/economy
-  // vs. gal/hr column + stat visibility (a dual vehicle shows both).
+  // vs. fuel-rate column + stat visibility (a dual vehicle shows both).
   const { tracksDistance, tracksHours } = getUsageTracking({
     usage_unit: vehicleUsageUnit,
     secondary_usage_enabled: vehicleSecondaryUsageEnabled,
@@ -211,7 +211,7 @@ export default function FuelRecordList({ vin, onAddClick, onEditClick }: FuelRec
         ? <Badge tone="success">{UnitFormatter.formatFuelEconomy(parseFloat(r.l_per_100km.toString()), system, showBoth)}</Badge>
         : <span className="text-sm text-text-mute">-</span>,
     }] : []),
-    // Task 13 — engine-hours economy (gal/hr display; canonical L/hr storage).
+    // Task 13 — engine-hours economy (GPH imperial / L/hr metric display; canonical L/hr storage).
     ...(tracksHours ? [{
       id: 'fuelRate', header: t('fuelList.fuelRate'),
       render: (r: FuelRecord) => r.l_per_hr
@@ -350,7 +350,7 @@ export default function FuelRecordList({ vin, onAddClick, onEditClick }: FuelRec
                 <Mono size="2xl" weight="bold">{UnitFormatter.formatCostPerVolume(avgCostPerLiter, system, currencyCode, locale)}</Mono>
               </Card>
             )}
-            {costPerKm !== null && isFinite(costPerKm) && (
+            {tracksDistance && costPerKm !== null && isFinite(costPerKm) && (
               <Card padding="sm">
                 <div className="flex items-center gap-1 text-xs text-text-mute mb-1">
                   <Truck aria-hidden="true" className="w-3 h-3" />

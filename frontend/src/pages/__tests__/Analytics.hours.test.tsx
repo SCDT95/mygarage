@@ -207,7 +207,7 @@ describe('Analytics — hours efficiency chart (Task 17)', () => {
     ])
   })
 
-  it('converts l_per_hr to gal/hr for the displayed series when imperial (canonical lPerHr stays in L/hr)', async () => {
+  it('converts l_per_hr to GPH (gallons/hour) for the displayed series when imperial (canonical lPerHr stays in L/hr)', async () => {
     unitPreferenceMock.mockReturnValue({ system: 'imperial', showBoth: false })
     mockAnalyticsResponse(baseAnalytics({
       hours_economy: {

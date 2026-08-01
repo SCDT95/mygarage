@@ -481,7 +481,7 @@ export class UnitFormatter {
    *
    * @param lPerHr - Value in L/hr (canonical metric)
    * @param system - Target unit system
-   * @param showBoth - Show both units (e.g., "3.20 L/hr (0.85 gal/hr)")
+   * @param showBoth - Show both units (e.g., "3.20 L/hr (0.85 GPH)")
    */
   static formatFuelRate(lPerHr: Numeric, system: UnitSystem, showBoth: boolean = false): string {
     if (lPerHr === null || lPerHr === undefined) {
@@ -497,12 +497,12 @@ export class UnitFormatter {
       const primary = `${lNum.toFixed(2)} L/hr`;
       if (showBoth) {
         const galPerHr = lNum / LITERS_PER_GALLON;
-        return `${primary} (${galPerHr.toFixed(2)} gal/hr)`;
+        return `${primary} (${galPerHr.toFixed(2)} GPH)`;
       }
       return primary;
     } else {
       const galPerHr = lNum / LITERS_PER_GALLON;
-      const primary = `${galPerHr.toFixed(2)} gal/hr`;
+      const primary = `${galPerHr.toFixed(2)} GPH`;
       if (showBoth) {
         return `${primary} (${lNum.toFixed(2)} L/hr)`;
       }
@@ -665,7 +665,7 @@ export class UnitFormatter {
    * Get fuel-rate (engine-hours economy) unit label for input placeholders.
    */
   static getFuelRateUnit(system: UnitSystem): string {
-    return system === 'imperial' ? 'gal/hr' : 'L/hr';
+    return system === 'imperial' ? 'GPH' : 'L/hr';
   }
 
   /**
