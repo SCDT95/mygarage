@@ -8,7 +8,7 @@ import {
   Pie,
   Cell,
   Tooltip,
-  BarChart as RechartsBarChart,
+  ComposedChart,
   Bar,
   XAxis,
   YAxis,
@@ -359,7 +359,10 @@ export default function GarageAnalytics() {
               {/* Donut + summary tiles */}
               <div className="flex flex-col sm:w-1/2 lg:w-full">
                 <div className="relative w-full" style={{ height: 200 }}>
-                  <ResponsiveContainer width="100%" height="100%">
+                  {/* Fixed numeric height, not "100%": a percentage-height
+                      ResponsiveContainer inside this flex column measures 0 and
+                      renders no <svg> (regressed the subpath recharts e2e). */}
+                  <ResponsiveContainer width="100%" height={200}>
                     <RechartsPieChart>
                       <Pie
                         data={pieData}
@@ -544,7 +547,10 @@ export default function GarageAnalytics() {
         <div className="bg-garage-surface border border-garage-border rounded-lg p-6 mb-8">
           <h2 className="text-xl font-bold mb-4 text-garage-text">{t('garage.monthlySpendingTrend')}</h2>
           <ResponsiveContainer width="100%" height={300}>
-            <RechartsBarChart data={trendData} margin={{ top: 5, right: 20, left: 10, bottom: 5 }}>
+            {/* ComposedChart, not BarChart: Recharts v3 only renders <Line>
+                children inside a ComposedChart, so the rolling-average trend
+                lines below are silently dropped by a plain <BarChart>. */}
+            <ComposedChart data={trendData} margin={{ top: 5, right: 20, left: 10, bottom: 5 }}>
               <XAxis
                 dataKey="month"
                 stroke="#9E9E9E"
@@ -609,7 +615,7 @@ export default function GarageAnalytics() {
                   connectNulls
                 />
               )}
-            </RechartsBarChart>
+            </ComposedChart>
           </ResponsiveContainer>
         </div>
       )}

@@ -4,10 +4,11 @@ import type { ReactNode } from 'react'
 
 // ─────────────────────────────────────────────────────────────────────────────
 // recharts renders 0×0 in jsdom, so stub the chart boundary (mirrors
-// Analytics.hours.test.tsx). BarChart CAPTURES its `data` prop so we can prove
-// the Monthly-Spending-Trend rolling averages have NO leading null at index 0
-// (the "connect the lines through every month" fix). After the redesign the
-// only RechartsBarChart on the page is the trend chart.
+// Analytics.hours.test.tsx). ComposedChart CAPTURES its `data` prop so we can
+// prove the Monthly-Spending-Trend rolling averages have NO leading null at
+// index 0 (the "connect the lines through every month" fix). After the redesign
+// the only categorical chart on the page is the trend chart, and it is a
+// ComposedChart (Recharts v3 only renders <Line> inside a ComposedChart).
 // ─────────────────────────────────────────────────────────────────────────────
 const captured = vi.hoisted(() => ({ barCharts: [] as unknown[] }))
 vi.mock('recharts', () => {
@@ -17,7 +18,7 @@ vi.mock('recharts', () => {
     PieChart: Pass,
     Pie: Pass,
     Cell: () => null,
-    BarChart: ({ data, children }: { data: unknown; children?: ReactNode }) => {
+    ComposedChart: ({ data, children }: { data: unknown; children?: ReactNode }) => {
       captured.barCharts.push(data)
       return <>{children}</>
     },

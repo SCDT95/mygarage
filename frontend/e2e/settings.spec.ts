@@ -8,8 +8,10 @@ test.describe('Settings', () => {
     })
   })
 
-  test('settings page has theme section', async ({ page }) => {
+  // The light/dark theme control moved out of Settings into the top-bar
+  // toggle (an IconButton labelled "Toggle theme"), so assert it there.
+  test('theme toggle is available in the top bar', async ({ page }) => {
     await page.goto('/settings')
-    await expect(page.getByText('Theme', { exact: true })).toBeVisible({ timeout: 15000 })
+    await expect(page.getByRole('button', { name: 'Toggle theme' })).toBeVisible({ timeout: 15000 })
   })
 })
