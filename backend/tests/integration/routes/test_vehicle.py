@@ -102,6 +102,38 @@ class TestVehicleRoutes:
         assert data["standard_equipment"] == {"items": ["ABS", "Airbags"]}
         assert data["optional_equipment"] == {"Comfort": ["Sunroof"]}
 
+    async def test_update_vehicle_persists_pricing(
+        self, client: AsyncClient, auth_headers, test_vehicle
+    ):
+        """Purchase/sale fields (VehicleBase) and MSRP fields (added to
+        VehicleUpdate for the pricing sidecar) all persist via a partial PUT.
+        The MSRP fields otherwise live only on VehicleResponse and would be
+        silently dropped by extra='ignore'.
+        """
+        response = await client.put(
+            f"/api/vehicles/{test_vehicle['vin']}",
+            json={
+                "purchase_date": "2019-03-15",
+                "purchase_price": "15000.00",
+                "sold_date": "2024-06-01",
+                "sold_price": "9500.00",
+                "msrp_base": "40000.00",
+                "msrp_options": "2500.00",
+                "destination_charge": "1595.00",
+                "msrp_total": "44095.00",
+            },
+            headers=auth_headers,
+        )
+
+        assert response.status_code == 200
+        data = response.json()
+        assert data["purchase_date"] == "2019-03-15"
+        assert float(data["purchase_price"]) == 15000.00
+        assert float(data["sold_price"]) == 9500.00
+        assert float(data["msrp_base"]) == 40000.00
+        assert float(data["destination_charge"]) == 1595.00
+        assert float(data["msrp_total"]) == 44095.00
+
     async def test_create_vehicle_defaults_usage_unit_to_distance(
         self, client: AsyncClient, auth_headers, sample_vehicle_payload
     ):

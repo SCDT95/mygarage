@@ -105,16 +105,10 @@ export default function EquipmentDrawer({
     setGroups(next) // optimistic
     setSaving(true)
     try {
-      const payload: VehicleUpdate = {
-        // usage_unit + secondary_usage_enabled are required on VehicleUpdate;
-        // resend the vehicle's current values (a no-op under the backend's
-        // exclude_unset) so this equipment-only save type-checks.
-        usage_unit: vehicle.usage_unit,
-        secondary_usage_enabled: vehicle.secondary_usage_enabled,
-        ...(which === 'standard'
+      const payload: VehicleUpdate =
+        which === 'standard'
           ? { standard_equipment: toEquipmentDict(next) }
-          : { optional_equipment: toEquipmentDict(next) }),
-      }
+          : { optional_equipment: toEquipmentDict(next) }
       const updated = await vehicleService.update(vin, payload)
       onUpdated(updated)
     } catch {

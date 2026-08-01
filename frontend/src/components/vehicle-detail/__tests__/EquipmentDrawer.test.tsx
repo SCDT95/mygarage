@@ -76,8 +76,6 @@ describe('EquipmentDrawer', () => {
     fireEvent.click(screen.getByRole('button', { name: 'detail.equipment.add' }))
     await waitFor(() => expect(mockedUpdate).toHaveBeenCalledTimes(1))
     expect(mockedUpdate).toHaveBeenCalledWith('TEST0000000000001', {
-      usage_unit: 'distance',
-      secondary_usage_enabled: false,
       standard_equipment: { items: ['ABS', 'Airbags', 'Backup camera'] },
     })
     await waitFor(() => expect(onUpdated).toHaveBeenCalledWith(baseVehicle))
@@ -90,8 +88,6 @@ describe('EquipmentDrawer', () => {
     fireEvent.click(screen.getAllByRole('button', { name: 'detail.equipment.remove' })[0])
     await waitFor(() => expect(mockedUpdate).toHaveBeenCalledTimes(1))
     expect(mockedUpdate).toHaveBeenCalledWith('TEST0000000000001', {
-      usage_unit: 'distance',
-      secondary_usage_enabled: false,
       standard_equipment: { items: ['Airbags'] },
     })
   })

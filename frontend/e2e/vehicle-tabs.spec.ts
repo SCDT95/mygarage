@@ -23,7 +23,8 @@ test.describe('Vehicle Detail — Tab Navigation', () => {
 
     // Basic Information section should be visible
     await expect(page.getByText('Basic Information')).toBeVisible({ timeout: 5000 })
-    await expect(page.getByText('Purchase Information')).toBeVisible()
+    // Purchase + MSRP were folded into one "Pricing" card.
+    await expect(page.getByText('Pricing', { exact: true })).toBeVisible()
   })
 
   test('Media tab — cycles through sub-tabs', async ({ page }) => {

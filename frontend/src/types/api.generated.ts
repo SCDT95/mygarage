@@ -14300,6 +14300,11 @@ export interface components {
              */
             def_tank_capacity_liters?: number | string | null;
             /**
+             * Destination Charge
+             * @description Destination charge
+             */
+            destination_charge?: number | string | null;
+            /**
              * Displacement L
              * @description Engine displacement in liters
              */
@@ -14345,6 +14350,21 @@ export interface components {
              */
             model?: string | null;
             /**
+             * Msrp Base
+             * @description MSRP base price
+             */
+            msrp_base?: number | string | null;
+            /**
+             * Msrp Options
+             * @description MSRP options total
+             */
+            msrp_options?: number | string | null;
+            /**
+             * Msrp Total
+             * @description MSRP total
+             */
+            msrp_total?: number | string | null;
+            /**
              * Nickname
              * @description User-friendly display name
              */
@@ -14368,10 +14388,9 @@ export interface components {
             purchase_price?: number | string | null;
             /**
              * Secondary Usage Enabled
-             * @description Also track the non-primary usage dimension (distance+hours dual tracking)
-             * @default false
+             * @description Dual distance+hours tracking (omit to leave unchanged)
              */
-            secondary_usage_enabled: boolean;
+            secondary_usage_enabled?: boolean | null;
             /**
              * Sold Date
              * @description Date sold
@@ -14406,11 +14425,9 @@ export interface components {
             trim?: string | null;
             /**
              * Usage Unit
-             * @description Usage tracking dimension: 'distance' (odometer) or 'hours' (hour meter)
-             * @default distance
-             * @enum {string}
+             * @description Usage tracking dimension (omit to leave unchanged)
              */
-            usage_unit: "distance" | "hours";
+            usage_unit?: ("distance" | "hours") | null;
             /**
              * Vehicle Type
              * @description Type of vehicle

@@ -184,6 +184,12 @@
     "loading": "Loading vehicle details...",
     "manufacturing": "Manufacturing",
     "msrpPricing": "MSRP Pricing",
+    "pricing": {
+      "title": "Pricing",
+      "editTitle": "Edit pricing",
+      "msrpHint": "Normally decoded from the window sticker; edit to correct or add it.",
+      "saveError": "Couldn't save pricing. Please try again."
+    },
     "noWindowSticker": "No window sticker uploaded",
     "notSpecified": "Not specified",
     "offlineCachedData": "Offline: showing cached data",

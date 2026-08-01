@@ -1,7 +1,7 @@
 import { lazy, Suspense } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Link } from 'react-router-dom'
-import { Calendar, FileText, Radio } from 'lucide-react'
+import { Calendar, FileText, Radio, Pencil } from 'lucide-react'
 import { Card, CardHeader, Mono, Button } from '../ui'
 import type { Vehicle } from '../../types/vehicle'
 import type { LastLocation } from '../../types/trips'
@@ -24,6 +24,8 @@ interface VehicleOverviewTabProps {
   lastLocation: LastLocation | null
   onOpenModal: (modal: 'torqueSource' | 'windowSticker') => void
   onDownloadWindowSticker: () => void
+  /** Opens the pricing editor sidecar. Omitted → the Pricing card is read-only. */
+  onEditPricing?: () => void
 }
 
 /**
@@ -32,7 +34,7 @@ interface VehicleOverviewTabProps {
  * read-only collapsible card here.
  */
 export default function VehicleOverviewTab({
-  vin, vehicle, lastLocation, onOpenModal, onDownloadWindowSticker,
+  vin, vehicle, lastLocation, onOpenModal, onDownloadWindowSticker, onEditPricing,
 }: VehicleOverviewTabProps) {
   const { t } = useTranslation('vehicles')
   const { system: unitSystem } = useUnitPreference()
@@ -69,9 +71,18 @@ export default function VehicleOverviewTab({
         </div>
       </Card>
 
-      {/* Purchase Information */}
+      {/* Pricing — purchase, sale (if sold), and MSRP folded into one card */}
       <Card breakInside>
-        <CardHeader title={t('detail.purchaseInformation')} />
+        <CardHeader
+          title={t('detail.pricing.title')}
+          actions={
+            onEditPricing ? (
+              <Button variant="ghost" size="sm" icon={Pencil} onClick={onEditPricing}>
+                {t('common:edit')}
+              </Button>
+            ) : undefined
+          }
+        />
         <div className="space-y-3">
           <div>
             <p className="text-sm text-text-mute flex items-center gap-2"><Calendar className="w-4 h-4" /><span>{t('edit.purchaseDate')}</span></p>
@@ -81,25 +92,31 @@ export default function VehicleOverviewTab({
             <p className="text-sm text-text-mute"><span>{t('edit.purchasePrice')}</span></p>
             <Mono size="sm" className="mt-1 block">{formatCurrency(vehicle.purchase_price, { currencyCode, locale, fallback: t('detail.notSpecified') })}</Mono>
           </div>
+          {vehicle.sold_date && (
+            <>
+              <div>
+                <p className="text-sm text-text-mute flex items-center gap-2"><Calendar className="w-4 h-4" /><span>{t('detail.misc.saleDate')}</span></p>
+                <Mono size="sm" className="mt-1 block">{formatDate(vehicle.sold_date)}</Mono>
+              </div>
+              <div>
+                <p className="text-sm text-text-mute"><span>{t('detail.misc.salePrice')}</span></p>
+                <Mono size="sm" className="mt-1 block">{formatCurrency(vehicle.sold_price, { currencyCode, locale, fallback: t('detail.notSpecified') })}</Mono>
+              </div>
+            </>
+          )}
         </div>
-      </Card>
-
-      {/* Sale Information (if sold) */}
-      {vehicle.sold_date && (
-        <Card breakInside className="border-warning">
-          <CardHeader title={t('detail.saleInformation')} />
-          <div className="space-y-3">
-            <div>
-              <p className="text-sm text-text-mute flex items-center gap-2"><Calendar className="w-4 h-4" /><span>{t('detail.misc.saleDate')}</span></p>
-              <Mono size="sm" className="mt-1 block">{formatDate(vehicle.sold_date)}</Mono>
-            </div>
-            <div>
-              <p className="text-sm text-text-mute"><span>{t('detail.misc.salePrice')}</span></p>
-              <Mono size="sm" className="mt-1 block">{formatCurrency(vehicle.sold_price, { currencyCode, locale, fallback: t('detail.notSpecified') })}</Mono>
+        {(vehicle.msrp_base || vehicle.msrp_options || vehicle.msrp_total || vehicle.destination_charge) && (
+          <div className="mt-4 pt-4 border-t border-border">
+            <p className="text-xs font-semibold uppercase tracking-wide text-text-mute mb-3">{t('detail.msrpPricing')}</p>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {vehicle.msrp_base && (<div><p className="text-sm text-text-mute">{t('detail.misc.basePrice')}</p><Mono size="sm" className="block">{formatCurrency(vehicle.msrp_base, { currencyCode, locale })}</Mono></div>)}
+              {vehicle.msrp_options && (<div><p className="text-sm text-text-mute">{t('detail.misc.options')}</p><Mono size="sm" className="block">{formatCurrency(vehicle.msrp_options, { currencyCode, locale })}</Mono></div>)}
+              {vehicle.destination_charge && (<div><p className="text-sm text-text-mute">{t('detail.misc.destination')}</p><Mono size="sm" className="block">{formatCurrency(vehicle.destination_charge, { currencyCode, locale })}</Mono></div>)}
+              {vehicle.msrp_total && (<div><p className="text-sm text-text-mute">{t('detail.misc.totalMsrp')}</p><Mono size="lg" weight="semibold" className="block">{formatCurrency(vehicle.msrp_total, { currencyCode, locale })}</Mono></div>)}
             </div>
           </div>
-        </Card>
-      )}
+        )}
+      </Card>
 
       {/* Connected Devices (TorqueSource trigger only — P3-done body) */}
       <Card breakInside>
@@ -168,19 +185,6 @@ export default function VehicleOverviewTab({
                 </div>
               </div>
             )}
-          </div>
-        </Card>
-      )}
-
-      {/* MSRP & Pricing */}
-      {(vehicle.msrp_base || vehicle.msrp_options || vehicle.msrp_total || vehicle.destination_charge) && (
-        <Card breakInside>
-          <CardHeader title={t('detail.msrpPricing')} />
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {vehicle.msrp_base && (<div><p className="text-sm text-text-mute">{t('detail.misc.basePrice')}</p><Mono size="sm" className="block">{formatCurrency(vehicle.msrp_base, { currencyCode, locale })}</Mono></div>)}
-            {vehicle.msrp_options && (<div><p className="text-sm text-text-mute">{t('detail.misc.options')}</p><Mono size="sm" className="block">{formatCurrency(vehicle.msrp_options, { currencyCode, locale })}</Mono></div>)}
-            {vehicle.destination_charge && (<div><p className="text-sm text-text-mute">{t('detail.misc.destination')}</p><Mono size="sm" className="block">{formatCurrency(vehicle.destination_charge, { currencyCode, locale })}</Mono></div>)}
-            {vehicle.msrp_total && (<div><p className="text-sm text-text-mute">{t('detail.misc.totalMsrp')}</p><Mono size="lg" weight="semibold" className="block">{formatCurrency(vehicle.msrp_total, { currencyCode, locale })}</Mono></div>)}
           </div>
         </Card>
       )}

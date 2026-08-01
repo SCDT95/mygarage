@@ -163,6 +163,16 @@ class VehicleUpdate(VehicleBase):
         None, description="User-friendly display name", min_length=1, max_length=100
     )
     vehicle_type: VehicleType | None = Field(None, description="Type of vehicle")
+    # Overridden as optional: VehicleBase gives these non-null defaults, which
+    # the generated OpenAPI otherwise marks REQUIRED — forcing every partial
+    # update (equipment/pricing sidecars) to resend them. exclude_unset makes an
+    # omitted field a no-op, so callers editing unrelated fields can drop them.
+    usage_unit: Literal["distance", "hours"] | None = Field(
+        None, description="Usage tracking dimension (omit to leave unchanged)"
+    )
+    secondary_usage_enabled: bool | None = Field(
+        None, description="Dual distance+hours tracking (omit to leave unchanged)"
+    )
     # Equipment is editable from the vehicle-detail sidecar. Declared here (not
     # only on VehicleResponse) so partial PUTs actually persist it — Pydantic's
     # default extra='ignore' silently drops unknown keys otherwise.
@@ -172,6 +182,12 @@ class VehicleUpdate(VehicleBase):
     optional_equipment: dict[str, Any] | None = Field(
         None, description="Optional equipment (category -> list of items)"
     )
+    # MSRP is editable from the pricing sidecar. Like equipment, these live only
+    # on VehicleResponse otherwise, so a PUT would silently drop them.
+    msrp_base: Decimal | None = Field(None, description="MSRP base price")
+    msrp_options: Decimal | None = Field(None, description="MSRP options total")
+    msrp_total: Decimal | None = Field(None, description="MSRP total")
+    destination_charge: Decimal | None = Field(None, description="Destination charge")
 
     @field_validator("fuel_type", "fuel_type_secondary", mode="before")
     @classmethod

@@ -19288,6 +19288,22 @@
             "description": "DEF tank capacity in liters",
             "title": "Def Tank Capacity Liters"
           },
+          "destination_charge": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Destination charge",
+            "title": "Destination Charge"
+          },
           "displacement_l": {
             "anyOf": [
               {
@@ -19404,6 +19420,54 @@
             "description": "Model name",
             "title": "Model"
           },
+          "msrp_base": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "MSRP base price",
+            "title": "Msrp Base"
+          },
+          "msrp_options": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "MSRP options total",
+            "title": "Msrp Options"
+          },
+          "msrp_total": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "MSRP total",
+            "title": "Msrp Total"
+          },
           "nickname": {
             "anyOf": [
               {
@@ -19461,10 +19525,16 @@
             "title": "Purchase Price"
           },
           "secondary_usage_enabled": {
-            "default": false,
-            "description": "Also track the non-primary usage dimension (distance+hours dual tracking)",
-            "title": "Secondary Usage Enabled",
-            "type": "boolean"
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Dual distance+hours tracking (omit to leave unchanged)",
+            "title": "Secondary Usage Enabled"
           },
           "sold_date": {
             "anyOf": [
@@ -19548,14 +19618,20 @@
             "title": "Trim"
           },
           "usage_unit": {
-            "default": "distance",
-            "description": "Usage tracking dimension: 'distance' (odometer) or 'hours' (hour meter)",
-            "enum": [
-              "distance",
-              "hours"
+            "anyOf": [
+              {
+                "enum": [
+                  "distance",
+                  "hours"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
             ],
-            "title": "Usage Unit",
-            "type": "string"
+            "description": "Usage tracking dimension (omit to leave unchanged)",
+            "title": "Usage Unit"
           },
           "vehicle_type": {
             "anyOf": [

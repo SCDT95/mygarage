@@ -15,6 +15,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Engine-hours usage tracking for hour-metered vehicles (ATVs, side-by-sides, equipment) with full parity to distance — an hours history, fuel efficiency as fuel-per-hour and cost-per-hour, hours-based service records and reminders, analytics, the homepage widget, PDF reports and CSV import/export. A vehicle can now track distance and engine hours together (dual tracking).
 - French (fr) translation — thanks [@roondar](https://github.com/roondar) (#132).
 - Vehicle detail: standard and optional equipment are now editable in a slide-in sidecar (opened from the Equipment buttons next to Edit) — add and remove items, saved to the vehicle — replacing the read-only dropdown cards.
+- Vehicle detail: Purchase, Sale and MSRP are combined into one editable Pricing card — edit purchase/sale dates and prices and the MSRP figures from a slide-in sidecar.
 
 ### Changed
 - Refreshed the interface onto a consistent design system — shared cards, forms, buttons, chips and tables with a single accent-driven theme.

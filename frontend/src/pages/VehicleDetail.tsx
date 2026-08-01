@@ -71,6 +71,7 @@ import VehicleRemoveModal from '../components/modals/VehicleRemoveModal'
 import VehicleTransferWizard from '../components/modals/VehicleTransferWizard'
 import VehicleSharingModal from '../components/modals/VehicleSharingModal'
 import EquipmentDrawer from '../components/vehicle-detail/EquipmentDrawer'
+import PricingDrawer from '../components/vehicle-detail/PricingDrawer'
 import TorqueSourceModal from '../components/modals/TorqueSourceModal'
 import { useOnlineStatus } from '../hooks/useOnlineStatus'
 import { useAuth } from '../contexts/AuthContext'
@@ -134,6 +135,7 @@ export default function VehicleDetail() {
   const [lastLocation, setLastLocation] = useState<LastLocation | null>(null)
   const [detailStats, setDetailStats] = useState<VehicleDetailStats | null>(null)
   const [equipmentDrawer, setEquipmentDrawer] = useState<'standard' | 'optional' | null>(null)
+  const [pricingDrawerOpen, setPricingDrawerOpen] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const isOnline = useOnlineStatus()
 
@@ -695,6 +697,7 @@ export default function VehicleDetail() {
             lastLocation={lastLocation}
             onOpenModal={setOpenModal}
             onDownloadWindowSticker={handleDownloadWindowSticker}
+            onEditPricing={() => setPricingDrawerOpen(true)}
           />
         )}
 
@@ -772,6 +775,17 @@ export default function VehicleDetail() {
           vehicle={vehicle}
           vin={vin}
           onClose={() => setEquipmentDrawer(null)}
+          onUpdated={setVehicle}
+        />
+      )}
+
+      {/* Pricing editor sidecar (opened from the Pricing card's Edit button) */}
+      {vin && vehicle && (
+        <PricingDrawer
+          open={pricingDrawerOpen}
+          vehicle={vehicle}
+          vin={vin}
+          onClose={() => setPricingDrawerOpen(false)}
           onUpdated={setVehicle}
         />
       )}
