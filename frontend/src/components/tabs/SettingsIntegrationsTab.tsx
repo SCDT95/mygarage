@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
-import { CheckCircle, AlertCircle, Plug, Check, X, Plus, Radio, Settings, ArrowUpCircle } from 'lucide-react'
+import { CheckCircle, AlertCircle, Plug, Shield, Check, X, Plus, Radio, Settings, ArrowUpCircle } from 'lucide-react'
 import { useSettings } from '@/contexts/SettingsContext'
 import { useAuth } from '@/contexts/AuthContext'
 import api from '@/services/api'
@@ -10,7 +10,7 @@ import AddProviderModal from '../modals/AddProviderModal'
 import EditProviderModal from '../modals/EditProviderModal'
 import LiveLinkSettingsModal from '../modals/LiveLinkSettingsModal'
 import WidgetKeysPanel from '../settings/WidgetKeysPanel'
-import { Select } from '../ui'
+import { Select, Toggle } from '../ui'
 
 // Sample VIN for testing NHTSA API connection
 const TEST_VIN = '1HGCM82633A123456'
@@ -238,17 +238,16 @@ export default function SettingsIntegrationsTab() {
         </div>
       )}
 
-      {/* Integration Cards Grid */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* API Keys — user-scoped read keys for external integrations. Spans full row. */}
-        <div className="lg:col-span-2">
-          <WidgetKeysPanel />
-        </div>
+      {/* API Keys — user-scoped read keys for external integrations. Full width. */}
+      <WidgetKeysPanel />
 
+      {/* NHTSA (tall) on the left; CarComplaints + LiveLink stacked on the right.
+          items-start so the shorter right column doesn't stretch to NHTSA's height. */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-start">
         {/* NHTSA Integration */}
         <div className="bg-garage-surface rounded-lg border border-garage-border p-6">
         <div className="flex items-start gap-3 mb-6">
-          <Plug className="w-6 h-6 text-primary mt-1" />
+          <Shield className="w-6 h-6 text-primary mt-1" />
           <div className="flex-1">
             <h2 className="text-xl font-semibold text-garage-text mb-2">{t('integrations.nhtsa')}</h2>
             <p className="text-sm text-garage-text-muted">
@@ -260,37 +259,25 @@ export default function SettingsIntegrationsTab() {
         <div className="space-y-6">
           {/* Enable NHTSA Integration */}
           <div>
-            <label className="flex items-center">
-              <input
-                type="checkbox"
-                checked={formData.nhtsa_enabled === 'true'}
-                onChange={(e) => setFormData({ ...formData, nhtsa_enabled: e.target.checked ? 'true' : 'false' })}
-                className="w-4 h-4 text-primary bg-garage-bg border-garage-border rounded focus:ring-primary focus:ring-2"
-              />
-              <span className="ml-2 text-sm text-garage-text font-medium">
-                {t('integrations.enableNHTSA')}
-              </span>
-            </label>
-            <p className="mt-1 ml-6 text-sm text-garage-text-muted">
+            <Toggle
+              label={t('integrations.enableNHTSA')}
+              checked={formData.nhtsa_enabled === 'true'}
+              onChange={(next) => setFormData({ ...formData, nhtsa_enabled: next ? 'true' : 'false' })}
+            />
+            <p className="mt-1 text-sm text-garage-text-muted">
               {t('integrations.enableNHTSADesc')}
             </p>
           </div>
 
           {/* Auto-Check */}
           <div>
-            <label className="flex items-center">
-              <input
-                type="checkbox"
-                checked={formData.nhtsa_auto_check === 'true'}
-                disabled={formData.nhtsa_enabled === 'false'}
-                onChange={(e) => setFormData({ ...formData, nhtsa_auto_check: e.target.checked ? 'true' : 'false' })}
-                className="w-4 h-4 text-primary bg-garage-bg border-garage-border rounded focus:ring-primary focus:ring-2 disabled:opacity-50"
-              />
-              <span className="ml-2 text-sm text-garage-text font-medium">
-                {t('integrations.enableAutoCheck')}
-              </span>
-            </label>
-            <p className="mt-1 ml-6 text-sm text-garage-text-muted">
+            <Toggle
+              label={t('integrations.enableAutoCheck')}
+              checked={formData.nhtsa_auto_check === 'true'}
+              disabled={formData.nhtsa_enabled === 'false'}
+              onChange={(next) => setFormData({ ...formData, nhtsa_auto_check: next ? 'true' : 'false' })}
+            />
+            <p className="mt-1 text-sm text-garage-text-muted">
               {t('integrations.enableAutoCheckDesc')}
             </p>
           </div>
@@ -354,6 +341,8 @@ export default function SettingsIntegrationsTab() {
         </div>
         </div>
 
+        {/* Right column: CarComplaints + LiveLink stacked */}
+        <div className="space-y-6">
         {/* CarComplaints Integration */}
         <div className="bg-garage-surface rounded-lg border border-garage-border p-6">
         <div className="flex items-start gap-3 mb-6">
@@ -369,23 +358,17 @@ export default function SettingsIntegrationsTab() {
         <div className="space-y-6">
           {/* Enable CarComplaints Integration */}
           <div>
-            <label className="flex items-center">
-              <input
-                type="checkbox"
-                checked={formData.carcomplaints_enabled === 'true'}
-                onChange={(e) => setFormData({ ...formData, carcomplaints_enabled: e.target.checked ? 'true' : 'false' })}
-                className="w-4 h-4 text-primary bg-garage-bg border-garage-border rounded focus:ring-primary focus:ring-2"
-              />
-              <span className="ml-2 text-sm text-garage-text font-medium">
-                {t('integrations.enableCarComplaints')}
-              </span>
-            </label>
-            <p className="mt-1 ml-6 text-sm text-garage-text-muted">
+            <Toggle
+              label={t('integrations.enableCarComplaints')}
+              checked={formData.carcomplaints_enabled === 'true'}
+              onChange={(next) => setFormData({ ...formData, carcomplaints_enabled: next ? 'true' : 'false' })}
+            />
+            <p className="mt-1 text-sm text-garage-text-muted">
               {t('integrations.enableCarComplaintsDesc')}
             </p>
           </div>
 
-          <div className="bg-garage-bg rounded-lg p-4 border border-garage-border">
+          <div className="bg-(--accent-soft) rounded-lg p-4 border border-(--accent-line)">
             <h3 className="text-sm font-medium text-garage-text mb-2">{t('integrations.aboutCarComplaints')}</h3>
             <p className="text-sm text-garage-text-muted">
               {t('integrationsTab.aboutCarComplaintsBody')}
@@ -394,79 +377,6 @@ export default function SettingsIntegrationsTab() {
               <strong>{t('integrationsTab.noteLabel')}</strong> {t('integrationsTab.carComplaintsVehicleNote')}
             </p>
           </div>
-        </div>
-        </div>
-
-        {/* Shop Finder Integration */}
-        <div className="bg-garage-surface rounded-lg border border-garage-border p-6">
-        <div className="flex items-start gap-3 mb-6">
-          <Plug className="w-6 h-6 text-primary mt-1" />
-          <div className="flex-1">
-            <h2 className="text-xl font-semibold text-garage-text mb-2">{t('integrations.shopFinder')}</h2>
-            <p className="text-sm text-garage-text-muted">
-              {t('integrations.shopFinderDesc')}
-            </p>
-          </div>
-        </div>
-
-        <div className="space-y-4">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b border-garage-border">
-                <th className="text-left py-2 px-3 text-garage-text">{t('integrations.provider')}</th>
-                <th className="text-left py-2 px-3 text-garage-text">{t('integrations.active')}</th>
-                <th className="text-left py-2 px-3 text-garage-text">{t('integrations.apiLimits')}</th>
-                <th className="text-right py-2 px-3 text-garage-text">{t('integrations.options')}</th>
-              </tr>
-            </thead>
-            <tbody>
-              {providers.map((provider) => (
-                <tr key={provider.name} className="border-b border-garage-border">
-                  <td className="py-3 px-3 text-garage-text">
-                    {provider.is_default
-                      ? t('integrationsTab.providerDefault', { name: provider.display_name })
-                      : provider.display_name}
-                  </td>
-                  <td className="py-3 px-3">
-                    {provider.enabled ? (
-                      <Check className="w-4 h-4 text-green-500" />
-                    ) : (
-                      <X className="w-4 h-4 text-red-500" />
-                    )}
-                  </td>
-                  <td className="py-3 px-3 text-garage-text-muted">
-                    {provider.api_limit
-                      ? `${provider.api_usage}/${provider.api_limit}`
-                      : `${provider.api_usage || 0}/${t('integrationsTab.unlimited')}`}
-                  </td>
-                  <td className="py-3 px-3 text-right space-x-2">
-                    <button
-                      onClick={() => handleEditProvider(provider)}
-                      className="text-blue-400 hover:text-blue-300"
-                    >
-                      {t('integrationsTab.edit')}
-                    </button>
-                    {!provider.is_default && (
-                      <button
-                        onClick={() => handleRemoveProvider(provider.name)}
-                        className="text-red-400 hover:text-red-300"
-                      >
-                        {t('integrationsTab.remove')}
-                      </button>
-                    )}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-
-          <button
-            onClick={() => setIsAddProviderModalOpen(true)}
-            className="flex items-center gap-2 btn btn-primary rounded-lg transition-colors"
-          >
-            <Plus className="w-4 h-4" />
-            {t('integrations.addService')}
-          </button>
         </div>
         </div>
 
@@ -548,7 +458,7 @@ export default function SettingsIntegrationsTab() {
             )}
 
             {/* Info Box */}
-            <div className="bg-garage-bg rounded-lg p-4 border border-garage-border">
+            <div className="bg-(--accent-soft) rounded-lg p-4 border border-(--accent-line)">
               <h3 className="text-sm font-medium text-garage-text mb-2">{t('integrations.aboutLiveLink')}</h3>
               <p className="text-sm text-garage-text-muted">
                 {t('integrationsTab.aboutLiveLinkBody')}
@@ -560,6 +470,80 @@ export default function SettingsIntegrationsTab() {
           </div>
         </div>
         )}
+        </div>
+
+        {/* Shop Finder Integration — full width for the provider table */}
+        <div className="bg-garage-surface rounded-lg border border-garage-border p-6 lg:col-span-2">
+        <div className="flex items-start gap-3 mb-6">
+          <Plug className="w-6 h-6 text-primary mt-1" />
+          <div className="flex-1">
+            <h2 className="text-xl font-semibold text-garage-text mb-2">{t('integrations.shopFinder')}</h2>
+            <p className="text-sm text-garage-text-muted">
+              {t('integrations.shopFinderDesc')}
+            </p>
+          </div>
+        </div>
+
+        <div className="space-y-4">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="border-b border-garage-border">
+                <th className="text-left py-2 px-3 text-garage-text">{t('integrations.provider')}</th>
+                <th className="text-left py-2 px-3 text-garage-text">{t('integrations.active')}</th>
+                <th className="text-left py-2 px-3 text-garage-text">{t('integrations.apiLimits')}</th>
+                <th className="text-right py-2 px-3 text-garage-text">{t('integrations.options')}</th>
+              </tr>
+            </thead>
+            <tbody>
+              {providers.map((provider) => (
+                <tr key={provider.name} className="border-b border-garage-border">
+                  <td className="py-3 px-3 text-garage-text">
+                    {provider.is_default
+                      ? t('integrationsTab.providerDefault', { name: provider.display_name })
+                      : provider.display_name}
+                  </td>
+                  <td className="py-3 px-3">
+                    {provider.enabled ? (
+                      <Check className="w-4 h-4 text-green-500" />
+                    ) : (
+                      <X className="w-4 h-4 text-red-500" />
+                    )}
+                  </td>
+                  <td className="py-3 px-3 text-garage-text-muted">
+                    {provider.api_limit
+                      ? `${provider.api_usage}/${provider.api_limit}`
+                      : `${provider.api_usage || 0}/${t('integrationsTab.unlimited')}`}
+                  </td>
+                  <td className="py-3 px-3 text-right space-x-2">
+                    <button
+                      onClick={() => handleEditProvider(provider)}
+                      className="text-(--accent-fg) hover:underline"
+                    >
+                      {t('integrationsTab.edit')}
+                    </button>
+                    {!provider.is_default && (
+                      <button
+                        onClick={() => handleRemoveProvider(provider.name)}
+                        className="text-danger hover:underline"
+                      >
+                        {t('integrationsTab.remove')}
+                      </button>
+                    )}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+
+          <button
+            onClick={() => setIsAddProviderModalOpen(true)}
+            className="flex items-center gap-2 btn btn-primary rounded-lg transition-colors"
+          >
+            <Plus className="w-4 h-4" />
+            {t('integrations.addService')}
+          </button>
+        </div>
+        </div>
       </div>
 
       {/* Modals — rendered at the tab root, outside the grid */}
