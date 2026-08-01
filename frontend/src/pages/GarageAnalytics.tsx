@@ -225,8 +225,6 @@ export default function GarageAnalytics() {
   const sortedCategories = [...categoryMeta]
     .sort((a, b) => b.value - a.value)
     .map((c) => ({ ...c, percent: categoryTotal > 0 ? (c.value / categoryTotal) * 100 : 0 }))
-  const largestCategory = sortedCategories[0] ?? null
-  const avgPerVehicle = analytics.vehicle_count > 0 ? categoryTotal / analytics.vehicle_count : 0
   const formatPercent = (pct: number) => (pct > 0 && pct < 1 ? '<1%' : `${Math.round(pct)}%`)
 
   // Donut slices follow the sidebar order (largest-first), same stable colour.
@@ -408,27 +406,6 @@ export default function GarageAnalytics() {
                     <span className="text-lg font-bold text-garage-text">
                       {formatCurrency(categoryTotal, { currencyCode, locale })}
                     </span>
-                  </div>
-                </div>
-                {/* Largest + Avg/vehicle tiles */}
-                <div className="grid grid-cols-2 gap-3 mt-4 w-full">
-                  <div className="border border-garage-border rounded-lg p-3">
-                    <p className="text-xs text-garage-text-muted mb-1">{t('garage.largest')}</p>
-                    {largestCategory && (
-                      <>
-                        <p className="text-sm font-semibold text-garage-text">{largestCategory.category}</p>
-                        <p className="text-xs text-garage-text-muted">
-                          {formatCurrency(largestCategory.amount, { currencyCode, locale })} ·{' '}
-                          {formatPercent(largestCategory.percent)}
-                        </p>
-                      </>
-                    )}
-                  </div>
-                  <div className="border border-garage-border rounded-lg p-3">
-                    <p className="text-xs text-garage-text-muted mb-1">{t('garage.avgPerVehicle')}</p>
-                    <p className="text-sm font-semibold text-garage-text">
-                      {formatCurrency(avgPerVehicle, { currencyCode, locale })}
-                    </p>
                   </div>
                 </div>
               </div>

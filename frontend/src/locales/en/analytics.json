@@ -23,8 +23,6 @@
     },
     "costByCategory": "Cost by Category",
     "donutTotal": "Total",
-    "largest": "Largest",
-    "avgPerVehicle": "Avg / vehicle",
     "noCostData": "No cost data available",
     "runningCostsByVehicle": "Running Costs by Vehicle",
     "noVehicleData": "No vehicle data available",

@@ -97,14 +97,11 @@ beforeEach(() => {
 })
 
 describe('GarageAnalytics — Cost by Category donut + sidebar', () => {
-  it('shows the donut center TOTAL = sum of category amounts, and an Avg / vehicle tile', async () => {
+  it('shows the donut center TOTAL = sum of category amounts', async () => {
     render(<GarageAnalytics />)
     // $13,200.00 is the category sum — unique on the page (garage value is $50k).
     expect(await screen.findByText('$13,200.00')).toBeInTheDocument()
     expect(screen.getByText('garage.donutTotal')).toBeInTheDocument()
-    // Avg per vehicle = 13,200 / 3 = 4,400 (unique).
-    expect(screen.getByText('$4,400.00')).toBeInTheDocument()
-    expect(screen.getByText('garage.avgPerVehicle')).toBeInTheDocument()
   })
 
   it('renders the sidebar list with every category and a "<1%" for the tiny DEF share', async () => {
@@ -117,12 +114,14 @@ describe('GarageAnalytics — Cost by Category donut + sidebar', () => {
     expect(screen.getByText('<1%')).toBeInTheDocument()
   })
 
-  it('names the largest category in its tile (Upgrades appears in both the tile and the sidebar)', async () => {
+  it('does not render the Largest or Avg/vehicle tiles (removed)', async () => {
     render(<GarageAnalytics />)
     await screen.findByText('$13,200.00')
-    expect(screen.getByText('garage.largest')).toBeInTheDocument()
-    // Upgrades ($5,000, the max) shows in the Largest tile AND the sidebar row.
-    expect(screen.getAllByText('Upgrades')).toHaveLength(2)
+    expect(screen.queryByText('garage.largest')).not.toBeInTheDocument()
+    expect(screen.queryByText('garage.avgPerVehicle')).not.toBeInTheDocument()
+    // Avg-per-vehicle value (13,200/3) is gone; Upgrades shows only in the sidebar now.
+    expect(screen.queryByText('$4,400.00')).not.toBeInTheDocument()
+    expect(screen.getAllByText('Upgrades')).toHaveLength(1)
   })
 })
 

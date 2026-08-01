@@ -19,7 +19,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Refreshed the interface onto a consistent design system — shared cards, forms, buttons, chips and tables with a single accent-driven theme.
 - The vehicle "Maintenance" stat tile is now labelled "Reminders".
 - The Fuel tab shows its sub-tab bar only when there's more than one sub-tab (e.g. DEF), instead of a lone "Fuel" entry that just repeated the tab.
-- Redesigned the garage Analytics page: Cost by Category is a donut with a per-category breakdown and largest/average tiles, Running Costs by Vehicle reads cleaner without a scrollbar, and the spending-trend average lines now span the full range.
+- Redesigned the garage Analytics page: Cost by Category is a donut with a per-category breakdown, Running Costs by Vehicle reads cleaner without a scrollbar, and the spending-trend average lines now span the full range.
 
 ### Removed
 - Dropped 14 unreachable components, schemas and types (~1790 lines) left behind by earlier refactors, along with the translation keys only they used.
