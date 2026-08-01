@@ -14275,6 +14275,11 @@ export interface components {
          */
         VehicleUpdate: {
             /**
+             * Assembly Location
+             * @description Assembly location
+             */
+            assembly_location?: string | null;
+            /**
              * Body Class
              * @description Body class
              */

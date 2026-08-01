@@ -208,6 +208,7 @@ class VehicleUpdate(VehicleBase):
     sticker_drivetrain: str | None = Field(
         None, description="Drivetrain (window sticker)", max_length=50
     )
+    assembly_location: str | None = Field(None, description="Assembly location", max_length=100)
 
     @field_validator("fuel_type", "fuel_type_secondary", mode="before")
     @classmethod

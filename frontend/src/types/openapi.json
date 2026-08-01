@@ -19215,6 +19215,19 @@
           }
         ],
         "properties": {
+          "assembly_location": {
+            "anyOf": [
+              {
+                "maxLength": 100,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Assembly location",
+            "title": "Assembly Location"
+          },
           "body_class": {
             "anyOf": [
               {

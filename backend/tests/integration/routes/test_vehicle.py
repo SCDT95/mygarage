@@ -154,12 +154,14 @@ class TestVehicleRoutes:
                 "sticker_engine_description": "2.0L Turbo I4",
                 "sticker_transmission_description": "8-Speed Automatic",
                 "sticker_drivetrain": "AWD",
+                "assembly_location": "Toyota City, Japan",
             },
             headers=auth_headers,
         )
 
         assert response.status_code == 200
         data = response.json()
+        assert data["assembly_location"] == "Toyota City, Japan"
         assert data["exterior_color"] == "Cherry Red"
         assert data["interior_color"] == "Black"
         assert data["wheel_specs"] == '18" Alloy'

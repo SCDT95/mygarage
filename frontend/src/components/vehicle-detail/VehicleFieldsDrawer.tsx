@@ -57,6 +57,7 @@ function getCardConfig(card: VehicleCardKey, isMotorized: boolean): CardConfig {
             seedKeys: ['exterior_color', 'color'],
           },
           { key: 'interior_color', label: 'detail.misc.interiorColor', kind: 'text' },
+          { key: 'assembly_location', label: 'detail.misc.assemblyLocation', kind: 'text' },
         ],
       }
     case 'details':

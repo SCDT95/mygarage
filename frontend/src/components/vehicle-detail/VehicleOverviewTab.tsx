@@ -69,7 +69,7 @@ export default function VehicleOverviewTab({
     )
 
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
       {/* Basic Information */}
       <Card breakInside className={onEditCard ? EDITABLE_CARD_CLASS : ''}>
         {editOverlay('basic', 'detail.basicInformation')}
@@ -83,9 +83,58 @@ export default function VehicleOverviewTab({
             <div><p className="text-sm text-text-mute">{t('detail.misc.interiorColor')}</p><p className="font-medium text-text">{vehicle.interior_color}</p></div>
           )}
           <div><p className="text-sm text-text-mute">{t('edit.licensePlate')}</p><p className="font-medium text-text">{vehicle.license_plate || t('detail.notSpecified')}</p></div>
+          {vehicle.assembly_location && (
+            <div><p className="text-sm text-text-mute">{t('detail.misc.assemblyLocation')}</p><p className="font-medium text-text">{vehicle.assembly_location}</p></div>
+          )}
           <div><p className="text-sm text-text-mute">{t('wizard.vin')}</p><Mono size="sm" variant="vin" className="block">{vehicle.vin}</Mono></div>
         </div>
       </Card>
+
+      {/* Vehicle Details (VIN-decoded) */}
+      {(vehicle.trim || vehicle.body_class || vehicle.drive_type || vehicle.doors || vehicle.gvwr_class || vehicle.wheel_specs || vehicle.tire_specs || (!isMotorized && vehicle.fuel_type)) && (
+        <Card breakInside className={onEditCard ? EDITABLE_CARD_CLASS : ''}>
+          {editOverlay('details', 'detail.vehicleDetails')}
+          <CardHeader title={t('detail.vehicleDetails')} />
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {vehicle.trim && (<div><p className="text-sm text-text-mute">{t('edit.trim')}</p><p className="font-medium text-text">{vehicle.trim}</p></div>)}
+            {vehicle.body_class && (<div><p className="text-sm text-text-mute">{t('edit.bodyClass')}</p><p className="font-medium text-text">{vehicle.body_class}</p></div>)}
+            {vehicle.drive_type && (<div><p className="text-sm text-text-mute">{t('edit.driveType')}</p><p className="font-medium text-text">{vehicle.drive_type}</p></div>)}
+            {vehicle.doors && (<div><p className="text-sm text-text-mute">{t('edit.doors')}</p><Mono size="sm" className="block">{vehicle.doors}</Mono></div>)}
+            {vehicle.gvwr_class && (<div><p className="text-sm text-text-mute">{t('detail.misc.gvwrClass')}</p><p className="font-medium text-text">{vehicle.gvwr_class}</p></div>)}
+            {vehicle.wheel_specs && (<div><p className="text-sm text-text-mute">{t('detail.misc.wheels')}</p><Mono size="sm" className="block">{vehicle.wheel_specs}</Mono></div>)}
+            {vehicle.tire_specs && (<div><p className="text-sm text-text-mute">{t('detail.misc.tires')}</p><Mono size="sm" className="block">{vehicle.tire_specs}</Mono></div>)}
+            {!isMotorized && vehicle.fuel_type && (<div><p className="text-sm text-text-mute">{t('edit.fuelType')}</p><p className="font-medium text-text">{t(`forms:fuel.fuelTypes.${vehicle.fuel_type}`, { defaultValue: vehicle.fuel_type })}</p></div>)}
+          </div>
+        </Card>
+      )}
+
+      {/* Powertrain (motorized only) */}
+      {isMotorized && (vehicle.displacement_l || vehicle.cylinders || vehicle.fuel_type || vehicle.sticker_engine_description || vehicle.transmission_type || vehicle.transmission_speeds || vehicle.sticker_transmission_description || vehicle.sticker_drivetrain) && (
+        <Card breakInside className={onEditCard ? EDITABLE_CARD_CLASS : ''}>
+          {editOverlay('powertrain', 'detail.powertrain')}
+          <CardHeader title={t('detail.powertrain')} />
+          <div className="space-y-3">
+            {(vehicle.displacement_l || vehicle.cylinders || vehicle.fuel_type || vehicle.sticker_engine_description) && (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {vehicle.sticker_engine_description && (<div className="md:col-span-2"><p className="text-sm text-text-mute">{t('detail.misc.engine')}</p><p className="font-medium text-text">{vehicle.sticker_engine_description}</p></div>)}
+                {vehicle.displacement_l && (<div><p className="text-sm text-text-mute">{t('detail.misc.displacement')}</p><Mono size="sm" className="block">{t('detail.misc.displacementLiters', { value: vehicle.displacement_l })}</Mono></div>)}
+                {vehicle.cylinders && (<div><p className="text-sm text-text-mute">{t('edit.cylinders')}</p><Mono size="sm" className="block">{vehicle.cylinders}</Mono></div>)}
+                {vehicle.fuel_type && (<div><p className="text-sm text-text-mute">{t('edit.fuelType')}</p><p className="font-medium text-text">{t(`forms:fuel.fuelTypes.${vehicle.fuel_type}`, { defaultValue: vehicle.fuel_type })}</p></div>)}
+              </div>
+            )}
+            {(vehicle.transmission_type || vehicle.transmission_speeds || vehicle.sticker_transmission_description) && (
+              <div className={(vehicle.displacement_l || vehicle.cylinders || vehicle.fuel_type || vehicle.sticker_engine_description) ? 'pt-3 border-t border-border' : ''}>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {vehicle.sticker_transmission_description && (<div className="md:col-span-2"><p className="text-sm text-text-mute">{t('detail.misc.transmission')}</p><p className="font-medium text-text">{vehicle.sticker_transmission_description}</p></div>)}
+                  {vehicle.transmission_type && (<div><p className="text-sm text-text-mute">{t('detail.misc.type')}</p><p className="font-medium text-text">{vehicle.transmission_type}</p></div>)}
+                  {vehicle.transmission_speeds && (<div><p className="text-sm text-text-mute">{t('detail.misc.speeds')}</p><Mono size="sm" className="block">{vehicle.transmission_speeds}</Mono></div>)}
+                  {vehicle.sticker_drivetrain && (<div><p className="text-sm text-text-mute">{t('detail.misc.drivetrain')}</p><p className="font-medium text-text">{vehicle.sticker_drivetrain}</p></div>)}
+                </div>
+              </div>
+            )}
+          </div>
+        </Card>
+      )}
 
       {/* Pricing — purchase, sale (if sold), and MSRP folded into one card. When
           editable the whole card is the click target via a transparent overlay
@@ -157,52 +206,6 @@ export default function VehicleOverviewTab({
       {/* Transfer History (its own file is retokenized in Step 3) */}
       <TransferHistorySection vin={vin} />
 
-      {/* VIN Decoded Information */}
-      {(vehicle.trim || vehicle.body_class || vehicle.drive_type || vehicle.doors || vehicle.gvwr_class || vehicle.wheel_specs || vehicle.tire_specs || (!isMotorized && vehicle.fuel_type)) && (
-        <Card breakInside className={onEditCard ? EDITABLE_CARD_CLASS : ''}>
-          {editOverlay('details', 'detail.vehicleDetails')}
-          <CardHeader title={t('detail.vehicleDetails')} />
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {vehicle.trim && (<div><p className="text-sm text-text-mute">{t('edit.trim')}</p><p className="font-medium text-text">{vehicle.trim}</p></div>)}
-            {vehicle.body_class && (<div><p className="text-sm text-text-mute">{t('edit.bodyClass')}</p><p className="font-medium text-text">{vehicle.body_class}</p></div>)}
-            {vehicle.drive_type && (<div><p className="text-sm text-text-mute">{t('edit.driveType')}</p><p className="font-medium text-text">{vehicle.drive_type}</p></div>)}
-            {vehicle.doors && (<div><p className="text-sm text-text-mute">{t('edit.doors')}</p><Mono size="sm" className="block">{vehicle.doors}</Mono></div>)}
-            {vehicle.gvwr_class && (<div><p className="text-sm text-text-mute">{t('detail.misc.gvwrClass')}</p><p className="font-medium text-text">{vehicle.gvwr_class}</p></div>)}
-            {vehicle.wheel_specs && (<div><p className="text-sm text-text-mute">{t('detail.misc.wheels')}</p><Mono size="sm" className="block">{vehicle.wheel_specs}</Mono></div>)}
-            {vehicle.tire_specs && (<div><p className="text-sm text-text-mute">{t('detail.misc.tires')}</p><Mono size="sm" className="block">{vehicle.tire_specs}</Mono></div>)}
-            {!isMotorized && vehicle.fuel_type && (<div><p className="text-sm text-text-mute">{t('edit.fuelType')}</p><p className="font-medium text-text">{t(`forms:fuel.fuelTypes.${vehicle.fuel_type}`, { defaultValue: vehicle.fuel_type })}</p></div>)}
-          </div>
-        </Card>
-      )}
-
-      {/* Powertrain (motorized only) */}
-      {isMotorized && (vehicle.displacement_l || vehicle.cylinders || vehicle.fuel_type || vehicle.sticker_engine_description || vehicle.transmission_type || vehicle.transmission_speeds || vehicle.sticker_transmission_description || vehicle.sticker_drivetrain) && (
-        <Card breakInside className={onEditCard ? EDITABLE_CARD_CLASS : ''}>
-          {editOverlay('powertrain', 'detail.powertrain')}
-          <CardHeader title={t('detail.powertrain')} />
-          <div className="space-y-3">
-            {(vehicle.displacement_l || vehicle.cylinders || vehicle.fuel_type || vehicle.sticker_engine_description) && (
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {vehicle.sticker_engine_description && (<div className="md:col-span-2"><p className="text-sm text-text-mute">{t('detail.misc.engine')}</p><p className="font-medium text-text">{vehicle.sticker_engine_description}</p></div>)}
-                {vehicle.displacement_l && (<div><p className="text-sm text-text-mute">{t('detail.misc.displacement')}</p><Mono size="sm" className="block">{t('detail.misc.displacementLiters', { value: vehicle.displacement_l })}</Mono></div>)}
-                {vehicle.cylinders && (<div><p className="text-sm text-text-mute">{t('edit.cylinders')}</p><Mono size="sm" className="block">{vehicle.cylinders}</Mono></div>)}
-                {vehicle.fuel_type && (<div><p className="text-sm text-text-mute">{t('edit.fuelType')}</p><p className="font-medium text-text">{t(`forms:fuel.fuelTypes.${vehicle.fuel_type}`, { defaultValue: vehicle.fuel_type })}</p></div>)}
-              </div>
-            )}
-            {(vehicle.transmission_type || vehicle.transmission_speeds || vehicle.sticker_transmission_description) && (
-              <div className={(vehicle.displacement_l || vehicle.cylinders || vehicle.fuel_type || vehicle.sticker_engine_description) ? 'pt-3 border-t border-border' : ''}>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {vehicle.sticker_transmission_description && (<div className="md:col-span-2"><p className="text-sm text-text-mute">{t('detail.misc.transmission')}</p><p className="font-medium text-text">{vehicle.sticker_transmission_description}</p></div>)}
-                  {vehicle.transmission_type && (<div><p className="text-sm text-text-mute">{t('detail.misc.type')}</p><p className="font-medium text-text">{vehicle.transmission_type}</p></div>)}
-                  {vehicle.transmission_speeds && (<div><p className="text-sm text-text-mute">{t('detail.misc.speeds')}</p><Mono size="sm" className="block">{vehicle.transmission_speeds}</Mono></div>)}
-                  {vehicle.sticker_drivetrain && (<div><p className="text-sm text-text-mute">{t('detail.misc.drivetrain')}</p><p className="font-medium text-text">{vehicle.sticker_drivetrain}</p></div>)}
-                </div>
-              </div>
-            )}
-          </div>
-        </Card>
-      )}
-
       {/* Fuel Economy */}
       {(vehicle.fuel_economy_city_l_per_100km || vehicle.fuel_economy_highway_l_per_100km || vehicle.fuel_economy_combined_l_per_100km) && (
         <Card breakInside>
@@ -234,17 +237,6 @@ export default function VehicleOverviewTab({
           <div className="grid grid-cols-2 gap-4">
             {vehicle.environmental_rating_ghg && (<div><p className="text-sm text-text-mute">{t('detail.misc.ghgRating')}</p><p className="font-medium text-text">{vehicle.environmental_rating_ghg}</p></div>)}
             {vehicle.environmental_rating_smog && (<div><p className="text-sm text-text-mute">{t('detail.misc.smogRating')}</p><p className="font-medium text-text">{vehicle.environmental_rating_smog}</p></div>)}
-          </div>
-        </Card>
-      )}
-
-      {/* Assembly Location */}
-      {vehicle.assembly_location && (
-        <Card breakInside>
-          <CardHeader title={t('detail.manufacturing')} />
-          <div>
-            <p className="text-sm text-text-mute">{t('detail.misc.assemblyLocation')}</p>
-            <p className="font-medium text-text">{vehicle.assembly_location}</p>
           </div>
         </Card>
       )}

@@ -22,6 +22,7 @@ const baseVehicle = {
   color: 'Red',
   exterior_color: null,
   interior_color: 'Black',
+  assembly_location: 'Toyota City, Japan',
   warranty_basic: '3 yr / 36,000 mi',
   warranty_powertrain: null,
 } as unknown as Vehicle
@@ -57,6 +58,8 @@ describe('VehicleFieldsDrawer', () => {
     // exterior_color is null, so the field seeds from the legacy `color`.
     expect(screen.getByLabelText('detail.misc.exteriorColor')).toHaveValue('Red')
     expect(screen.getByLabelText('detail.misc.interiorColor')).toHaveValue('Black')
+    // Assembly location moved into Basic Information and is editable here.
+    expect(screen.getByLabelText('detail.misc.assemblyLocation')).toHaveValue('Toyota City, Japan')
   })
 
   it('saves ONLY the changed fields (dirty-diff), coercing numbers, then closes', async () => {
