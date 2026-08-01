@@ -40,19 +40,20 @@ describe('Toggle', () => {
     expect(screen.getByTestId('toggle')).toBeInTheDocument()
   })
 
-  it('variant="onOff" swaps the track colour for success/danger', () => {
-    // Used by the POI category picker's green/red treatment (prototype §Find POI).
+  it('is the accent colour when on and red when off', () => {
+    // One treatment app-wide (product decision 2026-08-01): accent = on,
+    // red = off (a deliberate "excluded" state, not a neutral grey).
     const { rerender } = render(
-      <Toggle label="Gas station" checked onChange={() => {}} variant="onOff" />,
+      <Toggle label="Gas station" checked onChange={() => {}} />,
     )
     const track = screen.getByTestId('toggle').querySelectorAll('[aria-hidden="true"]')[0]
-    expect(track).toHaveClass('bg-success')
+    expect(track).toHaveClass('bg-(--accent-solid)')
     expect(track).not.toHaveClass('bg-danger')
 
-    rerender(<Toggle label="Gas station" checked={false} onChange={() => {}} variant="onOff" />)
+    rerender(<Toggle label="Gas station" checked={false} onChange={() => {}} />)
     const trackAfter = screen.getByTestId('toggle').querySelectorAll('[aria-hidden="true"]')[0]
     expect(trackAfter).toHaveClass('bg-danger')
-    expect(trackAfter).not.toHaveClass('bg-success')
+    expect(trackAfter).not.toHaveClass('bg-(--accent-solid)')
   })
 
   it('hideLabel hides the visible text but keeps the accessible name', () => {

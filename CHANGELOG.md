@@ -21,6 +21,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - The Fuel tab shows its sub-tab bar only when there's more than one sub-tab (e.g. DEF), instead of a lone "Fuel" entry that just repeated the tab.
 - Redesigned the Address Book: category filter chips (with Gas Station and RV Park) replace the dropdown and the separate Gas Stations button, contact cards open an edit sidecar, and Add/Edit are slide-in panels.
 - Redesigned the garage Analytics page: Cost by Category is a donut with a per-category breakdown, Running Costs by Vehicle reads cleaner without a scrollbar, and the spending-trend average lines now span the full range.
+- Toggle switches now read as the accent colour when on and red when off, everywhere they appear; the Find POI "Use My Location" button is sized to its label.
 
 ### Removed
 - Dropped 14 unreachable components, schemas and types (~1790 lines) left behind by earlier refactors, along with the translation keys only they used.

@@ -305,7 +305,7 @@ export default function Gallery() {
 
       <Section title="Toggle / Checkbox" note="Toggle keeps the implicit checkbox role — role='switch' would break 5 tests. Check the knob against the off-track in LIGHT theme.">
         <Toggle label="Safety alerts" checked={toggleOn} onChange={setToggleOn} />
-        <Toggle label="Gas Stations" checked={toggleOn} onChange={setToggleOn} variant="onOff" />
+        <Toggle label="Gas Stations" checked={toggleOn} onChange={setToggleOn} />
         <Toggle label="Disabled" checked={false} onChange={() => {}} disabled />
         <Checkbox id="g-jpg" label=".jpg" defaultChecked />
         <Checkbox id="g-png" label=".png" />

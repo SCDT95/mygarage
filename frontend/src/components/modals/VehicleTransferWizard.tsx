@@ -342,7 +342,7 @@ export default function VehicleTransferWizard({
                 <button
                   onClick={toggleAllData}
                   className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
-                    allDataSelected ? 'bg-(--accent-solid)' : 'bg-border'
+                    allDataSelected ? 'bg-(--accent-solid)' : 'bg-danger'
                   }`}
                 >
                   <span

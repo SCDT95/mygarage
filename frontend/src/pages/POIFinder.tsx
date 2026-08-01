@@ -10,7 +10,7 @@ import { useTranslation } from 'react-i18next'
 import { MapPin, Loader2, Navigation, AlertTriangle, Search } from 'lucide-react'
 import { toast } from 'sonner'
 import api from '@/services/api'
-import { Select, Toggle } from '@/components/ui'
+import { Button, Select, Toggle } from '@/components/ui'
 import POICard from '@/components/POICard'
 import MapDisplay from '@/components/MapDisplay'
 import { useUnitPreference } from '@/hooks/useUnitPreference'
@@ -270,33 +270,23 @@ export default function POIFinder() {
               <Toggle
                 label={t('poiFinder.categoryAutoShops')}
                 checked={categories.auto_shop}
-                onChange={(next) => handleCategoryToggle('auto_shop', next)}
-                variant="onOff"
-              />
+                onChange={(next) => handleCategoryToggle('auto_shop', next)}              />
               <Toggle
                 label={t('poiFinder.categoryEvCharging')}
                 checked={categories.ev_charging}
-                onChange={(next) => handleCategoryToggle('ev_charging', next)}
-                variant="onOff"
-              />
+                onChange={(next) => handleCategoryToggle('ev_charging', next)}              />
               <Toggle
                 label={t('poiFinder.categoryGasStations')}
                 checked={categories.gas_station}
-                onChange={(next) => handleCategoryToggle('gas_station', next)}
-                variant="onOff"
-              />
+                onChange={(next) => handleCategoryToggle('gas_station', next)}              />
               <Toggle
                 label={t('poiFinder.categoryPropane')}
                 checked={categories.propane}
-                onChange={(next) => handleCategoryToggle('propane', next)}
-                variant="onOff"
-              />
+                onChange={(next) => handleCategoryToggle('propane', next)}              />
               <Toggle
                 label={t('poiFinder.categoryRvShops')}
                 checked={categories.rv_shop}
-                onChange={(next) => handleCategoryToggle('rv_shop', next)}
-                variant="onOff"
-              />
+                onChange={(next) => handleCategoryToggle('rv_shop', next)}              />
             </div>
 
             {/* Search Radius */}
@@ -351,14 +341,9 @@ export default function POIFinder() {
 
           {/* Location Request Card */}
           <div className="bg-garage-surface border border-garage-border rounded-lg p-6 space-y-4">
-            <button
-              type="button"
-              onClick={handleRequestLocation}
-              className="w-full px-6 py-3 bg-primary text-(--accent-on-solid) rounded-lg hover:bg-primary/90 transition-colors flex items-center justify-center gap-2 font-medium"
-            >
-              <Navigation className="w-5 h-5" />
+            <Button variant="primary" icon={Navigation} onClick={handleRequestLocation}>
               {t('poiFinder.useMyLocation')}
-            </button>
+            </Button>
 
             {/* Phase 3.9 — manual address search via Nominatim. Fixes
                 rc1 limitation that the page only searched around the

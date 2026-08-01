@@ -7,8 +7,6 @@ interface ToggleProps {
   checked: boolean
   onChange: (next: boolean) => void
   disabled?: boolean
-  /** `onOff` is the POI-picker's green/red treatment (prototype §Find POI). */
-  variant?: 'accent' | 'onOff'
   /** Hide the visible label when the surrounding row already names the
    *  control. The accessible name is preserved via aria-label. */
   hideLabel?: boolean
@@ -17,6 +15,11 @@ interface ToggleProps {
 /**
  * A single on/off setting, drawn as a switch but built on a real
  * <input type="checkbox">.
+ *
+ * One treatment app-wide: the accent colour when on, red when off — off is a
+ * deliberate, visible "excluded" state, not a neutral grey (product decision
+ * 2026-08-01). The custom switch in VehicleTransferWizard follows the same
+ * on/off colours by hand.
  *
  * NO role="switch". Five existing tests query getByRole('checkbox', …) on
  * controls this replaces, and role="switch" would break every one of them for
@@ -35,14 +38,13 @@ export default function Toggle({
   checked,
   onChange,
   disabled = false,
-  variant = 'accent',
   hideLabel = false,
 }: ToggleProps) {
   const fallbackId = useId()
   const inputId = id ?? fallbackId
 
-  const trackOn = variant === 'onOff' ? 'bg-success' : 'bg-(--accent-solid)'
-  const trackOff = variant === 'onOff' ? 'bg-danger' : 'bg-toggle-track-off'
+  const trackOn = 'bg-(--accent-solid)'
+  const trackOff = 'bg-danger'
 
   return (
     <label

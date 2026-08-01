@@ -149,7 +149,7 @@ describe('primitive semantics', () => {
         <Select aria-label="Fuel" options={[{ value: 'gas', label: 'Gasoline' }]} />
         <Checkbox id="pa-jpg" label="JPG" />
         <Toggle label="Alerts" checked onChange={() => {}} />
-        <Toggle label="Gas Stations" checked={false} onChange={() => {}} variant="onOff" />
+        <Toggle label="Gas Stations" checked={false} onChange={() => {}} />
         <SearchField value="" onChange={() => {}} label="Search" />
         <Tabs
           label="Sections"
