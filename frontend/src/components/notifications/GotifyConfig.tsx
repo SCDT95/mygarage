@@ -1,5 +1,6 @@
 import { Radio, Send, Info } from 'lucide-react';
 import { useTranslation } from 'react-i18next'
+import { Toggle } from '@/components/ui'
 
 interface GotifyConfigProps {
   settings: Record<string, unknown>;
@@ -34,16 +35,12 @@ export function GotifyConfig({
 
       <div className="space-y-4">
         {/* Enable Toggle */}
-        <label className="flex items-center cursor-pointer">
-          <input
-            type="checkbox"
-            checked={isEnabled}
-            onChange={(e) => onSettingChange('gotify_enabled', e.target.checked)}
-            disabled={saving}
-            className="w-4 h-4 text-primary bg-garage-bg border-garage-border rounded focus:ring-primary focus:ring-2 disabled:opacity-50"
-          />
-          <span className="ml-2 text-sm text-garage-text font-medium">{t('gotify.enable')}</span>
-        </label>
+        <Toggle
+          label={t('gotify.enable')}
+          checked={isEnabled}
+          onChange={(next) => onSettingChange('gotify_enabled', next)}
+          disabled={saving}
+        />
 
                 <div>
           <label htmlFor="gotify_server" className="block text-sm font-medium text-garage-text mb-1">

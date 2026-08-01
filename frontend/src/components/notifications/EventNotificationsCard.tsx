@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next'
 import { ChevronDown, ChevronRight, Bell, Settings2 } from 'lucide-react';
+import { Toggle } from '@/components/ui'
 
 interface EventNotificationsCardProps {
   settings: Record<string, unknown>;
@@ -45,7 +46,6 @@ export function EventNotificationsCard({
   hasEnabledService,
 }: EventNotificationsCardProps) {
   const { t } = useTranslation('settings')
-  const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set(['safety', 'maintenance']));
   const [showAdvanced, setShowAdvanced] = useState(false);
 
   // Built inside the component (not at module scope) because every label and
@@ -165,22 +165,6 @@ export function EventNotificationsCard({
     [t],
   );
 
-  const toggleGroup = (groupId: string) => {
-    setExpandedGroups((prev) => {
-      const next = new Set(prev);
-      if (next.has(groupId)) {
-        next.delete(groupId);
-      } else {
-        next.add(groupId);
-      }
-      return next;
-    });
-  };
-
-  const getEnabledCount = (events: EventItem[]): number => {
-    return events.filter((e) => settings[e.key] === 'true').length;
-  };
-
   if (!hasEnabledService) {
     return (
       <div className="bg-garage-surface rounded-lg border border-garage-border p-6">
@@ -204,74 +188,49 @@ export function EventNotificationsCard({
       </div>
 
       <div className="space-y-2">
-        {eventGroups.map((group) => {
-          const isExpanded = expandedGroups.has(group.id);
-          const enabledCount = getEnabledCount(group.events);
+        {eventGroups.map((group) => (
+          <div key={group.id} className="border border-garage-border rounded-lg overflow-hidden">
+            <div className="flex items-center gap-3 w-full p-3 bg-garage-bg/50">
+              <group.icon className="w-4 h-4 text-garage-text-muted" />
+              <span className="text-sm font-medium text-garage-text">{group.label}</span>
+            </div>
 
-          return (
-            <div key={group.id} className="border border-garage-border rounded-lg overflow-hidden">
-              <button
-                onClick={() => toggleGroup(group.id)}
-                className="flex items-center gap-3 w-full p-3 bg-garage-bg/50 hover:bg-garage-bg text-left transition-colors"
-              >
-                {isExpanded ? (
-                  <ChevronDown className="w-4 h-4 text-garage-text-muted" />
-                ) : (
-                  <ChevronRight className="w-4 h-4 text-garage-text-muted" />
-                )}
-                <div className="flex-1">
-                  <span className="text-sm font-medium text-garage-text">{group.label}</span>
-                  {!isExpanded && (
-                    <span className="ml-2 text-xs text-garage-text-muted">
-                      {t('events.card.enabledCount', { enabled: enabledCount, total: group.events.length })}
-                    </span>
+            <div className="p-3 space-y-3 bg-garage-surface">
+              {group.events.map((event) => (
+                <div key={event.key} className="flex items-start justify-between gap-4">
+                  <div className="flex-1 min-w-0">
+                    <Toggle
+                      label={event.label}
+                      checked={settings[event.key] === 'true'}
+                      onChange={(next) => onSettingChange(event.key, next)}
+                      disabled={saving}
+                    />
+                    <p className="mt-1 text-xs text-garage-text-muted">{event.description}</p>
+                  </div>
+                  {event.numberFields && event.numberFields.length > 0 && (
+                    <div className="flex flex-col gap-1">
+                      {event.numberFields.map((field) => (
+                        <div key={field.key} className="flex items-center gap-2">
+                          <input
+                            type="number"
+                            value={String(settings[field.key] ?? field.default)}
+                            onChange={(e) => onTextChange(field.key, e.target.value)}
+                            disabled={saving || settings[event.key] !== 'true'}
+                            min={field.min}
+                            max={field.max}
+                            step={field.step}
+                            className="w-16 px-2 py-1 text-sm bg-garage-bg border border-garage-border rounded text-garage-text disabled:opacity-50"
+                          />
+                          <span className="text-xs text-garage-text-muted whitespace-nowrap">{field.suffix}</span>
+                        </div>
+                      ))}
+                    </div>
                   )}
                 </div>
-              </button>
-
-              {isExpanded && (
-                <div className="p-3 space-y-3 bg-garage-surface">
-                  {group.events.map((event) => (
-                    <div key={event.key} className="flex items-start justify-between gap-4">
-                      <div className="flex-1 min-w-0">
-                        <label className="flex items-center cursor-pointer">
-                          <input
-                            type="checkbox"
-                            checked={settings[event.key] === 'true'}
-                            onChange={(e) => onSettingChange(event.key, e.target.checked)}
-                            disabled={saving}
-                            className="w-4 h-4 text-primary bg-garage-bg border-garage-border rounded focus:ring-primary focus:ring-2 disabled:opacity-50"
-                          />
-                          <span className="ml-2 text-sm text-garage-text font-medium">{event.label}</span>
-                        </label>
-                        <p className="mt-1 ml-6 text-xs text-garage-text-muted">{event.description}</p>
-                      </div>
-                      {event.numberFields && event.numberFields.length > 0 && (
-                        <div className="flex flex-col gap-1">
-                          {event.numberFields.map((field) => (
-                            <div key={field.key} className="flex items-center gap-2">
-                              <input
-                                type="number"
-                                value={String(settings[field.key] ?? field.default)}
-                                onChange={(e) => onTextChange(field.key, e.target.value)}
-                                disabled={saving || settings[event.key] !== 'true'}
-                                min={field.min}
-                                max={field.max}
-                                step={field.step}
-                                className="w-16 px-2 py-1 text-sm bg-garage-bg border border-garage-border rounded text-garage-text disabled:opacity-50"
-                              />
-                              <span className="text-xs text-garage-text-muted whitespace-nowrap">{field.suffix}</span>
-                            </div>
-                          ))}
-                        </div>
-                      )}
-                    </div>
-                  ))}
-                </div>
-              )}
+              ))}
             </div>
-          );
-        })}
+          </div>
+        ))}
 
         {/* Advanced Settings */}
         <div className="mt-4 border border-garage-border rounded-lg overflow-hidden">

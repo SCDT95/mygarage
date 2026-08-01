@@ -65,7 +65,6 @@ describe('SettingsNotificationsTab — DEF-low settings (Task 17)', () => {
     renderTab()
 
     await screen.findByText('events.defLow.group')
-    fireEvent.click(screen.getByText('events.defLow.group'))
 
     expect(screen.getByRole('checkbox', { name: 'events.defLow.label' })).toBeChecked()
     expect(screen.getByDisplayValue('25')).toBeInTheDocument()
@@ -75,7 +74,6 @@ describe('SettingsNotificationsTab — DEF-low settings (Task 17)', () => {
     renderTab()
 
     await screen.findByText('events.defLow.group')
-    fireEvent.click(screen.getByText('events.defLow.group'))
 
     // Change the percent field while the toggle is still on — the field
     // disables itself once the toggle flips off (mirrors the days/miles

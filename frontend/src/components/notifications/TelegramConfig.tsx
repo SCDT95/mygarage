@@ -1,5 +1,6 @@
 import { AtSign, Send, Info, ExternalLink } from 'lucide-react';
 import { useTranslation } from 'react-i18next'
+import { Toggle } from '@/components/ui'
 
 interface TelegramConfigProps {
   settings: Record<string, unknown>;
@@ -34,16 +35,12 @@ export function TelegramConfig({
 
       <div className="space-y-4">
         {/* Enable Toggle */}
-        <label className="flex items-center cursor-pointer">
-          <input
-            type="checkbox"
-            checked={isEnabled}
-            onChange={(e) => onSettingChange('telegram_enabled', e.target.checked)}
-            disabled={saving}
-            className="w-4 h-4 text-primary bg-garage-bg border-garage-border rounded focus:ring-primary focus:ring-2 disabled:opacity-50"
-          />
-          <span className="ml-2 text-sm text-garage-text font-medium">{t('telegram.enable')}</span>
-        </label>
+        <Toggle
+          label={t('telegram.enable')}
+          checked={isEnabled}
+          onChange={(next) => onSettingChange('telegram_enabled', next)}
+          disabled={saving}
+        />
 
         <div>
           <label htmlFor="telegram_bot_token" className="block text-sm font-medium text-garage-text mb-1">

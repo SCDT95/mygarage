@@ -26,6 +26,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Settings → File Management: the Window Sticker enable and OCR checkboxes are now toggle switches, and the two cards use a masonry layout so the Window Sticker card sizes to its content instead of stretching.
 - Settings → Integrations: enable checkboxes are now toggle switches, the NHTSA card takes a shield icon, provider Edit links use the accent colour, the CarComplaints and LiveLink "About" details moved into a help sidecar (opened by a question-mark button in each card's corner), and the layout stacks CarComplaints and LiveLink beside NHTSA with Shop Finder full-width.
 - LiveLink settings now open in a slide-in sidecar instead of a centred modal, with every checkbox replaced by a toggle switch.
+- Settings → Notifications: each provider's enable control and every per-event notification are now toggle switches, and the event groups are always expanded instead of hidden behind an accordion.
 
 ### Removed
 - Dropped 14 unreachable components, schemas and types (~1790 lines) left behind by earlier refactors, along with the translation keys only they used.

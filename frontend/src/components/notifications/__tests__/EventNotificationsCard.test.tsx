@@ -5,7 +5,7 @@ import { EventNotificationsCard } from '../EventNotificationsCard'
 describe('EventNotificationsCard — DEF-low event (Task 17)', () => {
   const noop = () => {}
 
-  it('shows the DEF group collapsed by default with an accurate enabled count', () => {
+  it('renders every group statically with its toggle visible (no accordion)', () => {
     render(
       <EventNotificationsCard
         settings={{ notify_def_low: 'true' }}
@@ -16,16 +16,14 @@ describe('EventNotificationsCard — DEF-low event (Task 17)', () => {
       />,
     )
 
+    // Static: no expand step. The group, its toggle label and the saved
+    // checked state are all present on first render.
     expect(screen.getByText('events.defLow.group')).toBeInTheDocument()
-    // Every group renders a count. The exact numbers are not assertable here:
-    // the shared test mock is `t: (key) => key`, so interpolation args are
-    // dropped and all groups render the same key.
-    expect(screen.getAllByText('events.card.enabledCount').length).toBeGreaterThan(0)
-    // Collapsed: the toggle/percent field aren't in the DOM yet.
-    expect(screen.queryByText('events.defLow.label')).not.toBeInTheDocument()
+    expect(screen.getByText('events.defLow.label')).toBeInTheDocument()
+    expect(screen.getByRole('checkbox', { name: 'events.defLow.label' })).toBeChecked()
   })
 
-  it('renders the DEF toggle and percent field (default 25) once the group is expanded', () => {
+  it('renders the DEF toggle and percent field (default 25)', () => {
     render(
       <EventNotificationsCard
         settings={{}}
@@ -35,8 +33,6 @@ describe('EventNotificationsCard — DEF-low event (Task 17)', () => {
         hasEnabledService
       />,
     )
-
-    fireEvent.click(screen.getByText('events.defLow.group'))
 
     expect(screen.getByText('events.defLow.label')).toBeInTheDocument()
     expect(screen.getByText('events.defLow.description')).toBeInTheDocument()
@@ -63,8 +59,6 @@ describe('EventNotificationsCard — DEF-low event (Task 17)', () => {
       />,
     )
 
-    fireEvent.click(screen.getByText('events.defLow.group'))
-
     const checkbox = screen.getByRole('checkbox', { name: 'events.defLow.label' })
     expect(checkbox).toBeChecked()
 
@@ -84,7 +78,6 @@ describe('EventNotificationsCard — DEF-low event (Task 17)', () => {
       />,
     )
 
-    fireEvent.click(screen.getByText('events.defLow.group'))
     fireEvent.click(screen.getByRole('checkbox', { name: 'events.defLow.label' }))
 
     expect(onSettingChange).toHaveBeenCalledWith('notify_def_low', true)
@@ -102,7 +95,6 @@ describe('EventNotificationsCard — DEF-low event (Task 17)', () => {
       />,
     )
 
-    fireEvent.click(screen.getByText('events.defLow.group'))
     fireEvent.change(screen.getByDisplayValue('25'), { target: { value: '15' } })
 
     expect(onTextChange).toHaveBeenCalledWith('notify_def_low_threshold_percent', '15')

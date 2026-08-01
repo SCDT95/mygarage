@@ -1,5 +1,6 @@
 import { Mail, Send, Info } from 'lucide-react';
 import { useTranslation } from 'react-i18next'
+import { Toggle } from '@/components/ui'
 
 interface EmailConfigProps {
   settings: Record<string, unknown>;
@@ -40,16 +41,12 @@ export function EmailConfig({
 
       <div className="space-y-4">
         {/* Enable Toggle */}
-        <label className="flex items-center cursor-pointer">
-          <input
-            type="checkbox"
-            checked={isEnabled}
-            onChange={(e) => onSettingChange('email_enabled', e.target.checked)}
-            disabled={saving}
-            className="w-4 h-4 text-primary bg-garage-bg border-garage-border rounded focus:ring-primary focus:ring-2 disabled:opacity-50"
-          />
-          <span className="ml-2 text-sm text-garage-text font-medium">{t('email.enable')}</span>
-        </label>
+        <Toggle
+          label={t('email.enable')}
+          checked={isEnabled}
+          onChange={(next) => onSettingChange('email_enabled', next)}
+          disabled={saving}
+        />
 
         <div className="grid grid-cols-3 gap-3">
           <div className="col-span-2">
@@ -116,16 +113,12 @@ export function EmailConfig({
         </div>
 
         {/* TLS Toggle */}
-        <label className="flex items-center cursor-pointer">
-          <input
-            type="checkbox"
-            checked={settings.email_smtp_tls === 'true'}
-            onChange={(e) => onSettingChange('email_smtp_tls', e.target.checked)}
-            disabled={saving || !isEnabled}
-            className="w-4 h-4 text-primary bg-garage-bg border-garage-border rounded focus:ring-primary focus:ring-2 disabled:opacity-50"
-          />
-          <span className="ml-2 text-sm text-garage-text">{t('email.misc.useStartTls')}</span>
-        </label>
+        <Toggle
+          label={t('email.misc.useStartTls')}
+          checked={settings.email_smtp_tls === 'true'}
+          onChange={(next) => onSettingChange('email_smtp_tls', next)}
+          disabled={saving || !isEnabled}
+        />
 
         <div>
           <label htmlFor="email_from" className="block text-sm font-medium text-garage-text mb-1">
