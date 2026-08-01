@@ -25,6 +25,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Settings → System Configuration: the Debug, "show both units" and mobile quick-entry checkboxes are now toggle switches.
 - Settings → File Management: the Window Sticker enable and OCR checkboxes are now toggle switches, and the two cards use a masonry layout so the Window Sticker card sizes to its content instead of stretching.
 - Settings → Integrations: enable checkboxes are now toggle switches, the NHTSA card takes a shield icon, the About boxes are accent-tinted, provider Edit links use the accent colour, and the layout stacks CarComplaints and LiveLink beside NHTSA with Shop Finder full-width.
+- LiveLink settings now open in a slide-in sidecar instead of a centred modal.
 
 ### Removed
 - Dropped 14 unreachable components, schemas and types (~1790 lines) left behind by earlier refactors, along with the translation keys only they used.

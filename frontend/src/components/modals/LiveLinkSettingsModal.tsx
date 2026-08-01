@@ -1,8 +1,8 @@
 import { useTranslation } from 'react-i18next'
 import { useState, useEffect, useCallback } from 'react'
+import { createPortal } from 'react-dom'
 import { toast } from 'sonner'
 import {
-  X,
   Copy,
   Eye,
   EyeOff,
@@ -28,7 +28,7 @@ import {
 } from 'lucide-react'
 import { livelinkService } from '@/services/livelinkService'
 import { vehicleService } from '@/services/vehicleService'
-import { Select } from '@/components/ui'
+import { Select, Drawer } from '@/components/ui'
 import type {
   LiveLinkSettings,
   LiveLinkSettingsUpdate,
@@ -368,24 +368,25 @@ export default function LiveLinkSettingsModal({ isOpen, onClose }: LiveLinkSetti
   if (!isOpen) return null
 
   return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-      <div className="bg-garage-surface rounded-lg border border-garage-border w-full max-w-4xl mx-4 max-h-[90vh] flex flex-col">
-        {/* Header */}
-        <div className="flex items-center justify-between p-6 border-b border-garage-border shrink-0">
-          <div className="flex items-center gap-3">
-            <Settings className="w-6 h-6 text-primary" />
-            <div>
-              <h2 className="text-xl font-semibold text-garage-text">{t('modal.liveLinkSettings')}</h2>
-              <p className="text-sm text-garage-text-muted">{t('modal.liveLinkDescription')}</p>
-            </div>
-          </div>
-          <button onClick={onClose} className="text-garage-text-muted hover:text-garage-text">
-            <X className="w-6 h-6" />
-          </button>
-        </div>
-
-        {/* Content */}
-        <div className="flex-1 overflow-y-auto p-6 space-y-6">
+    <>
+    <Drawer
+      open={isOpen}
+      onClose={onClose}
+      title={t('modal.liveLinkSettings')}
+      icon={Settings}
+      width="xl"
+      closeLabel={t('modal.livelink.close')}
+      footer={
+        <button
+          onClick={onClose}
+          className="px-4 py-2 bg-garage-surface border border-garage-border rounded-lg text-garage-text hover:bg-garage-bg"
+        >
+          {t('modal.livelink.close')}
+        </button>
+      }
+    >
+        <p className="text-sm text-garage-text-muted mb-6">{t('modal.liveLinkDescription')}</p>
+        <div className="space-y-6">
           {loading ? (
             <div className="flex items-center justify-center py-12">
               <RefreshCw className="w-8 h-8 text-primary animate-spin" />
@@ -933,21 +934,13 @@ export default function LiveLinkSettingsModal({ isOpen, onClose }: LiveLinkSetti
             </>
           )}
         </div>
+    </Drawer>
 
-        {/* Footer */}
-        <div className="flex justify-end gap-3 p-4 border-t border-garage-border shrink-0">
-          <button
-            onClick={onClose}
-            className="px-4 py-2 bg-garage-surface border border-garage-border rounded-lg text-garage-text hover:bg-garage-bg"
-          >
-            {t('modal.livelink.close')}
-          </button>
-        </div>
-      </div>
-
-      {/* Device Token Modal */}
-      {deviceTokenModal && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[60]">
+    {/* Device Token dialog — portalled to <body> so it escapes the drawer's
+        root-level inert and the panel's transform, staying a centred modal on
+        top of the drawer. */}
+    {deviceTokenModal && createPortal(
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-drawer-nested">
           <div className="bg-garage-surface rounded-lg border border-garage-border p-6 max-w-lg w-full mx-4">
             <h3 className="text-lg font-semibold text-garage-text mb-4">
               {t('modal.livelink.deviceTokenGenerated')}
@@ -988,9 +981,10 @@ export default function LiveLinkSettingsModal({ isOpen, onClose }: LiveLinkSetti
               </div>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body,
       )}
-    </div>
+    </>
   )
 }
 
