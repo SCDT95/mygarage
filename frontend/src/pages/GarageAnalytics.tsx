@@ -359,9 +359,9 @@ export default function GarageAnalytics() {
               {/* Donut + summary tiles */}
               <div className="flex flex-col sm:w-1/2 lg:w-full">
                 <div className="relative w-full" style={{ height: 200 }}>
-                  {/* Fixed numeric height, not "100%": a percentage-height
-                      ResponsiveContainer inside this flex column measures 0 and
-                      renders no <svg> (regressed the subpath recharts e2e). */}
+                  {/* Numeric height (matches the 200px wrapper). A percentage
+                      height on a ResponsiveContainer nested in this flex column
+                      is a known Recharts fragility, so pin it. */}
                   <ResponsiveContainer width="100%" height={200}>
                     <RechartsPieChart>
                       <Pie

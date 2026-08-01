@@ -181,6 +181,11 @@ async function seedFuelRecord(
   const resp = await request.post(`${apiBase}/vehicles/${TEST_VEHICLE.vin}/fuel`, {
     headers: authHeaders,
     data: {
+      // `vin` is a REQUIRED body field on FuelRecordCreate (17 chars), separate
+      // from the path param. Omitting it 422s, silently leaving analytics with
+      // no cost data — which the garage-analytics reskin's cost-conditional
+      // charts then render empty. Keep it in the body.
+      vin: TEST_VEHICLE.vin,
       date: today,
       odometer_km: '48280',
       liters: '47.318',
@@ -188,9 +193,10 @@ async function seedFuelRecord(
       is_full_tank: true,
     },
   })
-  // 201 = created; 400/409/422 tolerated on rerun / validation drift.
+  // 201 = created; 409 tolerated on rerun (duplicate). A 400/422 is a real
+  // validation failure we must NOT swallow — it leaves analytics cost-free.
   expect(
-    [201, 400, 409, 422].includes(resp.status()),
+    [201, 409].includes(resp.status()),
     `Seed fuel failed: ${resp.status()} ${await resp.text()}`,
   ).toBeTruthy()
 }
