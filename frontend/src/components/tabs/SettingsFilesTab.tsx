@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 import { HardDrive, FileText } from 'lucide-react'
 import { useSettings } from '@/contexts/SettingsContext'
+import { Toggle } from '@/components/ui'
 import api from '@/services/api'
 
 type SettingRecord = {
@@ -141,10 +142,11 @@ export default function SettingsFilesTab() {
         </div>
       )}
 
-      {/* File Management Grid */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      {/* File Management — masonry columns so the shorter Window Sticker card
+          takes its natural height instead of stretching to match the tall one. */}
+      <div className="columns-1 lg:columns-2 gap-6">
         {/* File Management Settings */}
-        <div className="bg-garage-surface rounded-lg border border-garage-border p-6">
+        <div className="bg-garage-surface rounded-lg border border-garage-border p-6 break-inside-avoid mb-6">
           <div className="flex items-start gap-3 mb-6">
             <HardDrive className="w-6 h-6 text-primary mt-1" />
             <div className="flex-1">
@@ -262,7 +264,7 @@ export default function SettingsFilesTab() {
         </div>
 
         {/* Window Sticker */}
-        <div className="bg-garage-surface rounded-lg border border-garage-border p-6">
+        <div className="bg-garage-surface rounded-lg border border-garage-border p-6 break-inside-avoid mb-6">
           <div className="flex items-start gap-3 mb-6">
             <FileText className="w-6 h-6 text-primary mt-1" />
             <div className="flex-1">
@@ -276,37 +278,25 @@ export default function SettingsFilesTab() {
           <div className="space-y-6">
             {/* Enable Window Sticker */}
             <div>
-              <label className="flex items-center">
-                <input
-                  type="checkbox"
-                  checked={formData.window_sticker_enabled === 'true'}
-                  onChange={(e) => setFormData({ ...formData, window_sticker_enabled: e.target.checked ? 'true' : 'false' })}
-                  className="w-4 h-4 text-primary bg-garage-bg border-garage-border rounded focus:ring-primary focus:ring-2"
-                />
-                <span className="ml-2 text-sm text-garage-text font-medium">
-                  {t('files.enableWindowSticker')}
-                </span>
-              </label>
-              <p className="mt-1 ml-6 text-sm text-garage-text-muted">
+              <Toggle
+                label={t('files.enableWindowSticker')}
+                checked={formData.window_sticker_enabled === 'true'}
+                onChange={(next) => setFormData({ ...formData, window_sticker_enabled: next ? 'true' : 'false' })}
+              />
+              <p className="mt-1 text-sm text-garage-text-muted">
                 {t('files.enableWindowStickerDesc')}
               </p>
             </div>
 
             {/* Enable OCR */}
             <div>
-              <label className="flex items-center">
-                <input
-                  type="checkbox"
-                  checked={formData.window_sticker_ocr_enabled === 'true'}
-                  disabled={formData.window_sticker_enabled === 'false'}
-                  onChange={(e) => setFormData({ ...formData, window_sticker_ocr_enabled: e.target.checked ? 'true' : 'false' })}
-                  className="w-4 h-4 text-primary bg-garage-bg border-garage-border rounded focus:ring-primary focus:ring-2 disabled:opacity-50"
-                />
-                <span className="ml-2 text-sm text-garage-text font-medium">
-                  {t('files.enableOCR')}
-                </span>
-              </label>
-              <p className="mt-1 ml-6 text-sm text-garage-text-muted">
+              <Toggle
+                label={t('files.enableOCR')}
+                checked={formData.window_sticker_ocr_enabled === 'true'}
+                disabled={formData.window_sticker_enabled === 'false'}
+                onChange={(next) => setFormData({ ...formData, window_sticker_ocr_enabled: next ? 'true' : 'false' })}
+              />
+              <p className="mt-1 text-sm text-garage-text-muted">
                 {t('files.enableOCRDesc')}
               </p>
             </div>

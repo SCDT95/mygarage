@@ -23,6 +23,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Redesigned the garage Analytics page: Cost by Category is a donut with a per-category breakdown, Running Costs by Vehicle reads cleaner without a scrollbar, and the spending-trend average lines now span the full range.
 - Toggle switches now read as the accent colour when on and red when off, everywhere they appear; the Find POI "Use My Location" button is sized to its label.
 - Settings → System Configuration: the Debug, "show both units" and mobile quick-entry checkboxes are now toggle switches.
+- Settings → File Management: the Window Sticker enable and OCR checkboxes are now toggle switches, and the two cards use a masonry layout so the Window Sticker card sizes to its content instead of stretching.
 
 ### Removed
 - Dropped 14 unreachable components, schemas and types (~1790 lines) left behind by earlier refactors, along with the translation keys only they used.
