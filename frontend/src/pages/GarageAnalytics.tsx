@@ -12,7 +12,6 @@ import {
   Bar,
   XAxis,
   YAxis,
-  CartesianGrid,
   Legend,
   Line,
 } from 'recharts'
@@ -252,7 +251,7 @@ export default function GarageAnalytics() {
   const formatMonthLabel = (value: string) => {
     const parsed = new Date(`${value} 1`)
     if (Number.isNaN(parsed.getTime())) return value
-    return new Intl.DateTimeFormat(locale, { month: 'short', year: 'numeric' }).format(parsed)
+    return new Intl.DateTimeFormat(locale, { month: 'short', year: '2-digit' }).format(parsed)
   }
 
   const trendData = monthly_trends.map((trend, idx) => ({
@@ -572,25 +571,15 @@ export default function GarageAnalytics() {
           <h2 className="text-xl font-bold mb-4 text-garage-text">{t('garage.monthlySpendingTrend')}</h2>
           <ResponsiveContainer width="100%" height={300}>
             <RechartsBarChart data={trendData} margin={{ top: 5, right: 20, left: 10, bottom: 5 }}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#333" />
               <XAxis
                 dataKey="month"
                 stroke="#9E9E9E"
                 style={{ fontSize: '12px' }}
-                angle={-45}
-                textAnchor="end"
-                height={80}
+                tickLine={false}
+                axisLine={false}
+                height={30}
               />
-              <YAxis
-                stroke="#9E9E9E"
-                style={{ fontSize: '12px' }}
-                label={{
-                  value: t('garage.costAxis', { currency: currencyCode }),
-                  angle: -90,
-                  position: 'insideLeft',
-                  fill: '#9E9E9E',
-                }}
-              />
+              <YAxis hide />
               <Tooltip
                 cursor={false}
                 wrapperStyle={{ outline: 'none' }}

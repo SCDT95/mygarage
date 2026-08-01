@@ -158,4 +158,16 @@ describe('GarageAnalytics — Monthly Spending Trend rolling averages', () => {
     expect(trend![0].avg3).toBe(150)
     expect(trend![0].avg3).not.toBeNull()
   })
+
+  it('formats month labels with a two-digit year (Jan 26, not Jan 2026)', async () => {
+    render(<GarageAnalytics />)
+    await screen.findByText('$13,200.00')
+    const trend = captured.barCharts.find(
+      (d): d is Array<{ month?: string }> =>
+        Array.isArray(d) && d.length > 0 && typeof d[0] === 'object' && d[0] !== null && 'month' in d[0]
+    )
+    expect(trend).toBeDefined()
+    expect(trend![0].month).toContain('26')
+    expect(trend![0].month).not.toContain('2026')
+  })
 })
