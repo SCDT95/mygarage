@@ -1,7 +1,7 @@
 import { lazy, Suspense } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Link } from 'react-router-dom'
-import { Calendar, FileText, Radio, Pencil } from 'lucide-react'
+import { Calendar, FileText, Radio } from 'lucide-react'
 import { Card, CardHeader, Mono, Button } from '../ui'
 import type { Vehicle } from '../../types/vehicle'
 import type { LastLocation } from '../../types/trips'
@@ -71,18 +71,24 @@ export default function VehicleOverviewTab({
         </div>
       </Card>
 
-      {/* Pricing — purchase, sale (if sold), and MSRP folded into one card */}
-      <Card breakInside>
-        <CardHeader
-          title={t('detail.pricing.title')}
-          actions={
-            onEditPricing ? (
-              <Button variant="ghost" size="sm" icon={Pencil} onClick={onEditPricing}>
-                {t('common:edit')}
-              </Button>
-            ) : undefined
-          }
-        />
+      {/* Pricing — purchase, sale (if sold), and MSRP folded into one card. When
+          editable the whole card is the click target via a transparent overlay
+          button (Card is `relative`) — no visible corner control. Clicking
+          anywhere opens the sidecar; the values below stay real, screen-reader-
+          readable content, and the overlay button is the keyboard/AT action. */}
+      <Card
+        breakInside
+        className={onEditPricing ? 'relative cursor-pointer ui-motion ui-hover-line hover:shadow-card-hover' : ''}
+      >
+        {onEditPricing && (
+          <button
+            type="button"
+            onClick={onEditPricing}
+            aria-label={t('detail.pricing.editTitle')}
+            className="ui-focus-ring absolute inset-0 z-10 rounded-card cursor-pointer"
+          />
+        )}
+        <CardHeader title={t('detail.pricing.title')} />
         <div className="space-y-3">
           <div>
             <p className="text-sm text-text-mute flex items-center gap-2"><Calendar className="w-4 h-4" /><span>{t('edit.purchaseDate')}</span></p>
