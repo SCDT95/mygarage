@@ -60,9 +60,17 @@ export default function VehicleEditDrawer({
 }: VehicleEditDrawerProps) {
   const { t } = useTranslation('vehicles')
   const [defEnabled, setDefEnabled] = useState(false)
+  // The vehicle the form is actually seeded from (the fresh refetch, or the
+  // prop fallback if that refetch fails) — null until the seed resolves.
+  // Render-time gates (isMotorized, the non-motorized fuel section) must read
+  // THIS, not the `vehicle` prop: the prop can disagree with the fresh fetch
+  // on motorization, and gating a section on stale truth while seeding form
+  // values from fresh truth registers fields the fresh data never populates —
+  // `reset()` then submits them as explicit `null`, clearing real columns.
+  const [seedSource, setSeedSource] = useState<Vehicle | null>(null)
   const { system } = useUnitPreference()
 
-  const isMotorized = !NON_MOTORIZED_TYPES.includes(vehicle.vehicle_type)
+  const isMotorized = seedSource ? !NON_MOTORIZED_TYPES.includes(seedSource.vehicle_type) : false
 
   const {
     register,
@@ -166,14 +174,23 @@ export default function VehicleEditDrawer({
       formData.transmission_speeds = source.transmission_speeds
     }
 
+    // Publish the resolved source before reset() so the render-time gates
+    // (isMotorized, the fuel section) and the field values they admit change
+    // together, in the same tick — never gate on one snapshot while seeding
+    // from another.
+    setSeedSource(source)
     reset(formData as VehicleEditFormData)
   }, [vin, vehicle, reset, system])
 
   // Reseed on each open transition only. Deliberately NOT keyed on `vehicle`:
   // the parent re-setting it while the drawer is open would reset the form
-  // under the user. Mirrors PricingDrawer / VehicleFieldsDrawer.
+  // under the user. Mirrors PricingDrawer / VehicleFieldsDrawer. Clearing
+  // `seedSource` on close (rather than leaving the last one behind) forces a
+  // reopen to render nothing until it reseeds — the same "don't render
+  // against stale truth" guarantee the initial open gets.
   useEffect(() => {
     if (open) seedForm()
+    else setSeedSource(null)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open])
 
@@ -231,6 +248,17 @@ export default function VehicleEditDrawer({
         </>
       }
     >
+      {!seedSource ? (
+        // Nothing renders — and no field registers — until the seed resolves.
+        // Rendering the form against the `vehicle` prop while a fresh
+        // motorization verdict is still in flight is exactly the bug this
+        // gate exists to prevent: a section mounting on stale truth registers
+        // fields the fresh seed never populates, and reset() then submits
+        // those as explicit `null`, clearing real columns.
+        <div className="flex items-center justify-center p-6 text-sm text-text-mute">
+          {t('common:loading')}
+        </div>
+      ) : (
       <form id="vehicle-edit-form" onSubmit={handleSubmit(onSubmit)} className="p-6 space-y-6">
         {/* Basic Information */}
         <section>
@@ -481,7 +509,7 @@ export default function VehicleEditDrawer({
         )}
 
         {/* Fuel type for non-motorized vehicles (e.g. propane on fifth wheels) */}
-        {!isMotorized && vehicle.fuel_type && (
+        {!isMotorized && seedSource.fuel_type && (
           <section>
             <h3 className="mb-4 text-lg font-semibold text-text">{t('edit.fuelInformation')}</h3>
             <div className="grid grid-cols-1 gap-x-4 sm:grid-cols-2">
@@ -546,6 +574,7 @@ export default function VehicleEditDrawer({
           </div>
         </section>
       </form>
+      )}
     </FormModalWrapper>
   )
 }

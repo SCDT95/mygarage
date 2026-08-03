@@ -828,10 +828,7 @@ export default function VehicleDetail() {
           vin={vin}
           vehicle={vehicle}
           onClose={() => setEditDrawerOpen(false)}
-          onUpdated={(updated) => {
-            setVehicle(updated)
-            loadVehicle()
-          }}
+          onUpdated={setVehicle}
         />
       )}
 

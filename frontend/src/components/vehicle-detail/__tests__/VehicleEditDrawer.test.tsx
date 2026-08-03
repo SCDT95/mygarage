@@ -440,6 +440,27 @@ describe('VehicleEditDrawer — seeds from a fresh fetch, not the stale prop', (
     const nickname = (await screen.findByLabelText('edit.nickname *')) as HTMLInputElement
     await waitFor(() => expect(nickname.value).toBe('Fresh Name'))
   })
+
+  it('does not clear engine fields when the stale prop and the fresh vehicle disagree on motorization', async () => {
+    // The prop is a stale/offline-cached snapshot saying "Car" (motorized);
+    // the server says the vehicle is now a Trailer (non-motorized).
+    const staleProp = { ...baseVehicle, vehicle_type: 'Car', trim: 'Limited', doors: 4 }
+    const freshNonMotorized = { ...baseVehicle, vehicle_type: 'Trailer', trim: 'Limited', doors: 4 }
+    mockedApi.get.mockImplementation((url: string) => {
+      if (url.includes('detail-stats')) return Promise.resolve({ data: baseDetailStats })
+      return Promise.resolve({ data: freshNonMotorized })
+    })
+    render(<VehicleEditDrawer open vin={staleProp.vin} vehicle={staleProp as Vehicle} onClose={vi.fn()} onUpdated={vi.fn()} />)
+    await screen.findByLabelText('edit.nickname *')
+    fireEvent.click(screen.getByRole('button', { name: 'edit.saveChanges' }))
+    await waitFor(() => expect(mockedApi.put).toHaveBeenCalled())
+    const [, payload] = mockedApi.put.mock.calls[0] as [string, Record<string, unknown>]
+    // Absent is fine (undefined), a real value is fine. An explicit null is the
+    // regression: it reaches the backend's setattr and CLEARS the column.
+    for (const k of ['trim','body_class','drive_type','doors','gvwr_class','displacement_l','cylinders','transmission_type','transmission_speeds']) {
+      expect(payload[k]).not.toBeNull()
+    }
+  })
 })
 
 describe('VehicleEditDrawer — conversion behaviour', () => {
