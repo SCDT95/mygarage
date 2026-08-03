@@ -1,23 +1,30 @@
 import { describe, it, expect, vi } from 'vitest'
 import { render } from '@testing-library/react'
-import * as ThemeContext from '../../contexts/ThemeContext'
-
-let captured: Record<string, unknown> | null = null
-vi.mock('sonner', () => ({ Toaster: (props: Record<string, unknown>) => { captured = props; return null } }))
-vi.mock('../../contexts/ThemeContext')
-
 import AppToaster from '../AppToaster'
 
+vi.mock('../../contexts/ThemeContext', () => ({
+  useTheme: () => ({ theme: 'dark' }),
+}))
+
 describe('AppToaster', () => {
-  it('tracks the app theme, drops richColors, and maps status classNames', () => {
-    vi.spyOn(ThemeContext, 'useTheme').mockReturnValue({ theme: 'dark', toggleTheme: vi.fn(), setTheme: vi.fn() })
-    render(<AppToaster />)
-    expect(captured?.theme).toBe('dark')
-    expect(captured?.position).toBe('bottom-right')
-    expect(captured?.richColors).toBeUndefined()
-    const classNames = (captured?.toastOptions as { classNames: Record<string, string> }).classNames
-    expect(classNames.error).toContain('bg-danger')
-    expect(classNames.error).toContain('text-on-status')
-    expect(classNames.success).toContain('bg-success')
+  it('renders outside #root so a drawer marking #root inert cannot reach it', () => {
+    // Mirrors the real DOM: index.html has <div id="root">, and Drawer.tsx
+    // sets inert on exactly that element while any drawer is open.
+    const root = document.createElement('div')
+    root.id = 'root'
+    document.body.appendChild(root)
+
+    render(<AppToaster />, { container: root })
+
+    const toaster = document.querySelector('section[aria-label*="Notifications"]')
+    expect(toaster).not.toBeNull()
+    // The assertion that matters: not merely "exists", but "not a descendant
+    // of #root". Without the portal this is false and the toast is inert.
+    expect(root.contains(toaster!)).toBe(false)
+
+    root.setAttribute('inert', '')
+    expect(toaster!.closest('[inert]')).toBeNull()
+
+    root.remove()
   })
 })

@@ -1,3 +1,4 @@
+import { createPortal } from 'react-dom'
 import { Toaster } from 'sonner'
 import { useTheme } from '../contexts/ThemeContext'
 
@@ -7,10 +8,17 @@ import { useTheme } from '../contexts/ThemeContext'
  * richColors is dropped in favour of toastOptions.classNames mapped to the §4.9
  * status colours (--color-on-status foreground). position and the emitted
  * [data-sonner-toast]/[data-type] attributes are unchanged — e2e pins them.
+ *
+ * Portalled to document.body on purpose. Rendered in place it is a child of
+ * #root, which Drawer marks `inert` while open (Drawer.tsx:46) — and `inert`
+ * strips its subtree from the accessibility tree, so every toast raised from
+ * inside a drawer went unannounced and could not be dismissed. It still
+ * painted, which is why the defect went unnoticed. The portal makes it a
+ * sibling of #root; React portals preserve context, so useTheme still works.
  */
 export default function AppToaster() {
   const { theme } = useTheme()
-  return (
+  return createPortal(
     <Toaster
       position="bottom-right"
       theme={theme}
@@ -22,6 +30,7 @@ export default function AppToaster() {
           info: 'bg-info text-on-status border-info',
         },
       }}
-    />
+    />,
+    document.body,
   )
 }
