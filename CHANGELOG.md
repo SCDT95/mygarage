@@ -29,6 +29,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Settings → Integrations: enable checkboxes are now toggle switches, the NHTSA card takes a shield icon, provider Edit links use the accent colour, the CarComplaints and LiveLink "About" details moved into a help sidecar (opened by a question-mark button in each card's corner), and the layout stacks CarComplaints and LiveLink beside NHTSA with Shop Finder full-width.
 - LiveLink settings now open in a slide-in sidecar instead of a centred modal, with every checkbox replaced by a toggle switch.
 - Settings → Notifications: each provider's enable control and every per-event notification are now toggle switches, and the event groups are always expanded instead of hidden behind an accordion.
+- Editing a vehicle now opens a slide-in sidecar from the vehicle page instead of a separate full-page form, and saving returns you straight to the vehicle without a page reload.
 
 ### Removed
 - Dropped 14 unreachable components, schemas and types (~1790 lines) left behind by earlier refactors, along with the translation keys only they used.
@@ -53,6 +54,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Settings: changing an unrelated setting (timezone, debug) no longer rewrites the OIDC configuration.
 - Reminders: the notification scheduler could crash on a later run once any reminder had been notified, from a naive vs timezone-aware timestamp comparison.
 - Deleting a service visit no longer leaves its auto-synced odometer reading behind as an orphaned record.
+- Pop-up notifications raised while a slide-in panel is open are now announced by screen readers and can be dismissed.
 
 ### Security
 - Settings: sensitive values (OIDC client secret, notification tokens, SMTP password, POI API keys) are masked as `********` in API responses; saving a masked value keeps the stored secret.

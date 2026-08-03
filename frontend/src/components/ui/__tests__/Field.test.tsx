@@ -16,7 +16,7 @@ describe('Field', () => {
   })
 
   it('puts the required marker INSIDE the accessible name', () => {
-    // VehicleEdit.test.tsx:189 queries findByLabelText('edit.nickname *').
+    // VehicleEditDrawer.test.tsx queries findByLabelText('edit.nickname *').
     // aria-hidden on the asterisk, or moving it outside the <label>, breaks it.
     render(
       <Field id="nickname" label="Nickname" required>
@@ -27,7 +27,7 @@ describe('Field', () => {
   })
 
   it('does not hide the required marker behind aria-hidden', () => {
-    // getByLabelText (used above and by VehicleEdit.test.tsx) matches on the
+    // getByLabelText (used above and by VehicleEditDrawer.test.tsx) matches on the
     // <label>'s textContent — it does not run the accname algorithm and does
     // NOT exclude aria-hidden descendants. Verified experimentally: wrapping
     // the marker in <span aria-hidden="true"> still passes the test above.
@@ -43,7 +43,7 @@ describe('Field', () => {
   })
 
   it('puts the unit suffix INSIDE the accessible name', () => {
-    // VehicleEdit.test.tsx:237,250,266 query
+    // VehicleEditDrawer.test.tsx queries
     // findByLabelText('edit.defTankCapacity (L)').
     render(
       <Field id="def" label="DEF Tank Capacity" unit="L">

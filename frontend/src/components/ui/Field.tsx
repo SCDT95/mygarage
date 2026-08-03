@@ -25,7 +25,7 @@ interface FieldProps {
  *
  * The required asterisk and the unit suffix are rendered as plain text INSIDE
  * the <label>, not as aria-hidden decorations or sibling elements. That is not
- * a style choice: VehicleEdit.test.tsx queries findByLabelText('edit.nickname *')
+ * a style choice: VehicleEditDrawer.test.tsx queries findByLabelText('edit.nickname *')
  * and findByLabelText('edit.defTankCapacity (L)'), so both strings are part of
  * the accessible name and must stay there.
  *

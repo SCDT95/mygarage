@@ -189,11 +189,9 @@
     "uploading": "Enviando..."
   },
   "edit": {
-    "backToVehicle": "Voltar para o veículo",
     "basicInformation": "Informações básicas",
     "bodyClass": "Categoria da carroceria",
     "clearDefTankCapacity": "Limpar capacidade do tanque de DEF",
-    "color": "Cor",
     "cylinders": "Cilindros",
     "defCapacityRequiresDieselHint": "A capacidade do tanque de DEF requer um motor a Diesel. Limpe a capacidade abaixo para alterar o tipo de combustível ou mude de volta para Diesel.",
     "defTankCapacity": "Capacidade do tanque de DEF",
@@ -208,7 +206,6 @@
     "fuelInformation": "Informações de combustível",
     "fuelType": "Tipo de combustível",
     "licensePlate": "Placa",
-    "loading": "Carregando...",
     "make": "Marca",
     "model": "Modelo",
     "nickname": "Apelido",
@@ -225,7 +222,6 @@
     "transmissionType": "Tipo de transmissão",
     "trim": "Versão / Acabamento",
     "vehicleDetails": "Detalhes do veículo",
-    "vehicleNotFound": "Veículo não encontrado",
     "vehicleType": "Tipo de veículo",
     "vinDecodedInfo": "Informações decodificadas do VIN",
     "year": "Ano de fabricação"

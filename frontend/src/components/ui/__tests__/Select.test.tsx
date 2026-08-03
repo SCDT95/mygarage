@@ -14,7 +14,7 @@ describe('Select', () => {
   })
 
   it('renders exactly one placeholder option plus the real ones', () => {
-    // VehicleEdit.test.tsx:72,96 and VehicleWizard.test.tsx:92 assert
+    // VehicleEditDrawer.test.tsx and VehicleWizard.test.tsx assert
     // toHaveLength(FUEL_TYPE_VALUES.length + 1). No optgroup, no extras.
     const { container } = render(
       <Select options={OPTIONS} placeholder="Select fuel" aria-label="Fuel" />,
@@ -39,9 +39,9 @@ describe('Select', () => {
 
   it('renders the placeholder option as selectable (not disabled) by default', () => {
     // A disabled option cannot be selected by mouse or keyboard in any
-    // browser. VehicleEdit.tsx/VehicleWizard.tsx rely on a selectable empty
+    // browser. VehicleEditDrawer.tsx/VehicleWizard.tsx rely on a selectable empty
     // option to let a user clear fuel_type back to null; see
-    // VehicleEdit.test.tsx's "submits fuel_type as null" test.
+    // VehicleEditDrawer.test.tsx's "submits fuel_type as null" test.
     const { container } = render(
       <Select options={OPTIONS} placeholder="Select fuel" aria-label="Fuel" />,
     )

@@ -189,11 +189,9 @@
     "uploading": "Завантаження..."
   },
   "edit": {
-    "backToVehicle": "Назад до транспортного засобу",
     "basicInformation": "Основна інформація",
     "bodyClass": "Клас кузова",
     "clearDefTankCapacity": "Очистити ємність бака DEF",
-    "color": "Колір",
     "cylinders": "Циліндри",
     "defCapacityRequiresDieselHint": "Ємність бака DEF доступна лише для дизельного типу палива. Очистіть значення нижче, щоб змінити тип палива, або поверніть дизельний тип.",
     "defTankCapacity": "Ємність бака DEF",
@@ -208,7 +206,6 @@
     "fuelInformation": "Інформація про паливо",
     "fuelType": "Тип палива",
     "licensePlate": "Номерний знак",
-    "loading": "Завантаження...",
     "make": "Марка",
     "model": "Модель",
     "nickname": "Псевдонім",
@@ -225,7 +222,6 @@
     "transmissionType": "Тип трансмісії",
     "trim": "Комплектація",
     "vehicleDetails": "Деталі транспортного засобу",
-    "vehicleNotFound": "Транспортний засіб не знайдено",
     "vehicleType": "Тип транспортного засобу",
     "vinDecodedInfo": "Декодована інформація VIN",
     "year": "Рік"

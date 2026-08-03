@@ -245,7 +245,7 @@ describe('vehicleEditSchema — nullable optional-string fields null-vs-undefine
   })
 })
 
-// CRITICAL regression (whole-branch review): VehicleEdit.tsx only registers
+// CRITICAL regression (whole-branch review): VehicleEditDrawer.tsx only registers
 // trim/body_class/drive_type/gvwr_class/displacement_l/transmission_type/
 // transmission_speeds for motorized vehicles — a non-motorized submit
 // (Trailer/FifthWheel/TravelTrailer) never has these keys at all. Confirms

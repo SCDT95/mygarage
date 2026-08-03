@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useForm, type Resolver } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
@@ -35,8 +35,10 @@ interface VehicleEditDrawerProps {
  * Vehicle edit sidecar — the former /vehicles/:vin/edit page.
  *
  * The form logic is carried over verbatim from that page: react-hook-form +
- * vehicleEditSchema, the tRef guard, the DEF enable/clear state machine, the
- * canonical-litres conversion, and the motorized branch. What changed is the
+ * vehicleEditSchema, the seed effect's `[open]`-only dependency array (below —
+ * it must not re-run just because `t` got a new identity, or a language switch
+ * mid-edit would discard everything typed), the DEF enable/clear state machine,
+ * the canonical-litres conversion, and the motorized branch. What changed is the
  * surface (a Drawer, not a route) and the save tail — the page ended with
  * `window.location.href` for a hard reload; here the parent applies the saved
  * vehicle in place.
@@ -61,11 +63,6 @@ export default function VehicleEditDrawer({
   const { system } = useUnitPreference()
 
   const isMotorized = !NON_MOTORIZED_TYPES.includes(vehicle.vehicle_type)
-
-  // The seed reset()s the form, so it must not re-run just because `t` got a
-  // new identity — a language switch mid-edit would discard everything typed.
-  const tRef = useRef(t)
-  tRef.current = t
 
   const {
     register,

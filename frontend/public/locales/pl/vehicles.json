@@ -189,11 +189,9 @@
     "uploading": "Przesyłanie..."
   },
   "edit": {
-    "backToVehicle": "Wróć do pojazdu",
     "basicInformation": "Podstawowe informacje",
     "bodyClass": "Klasa nadwozia",
     "clearDefTankCapacity": "Wyczyść pojemność zbiornika DEF",
-    "color": "Kolor",
     "cylinders": "Cylindry",
     "defCapacityRequiresDieselHint": "Pojemność zbiornika DEF wymaga silnika Diesla. Wyczyść pojemność poniżej, aby zmienić typ paliwa, lub przełącz z powrotem na Diesla.",
     "defTankCapacity": "Pojemność zbiornika DEF",
@@ -208,7 +206,6 @@
     "fuelInformation": "Informacje o paliwie",
     "fuelType": "Rodzaj paliwa",
     "licensePlate": "Tablica rejestracyjna",
-    "loading": "Ładowanie...",
     "make": "Marka",
     "model": "Model",
     "nickname": "Przezwisko",
@@ -225,7 +222,6 @@
     "transmissionType": "Typ skrzyni biegów",
     "trim": "Wersja wyposażenia",
     "vehicleDetails": "Szczegóły pojazdu",
-    "vehicleNotFound": "Nie znaleziono pojazdu",
     "vehicleType": "Typ pojazdu",
     "vinDecodedInfo": "Rozkodowane informacje VIN",
     "year": "Rok produkcji"

@@ -189,11 +189,9 @@
     "uploading": "Загрузка..."
   },
   "edit": {
-    "backToVehicle": "Назад к транспортному средству",
     "basicInformation": "Основная информация",
     "bodyClass": "Класс кузова",
     "clearDefTankCapacity": "Очистить емкость бака DEF",
-    "color": "Цвет",
     "cylinders": "Цилиндры",
     "defCapacityRequiresDieselHint": "Емкость бака DEF доступна только для дизельного типа топлива. Очистите значение ниже, чтобы изменить тип топлива, или верните дизельный тип.",
     "defTankCapacity": "Емкость бака DEF",
@@ -208,7 +206,6 @@
     "fuelInformation": "Информация о топливе",
     "fuelType": "Тип топлива",
     "licensePlate": "Номерной знак",
-    "loading": "Загрузка...",
     "make": "Марка",
     "model": "Модель",
     "nickname": "Псевдоним",
@@ -225,7 +222,6 @@
     "transmissionType": "Тип трансмиссии",
     "trim": "Комплектация",
     "vehicleDetails": "Детали транспортного средства",
-    "vehicleNotFound": "Транспортное средство не найдено",
     "vehicleType": "Тип транспортного средства",
     "vinDecodedInfo": "Декодированная информация VIN",
     "year": "Год"

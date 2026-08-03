@@ -20,7 +20,7 @@ interface SelectProps extends Omit<SelectHTMLAttributes<HTMLSelectElement>, 'siz
   /** Renders one leading option. Counts toward option length. Selectable by
    *  default (not `disabled`) — every one of the 25 empty-placeholder
    *  `<option value="">` sites in this codebase is non-disabled, and at
-   *  VehicleEdit.tsx / VehicleWizard.tsx that empty option is a real,
+   *  VehicleEditDrawer.tsx / VehicleWizard.tsx that empty option is a real,
    *  re-selectable choice letting a user clear `fuel_type` back to null.
    *  Pass `placeholderDisabled` for the rare caller that truly wants an
    *  unselectable prompt. */

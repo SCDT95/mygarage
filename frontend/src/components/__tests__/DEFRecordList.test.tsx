@@ -19,7 +19,7 @@ vi.mock('@tanstack/react-query', () => ({
   useQueryClient: () => ({ invalidateQueries: vi.fn() }),
 }))
 
-// Same mock pattern as VehicleEdit.test.tsx — these hooks need AuthProvider
+// Same mock pattern as VehicleEditDrawer.test.tsx — these hooks need AuthProvider
 // otherwise, and it's not under test here. Mutable so the B7 unit-aware
 // volume-header test can toggle metric/imperial; every other test leaves it
 // at the metric default restored in afterEach.

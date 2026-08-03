@@ -333,11 +333,9 @@
     }
   },
   "edit": {
-    "backToVehicle": "Retour au véhicule",
     "basicInformation": "Informations de base",
     "bodyClass": "Type de carrosserie",
     "clearDefTankCapacity": "Effacer la capacité du réservoir DEF",
-    "color": "Couleur",
     "cylinders": "Cylindres",
     "defCapacityRequiresDieselHint": "La capacité du réservoir DEF nécessite un type de carburant diesel. Effacez la capacité ci-dessous pour changer le type de carburant, ou remettez-le sur diesel.",
     "defTankCapacity": "Capacité du réservoir DEF (gallons)",
@@ -352,7 +350,6 @@
     "fuelInformation": "Informations sur le carburant",
     "fuelType": "Type de carburant",
     "licensePlate": "Plaque d'immatriculation",
-    "loading": "Chargement du véhicule...",
     "make": "Marque",
     "model": "Modèle",
     "nickname": "Surnom",
@@ -369,7 +366,6 @@
     "transmissionType": "Type de transmission",
     "trim": "Finition",
     "vehicleDetails": "Détails du véhicule",
-    "vehicleNotFound": "Véhicule introuvable",
     "vehicleType": "Type de véhicule",
     "vinDecodedInfo": "Informations décodées du VIN",
     "year": "Année",
@@ -1251,10 +1247,8 @@
   "vehicleEditPage": {
     "genericError": "Une erreur s'est produite",
     "gvwrClass": "Classe GVWR",
-    "vinLabel": "VIN : {{vin}}",
     "nicknamePlaceholder": "Ma voiture",
     "licensePlatePlaceholder": "ABC1234",
-    "colorPlaceholder": "Bleu",
     "makePlaceholder": "Toyota",
     "modelPlaceholder": "Camry",
     "trimPlaceholder": "EX, Limited, etc.",
