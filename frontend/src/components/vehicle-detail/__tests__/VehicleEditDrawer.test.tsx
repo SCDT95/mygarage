@@ -10,6 +10,8 @@ vi.mock('../../../services/api', () => ({
   },
 }))
 
+vi.mock('sonner', () => ({ toast: { error: vi.fn(), success: vi.fn() } }))
+
 // Requires AuthProvider otherwise — same mock pattern as ServiceVisitForm.test.tsx
 vi.mock('../../../hooks/useUnitPreference', () => ({
   useUnitPreference: () => ({ system: 'metric', showBoth: false }),
@@ -24,6 +26,7 @@ vi.mock('../../../hooks/useCurrencyPreference', () => ({
   }),
 }))
 
+import { toast } from 'sonner'
 import api from '../../../services/api'
 import VehicleEditDrawer from '../VehicleEditDrawer'
 
@@ -436,5 +439,91 @@ describe('VehicleEditDrawer — seeds from a fresh fetch, not the stale prop', (
     )
     const nickname = (await screen.findByLabelText('edit.nickname *')) as HTMLInputElement
     await waitFor(() => expect(nickname.value).toBe('Fresh Name'))
+  })
+})
+
+describe('VehicleEditDrawer — conversion behaviour', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    mockedApi.put.mockResolvedValue({ data: {} })
+  })
+
+  it('closes and hands the saved vehicle to onUpdated instead of reloading the page', async () => {
+    const saved = { ...baseVehicle, nickname: 'Renamed' }
+    mockedApi.put.mockResolvedValue({ data: saved })
+    const { onClose, onUpdated } = renderVehicleEdit(baseVehicle)
+
+    await screen.findByLabelText('edit.nickname *')
+    fireEvent.click(screen.getByRole('button', { name: 'edit.saveChanges' }))
+
+    await waitFor(() => expect(onUpdated).toHaveBeenCalledWith(saved))
+    expect(onClose).toHaveBeenCalled()
+  })
+
+  it('reseeds from the vehicle on reopen, discarding an abandoned edit', async () => {
+    // Discriminate by URL like renderVehicleEdit: the drawer's seed effect
+    // fetches the vehicle fresh (see VehicleEditDrawer.tsx's seedForm) in
+    // parallel with detail-stats — both hit the same mocked api.get, so a
+    // single mockResolvedValue would feed the vehicle-shaped detail-stats
+    // object into `source` and silently blank the nickname instead of
+    // restoring 'Test Car'.
+    mockedApi.get.mockImplementation((url: string) => {
+      if (url.includes('detail-stats')) return Promise.resolve({ data: baseDetailStats })
+      return Promise.resolve({ data: baseVehicle })
+    })
+    const { rerender } = render(
+      <VehicleEditDrawer open vin={baseVehicle.vin} vehicle={baseVehicle} onClose={vi.fn()} onUpdated={vi.fn()} />,
+    )
+
+    const nickname = (await screen.findByLabelText('edit.nickname *')) as HTMLInputElement
+    fireEvent.change(nickname, { target: { value: 'Abandoned' } })
+    expect(nickname.value).toBe('Abandoned')
+
+    // Close, then reopen — the same mount, exactly what VehicleDetail does.
+    rerender(
+      <VehicleEditDrawer open={false} vin={baseVehicle.vin} vehicle={baseVehicle} onClose={vi.fn()} onUpdated={vi.fn()} />,
+    )
+    rerender(
+      <VehicleEditDrawer open vin={baseVehicle.vin} vehicle={baseVehicle} onClose={vi.fn()} onUpdated={vi.fn()} />,
+    )
+
+    await waitFor(() => {
+      const reopened = screen.getByLabelText('edit.nickname *') as HTMLInputElement
+      expect(reopened.value).toBe('Test Car')
+    })
+  })
+
+  // Why this discriminates: Drawer.tsx:260 unmounts its CHILDREN on close, but
+  // VehicleEditDrawer itself stays mounted (VehicleDetail renders it
+  // unconditionally with an `open` prop), so react-hook-form's store survives —
+  // shouldUnregister defaults to false. Without the [open]-keyed seed effect the
+  // abandoned value is still in the store and comes straight back on reopen.
+
+  it('renders no colour input and never sends a color key — the card owns exterior_color', async () => {
+    renderVehicleEdit({ ...baseVehicle, color: 'Black' })
+
+    await screen.findByLabelText('edit.nickname *')
+    expect(screen.queryByLabelText('edit.color')).not.toBeInTheDocument()
+
+    fireEvent.click(screen.getByRole('button', { name: 'edit.saveChanges' }))
+    await waitFor(() => expect(mockedApi.put).toHaveBeenCalled())
+
+    const [, payload] = mockedApi.put.mock.calls[0]
+    // Not `toMatchObject({color: undefined})` — that passes on a present
+    // `color: undefined`. The key must be absent so JSON.stringify drops it
+    // and the backend's exclude_unset leaves the column alone.
+    expect(Object.prototype.hasOwnProperty.call(payload, 'color')).toBe(false)
+  })
+
+  it('toasts and stays open when the save fails', async () => {
+    mockedApi.put.mockRejectedValue(new Error('Boom'))
+    const { onClose, onUpdated } = renderVehicleEdit(baseVehicle)
+
+    await screen.findByLabelText('edit.nickname *')
+    fireEvent.click(screen.getByRole('button', { name: 'edit.saveChanges' }))
+
+    await waitFor(() => expect(toast.error).toHaveBeenCalledWith('Boom'))
+    expect(onUpdated).not.toHaveBeenCalled()
+    expect(onClose).not.toHaveBeenCalled()
   })
 })
