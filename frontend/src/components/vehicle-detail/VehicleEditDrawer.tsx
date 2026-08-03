@@ -184,13 +184,17 @@ export default function VehicleEditDrawer({
 
   // Reseed on each open transition only. Deliberately NOT keyed on `vehicle`:
   // the parent re-setting it while the drawer is open would reset the form
-  // under the user. Mirrors PricingDrawer / VehicleFieldsDrawer. Clearing
-  // `seedSource` on close (rather than leaving the last one behind) forces a
-  // reopen to render nothing until it reseeds — the same "don't render
-  // against stale truth" guarantee the initial open gets.
+  // under the user. Mirrors PricingDrawer / VehicleFieldsDrawer.
   useEffect(() => {
-    if (open) seedForm()
-    else setSeedSource(null)
+    if (open) {
+      // Clear first so the body cannot render against the PREVIOUS vehicle's
+      // seed, then reseed. Deliberately NOT cleared on close: the Drawer keeps
+      // the panel mounted through its exit transition, and blanking here makes
+      // the content vanish mid-slide (same reason VehicleDetail.tsx:142-145
+      // retains fieldsCard during the close animation).
+      setSeedSource(null)
+      seedForm()
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open])
 
