@@ -102,34 +102,45 @@ export default function VehicleEditDrawer({
   }
 
   const seedForm = useCallback(async () => {
-    // detail-stats is a supplementary read-aggregation (latest_hours,
-    // secondary_usage_enabled) — its failure must not block the editor, so it
-    // swallows its own error and the affected fields simply seed empty.
-    const detailStats = await vehicleService.getDetailStats(vin).catch(() => null)
-    const vehicleIsMotorized = !NON_MOTORIZED_TYPES.includes(vehicle.vehicle_type)
+    // The `vehicle` prop can be stale: VehicleDetail fetches it once on mount
+    // and, offline, falls back to a localStorage cache of arbitrary age.
+    // MyGarage has multi-user vehicle sharing, so seeding a PUT of ~20 fields
+    // from a stale read is a silent lost-update path. Refetch fresh, mirroring
+    // the full-page editor this drawer replaced. detail-stats is a
+    // supplementary read-aggregation (latest_hours, secondary_usage_enabled)
+    // — its failure must not block the editor, so it swallows its own error
+    // and the affected fields simply seed empty. The vehicle refetch gets the
+    // same treatment: fall back to the prop if it fails (offline, transient
+    // 5xx) — a stale seed still beats refusing to open the editor.
+    const [fresh, detailStats] = await Promise.all([
+      vehicleService.get(vin).catch(() => null),
+      vehicleService.getDetailStats(vin).catch(() => null),
+    ])
+    const source = fresh ?? vehicle
+    const vehicleIsMotorized = !NON_MOTORIZED_TYPES.includes(source.vehicle_type)
 
     const formData: Record<string, unknown> = {
-      nickname: vehicle.nickname,
-      license_plate: vehicle.license_plate,
-      vehicle_type: vehicle.vehicle_type,
-      usage_unit: vehicle.usage_unit ?? 'distance',
+      nickname: source.nickname,
+      license_plate: source.license_plate,
+      vehicle_type: source.vehicle_type,
+      usage_unit: source.usage_unit ?? 'distance',
       secondary_usage_enabled: detailStats?.secondary_usage_enabled ?? false,
       // R2-H1: `vehicle.current_hours` (the raw column) is retired as a read
       // source — it is no longer written on save, so it goes stale the moment
       // a fuel or service record carries a newer reading. Seed from the derived
       // latest reading; if detail-stats has none, leave it empty.
       current_hours: detailStats?.latest_hours != null ? Number(detailStats.latest_hours) : null,
-      year: vehicle.year,
-      make: vehicle.make,
-      model: vehicle.model,
-      purchase_date: vehicle.purchase_date,
-      purchase_price: vehicle.purchase_price,
-      sold_date: vehicle.sold_date,
-      sold_price: vehicle.sold_price,
+      year: source.year,
+      make: source.make,
+      model: source.model,
+      purchase_date: source.purchase_date,
+      purchase_price: source.purchase_price,
+      sold_date: source.sold_date,
+      sold_price: source.sold_price,
       // Always included (propane on fifth wheels).
-      fuel_type: vehicle.fuel_type,
+      fuel_type: source.fuel_type,
       def_tank_capacity_liters: (() => {
-        const cap = vehicle.def_tank_capacity_liters
+        const cap = source.def_tank_capacity_liters
         if (cap == null) return undefined
         const num = typeof cap === 'string' ? parseFloat(cap) : Number(cap)
         if (isNaN(num)) return undefined
@@ -140,22 +151,22 @@ export default function VehicleEditDrawer({
     // DEF enabled follows the stored capacity, not the fuel type; the diesel
     // hint covers the suggestion when tracking is off.
     const hasTankCap =
-      vehicle.def_tank_capacity_liters != null && Number(vehicle.def_tank_capacity_liters) > 0
+      source.def_tank_capacity_liters != null && Number(source.def_tank_capacity_liters) > 0
     setDefEnabled(hasTankCap)
 
     // Non-motorized vehicles have no VIN-decoded or engine fields; leaving the
     // keys absent is load-bearing (see schemas/vehicle.ts — an omitted key
     // short-circuits to undefined rather than a column-clearing null).
     if (vehicleIsMotorized) {
-      formData.trim = vehicle.trim
-      formData.body_class = vehicle.body_class
-      formData.drive_type = vehicle.drive_type
-      formData.doors = vehicle.doors
-      formData.gvwr_class = vehicle.gvwr_class
-      formData.displacement_l = vehicle.displacement_l
-      formData.cylinders = vehicle.cylinders
-      formData.transmission_type = vehicle.transmission_type
-      formData.transmission_speeds = vehicle.transmission_speeds
+      formData.trim = source.trim
+      formData.body_class = source.body_class
+      formData.drive_type = source.drive_type
+      formData.doors = source.doors
+      formData.gvwr_class = source.gvwr_class
+      formData.displacement_l = source.displacement_l
+      formData.cylinders = source.cylinders
+      formData.transmission_type = source.transmission_type
+      formData.transmission_speeds = source.transmission_speeds
     }
 
     reset(formData as VehicleEditFormData)

@@ -61,15 +61,20 @@ const baseDetailStats: VehicleDetailStats = {
   year: 2024,
 }
 
-// The drawer takes the vehicle as a prop (VehicleDetail already holds it) and
-// fetches only detail-stats on open, so the api mock now serves detail-stats
-// alone. vehicleService.update() wraps api.put and returns response.data, so
-// every existing `mockedApi.put` payload assertion still applies unchanged.
+// The drawer seeds from a fresh GET /vehicles/{vin} (not the possibly-stale
+// `vehicle` prop — see the lost-update fix) in parallel with detail-stats, so
+// the api mock discriminates by URL: detail-stats gets `detailStats`,
+// everything else (the vehicle refetch) gets `vehicle`. vehicleService.update()
+// wraps api.put and returns response.data, so every existing `mockedApi.put`
+// payload assertion still applies unchanged.
 function renderVehicleEdit(vehicle: Vehicle, detailStats: VehicleDetailStats = baseDetailStats): {
   onClose: ReturnType<typeof vi.fn>
   onUpdated: ReturnType<typeof vi.fn>
 } {
-  mockedApi.get.mockResolvedValue({ data: detailStats })
+  mockedApi.get.mockImplementation((url: string) => {
+    if (url.includes('detail-stats')) return Promise.resolve({ data: detailStats })
+    return Promise.resolve({ data: vehicle })
+  })
   const onClose = vi.fn()
   const onUpdated = vi.fn()
   render(
@@ -409,5 +414,27 @@ describe('VehicleEditDrawer — dual usage tracking (hours + distance)', () => {
 
     const hoursInput = (await screen.findByLabelText('edit.currentHours')) as HTMLInputElement
     expect(hoursInput.value).toBe('')
+  })
+})
+
+describe('VehicleEditDrawer — seeds from a fresh fetch, not the stale prop', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+  })
+
+  it('seeds from a fresh GET, not the possibly-stale vehicle prop', async () => {
+    // The prop is what a long-open (or offline-cached) VehicleDetail would hold;
+    // the server has newer truth. The editor must show the server's value.
+    const stale = { ...baseVehicle, nickname: 'Stale Name' }
+    const fresh = { ...baseVehicle, nickname: 'Fresh Name' }
+    mockedApi.get.mockImplementation((url: string) => {
+      if (url.includes('detail-stats')) return Promise.resolve({ data: baseDetailStats })
+      return Promise.resolve({ data: fresh })
+    })
+    render(
+      <VehicleEditDrawer open vin={stale.vin} vehicle={stale} onClose={vi.fn()} onUpdated={vi.fn()} />,
+    )
+    const nickname = (await screen.findByLabelText('edit.nickname *')) as HTMLInputElement
+    await waitFor(() => expect(nickname.value).toBe('Fresh Name'))
   })
 })
