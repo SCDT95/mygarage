@@ -73,6 +73,7 @@ import VehicleSharingModal from '../components/modals/VehicleSharingModal'
 import EquipmentDrawer from '../components/vehicle-detail/EquipmentDrawer'
 import PricingDrawer from '../components/vehicle-detail/PricingDrawer'
 import VehicleFieldsDrawer, { type VehicleCardKey } from '../components/vehicle-detail/VehicleFieldsDrawer'
+import VehicleEditDrawer from '../components/vehicle-detail/VehicleEditDrawer'
 import TorqueSourceModal from '../components/modals/TorqueSourceModal'
 import { useOnlineStatus } from '../hooks/useOnlineStatus'
 import { useAuth } from '../contexts/AuthContext'
@@ -137,6 +138,7 @@ export default function VehicleDetail() {
   const [detailStats, setDetailStats] = useState<VehicleDetailStats | null>(null)
   const [equipmentDrawer, setEquipmentDrawer] = useState<'standard' | 'optional' | null>(null)
   const [pricingDrawerOpen, setPricingDrawerOpen] = useState(false)
+  const [editDrawerOpen, setEditDrawerOpen] = useState(false)
   // Which info card's editor sidecar is open. `fieldsCard` is kept set during
   // the close animation (only `fieldsOpen` flips), so the drawer's content
   // doesn't blank mid-exit.
@@ -668,7 +670,7 @@ export default function VehicleDetail() {
           onAddFuel={() => goToSection('fuel', isMotorized ? 'fuel' : hasDEF ? 'def' : hasPropane ? 'propane' : 'fuel')}
           onReminder={() => goToSection('tracking', 'reminders')}
           onEditEquipment={handleEquipmentClick}
-          onEdit={() => navigate(`/vehicles/${vin}/edit`)}
+          onEdit={() => setEditDrawerOpen(true)}
           onAnalytics={() => navigate(`/vehicles/${vin}/analytics`)}
           onImport={handleImportClick}
           onExport={handleExportJSON}
@@ -818,6 +820,21 @@ export default function VehicleDetail() {
         />
       )}
 
+      {/* Vehicle edit sidecar (opened from the toolbar Edit button and the
+          mobile actions sheet — formerly the /vehicles/:vin/edit page) */}
+      {vin && vehicle && (
+        <VehicleEditDrawer
+          open={editDrawerOpen}
+          vin={vin}
+          vehicle={vehicle}
+          onClose={() => setEditDrawerOpen(false)}
+          onUpdated={(updated) => {
+            setVehicle(updated)
+            loadVehicle()
+          }}
+        />
+      )}
+
       {/* Torque Source Modal (Task 13, owner-reachable) */}
       {vin && (
         <TorqueSourceModal
@@ -839,6 +856,7 @@ export default function VehicleDetail() {
           onExport={handleExportJSON}
           onOpenModal={setOpenModal}
           onClose={() => setShowMobileMenu(false)}
+          onEdit={() => setEditDrawerOpen(true)}
         />
       )}
 

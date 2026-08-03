@@ -1,10 +1,9 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen, fireEvent, waitFor } from '@testing-library/react'
-import { MemoryRouter, Route, Routes } from 'react-router-dom'
-import { FUEL_TYPE_VALUES } from '../../constants/fuel'
-import type { Vehicle, VehicleDetailStats } from '../../types/vehicle'
+import { FUEL_TYPE_VALUES } from '../../../constants/fuel'
+import type { Vehicle, VehicleDetailStats } from '../../../types/vehicle'
 
-vi.mock('../../services/api', () => ({
+vi.mock('../../../services/api', () => ({
   default: {
     get: vi.fn(),
     put: vi.fn().mockResolvedValue({ data: {} }),
@@ -12,12 +11,12 @@ vi.mock('../../services/api', () => ({
 }))
 
 // Requires AuthProvider otherwise — same mock pattern as ServiceVisitForm.test.tsx
-vi.mock('../../hooks/useUnitPreference', () => ({
+vi.mock('../../../hooks/useUnitPreference', () => ({
   useUnitPreference: () => ({ system: 'metric', showBoth: false }),
 }))
 
 // CurrencyInputPrefix depends on this, which needs AuthProvider
-vi.mock('../../hooks/useCurrencyPreference', () => ({
+vi.mock('../../../hooks/useCurrencyPreference', () => ({
   useCurrencyPreference: () => ({
     currencyCode: 'USD',
     locale: 'en-US',
@@ -25,8 +24,8 @@ vi.mock('../../hooks/useCurrencyPreference', () => ({
   }),
 }))
 
-import api from '../../services/api'
-import VehicleEdit from '../VehicleEdit'
+import api from '../../../services/api'
+import VehicleEditDrawer from '../VehicleEditDrawer'
 
 const mockedApi = vi.mocked(api)
 
@@ -43,17 +42,6 @@ const baseVehicle: Vehicle = {
   archived_visible: true,
   fuel_type: 'diesel',
   location_tracking_enabled: true,
-}
-
-function renderVehicleEdit(vehicle: Vehicle, vin = vehicle.vin): void {
-  mockedApi.get.mockResolvedValue({ data: vehicle })
-  render(
-    <MemoryRouter initialEntries={[`/vehicles/${vin}/edit`]}>
-      <Routes>
-        <Route path="/vehicles/:vin/edit" element={<VehicleEdit />} />
-      </Routes>
-    </MemoryRouter>,
-  )
 }
 
 const baseDetailStats: VehicleDetailStats = {
@@ -73,36 +61,36 @@ const baseDetailStats: VehicleDetailStats = {
   year: 2024,
 }
 
-// Distinguishes the vehicle GET from the detail-stats GET (VehicleEdit fetches
-// both in parallel — detail-stats supplies the derived latest_hours +
-// secondary_usage_enabled prefills) so each test can control them independently.
-function renderVehicleEditWithStats(
-  vehicle: Vehicle,
-  detailStats: VehicleDetailStats,
-  vin = vehicle.vin,
-): void {
-  mockedApi.get.mockImplementation((url: string) => {
-    if (url.includes('detail-stats')) {
-      return Promise.resolve({ data: detailStats })
-    }
-    return Promise.resolve({ data: vehicle })
-  })
+// The drawer takes the vehicle as a prop (VehicleDetail already holds it) and
+// fetches only detail-stats on open, so the api mock now serves detail-stats
+// alone. vehicleService.update() wraps api.put and returns response.data, so
+// every existing `mockedApi.put` payload assertion still applies unchanged.
+function renderVehicleEdit(vehicle: Vehicle, detailStats: VehicleDetailStats = baseDetailStats): {
+  onClose: ReturnType<typeof vi.fn>
+  onUpdated: ReturnType<typeof vi.fn>
+} {
+  mockedApi.get.mockResolvedValue({ data: detailStats })
+  const onClose = vi.fn()
+  const onUpdated = vi.fn()
   render(
-    <MemoryRouter initialEntries={[`/vehicles/${vin}/edit`]}>
-      <Routes>
-        <Route path="/vehicles/:vin/edit" element={<VehicleEdit />} />
-      </Routes>
-    </MemoryRouter>,
+    <VehicleEditDrawer
+      open
+      vin={vehicle.vin}
+      vehicle={vehicle}
+      onClose={onClose}
+      onUpdated={onUpdated}
+    />,
   )
+  return { onClose, onUpdated }
 }
 
-describe('VehicleEdit — canonical fuel-type select', () => {
+function renderVehicleEditWithStats(vehicle: Vehicle, detailStats: VehicleDetailStats): void {
+  renderVehicleEdit(vehicle, detailStats)
+}
+
+describe('VehicleEditDrawer — canonical fuel-type select', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    // On successful save the component does `window.location.href = ...`
-    // for a hard reload, which jsdom doesn't implement and logs loudly.
-    // Not under test here — silence it.
-    vi.spyOn(console, 'error').mockImplementation(() => {})
   })
 
   it('renders a select with the empty option plus all 10 canonical fuel types (motorized)', async () => {
@@ -174,10 +162,9 @@ describe('VehicleEdit — canonical fuel-type select', () => {
   })
 })
 
-describe('VehicleEdit — clear-on-blank vs. NOT NULL required fields', () => {
+describe('VehicleEditDrawer — clear-on-blank vs. NOT NULL required fields', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    vi.spyOn(console, 'error').mockImplementation(() => {})
   })
 
   it('blocks submit with a field error (no PUT) when nickname is cleared — NOT NULL column', async () => {
@@ -263,10 +250,9 @@ describe('VehicleEdit — clear-on-blank vs. NOT NULL required fields', () => {
   })
 })
 
-describe('VehicleEdit — DEF tank capacity diesel-only gate', () => {
+describe('VehicleEditDrawer — DEF tank capacity diesel-only gate', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    vi.spyOn(console, 'error').mockImplementation(() => {})
   })
 
   const dieselWithCapacity: Vehicle = {
@@ -319,10 +305,9 @@ describe('VehicleEdit — DEF tank capacity diesel-only gate', () => {
   })
 })
 
-describe('VehicleEdit — dual usage tracking (hours + distance)', () => {
+describe('VehicleEditDrawer — dual usage tracking (hours + distance)', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    vi.spyOn(console, 'error').mockImplementation(() => {})
   })
 
   it('shows the Current Hours field when the primary usage unit is hours', async () => {

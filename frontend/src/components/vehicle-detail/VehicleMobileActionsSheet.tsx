@@ -12,6 +12,7 @@ interface VehicleMobileActionsSheetProps {
   onExport: () => void
   onOpenModal: (modal: 'remove' | 'transfer' | 'sharing') => void
   onClose: () => void
+  onEdit: () => void
 }
 
 /**
@@ -21,7 +22,7 @@ interface VehicleMobileActionsSheetProps {
  */
 export default function VehicleMobileActionsSheet({
   vin, isAdmin, importing, exporting, isOnline,
-  onImportClick, onExport, onOpenModal, onClose,
+  onImportClick, onExport, onOpenModal, onClose, onEdit,
 }: VehicleMobileActionsSheetProps) {
   const { t } = useTranslation('vehicles')
   const navigate = useNavigate()
@@ -69,7 +70,7 @@ export default function VehicleMobileActionsSheet({
             <span>{t('detail.shareVehicle')}</span>
           </button>
           <button
-            onClick={() => { navigate(`/vehicles/${vin}/edit`); onClose() }}
+            onClick={() => { onClose(); onEdit() }}
             className="w-full flex items-center space-x-3 px-4 py-3 text-left text-text hover:bg-surface-2 rounded-lg ui-motion cursor-pointer"
           >
             <Edit className="w-5 h-5" />
