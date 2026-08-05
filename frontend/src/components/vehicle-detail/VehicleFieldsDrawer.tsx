@@ -1,19 +1,17 @@
-import { useEffect, useMemo, useRef, useState, type ChangeEvent } from 'react'
+import { useEffect, useRef, useState, type ChangeEvent } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Info, FileText, Gauge, Shield, type LucideIcon } from 'lucide-react'
 import { toast } from 'sonner'
 import FormModalWrapper from '../FormModalWrapper'
-import { Button, Field, Input, Select, Textarea } from '../ui'
-import type { SelectOption } from '../ui'
+import { Button, Field, Input, Textarea } from '../ui'
 import vehicleService from '../../services/vehicleService'
 import { str, emptyToNull } from '../../utils/formUtils'
-import { FUEL_TYPE_VALUES, FUEL_TYPE_LABELS } from '../../constants/fuel'
 import type { Vehicle, VehicleUpdate } from '../../types/vehicle'
 
 /** The four Overview info cards that open this shared editor sidecar. */
 export type VehicleCardKey = 'basic' | 'details' | 'powertrain' | 'warranty'
 
-type FieldKind = 'text' | 'number' | 'select' | 'multiline'
+type FieldKind = 'text' | 'number' | 'multiline'
 
 interface FieldSpec {
   /** Vehicle column — present on both the update and response schemas. */
@@ -34,12 +32,8 @@ interface CardConfig {
   fields: FieldSpec[]
 }
 
-/**
- * The field set each card edits. A function of `isMotorized` only for fuel
- * type: a non-motorized vehicle has no Powertrain card, so it edits fuel type
- * under Vehicle Details instead — mirroring where each card displays it.
- */
-function getCardConfig(card: VehicleCardKey, isMotorized: boolean): CardConfig {
+/** The field set each card edits. */
+function getCardConfig(card: VehicleCardKey): CardConfig {
   switch (card) {
     case 'basic':
       return {
@@ -72,9 +66,6 @@ function getCardConfig(card: VehicleCardKey, isMotorized: boolean): CardConfig {
           { key: 'gvwr_class', label: 'detail.misc.gvwrClass', kind: 'text' },
           { key: 'wheel_specs', label: 'detail.misc.wheels', kind: 'text' },
           { key: 'tire_specs', label: 'detail.misc.tires', kind: 'text' },
-          ...(isMotorized
-            ? []
-            : [{ key: 'fuel_type', label: 'edit.fuelType', kind: 'select' } as FieldSpec]),
         ],
       }
     case 'powertrain':
@@ -84,7 +75,6 @@ function getCardConfig(card: VehicleCardKey, isMotorized: boolean): CardConfig {
         fields: [
           { key: 'displacement_l', label: 'detail.misc.displacement', kind: 'text' },
           { key: 'cylinders', label: 'edit.cylinders', kind: 'number' },
-          { key: 'fuel_type', label: 'edit.fuelType', kind: 'select' },
           { key: 'sticker_engine_description', label: 'detail.misc.engine', kind: 'multiline' },
           { key: 'transmission_type', label: 'edit.transmissionType', kind: 'text' },
           { key: 'transmission_speeds', label: 'edit.transmissionSpeeds', kind: 'text' },
@@ -151,7 +141,10 @@ export default function VehicleFieldsDrawer({
   vehicle,
   vin,
   card,
-  isMotorized,
+  // Only ever fed the Details-card fuel_type FieldSpec, which moved to the
+  // settings sidecar. The prop stays on the interface — VehicleDetail still
+  // passes it — but getCardConfig no longer reads it.
+  isMotorized: _isMotorized,
   onUpdated,
 }: VehicleFieldsDrawerProps) {
   const { t } = useTranslation('vehicles')
@@ -165,7 +158,7 @@ export default function VehicleFieldsDrawer({
   // display precedence.
   const initialRef = useRef<Record<string, string>>({})
 
-  const config = card ? getCardConfig(card, isMotorized) : null
+  const config = card ? getCardConfig(card) : null
 
   useEffect(() => {
     // Reseed from the vehicle each time the drawer opens on a card. Save closes
@@ -210,15 +203,6 @@ export default function VehicleFieldsDrawer({
     }
   }
 
-  const fuelOptions = useMemo<SelectOption[]>(
-    () =>
-      FUEL_TYPE_VALUES.map((value) => ({
-        value,
-        label: t(`forms:fuel.fuelTypes.${value}`, { defaultValue: FUEL_TYPE_LABELS[value] }),
-      })),
-    [t],
-  )
-
   return (
     <FormModalWrapper
       isOpen={open}
@@ -240,9 +224,7 @@ export default function VehicleFieldsDrawer({
             return (
               <div key={f.key} className={f.kind === 'multiline' ? 'sm:col-span-2' : ''}>
                 <Field id={id} label={t(f.label)}>
-                  {f.kind === 'select' ? (
-                    <Select id={id} value={value} onChange={set(f.key)} placeholder="—" options={fuelOptions} />
-                  ) : f.kind === 'multiline' ? (
+                  {f.kind === 'multiline' ? (
                     <Textarea id={id} rows={2} value={value} onChange={set(f.key)} />
                   ) : (
                     <Input
