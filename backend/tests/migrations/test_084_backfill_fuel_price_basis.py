@@ -58,15 +58,15 @@ def test_084_backfills_only_priced_rows_without_a_basis(engine_for_migration):
                 (vin, liters, propane_liters, kwh, price_per_unit, price_basis)
             VALUES
                 -- 1: the reporter's row — imported, priced, no basis.
-                ('V00000000000000001', 37.854, NULL, NULL, 0.660, NULL),
+                ('VIN00000000000001', 37.854, NULL, NULL, 0.660, NULL),
                 -- 2: electric, priced, no basis -> per_kwh, not per_volume.
-                ('V00000000000000002', NULL, NULL, 50.0, 0.180, NULL),
+                ('VIN00000000000002', NULL, NULL, 50.0, 0.180, NULL),
                 -- 3: already has a basis -> must not be rewritten.
-                ('V00000000000000003', 40.0, NULL, NULL, 1.500, 'per_tank'),
+                ('VIN00000000000003', 40.0, NULL, NULL, 1.500, 'per_tank'),
                 -- 4: no price -> nothing to name a denominator for.
-                ('V00000000000000004', 40.0, NULL, NULL, NULL, NULL),
+                ('VIN00000000000004', 40.0, NULL, NULL, NULL, NULL),
                 -- 5: propane by volume.
-                ('V00000000000000005', NULL, 17.0, NULL, 0.900, NULL)
+                ('VIN00000000000005', NULL, 17.0, NULL, 0.900, NULL)
             """)
         )
 
@@ -89,7 +89,7 @@ def test_084_is_idempotent(engine_for_migration):
         conn.execute(
             text("""
             INSERT INTO fuel_records (vin, liters, price_per_unit, price_basis)
-            VALUES ('V00000000000000001', 37.854, 0.660, NULL)
+            VALUES ('VIN00000000000001', 37.854, 0.660, NULL)
             """)
         )
 
