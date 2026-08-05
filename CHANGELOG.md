@@ -42,6 +42,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Settings → System Configuration: removed the light/dark theme selector — the theme toggle in the top bar is now the single control.
 
 ### Fixed
+- Imported fuel records showed the wrong price per gallon on imperial accounts — $2.50/gal displayed as $0.66. Imports now record what the price is measured against, and a migration repairs existing rows (#128).
 - Torque Pro and WiCAN setup URLs are now absolute, so they can be pasted into the device. They were emitted as bare paths like `/api/v1/torque/<token>/upload` (#129).
 - LiveLink: revoking a Torque source or deleting a WiCAN device no longer fails with a server error once it has reported any data. Its telemetry, sessions and DTCs are kept.
 - Vehicle Analytics: spending anomalies now use your configured currency and language. The sentence was composed server-side with a hardcoded "$" and English text, so it ignored both (#131).

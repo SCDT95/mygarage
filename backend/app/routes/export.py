@@ -705,6 +705,9 @@ async def export_vehicle_json(
                 "odometer_km": float(r.odometer_km) if r.odometer_km is not None else None,
                 "liters": float(r.liters) if r.liters else None,
                 "price_per_unit": float(r.price_per_unit) if r.price_per_unit else None,
+                # Round-trips so a restored backup still knows what the price is
+                # measured against; without it the import had to guess (#128).
+                "price_basis": r.price_basis,
                 "rebate": float(r.rebate) if r.rebate else None,
                 "cost": float(r.cost) if r.cost else None,
                 "is_full_tank": r.is_full_tank,

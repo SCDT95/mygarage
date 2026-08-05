@@ -87,6 +87,35 @@ def _row_is_legacy_v2(row: dict) -> bool:
 
 logger = logging.getLogger(__name__)
 
+
+def _derive_price_basis(
+    price_per_unit: Decimal | None,
+    *,
+    liters: Decimal | None = None,
+    propane_liters: Decimal | None = None,
+    kwh: Decimal | None = None,
+) -> str | None:
+    """Which denominator `price_per_unit` is measured against.
+
+    Mirrors migration 053's rule verbatim, on the post-053 metric columns.
+    Imports previously left this NULL, and the frontend's `priceToDisplay`
+    converts a stored price to the user's units ONLY when the basis says
+    `per_volume` — so on an imperial account every imported fill-up showed
+    the canonical per-litre figure under a "Price/Gal" heading. $2.50/gal
+    was stored correctly as $0.660/L and then rendered as "0.66" (#128).
+
+    Returns None when there is no price, since there is then nothing to
+    interpret — a basis on a priceless row would be noise.
+    """
+    if price_per_unit is None:
+        return None
+    if kwh is not None and liters is None and propane_liters is None:
+        return "per_kwh"
+    if liters is not None or propane_liters is not None:
+        return "per_volume"
+    return None
+
+
 router = APIRouter(prefix="/api/import", tags=["import"])
 
 # Valid service categories matching the ServiceVisit check constraint
@@ -401,6 +430,7 @@ async def import_fuel_csv(
                 engine_hours=engine_hours,
                 liters=liters,
                 price_per_unit=price_per_unit,
+                price_basis=_derive_price_basis(price_per_unit, liters=liters),
                 cost=cost,
                 rebate=rebate,
                 is_full_tank=is_full_tank,
@@ -1078,6 +1108,10 @@ async def import_vehicle_json(
                 odometer_km=imported_odometer_km,
                 liters=imported_liters,
                 price_per_unit=imported_ppu,
+                price_basis=(
+                    record_data.get("price_basis")
+                    or _derive_price_basis(imported_ppu, liters=imported_liters)
+                ),
                 cost=Decimal(str(record_data["cost"])) if record_data.get("cost") else None,
                 rebate=Decimal(str(record_data["rebate"])) if record_data.get("rebate") else None,
                 is_full_tank=record_data.get("is_full_tank", True),
@@ -1124,6 +1158,8 @@ async def import_vehicle_json(
                     results["def_records"]["skipped"] += 1
                     continue
 
+            # No price_basis here: DEF is volume-only, has no such column, and
+            # the UI passes 'per_volume' as a literal when displaying it.
             record = DEFRecord(
                 vin=vin,
                 date=date,

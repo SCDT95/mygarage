@@ -982,3 +982,113 @@ class TestHoursCSVRoundTrip:
         assert rows[1].source == "manual"
         assert rows[1].fuel_record_id is None
         assert rows[1].service_visit_id is None
+
+
+@pytest.mark.integration
+@pytest.mark.asyncio
+class TestImportFuelPriceBasis:
+    """Issue #128: imported fill-ups showed the wrong price per gallon.
+
+    `price_basis` names the denominator `price_per_unit` is measured against,
+    and the frontend converts a stored price into the user's units ONLY when it
+    reads `per_volume`. Neither import path ever set it, so imported rows had
+    NULL and an imperial account saw the canonical per-litre figure under a
+    "Price/Gal" heading.
+
+    The reporter's exact case: a legacy-imperial CSV row of 10 mi / 10 gal /
+    $2.50 per gal / $25 total displayed as 10 mi, 10 gal, **0.66**, $25.
+    2.50 / 3.785411784 = 0.6604 — the volume and odometer round-tripped
+    because they convert on both ends; only the price did not.
+    """
+
+    async def test_legacy_imperial_csv_sets_per_volume_basis(
+        self, client: AsyncClient, auth_headers, test_vehicle, db_session
+    ):
+        from datetime import date
+
+        from sqlalchemy import select
+
+        from app.models.fuel import FuelRecord
+
+        # Imperial column names and no units_version marker — the shape the
+        # reporter filled in, which the importer correctly reads as legacy v2.
+        csv_content = (
+            "Date,Mileage,Gallons,Price Per Gallon,Total Cost\n2027-06-15,10,10,2.50,25.00\n"
+        )
+
+        response = await client.post(
+            f"/api/import/vehicles/{test_vehicle['vin']}/fuel/csv",
+            headers=auth_headers,
+            files={"file": ("fuel.csv", BytesIO(csv_content.encode()), "text/csv")},
+            data={"skip_duplicates": "false"},
+        )
+        assert response.status_code == 200, response.text
+
+        result = await db_session.execute(
+            select(FuelRecord).where(
+                FuelRecord.vin == test_vehicle["vin"],
+                FuelRecord.date == date(2027, 6, 15),
+            )
+        )
+        record = result.scalars().one()
+
+        # Without this the UI cannot know the stored price is per-litre.
+        assert record.price_basis == "per_volume"
+
+        # The conversion itself was always right — pin it so a "fix" that
+        # removes the gal->L conversion instead of setting the basis fails.
+        assert float(record.liters) == pytest.approx(37.854, abs=0.01)
+        assert float(record.price_per_unit) == pytest.approx(0.660, abs=0.001)
+        assert float(record.cost) == pytest.approx(25.00)
+
+    async def test_json_import_honours_an_explicit_basis(
+        self, client: AsyncClient, auth_headers, test_vehicle, db_session
+    ):
+        """A backup that carries price_basis must keep it, not re-derive it.
+
+        Export now round-trips the field; an electric fill-up priced per kWh
+        would be silently relabelled per_volume if import always guessed.
+        """
+        import json
+
+        from sqlalchemy import select
+
+        from app.models.fuel import FuelRecord
+
+        payload = {
+            # v3 marker: without it the importer reads the backup as legacy
+            # imperial and converts every value on ingest.
+            "export_version": "3",
+            "units": "metric",
+            "fuel_records": [
+                {
+                    "date": "2024-04-01",
+                    "odometer_km": 100.0,
+                    "liters": 40.0,
+                    "price_per_unit": 0.5,
+                    "price_basis": "per_kwh",
+                    "cost": 20.0,
+                }
+            ],
+        }
+
+        response = await client.post(
+            f"/api/import/vehicles/{test_vehicle['vin']}/json",
+            headers=auth_headers,
+            files={
+                "file": (
+                    "backup.json",
+                    BytesIO(json.dumps(payload).encode()),
+                    "application/json",
+                )
+            },
+            data={"skip_duplicates": "false"},
+        )
+        assert response.status_code == 200, response.text
+
+        result = await db_session.execute(
+            select(FuelRecord).where(
+                FuelRecord.vin == test_vehicle["vin"], FuelRecord.odometer_km == 100
+            )
+        )
+        assert result.scalars().one().price_basis == "per_kwh"
