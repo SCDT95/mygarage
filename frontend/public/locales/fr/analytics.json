@@ -321,6 +321,20 @@
       "critical": "Critique",
       "info": "Info",
       "warning": "Avertissement"
+    },
+    "fuelAlert": {
+      "economy_dropping": {
+        "body": "L'efficacité énergétique s'est dégradée de {{percent}} % par rapport à votre référence.",
+        "title": "Consommation en hausse"
+      },
+      "trend_declining": {
+        "body": "Les derniers pleins montrent une efficacité en baisse. Vérifiez la pression des pneus ou les filtres à air.",
+        "title": "Tendance d'efficacité en baisse"
+      },
+      "insufficient_data": {
+        "body": "Enregistrez au moins trois pleins complets pour débloquer les analyses détaillées de consommation.",
+        "title": "Données de carburant insuffisantes"
+      }
     }
   },
   "vehicleHelp": {

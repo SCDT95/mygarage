@@ -222,6 +222,14 @@ class CostProjection(BaseModel):
 class FuelEfficiencyAlert(BaseModel):
     """Alert describing changes in fuel efficiency."""
 
+    # Machine-readable identity so the client can render its own localised,
+    # unit-aware copy. `title`/`message` are English prose with L/100km baked
+    # in, which is wrong for an imperial account and untranslatable for
+    # everyone — same defect as the spending-anomaly message (#131). They are
+    # retained because removing response fields is a breaking API change.
+    code: Literal["economy_dropping", "trend_declining", "insufficient_data"]
+    #: Percent worse than baseline; only set for `economy_dropping`.
+    percent: int | None = None
     title: str
     severity: Literal["info", "warning", "critical"] = "info"
     message: str

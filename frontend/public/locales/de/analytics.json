@@ -321,6 +321,20 @@
       "critical": "Kritisch",
       "info": "Info",
       "warning": "Warnung"
+    },
+    "fuelAlert": {
+      "economy_dropping": {
+        "body": "Die Kraftstoffeffizienz hat sich gegenüber Ihrem Ausgangswert um {{percent}} % verschlechtert.",
+        "title": "Kraftstoffverbrauch verschlechtert sich"
+      },
+      "trend_declining": {
+        "body": "Die letzten Tankfüllungen zeigen eine sich verschlechternde Kraftstoffeffizienz. Prüfen Sie Reifendruck oder Luftfilter.",
+        "title": "Effizienztrend fällt"
+      },
+      "insufficient_data": {
+        "body": "Erfassen Sie mindestens drei Volltank-Betankungen, um detaillierte Verbrauchsauswertungen freizuschalten.",
+        "title": "Zu wenig Kraftstoffdaten"
+      }
     }
   },
   "vehicleHelp": {

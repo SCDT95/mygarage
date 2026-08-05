@@ -490,10 +490,26 @@ export default function Analytics() {
                   className={`border rounded-lg p-4 ${getAlertStyles(alert.severity)}`}
                 >
                   <div className="flex items-center justify-between mb-1">
-                    <p className="text-sm font-semibold">{alert.title}</p>
-                    <span className="text-xs uppercase tracking-wide">{alert.severity}</span>
+                    {/* Composed here, not taken from `alert.title`/`alert.message`
+                        (#131's defect, one card over): the backend writes those as
+                        English prose with "L/100km" baked in, so an imperial
+                        account saw metric units on a page where everything else
+                        respects their setting, and no locale could translate
+                        them. `code` identifies the alert; the figures below are
+                        already unit-formatted. */}
+                    <p className="text-sm font-semibold">
+                      {t(`vehicle.fuelAlert.${alert.code}.title`, { defaultValue: alert.title })}
+                    </p>
+                    <span className="text-xs uppercase tracking-wide">
+                      {t(`vehicle.severity.${alert.severity}`, { defaultValue: alert.severity })}
+                    </span>
                   </div>
-                  <p className="text-sm">{alert.message}</p>
+                  <p className="text-sm">
+                    {t(`vehicle.fuelAlert.${alert.code}.body`, {
+                      percent: alert.percent ?? 0,
+                      defaultValue: alert.message,
+                    })}
+                  </p>
                   {(alert.recent_l_per_100km || alert.baseline_l_per_100km) && (
                     <p className="text-xs mt-2">
                       {t('vehicle.recentBaseline', {

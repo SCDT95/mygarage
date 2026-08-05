@@ -499,6 +499,8 @@ def build_fuel_alerts(fuel_economy: FuelEconomyTrend) -> list[FuelEfficiencyAler
             percent_value = int(rise_percent * 100)
             alerts.append(
                 FuelEfficiencyAlert(
+                    code="economy_dropping",
+                    percent=percent_value,
                     title="Fuel economy dropping",
                     severity=severity,
                     message=(
@@ -513,6 +515,7 @@ def build_fuel_alerts(fuel_economy: FuelEconomyTrend) -> list[FuelEfficiencyAler
     if fuel_economy.trend == "declining" and not alerts:
         alerts.append(
             FuelEfficiencyAlert(
+                code="trend_declining",
                 title="Efficiency trend declining",
                 severity="info",
                 message=(
@@ -527,6 +530,7 @@ def build_fuel_alerts(fuel_economy: FuelEconomyTrend) -> list[FuelEfficiencyAler
     if not fuel_economy.data_points or len(fuel_economy.data_points) < 3:
         alerts.append(
             FuelEfficiencyAlert(
+                code="insufficient_data",
                 title="Insufficient fuel data",
                 severity="info",
                 message=(

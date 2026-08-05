@@ -7975,8 +7975,15 @@ export interface components {
         FuelEfficiencyAlert: {
             /** Baseline L Per 100Km */
             baseline_l_per_100km?: string | null;
+            /**
+             * Code
+             * @enum {string}
+             */
+            code: "economy_dropping" | "trend_declining" | "insufficient_data";
             /** Message */
             message: string;
+            /** Percent */
+            percent?: number | null;
             /** Recent L Per 100Km */
             recent_l_per_100km?: string | null;
             /**

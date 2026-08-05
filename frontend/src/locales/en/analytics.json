@@ -315,6 +315,20 @@
       "critical": "Critical",
       "info": "Info",
       "warning": "Warning"
+    },
+    "fuelAlert": {
+      "economy_dropping": {
+        "body": "Fuel economy has worsened by {{percent}}% against your baseline.",
+        "title": "Fuel economy dropping"
+      },
+      "trend_declining": {
+        "body": "Recent fill-ups show worsening fuel economy. Consider checking tyre pressure or air filters.",
+        "title": "Efficiency trend declining"
+      },
+      "insufficient_data": {
+        "body": "Log at least three full-tank fuel entries to unlock detailed fuel-economy insights.",
+        "title": "Insufficient fuel data"
+      }
     }
   },
   "vehicleHelp": {
