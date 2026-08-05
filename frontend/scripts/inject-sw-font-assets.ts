@@ -1,4 +1,4 @@
-import { existsSync, readFileSync, writeFileSync } from 'node:fs'
+import { readFileSync, writeFileSync } from 'node:fs'
 
 /**
  * sw.js lives in public/ and is copied verbatim to dist/ during Vite's
@@ -67,10 +67,22 @@ export function injectFontAssetsIntoSource(source: string, fonts: readonly strin
 
 /** Real filesystem entry point — reads swPath, injects, writes it back. */
 export function injectSwFontAssets(swPath: string, bundleFileNames: readonly string[]): void {
-  if (!existsSync(swPath)) {
-    throw new SwFontInjectionError(`${swPath} does not exist — cannot inject font assets into it.`)
+  // Read straight away and translate ENOENT into the same error, rather than
+  // gating on existsSync() first. The check-then-read pair is a TOCTOU race
+  // (CodeQL js/file-system-race) and buys nothing: readFileSync already
+  // reports a missing file, so the pre-check was only an extra syscall and a
+  // second, racier source of truth.
+  let source: string
+  try {
+    source = readFileSync(swPath, 'utf-8')
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code === 'ENOENT') {
+      throw new SwFontInjectionError(
+        `${swPath} does not exist — cannot inject font assets into it.`,
+      )
+    }
+    throw error
   }
-  const source = readFileSync(swPath, 'utf-8')
   const fonts = buildFontAssetsList(bundleFileNames)
   const replaced = injectFontAssetsIntoSource(source, fonts)
   writeFileSync(swPath, replaced)
