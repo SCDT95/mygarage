@@ -13,6 +13,8 @@
     }
   },
   "vehicle": {
+    "anomalyAbove": "Wydano {{spent}} — {{deviation}}% powyżej średniej {{avg}}.",
+    "anomalyBelow": "Wydano {{spent}} — {{deviation}}% poniżej średniej {{avg}}.",
     "costPerHourAxis": "Koszt/godzinę ({{currency}})",
     "costPerHourLabel": "Koszt/godzinę",
     "costPerHourValue": "{{value}}/godz.",
@@ -21,6 +23,11 @@
     "fuelRateUnitLabel": "Zużycie paliwa ({{unit}})",
     "hoursAccumulatedTitle": "Przyrost motogodzin w czasie",
     "hoursEconomyAnalysis": "Analiza wydajności wg motogodzin",
-    "hoursEconomyTrendTitle": "Trend wydajności motogodzin w czasie"
+    "hoursEconomyTrendTitle": "Trend wydajności motogodzin w czasie",
+    "severity": {
+      "critical": "Krytyczne",
+      "info": "Informacja",
+      "warning": "Ostrzeżenie"
+    }
   }
 }

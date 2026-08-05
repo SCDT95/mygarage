@@ -334,6 +334,16 @@ export default function Analytics() {
     }, dateLocale)
   }
 
+  /**
+   * "2025-08" (AnomalyAlert.month) -> a localised "August 2025". Anchored on
+   * day 1 so the bare year-month parses; formatDateForDisplay wants a full
+   * date. Falls back to the raw string if the shape is ever something else.
+   */
+  const formatMonthLabel = (month: string): string => {
+    if (!/^\d{4}-\d{2}$/.test(month)) return month
+    return formatDateForDisplay(`${month}-01`, { year: 'numeric', month: 'long' }, dateLocale)
+  }
+
   const getTrendIcon = (trend: string) => {
     switch (trend) {
       case 'improving':
@@ -518,16 +528,29 @@ export default function Analytics() {
                 }`}
               >
                 <div className="flex items-center justify-between mb-1">
-                  <p className="text-sm font-semibold">{alert.month}</p>
-                  <span className="text-xs uppercase tracking-wide">{alert.severity}</span>
+                  <p className="text-sm font-semibold">{formatMonthLabel(alert.month)}</p>
+                  <span className="text-xs uppercase tracking-wide">
+                    {t(`vehicle.severity.${alert.severity}`, { defaultValue: alert.severity })}
+                  </span>
                 </div>
-                <p className="text-sm">{alert.message}</p>
-                <p className="text-xs mt-2">
-                  {t('vehicle.anomalyStats', {
-                    spent: formatCurrency(alert.amount, { currencyCode, locale }),
-                    avg: formatCurrency(alert.baseline, { currencyCode, locale }),
-                    deviation: parseFloat(alert.deviation_percent).toFixed(1),
-                  })}
+                {/* Composed here rather than rendering `alert.message` (#131).
+                    The backend builds that sentence with a hardcoded "$" and
+                    untranslated English, so it ignored both the user's currency
+                    and their language — while every field it needs (amount,
+                    baseline, deviation_percent) is already on the payload. This
+                    also subsumes the old `anomalyStats` line, which restated
+                    the same three numbers directly underneath it. */}
+                <p className="text-sm">
+                  {t(
+                    parseFloat(alert.deviation_percent) >= 0
+                      ? 'vehicle.anomalyAbove'
+                      : 'vehicle.anomalyBelow',
+                    {
+                      spent: formatCurrency(alert.amount, { currencyCode, locale }),
+                      avg: formatCurrency(alert.baseline, { currencyCode, locale }),
+                      deviation: Math.abs(parseFloat(alert.deviation_percent)).toFixed(1),
+                    },
+                  )}
                 </p>
               </div>
             ))}

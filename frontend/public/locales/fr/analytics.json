@@ -183,7 +183,6 @@
     "recentBaseline": "Récent : {{recent}} • Référence : {{baseline}}",
     "spendingAnomalies": "Anomalies de dépenses",
     "noAnomalies": "Aucun modèle de dépenses inhabituel détecté.",
-    "anomalyStats": "Dépensé : {{spent}} • Moy. : {{avg}} • Écart : {{deviation}}%",
     "totalCost": "Coût total",
     "monthsTracked": "{{count}} mois suivi(s)",
     "avgMonthly": "Moy. mensuelle",
@@ -315,7 +314,14 @@
     "fuelRateUnitLabel": "Débit de carburant ({{unit}})",
     "hoursAccumulatedTitle": "Cumul des heures moteur dans le temps",
     "hoursEconomyAnalysis": "Analyse de l'efficacité par heures moteur",
-    "hoursEconomyTrendTitle": "Évolution de l'efficacité par heures moteur"
+    "hoursEconomyTrendTitle": "Évolution de l'efficacité par heures moteur",
+    "anomalyAbove": "Dépensé {{spent}} — {{deviation}} % au-dessus de votre moyenne de {{avg}}.",
+    "anomalyBelow": "Dépensé {{spent}} — {{deviation}} % en dessous de votre moyenne de {{avg}}.",
+    "severity": {
+      "critical": "Critique",
+      "info": "Info",
+      "warning": "Avertissement"
+    }
   },
   "vehicleHelp": {
     "title": "Aide des analyses",

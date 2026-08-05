@@ -13,6 +13,8 @@
     }
   },
   "vehicle": {
+    "anomalyAbove": "Потрачено {{spent}} — на {{deviation}}% выше среднего значения {{avg}}.",
+    "anomalyBelow": "Потрачено {{spent}} — на {{deviation}}% ниже среднего значения {{avg}}.",
     "costPerHourAxis": "Стоимость/час ({{currency}})",
     "costPerHourLabel": "Стоимость/час",
     "costPerHourValue": "{{value}}/ч",
@@ -21,6 +23,11 @@
     "fuelRateUnitLabel": "Расход топлива ({{unit}})",
     "hoursAccumulatedTitle": "Накопление моточасов со временем",
     "hoursEconomyAnalysis": "Анализ эффективности по моточасам",
-    "hoursEconomyTrendTitle": "Динамика эффективности по моточасам"
+    "hoursEconomyTrendTitle": "Динамика эффективности по моточасам",
+    "severity": {
+      "critical": "Критично",
+      "info": "Информация",
+      "warning": "Предупреждение"
+    }
   }
 }

@@ -13,6 +13,8 @@
     }
   },
   "vehicle": {
+    "anomalyAbove": "Витрачено {{spent}} — на {{deviation}}% вище середнього значення {{avg}}.",
+    "anomalyBelow": "Витрачено {{spent}} — на {{deviation}}% нижче середнього значення {{avg}}.",
     "costPerHourAxis": "Вартість/година ({{currency}})",
     "costPerHourLabel": "Вартість/година",
     "costPerHourValue": "{{value}}/год",
@@ -21,6 +23,11 @@
     "fuelRateUnitLabel": "Витрата палива ({{unit}})",
     "hoursAccumulatedTitle": "Накопичення мотогодин з часом",
     "hoursEconomyAnalysis": "Аналіз ефективності за мотогодинами",
-    "hoursEconomyTrendTitle": "Динаміка ефективності за мотогодинами"
+    "hoursEconomyTrendTitle": "Динаміка ефективності за мотогодинами",
+    "severity": {
+      "critical": "Критично",
+      "info": "Інформація",
+      "warning": "Попередження"
+    }
   }
 }

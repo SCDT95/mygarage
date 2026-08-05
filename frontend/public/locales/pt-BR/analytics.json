@@ -13,6 +13,8 @@
     }
   },
   "vehicle": {
+    "anomalyAbove": "Gasto {{spent}} — {{deviation}}% acima da sua média de {{avg}}.",
+    "anomalyBelow": "Gasto {{spent}} — {{deviation}}% abaixo da sua média de {{avg}}.",
     "costPerHourAxis": "Custo/hora ({{currency}})",
     "costPerHourLabel": "Custo/hora",
     "costPerHourValue": "{{value}}/h",
@@ -21,6 +23,11 @@
     "fuelRateUnitLabel": "Taxa de consumo ({{unit}})",
     "hoursAccumulatedTitle": "Horas do motor acumuladas ao longo do tempo",
     "hoursEconomyAnalysis": "Análise de eficiência por horas do motor",
-    "hoursEconomyTrendTitle": "Tendência de eficiência por horas do motor ao longo do tempo"
+    "hoursEconomyTrendTitle": "Tendência de eficiência por horas do motor ao longo do tempo",
+    "severity": {
+      "critical": "Crítico",
+      "info": "Informação",
+      "warning": "Aviso"
+    }
   }
 }

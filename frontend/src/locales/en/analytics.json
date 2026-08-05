@@ -177,7 +177,6 @@
     "recentBaseline": "Recent: {{recent}} • Baseline: {{baseline}}",
     "spendingAnomalies": "Spending Anomalies",
     "noAnomalies": "No unusual spending patterns detected.",
-    "anomalyStats": "Spent: {{spent}} • Avg: {{avg}} • Deviation: {{deviation}}%",
     "totalCost": "Total Cost",
     "monthsTracked": "{{count}} month(s) tracked",
     "avgMonthly": "Avg Monthly",
@@ -309,7 +308,14 @@
     "fuelEconomyChange": "Fuel Economy Change",
     "costChangesByCategory": "Cost Changes by Category",
     "period1Value": "Period 1: {{value}}",
-    "period2Value": "Period 2: {{value}}"
+    "period2Value": "Period 2: {{value}}",
+    "anomalyAbove": "Spent {{spent}} — {{deviation}}% above your average of {{avg}}.",
+    "anomalyBelow": "Spent {{spent}} — {{deviation}}% below your average of {{avg}}.",
+    "severity": {
+      "critical": "Critical",
+      "info": "Info",
+      "warning": "Warning"
+    }
   },
   "vehicleHelp": {
     "title": "Analytics Help",
