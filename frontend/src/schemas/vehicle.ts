@@ -83,15 +83,15 @@ const purchasePriceSchema = z
   .number()
   .or(z.nan())
   .nullable()
-  .optional()
   .transform(numberOrNull)
+  .optional()
 
 const soldPriceSchema = z
   .number()
   .or(z.nan())
   .nullable()
-  .optional()
   .transform(numberOrNull)
+  .optional()
 
 // Engine-hour reading for hour-metered vehicles. Float ≥ 0, optional (blank →
 // null), same form-coercion pattern as the price schemas above.

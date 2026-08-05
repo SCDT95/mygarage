@@ -496,4 +496,25 @@ describe('VehicleEditDrawer — conversion behaviour', () => {
     expect(onUpdated).not.toHaveBeenCalled()
     expect(onClose).not.toHaveBeenCalled()
   })
+
+  it('submits exactly the settings fields and nothing the drawer no longer owns', async () => {
+    renderVehicleEdit(baseVehicle)
+    await screen.findByLabelText('edit.nickname *')
+    fireEvent.click(screen.getByRole('button', { name: 'edit.saveChanges' }))
+    await waitFor(() => expect(mockedApi.put).toHaveBeenCalled())
+    const [, payload] = mockedApi.put.mock.calls[0] as [string, Record<string, unknown>]
+    // Pins the KEY SET, not values. Every other assertion here is toMatchObject
+    // or single-key, which is how `purchase_price: null` on every save survived
+    // a fully green suite. Any field this drawer starts or stops sending fails
+    // here, loudly.
+    expect(Object.keys(payload).sort()).toEqual([
+      'current_hours',
+      'def_tank_capacity_liters',
+      'fuel_type',
+      'nickname',
+      'secondary_usage_enabled',
+      'usage_unit',
+      'vehicle_type',
+    ])
+  })
 })
