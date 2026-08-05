@@ -94,7 +94,15 @@ const soldPriceSchema = z
   .optional()
 
 // Engine-hour reading for hour-metered vehicles. Float ≥ 0, optional (blank →
-// null), same form-coercion pattern as the price schemas above.
+// null). Unlike the price/year/doors/cylinders schemas above, this one keeps
+// the inverted `.optional()`-before-`.transform()` order — the transform
+// runs on an omitted key too, and `numberOrNull` would turn that `undefined`
+// into an explicit `null`, force-clearing the column instead of leaving it
+// unchanged. That's inert only because `current_hours` is always seeded by
+// the settings drawer (never left unregistered the way trim/displacement
+// are on non-motorized vehicles), is never part of `VehicleWizard`'s create
+// payload literal, and is popped server-side before `setattr` runs. Don't
+// copy this ordering into a new schema on the strength of this one.
 const currentHoursSchema = z
   .number()
   .min(0, 'Hours cannot be negative')
@@ -198,15 +206,19 @@ export const vehicleEditSchema = z.object({
   sold_date: optionalDateSchema,
   sold_price: soldPriceSchema,
 
-  // DEF Tracking — canonical liters
+  // DEF Tracking — canonical liters. `.transform()` before `.optional()`
+  // (same ordering as yearSchema/doorsSchema/cylindersSchema/
+  // purchasePriceSchema/soldPriceSchema above) so an omitted key
+  // short-circuits to `undefined` without ever reaching the transform,
+  // instead of relying on the transform function's own `typeof` guard.
   def_tank_capacity_liters: z
     .number()
     .min(0, 'Tank capacity cannot be negative')
     .max(9999.99, 'Tank capacity too large')
     .or(z.nan())
     .nullable()
-    .optional()
-    .transform(val => (typeof val === 'number' && isNaN(val)) ? null : val),
+    .transform(val => (typeof val === 'number' && isNaN(val)) ? null : val)
+    .optional(),
 })
 
 // Use z.output for Zod v4 compatibility with z.coerce fields
