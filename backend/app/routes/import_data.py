@@ -67,17 +67,41 @@ def _per_gal_to_per_l(value: Decimal | None) -> Decimal | None:
 
 
 def _row_is_legacy_v2(row: dict) -> bool:
-    """Detect whether a CSV row was exported by a v2 (imperial) build.
+    """Whether this CSV row's values need converting from imperial to metric.
 
-    v3+ exports include `units_version="3"`. v2 exports omit the column.
-    Treat empty/missing as legacy. Imperial-keyed columns (`Mileage`,
-    `Gallons`) without the marker also signal legacy.
+    Resolution order:
+
+    1. `unit_system` — written by exports that deliberately emit imperial
+       (see `export.py`). Explicit and version-independent, so it wins.
+    2. `units_version` — a SCHEMA version, not a units flag. v3 introduced
+       metric-canonical values, so v3 *and later* are metric.
+    3. No marker at all → infer from the column names: `Mileage`/`Gallons`
+       without `Odometer (km)`/`Liters` means a legacy v2 export (or a
+       hand-written imperial sheet, which is how #128 was reported).
+
+    Step 2 used to read `version != "3"` as legacy, which broke the moment
+    `EXPORT_SCHEMA_VERSION` moved to "4" for the extended fuel columns: every
+    current export was re-imported through the imperial converter, inflating
+    distance by 1.609 and volume by 3.785 on each cycle. The round-trip test
+    that existed asserted only `engine_hours`, which is dimensionless, so it
+    never noticed.
     """
-    version = (row.get("units_version") or "").strip()
-    if version == "3":
-        return False
-    if version and version != "3":
+    unit_system = (row.get("unit_system") or "").strip().lower()
+    if unit_system == "imperial":
         return True
+    if unit_system == "metric":
+        return False
+
+    version = (row.get("units_version") or "").strip()
+    if version:
+        try:
+            # >= 3 is metric-canonical; 1/2 predate it.
+            return int(version) < 3
+        except ValueError:
+            # Unparseable marker: fall back to the conservative reading rather
+            # than silently trusting a value we don't understand.
+            return True
+
     # No marker → infer from column shape: "Mileage"/"Gallons" present without
     # "Odometer (km)"/"Liters" means legacy.
     has_imperial = bool(row.get("Mileage") or row.get("Gallons"))

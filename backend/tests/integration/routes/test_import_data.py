@@ -1092,3 +1092,82 @@ class TestImportFuelPriceBasis:
             )
         )
         assert result.scalars().one().price_basis == "per_kwh"
+
+
+@pytest.mark.integration
+@pytest.mark.asyncio
+class TestCsvRoundTripPreservesUnits:
+    """A CSV export re-imported must come back with the same numbers (#128).
+
+    `EXPORT_SCHEMA_VERSION` moved to "4" when the extended fuel columns landed,
+    but the importer's legacy check read `version != "3"` as "legacy v2
+    imperial". So every current export was re-imported through the
+    imperial->metric converter: distance x1.609, volume x3.785, price /3.785,
+    compounding on each cycle.
+
+    The pre-existing round-trip test asserted only `engine_hours`, which is
+    dimensionless and never converted — which is exactly why this survived.
+    """
+
+    async def test_fuel_csv_export_import_preserves_distance_and_volume(
+        self, client: AsyncClient, auth_headers, test_user, db_session
+    ):
+        from datetime import date
+        from decimal import Decimal
+
+        from sqlalchemy import select
+
+        from app.models.fuel import FuelRecord
+        from app.models.vehicle import Vehicle
+
+        vin_a = "RTUNITSSRC0000001"
+        vin_b = "RTUNITSDST0000001"
+        for vin, nick in ((vin_a, "RT Src"), (vin_b, "RT Dst")):
+            db_session.add(
+                Vehicle(
+                    vin=vin,
+                    user_id=test_user["id"],
+                    nickname=nick,
+                    vehicle_type="Car",
+                    year=2024,
+                    make="Test",
+                    model="RT",
+                )
+            )
+        await db_session.commit()
+
+        db_session.add(
+            FuelRecord(
+                vin=vin_a,
+                date=date(2026, 5, 18),
+                odometer_km=Decimal("500.000"),
+                liters=Decimal("40.000"),
+                price_per_unit=Decimal("1.500"),
+                price_basis="per_volume",
+                cost=Decimal("60.00"),
+                is_full_tank=True,
+            )
+        )
+        await db_session.commit()
+
+        export_resp = await client.get(
+            f"/api/export/vehicles/{vin_a}/fuel/csv", headers=auth_headers
+        )
+        assert export_resp.status_code == 200
+
+        import_resp = await client.post(
+            f"/api/import/vehicles/{vin_b}/fuel/csv",
+            headers=auth_headers,
+            files={"file": ("fuel.csv", BytesIO(export_resp.content), "text/csv")},
+        )
+        assert import_resp.status_code == 200
+        assert import_resp.json()["success_count"] == 1
+
+        result = await db_session.execute(select(FuelRecord).where(FuelRecord.vin == vin_b))
+        row = result.scalar_one()
+
+        # Exact same canonical values in, same out. Before the fix these came
+        # back as 804.67 km / 151.42 L / 0.396 per L.
+        assert float(row.odometer_km) == pytest.approx(500.0, abs=0.01)
+        assert float(row.liters) == pytest.approx(40.0, abs=0.01)
+        assert float(row.price_per_unit) == pytest.approx(1.5, abs=0.001)
