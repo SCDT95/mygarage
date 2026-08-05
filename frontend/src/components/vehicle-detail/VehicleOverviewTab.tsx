@@ -68,6 +68,9 @@ export default function VehicleOverviewTab({
     vehicle.sticker_drivetrain,
   )
   const hasWarranty = Boolean(vehicle.warranty_basic || vehicle.warranty_powertrain)
+  const hasMsrp = Boolean(
+    vehicle.msrp_base || vehicle.msrp_options || vehicle.msrp_total || vehicle.destination_charge,
+  )
 
   const formatDate = (dateString?: string | null) => {
     if (!dateString) return t('detail.notSpecified')
@@ -166,39 +169,46 @@ export default function VehicleOverviewTab({
       <Card breakInside className={onEditPricing ? EDITABLE_CARD_CLASS : ''}>
         {onEditPricing && <CardEditOverlay label={t('detail.pricing.editTitle')} onClick={onEditPricing} />}
         <CardHeader title={t('detail.pricing.title')} />
-        <div className="space-y-3">
-          <div>
-            <p className="text-sm text-text-mute flex items-center gap-2"><Calendar className="w-4 h-4" /><span>{t('edit.purchaseDate')}</span></p>
-            <Mono size="sm" className="mt-1 block">{formatDate(vehicle.purchase_date)}</Mono>
+        {/* Purchase/sale beside MSRP rather than stacked above it — the two
+            blocks are each narrow and short, so side by side roughly halves
+            the card's height. Falls back to a single column when there is no
+            MSRP data, so a purchase-only vehicle doesn't render a lopsided,
+            half-empty card. */}
+        <div className={`grid grid-cols-1 gap-x-6 gap-y-4 ${hasMsrp ? 'sm:grid-cols-2' : ''}`}>
+          <div className="space-y-3">
+            <div>
+              <p className="text-sm text-text-mute flex items-center gap-2"><Calendar className="w-4 h-4" /><span>{t('edit.purchaseDate')}</span></p>
+              <Mono size="sm" className="mt-1 block">{formatDate(vehicle.purchase_date)}</Mono>
+            </div>
+            <div>
+              <p className="text-sm text-text-mute"><span>{t('edit.purchasePrice')}</span></p>
+              <Mono size="sm" className="mt-1 block">{formatCurrency(vehicle.purchase_price, { currencyCode, locale, fallback: t('detail.notSpecified') })}</Mono>
+            </div>
+            {vehicle.sold_date && (
+              <>
+                <div>
+                  <p className="text-sm text-text-mute flex items-center gap-2"><Calendar className="w-4 h-4" /><span>{t('detail.misc.saleDate')}</span></p>
+                  <Mono size="sm" className="mt-1 block">{formatDate(vehicle.sold_date)}</Mono>
+                </div>
+                <div>
+                  <p className="text-sm text-text-mute"><span>{t('detail.misc.salePrice')}</span></p>
+                  <Mono size="sm" className="mt-1 block">{formatCurrency(vehicle.sold_price, { currencyCode, locale, fallback: t('detail.notSpecified') })}</Mono>
+                </div>
+              </>
+            )}
           </div>
-          <div>
-            <p className="text-sm text-text-mute"><span>{t('edit.purchasePrice')}</span></p>
-            <Mono size="sm" className="mt-1 block">{formatCurrency(vehicle.purchase_price, { currencyCode, locale, fallback: t('detail.notSpecified') })}</Mono>
-          </div>
-          {vehicle.sold_date && (
-            <>
-              <div>
-                <p className="text-sm text-text-mute flex items-center gap-2"><Calendar className="w-4 h-4" /><span>{t('detail.misc.saleDate')}</span></p>
-                <Mono size="sm" className="mt-1 block">{formatDate(vehicle.sold_date)}</Mono>
+          {hasMsrp && (
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-wide text-text-mute mb-3">{t('detail.msrpPricing')}</p>
+              <div className="grid grid-cols-2 gap-x-4 gap-y-3">
+                {vehicle.msrp_base && (<div><p className="text-sm text-text-mute">{t('detail.misc.basePrice')}</p><Mono size="sm" className="block">{formatCurrency(vehicle.msrp_base, { currencyCode, locale })}</Mono></div>)}
+                {vehicle.msrp_options && (<div><p className="text-sm text-text-mute">{t('detail.misc.options')}</p><Mono size="sm" className="block">{formatCurrency(vehicle.msrp_options, { currencyCode, locale })}</Mono></div>)}
+                {vehicle.destination_charge && (<div><p className="text-sm text-text-mute">{t('detail.misc.destination')}</p><Mono size="sm" className="block">{formatCurrency(vehicle.destination_charge, { currencyCode, locale })}</Mono></div>)}
+                {vehicle.msrp_total && (<div><p className="text-sm text-text-mute">{t('detail.misc.totalMsrp')}</p><Mono size="lg" weight="semibold" className="block">{formatCurrency(vehicle.msrp_total, { currencyCode, locale })}</Mono></div>)}
               </div>
-              <div>
-                <p className="text-sm text-text-mute"><span>{t('detail.misc.salePrice')}</span></p>
-                <Mono size="sm" className="mt-1 block">{formatCurrency(vehicle.sold_price, { currencyCode, locale, fallback: t('detail.notSpecified') })}</Mono>
-              </div>
-            </>
+            </div>
           )}
         </div>
-        {(vehicle.msrp_base || vehicle.msrp_options || vehicle.msrp_total || vehicle.destination_charge) && (
-          <div className="mt-4 pt-4 border-t border-border">
-            <p className="text-xs font-semibold uppercase tracking-wide text-text-mute mb-3">{t('detail.msrpPricing')}</p>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {vehicle.msrp_base && (<div><p className="text-sm text-text-mute">{t('detail.misc.basePrice')}</p><Mono size="sm" className="block">{formatCurrency(vehicle.msrp_base, { currencyCode, locale })}</Mono></div>)}
-              {vehicle.msrp_options && (<div><p className="text-sm text-text-mute">{t('detail.misc.options')}</p><Mono size="sm" className="block">{formatCurrency(vehicle.msrp_options, { currencyCode, locale })}</Mono></div>)}
-              {vehicle.destination_charge && (<div><p className="text-sm text-text-mute">{t('detail.misc.destination')}</p><Mono size="sm" className="block">{formatCurrency(vehicle.destination_charge, { currencyCode, locale })}</Mono></div>)}
-              {vehicle.msrp_total && (<div><p className="text-sm text-text-mute">{t('detail.misc.totalMsrp')}</p><Mono size="lg" weight="semibold" className="block">{formatCurrency(vehicle.msrp_total, { currencyCode, locale })}</Mono></div>)}
-            </div>
-          </div>
-        )}
       </Card>
 
       {/* Connected Devices (TorqueSource trigger only — P3-done body) */}
