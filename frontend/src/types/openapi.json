@@ -24539,6 +24539,19 @@
               "title": "Vin",
               "type": "string"
             }
+          },
+          {
+            "description": "Unit system for the exported values. Defaults to metric (canonical storage); `imperial` converts distance, volume, price-per-volume and temperature, and renames those columns accordingly.",
+            "in": "query",
+            "name": "units",
+            "required": false,
+            "schema": {
+              "default": "metric",
+              "description": "Unit system for the exported values. Defaults to metric (canonical storage); `imperial` converts distance, volume, price-per-volume and temperature, and renames those columns accordingly.",
+              "pattern": "^(metric|imperial)$",
+              "title": "Units",
+              "type": "string"
+            }
           }
         ],
         "responses": {
@@ -24583,6 +24596,19 @@
             "required": true,
             "schema": {
               "title": "Vin",
+              "type": "string"
+            }
+          },
+          {
+            "description": "Unit system for the exported values. Defaults to metric (canonical storage); `imperial` converts distance, volume, price-per-volume and temperature, and renames those columns accordingly.",
+            "in": "query",
+            "name": "units",
+            "required": false,
+            "schema": {
+              "default": "metric",
+              "description": "Unit system for the exported values. Defaults to metric (canonical storage); `imperial` converts distance, volume, price-per-volume and temperature, and renames those columns accordingly.",
+              "pattern": "^(metric|imperial)$",
+              "title": "Units",
               "type": "string"
             }
           }
@@ -24815,6 +24841,19 @@
               "title": "Vin",
               "type": "string"
             }
+          },
+          {
+            "description": "Unit system for the exported values. Defaults to metric (canonical storage); `imperial` converts distance, volume, price-per-volume and temperature, and renames those columns accordingly.",
+            "in": "query",
+            "name": "units",
+            "required": false,
+            "schema": {
+              "default": "metric",
+              "description": "Unit system for the exported values. Defaults to metric (canonical storage); `imperial` converts distance, volume, price-per-volume and temperature, and renames those columns accordingly.",
+              "pattern": "^(metric|imperial)$",
+              "title": "Units",
+              "type": "string"
+            }
           }
         ],
         "responses": {
@@ -24859,6 +24898,19 @@
             "required": true,
             "schema": {
               "title": "Vin",
+              "type": "string"
+            }
+          },
+          {
+            "description": "Unit system for the exported values. Defaults to metric (canonical storage); `imperial` converts distance, volume, price-per-volume and temperature, and renames those columns accordingly.",
+            "in": "query",
+            "name": "units",
+            "required": false,
+            "schema": {
+              "default": "metric",
+              "description": "Unit system for the exported values. Defaults to metric (canonical storage); `imperial` converts distance, volume, price-per-volume and temperature, and renames those columns accordingly.",
+              "pattern": "^(metric|imperial)$",
+              "title": "Units",
               "type": "string"
             }
           }

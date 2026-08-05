@@ -115,14 +115,18 @@ def _model_column_names(model: type[Any]) -> set[str]:
     return {col.key for col in inspect(model).columns}
 
 
+# Format markers generate_csv_stream() prepends to every export. They describe
+# the file, not the model, so they are stripped before comparing to model attrs.
+_MARKER_COLUMNS = ("units_version", "unit_system")
+
+
 def _csv_headers(body: str) -> list[str]:
     reader = csv.reader(io.StringIO(body))
     full_header = next(reader)
-    # generate_csv_stream() prepends "units_version" to every export.
-    # Strip it before comparing to model attrs.
-    if full_header and full_header[0] == "units_version":
-        return full_header[1:]
-    return full_header
+    index = 0
+    while index < len(full_header) and full_header[index] in _MARKER_COLUMNS:
+        index += 1
+    return full_header[index:]
 
 
 @pytest.mark.integration

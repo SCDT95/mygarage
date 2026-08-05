@@ -106,7 +106,12 @@ export default function FuelRecordList({ vin, onAddClick, onEditClick }: FuelRec
   const handleExportCSV = async () => {
     setExporting(true)
     try {
+      // Export in the units the user actually reads. Storage is
+      // metric-canonical, so without this an imperial account got a
+      // metric file (#128). The backend stamps a `unit_system` column
+      // so re-importing converts back correctly.
       const response = await api.get(`/export/vehicles/${vin}/fuel/csv`, {
+        params: { units: system },
         responseType: 'blob'
       })
 

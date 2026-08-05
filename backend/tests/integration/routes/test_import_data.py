@@ -1171,3 +1171,86 @@ class TestCsvRoundTripPreservesUnits:
         assert float(row.odometer_km) == pytest.approx(500.0, abs=0.01)
         assert float(row.liters) == pytest.approx(40.0, abs=0.01)
         assert float(row.price_per_unit) == pytest.approx(1.5, abs=0.001)
+
+    async def test_imperial_export_round_trips_back_to_the_same_canonical_values(
+        self, client: AsyncClient, auth_headers, test_user, db_session
+    ):
+        """`?units=imperial` must survive a round trip unchanged (#128).
+
+        This is the trap the feature has to avoid: imperial VALUES under a
+        marker that says metric (or vice versa) means re-import either skips a
+        conversion it needed or applies one it didn't. Export writes
+        `unit_system`, and the importer reads it ahead of the schema version.
+        """
+        from datetime import date
+        from decimal import Decimal
+
+        from sqlalchemy import select
+
+        from app.models.fuel import FuelRecord
+        from app.models.vehicle import Vehicle
+
+        vin_a = "IMPEXPSRC00000001"
+        vin_b = "IMPEXPDST00000001"
+        for vin, nick in ((vin_a, "Imp Src"), (vin_b, "Imp Dst")):
+            db_session.add(
+                Vehicle(
+                    vin=vin,
+                    user_id=test_user["id"],
+                    nickname=nick,
+                    vehicle_type="Car",
+                    year=2024,
+                    make="Test",
+                    model="Imp",
+                )
+            )
+        await db_session.commit()
+
+        db_session.add(
+            FuelRecord(
+                vin=vin_a,
+                date=date(2026, 5, 18),
+                odometer_km=Decimal("500.000"),
+                liters=Decimal("40.000"),
+                price_per_unit=Decimal("1.500"),
+                price_basis="per_volume",
+                cost=Decimal("60.00"),
+                is_full_tank=True,
+            )
+        )
+        await db_session.commit()
+
+        export_resp = await client.get(
+            f"/api/export/vehicles/{vin_a}/fuel/csv?units=imperial", headers=auth_headers
+        )
+        assert export_resp.status_code == 200
+        body = export_resp.content.decode()
+
+        # Imperial columns, imperial values, and a marker that says so.
+        header_line, first_row = body.splitlines()[0], body.splitlines()[1]
+        assert "unit_system" in header_line
+        assert "Mileage" in header_line and "Odometer (km)" not in header_line
+        assert "Gallons" in header_line and "Liters" not in header_line
+        assert "Price Per Gallon" in header_line
+        assert "imperial" in first_row
+        # 500 km = 310.69 mi, 40 L = 10.57 gal — the file really is imperial.
+        assert "310.69" in first_row
+        assert "10.57" in first_row
+
+        import_resp = await client.post(
+            f"/api/import/vehicles/{vin_b}/fuel/csv",
+            headers=auth_headers,
+            files={"file": ("fuel.csv", BytesIO(export_resp.content), "text/csv")},
+        )
+        assert import_resp.status_code == 200
+        assert import_resp.json()["success_count"] == 1
+
+        result = await db_session.execute(select(FuelRecord).where(FuelRecord.vin == vin_b))
+        row = result.scalar_one()
+
+        # Back to the canonical values it started from. Tolerances absorb one
+        # round of display rounding, not a missed/duplicated 1.609 or 3.785.
+        assert float(row.odometer_km) == pytest.approx(500.0, abs=0.05)
+        assert float(row.liters) == pytest.approx(40.0, abs=0.05)
+        assert float(row.price_per_unit) == pytest.approx(1.5, abs=0.005)
+        assert float(row.cost) == pytest.approx(60.0, abs=0.01)

@@ -352,8 +352,12 @@ class TestHoursCSVExport:
 
         reader = csv.DictReader(io.StringIO(response.text))
         rows = list(reader)
+        # `unit_system` accompanies `units_version` on every export: the first
+        # is the schema version, the second says which units the values are in.
+        # Hours are dimensionless, so this export is always "metric".
         assert set(reader.fieldnames) == {
             "units_version",
+            "unit_system",
             "Date",
             "Engine Hours",
             "Notes",

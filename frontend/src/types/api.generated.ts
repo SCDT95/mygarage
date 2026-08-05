@@ -16850,7 +16850,10 @@ export interface operations {
     };
     export_def_records_csv_api_export_vehicles__vin__def_csv_get: {
         parameters: {
-            query?: never;
+            query?: {
+                /** @description Unit system for the exported values. Defaults to metric (canonical storage); `imperial` converts distance, volume, price-per-volume and temperature, and renames those columns accordingly. */
+                units?: string;
+            };
             header?: never;
             path: {
                 vin: string;
@@ -16881,7 +16884,10 @@ export interface operations {
     };
     export_fuel_records_csv_api_export_vehicles__vin__fuel_csv_get: {
         parameters: {
-            query?: never;
+            query?: {
+                /** @description Unit system for the exported values. Defaults to metric (canonical storage); `imperial` converts distance, volume, price-per-volume and temperature, and renames those columns accordingly. */
+                units?: string;
+            };
             header?: never;
             path: {
                 vin: string;
@@ -17036,7 +17042,10 @@ export interface operations {
     };
     export_odometer_records_csv_api_export_vehicles__vin__odometer_csv_get: {
         parameters: {
-            query?: never;
+            query?: {
+                /** @description Unit system for the exported values. Defaults to metric (canonical storage); `imperial` converts distance, volume, price-per-volume and temperature, and renames those columns accordingly. */
+                units?: string;
+            };
             header?: never;
             path: {
                 vin: string;
@@ -17067,7 +17076,10 @@ export interface operations {
     };
     export_service_records_csv_api_export_vehicles__vin__service_csv_get: {
         parameters: {
-            query?: never;
+            query?: {
+                /** @description Unit system for the exported values. Defaults to metric (canonical storage); `imperial` converts distance, volume, price-per-volume and temperature, and renames those columns accordingly. */
+                units?: string;
+            };
             header?: never;
             path: {
                 vin: string;

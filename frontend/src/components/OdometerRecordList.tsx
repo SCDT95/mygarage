@@ -36,7 +36,12 @@ export default function OdometerRecordList({ vin, onAddClick, onEditClick }: Odo
   const handleExportCSV = async () => {
     setExporting(true)
     try {
+      // Export in the units the user actually reads. Storage is
+      // metric-canonical, so without this an imperial account got a
+      // metric file (#128). The backend stamps a `unit_system` column
+      // so re-importing converts back correctly.
       const response = await api.get(`/export/vehicles/${vin}/odometer/csv`, {
+        params: { units: system },
         responseType: 'blob'
       })
 
