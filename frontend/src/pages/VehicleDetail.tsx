@@ -711,7 +711,6 @@ export default function VehicleDetail() {
             vehicle={vehicle}
             lastLocation={lastLocation}
             onOpenModal={setOpenModal}
-            onDownloadWindowSticker={handleDownloadWindowSticker}
             onEditPricing={() => setPricingDrawerOpen(true)}
             onEditCard={openFieldsCard}
           />
@@ -829,6 +828,8 @@ export default function VehicleDetail() {
           vehicle={vehicle}
           onClose={() => setEditDrawerOpen(false)}
           onUpdated={setVehicle}
+          onDownloadWindowSticker={handleDownloadWindowSticker}
+          onUploadWindowSticker={() => setOpenModal('windowSticker')}
         />
       )}
 

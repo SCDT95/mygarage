@@ -2,7 +2,8 @@ import { useState, useEffect, useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useForm, type Resolver } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
-import { Save, Droplets, Pencil } from 'lucide-react'
+import { Link } from 'react-router-dom'
+import { Save, Droplets, Pencil, FileText } from 'lucide-react'
 import { toast } from 'sonner'
 import FormModalWrapper from '../FormModalWrapper'
 import { Button, Field, Input, Select, Toggle } from '../ui'
@@ -18,6 +19,9 @@ import { getUsageTracking } from '../../utils/usageTracking'
 /** Vehicles with no engine, VIN-decoded drivetrain, or DEF system. */
 const NON_MOTORIZED_TYPES = ['Trailer', 'FifthWheel', 'TravelTrailer']
 
+/** Only these carry a Monroney label, so only these get the sticker section. */
+const WINDOW_STICKER_TYPES = ['Car', 'Truck', 'SUV']
+
 interface VehicleEditDrawerProps {
   open: boolean
   onClose: () => void
@@ -25,6 +29,10 @@ interface VehicleEditDrawerProps {
   vehicle: Vehicle
   /** Receives the server's updated vehicle after a successful save. */
   onUpdated: (vehicle: Vehicle) => void
+  /** Opens the stored window-sticker PDF (blob download, owned by the parent). */
+  onDownloadWindowSticker: () => void
+  /** Opens the window-sticker upload/OCR drawer, which stacks over this one. */
+  onUploadWindowSticker: () => void
 }
 
 /**
@@ -65,6 +73,8 @@ export default function VehicleEditDrawer({
   vin,
   vehicle,
   onUpdated,
+  onDownloadWindowSticker,
+  onUploadWindowSticker,
 }: VehicleEditDrawerProps) {
   const { t } = useTranslation('vehicles')
   const [defEnabled, setDefEnabled] = useState(false)
@@ -80,6 +90,9 @@ export default function VehicleEditDrawer({
   const { system } = useUnitPreference()
 
   const isMotorized = seedSource ? !NON_MOTORIZED_TYPES.includes(seedSource.vehicle_type) : false
+  const hasWindowSticker = seedSource
+    ? WINDOW_STICKER_TYPES.includes(seedSource.vehicle_type)
+    : false
 
   const {
     register,
@@ -403,6 +416,94 @@ export default function VehicleEditDrawer({
                 </div>
               )}
             </div>
+          </section>
+        )}
+
+        {/* Window Sticker — cars/trucks/SUVs only, moved here from the Overview
+            tab. Read-only display plus two actions; nothing here registers with
+            the form, so the stale-seed null-clearing hazard the DEF section
+            guards against does not apply. That is also why the displayed values
+            come from the `vehicle` prop rather than `seedSource`: the parent
+            refetches into the prop when an upload succeeds, so this section
+            reflects a new sticker immediately instead of waiting for the drawer
+            to be reopened. Only the type gate reads `seedSource`, keeping the
+            rule that every gate in this form follows the fresh seed.
+
+            The two raw <button>s carry an explicit type="button": they sit
+            inside #vehicle-edit-form, whose submit belongs to the footer Save.
+            (The <Button> primitive already defaults to type="button".) */}
+        {hasWindowSticker && (
+          <section>
+            <div className="mb-4 flex items-center justify-between gap-3">
+              <h3 className="flex items-center gap-2 text-lg font-semibold text-text">
+                <FileText className="h-5 w-5" aria-hidden="true" />
+                {t('detail.windowSticker')}
+              </h3>
+              <Link
+                to={`/vehicles/${vin}/window-sticker-test`}
+                className="rounded-control bg-surface-2 px-2 py-1 text-xs text-text-mute transition-colors hover:text-(--accent-fg)"
+              >
+                {t('detail.misc.testOcr')}
+              </Link>
+            </div>
+
+            {vehicle.window_sticker_file_path ? (
+              <div className="space-y-3">
+                <button
+                  type="button"
+                  onClick={onDownloadWindowSticker}
+                  className="w-full cursor-pointer"
+                >
+                  <div className="flex h-20 items-center justify-center gap-3 overflow-hidden rounded-panel border border-border bg-surface-2 transition-colors hover:bg-surface">
+                    <FileText className="h-8 w-8 text-(--accent-fg)" />
+                    <div className="text-left">
+                      <p className="text-sm font-medium text-text">{t('detail.viewWindowSticker')}</p>
+                      <p className="text-xs text-text-mute">{t('detail.clickToOpenPDF')}</p>
+                    </div>
+                  </div>
+                </button>
+                <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-text-faint">
+                  {vehicle.window_sticker_parser_used && (
+                    <span>{t('detail.misc.parser', { parser: vehicle.window_sticker_parser_used })}</span>
+                  )}
+                  {vehicle.window_sticker_confidence_score && (
+                    <span>
+                      {t('detail.misc.confidence', {
+                        score: Number(vehicle.window_sticker_confidence_score).toFixed(0),
+                      })}
+                    </span>
+                  )}
+                  {vehicle.window_sticker_extracted_vin && (
+                    <span
+                      className={
+                        vehicle.window_sticker_extracted_vin === vehicle.vin
+                          ? 'text-success'
+                          : 'text-warning'
+                      }
+                    >
+                      {vehicle.window_sticker_extracted_vin === vehicle.vin
+                        ? `✓ ${t('detail.misc.vinVerified')}`
+                        : `⚠ ${t('detail.misc.vinMismatch')}`}
+                    </span>
+                  )}
+                </div>
+                <button
+                  type="button"
+                  onClick={onUploadWindowSticker}
+                  className="cursor-pointer text-sm text-text-mute transition-colors hover:text-text"
+                >
+                  {t('detail.replaceSticker')}
+                </button>
+              </div>
+            ) : (
+              <div className="rounded-panel border border-dashed border-border py-4 text-center">
+                <FileText className="mx-auto mb-2 h-10 w-10 text-text-mute opacity-50" />
+                <p className="mb-3 text-sm text-text-mute">{t('detail.noWindowSticker')}</p>
+                <Button variant="primary" size="sm" onClick={onUploadWindowSticker}>
+                  {t('detail.uploadWindowSticker')}
+                </Button>
+              </div>
+            )}
           </section>
         )}
       </form>

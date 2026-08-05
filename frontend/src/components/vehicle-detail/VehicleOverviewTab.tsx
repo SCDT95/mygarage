@@ -1,7 +1,6 @@
 import { lazy, Suspense } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Link } from 'react-router-dom'
-import { Calendar, FileText, Radio } from 'lucide-react'
+import { Calendar, Radio } from 'lucide-react'
 import { Card, CardHeader, Mono, Button } from '../ui'
 import CardEditOverlay, { EDITABLE_CARD_CLASS } from './CardEditOverlay'
 import type { VehicleCardKey } from './VehicleFieldsDrawer'
@@ -24,8 +23,7 @@ interface VehicleOverviewTabProps {
   vin: string
   vehicle: Vehicle
   lastLocation: LastLocation | null
-  onOpenModal: (modal: 'torqueSource' | 'windowSticker') => void
-  onDownloadWindowSticker: () => void
+  onOpenModal: (modal: 'torqueSource') => void
   /** Opens the pricing editor sidecar. Omitted → the Pricing card is read-only. */
   onEditPricing?: () => void
   /** Opens the shared field editor sidecar for an info card (basic / details /
@@ -39,7 +37,7 @@ interface VehicleOverviewTabProps {
  * read-only collapsible card here.
  */
 export default function VehicleOverviewTab({
-  vin, vehicle, lastLocation, onOpenModal, onDownloadWindowSticker, onEditPricing, onEditCard,
+  vin, vehicle, lastLocation, onOpenModal, onEditPricing, onEditCard,
 }: VehicleOverviewTabProps) {
   const { t } = useTranslation('vehicles')
   const { system: unitSystem } = useUnitPreference()
@@ -298,53 +296,6 @@ export default function VehicleOverviewTab({
         </Card>
       )}
 
-      {/* Window Sticker — cars/trucks/SUVs only. No OCR Badge (would be new hardcoded
-          copy) and no drop-zone (never existed); upload is a single Button. */}
-      {vehicle.vehicle_type && ['Car', 'Truck', 'SUV'].includes(vehicle.vehicle_type) && (
-        <Card breakInside>
-          <CardHeader
-            title={t('detail.windowSticker')}
-            actions={
-              <Link to={`/vehicles/${vin}/window-sticker-test`} className="rounded-control bg-surface-2 px-2 py-1 text-xs text-text-mute hover:text-(--accent-fg) transition-colors">
-                {t('detail.misc.testOcr')}
-              </Link>
-            }
-          />
-          {vehicle.window_sticker_file_path ? (
-            <div className="space-y-3">
-              <button onClick={onDownloadWindowSticker} className="w-full cursor-pointer">
-                <div className="h-20 rounded-panel border border-border bg-surface-2 overflow-hidden flex items-center justify-center gap-3 hover:bg-surface transition-colors">
-                  <FileText className="w-8 h-8 text-(--accent-fg)" />
-                  <div className="text-left">
-                    <p className="text-sm font-medium text-text">{t('detail.viewWindowSticker')}</p>
-                    <p className="text-xs text-text-mute">{t('detail.clickToOpenPDF')}</p>
-                  </div>
-                </div>
-              </button>
-              <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-text-faint">
-                {vehicle.window_sticker_parser_used && (<span>{t('detail.misc.parser', { parser: vehicle.window_sticker_parser_used })}</span>)}
-                {vehicle.window_sticker_confidence_score && (<span>{t('detail.misc.confidence', { score: Number(vehicle.window_sticker_confidence_score).toFixed(0) })}</span>)}
-                {vehicle.window_sticker_extracted_vin && (
-                  <span className={vehicle.window_sticker_extracted_vin === vehicle.vin ? 'text-success' : 'text-warning'}>
-                    {vehicle.window_sticker_extracted_vin === vehicle.vin ? `✓ ${t('detail.misc.vinVerified')}` : `⚠ ${t('detail.misc.vinMismatch')}`}
-                  </span>
-                )}
-              </div>
-              <button onClick={() => onOpenModal('windowSticker')} className="text-sm text-text-mute hover:text-text transition-colors cursor-pointer">
-                {t('detail.replaceSticker')}
-              </button>
-            </div>
-          ) : (
-            <div className="text-center py-4">
-              <FileText className="w-10 h-10 text-text-mute mx-auto mb-2 opacity-50" />
-              <p className="text-sm text-text-mute mb-3">{t('detail.noWindowSticker')}</p>
-              <Button variant="primary" size="sm" onClick={() => onOpenModal('windowSticker')}>
-                {t('detail.uploadWindowSticker')}
-              </Button>
-            </div>
-          )}
-        </Card>
-      )}
     </div>
   )
 }

@@ -1,5 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
+import type { ComponentProps } from 'react'
 import { render, screen, fireEvent, waitFor } from '@testing-library/react'
+import { MemoryRouter } from 'react-router-dom'
 import { FUEL_TYPE_VALUES } from '../../../constants/fuel'
 import type { Vehicle, VehicleDetailStats } from '../../../types/vehicle'
 
@@ -55,6 +57,30 @@ const baseDetailStats: VehicleDetailStats = {
   year: 2024,
 }
 
+type DrawerProps = ComponentProps<typeof VehicleEditDrawer>
+type StickerProps = 'onDownloadWindowSticker' | 'onUploadWindowSticker'
+
+/**
+ * Every render site goes through this. Two reasons it exists rather than each
+ * test constructing the element inline: the window-sticker section renders a
+ * react-router <Link>, so a bare render() throws "useHref() may be used only in
+ * the context of a <Router>"; and the two sticker callbacks are required props
+ * that almost no test cares about. Both are defaulted here and overridable.
+ */
+function drawerEl(
+  props: Omit<DrawerProps, StickerProps> & Partial<Pick<DrawerProps, StickerProps>>,
+) {
+  return (
+    <MemoryRouter>
+      <VehicleEditDrawer
+        onDownloadWindowSticker={vi.fn()}
+        onUploadWindowSticker={vi.fn()}
+        {...props}
+      />
+    </MemoryRouter>
+  )
+}
+
 // The drawer seeds from a fresh GET /vehicles/{vin} (not the possibly-stale
 // `vehicle` prop — see the lost-update fix) in parallel with detail-stats, so
 // the api mock discriminates by URL: detail-stats gets `detailStats`,
@@ -71,15 +97,7 @@ function renderVehicleEdit(vehicle: Vehicle, detailStats: VehicleDetailStats = b
   })
   const onClose = vi.fn()
   const onUpdated = vi.fn()
-  render(
-    <VehicleEditDrawer
-      open
-      vin={vehicle.vin}
-      vehicle={vehicle}
-      onClose={onClose}
-      onUpdated={onUpdated}
-    />,
-  )
+  render(drawerEl({ open: true, vin: vehicle.vin, vehicle, onClose, onUpdated }))
   return { onClose, onUpdated }
 }
 
@@ -373,7 +391,7 @@ describe('VehicleEditDrawer — seeds from a fresh fetch, not the stale prop', (
       return Promise.resolve({ data: fresh })
     })
     render(
-      <VehicleEditDrawer open vin={stale.vin} vehicle={stale} onClose={vi.fn()} onUpdated={vi.fn()} />,
+      drawerEl({ open: true, vin: stale.vin, vehicle: stale, onClose: vi.fn(), onUpdated: vi.fn() }),
     )
     const nickname = (await screen.findByLabelText('edit.nickname *')) as HTMLInputElement
     await waitFor(() => expect(nickname.value).toBe('Fresh Name'))
@@ -393,7 +411,7 @@ describe('VehicleEditDrawer — seeds from a fresh fetch, not the stale prop', (
       return Promise.resolve({ data: freshNonMotorized })
     })
     render(
-      <VehicleEditDrawer open vin={staleProp.vin} vehicle={staleProp as Vehicle} onClose={vi.fn()} onUpdated={vi.fn()} />,
+      drawerEl({ open: true, vin: staleProp.vin, vehicle: staleProp as Vehicle, onClose: vi.fn(), onUpdated: vi.fn() }),
     )
     await screen.findByLabelText('edit.nickname *')
     expect(screen.queryByLabelText('edit.enableDefTracking')).not.toBeInTheDocument()
@@ -461,7 +479,7 @@ describe('VehicleEditDrawer — conversion behaviour', () => {
       return Promise.resolve({ data: baseVehicle })
     })
     const { rerender } = render(
-      <VehicleEditDrawer open vin={baseVehicle.vin} vehicle={baseVehicle} onClose={vi.fn()} onUpdated={vi.fn()} />,
+      drawerEl({ open: true, vin: baseVehicle.vin, vehicle: baseVehicle, onClose: vi.fn(), onUpdated: vi.fn() }),
     )
 
     const nickname = (await screen.findByLabelText('edit.nickname *')) as HTMLInputElement
@@ -470,10 +488,10 @@ describe('VehicleEditDrawer — conversion behaviour', () => {
 
     // Close, then reopen — the same mount, exactly what VehicleDetail does.
     rerender(
-      <VehicleEditDrawer open={false} vin={baseVehicle.vin} vehicle={baseVehicle} onClose={vi.fn()} onUpdated={vi.fn()} />,
+      drawerEl({ open: false, vin: baseVehicle.vin, vehicle: baseVehicle, onClose: vi.fn(), onUpdated: vi.fn() }),
     )
     rerender(
-      <VehicleEditDrawer open vin={baseVehicle.vin} vehicle={baseVehicle} onClose={vi.fn()} onUpdated={vi.fn()} />,
+      drawerEl({ open: true, vin: baseVehicle.vin, vehicle: baseVehicle, onClose: vi.fn(), onUpdated: vi.fn() }),
     )
 
     await waitFor(() => {
@@ -535,5 +553,134 @@ describe('VehicleEditDrawer — conversion behaviour', () => {
       'usage_unit',
       'vehicle_type',
     ])
+  })
+})
+
+describe('VehicleEditDrawer — window sticker section', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+  })
+
+  const withSticker = {
+    ...baseVehicle,
+    window_sticker_file_path: '/data/stickers/TEST12345678901234.pdf',
+    window_sticker_parser_used: 'tesseract',
+    window_sticker_confidence_score: 91.4,
+    window_sticker_extracted_vin: baseVehicle.vin,
+  } as unknown as Vehicle
+
+  it('renders the upload prompt for a sticker-bearing type with no file on record', async () => {
+    renderVehicleEdit(baseVehicle)
+    await screen.findByLabelText('edit.nickname *')
+
+    expect(screen.getByRole('heading', { name: 'detail.windowSticker' })).toBeInTheDocument()
+    expect(screen.getByText('detail.noWindowSticker')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'detail.uploadWindowSticker' })).toBeInTheDocument()
+    expect(screen.queryByText('detail.viewWindowSticker')).not.toBeInTheDocument()
+  })
+
+  it('renders the view tile, OCR metadata and replace action when a sticker exists', async () => {
+    renderVehicleEdit(withSticker)
+    await screen.findByLabelText('edit.nickname *')
+
+    expect(screen.getByText('detail.viewWindowSticker')).toBeInTheDocument()
+    expect(screen.getByText('detail.clickToOpenPDF')).toBeInTheDocument()
+    expect(screen.getByText('detail.misc.parser')).toBeInTheDocument()
+    expect(screen.getByText('detail.misc.confidence')).toBeInTheDocument()
+    // extracted VIN matches the vehicle's, so this is the verified variant.
+    expect(screen.getByText('✓ detail.misc.vinVerified')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'detail.replaceSticker' })).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'detail.uploadWindowSticker' })).not.toBeInTheDocument()
+  })
+
+  it('flags a mismatch when the extracted VIN is not the vehicle VIN', async () => {
+    renderVehicleEdit({ ...withSticker, window_sticker_extracted_vin: 'OTHER00000000000000' } as Vehicle)
+    await screen.findByLabelText('edit.nickname *')
+
+    expect(screen.getByText('⚠ detail.misc.vinMismatch')).toBeInTheDocument()
+    expect(screen.queryByText('✓ detail.misc.vinVerified')).not.toBeInTheDocument()
+  })
+
+  it('hides the whole section for a type that has no Monroney label', async () => {
+    renderVehicleEdit({ ...baseVehicle, vehicle_type: 'Trailer' } as Vehicle)
+    await screen.findByLabelText('edit.nickname *')
+
+    expect(screen.queryByRole('heading', { name: 'detail.windowSticker' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'detail.uploadWindowSticker' })).not.toBeInTheDocument()
+  })
+
+  it('gates the section on the FRESH vehicle type, not the possibly-stale prop', async () => {
+    // Same stale-prop hazard the DEF section guards against: the prop is an
+    // offline cache saying Car, the server says Trailer.
+    const staleProp = { ...baseVehicle, vehicle_type: 'Car' } as Vehicle
+    mockedApi.get.mockImplementation((url: string) => {
+      if (url.includes('detail-stats')) return Promise.resolve({ data: baseDetailStats })
+      return Promise.resolve({ data: { ...baseVehicle, vehicle_type: 'Trailer' } })
+    })
+    render(drawerEl({ open: true, vin: staleProp.vin, vehicle: staleProp, onClose: vi.fn(), onUpdated: vi.fn() }))
+    await screen.findByLabelText('edit.nickname *')
+
+    expect(screen.queryByRole('heading', { name: 'detail.windowSticker' })).not.toBeInTheDocument()
+  })
+
+  it('reads the sticker file/metadata from the PROP, so a fresh upload shows without reopening', async () => {
+    // Deliberate asymmetry with the gate above: the parent refetches into the
+    // `vehicle` prop when an upload succeeds, but `seedSource` is a one-shot
+    // snapshot taken when the drawer opened. Reading display values from
+    // seedSource would leave the section saying "no window sticker" directly
+    // after a successful upload. Nothing here registers with the form, so the
+    // stale-seed null-clearing hazard does not apply.
+    mockedApi.get.mockImplementation((url: string) => {
+      if (url.includes('detail-stats')) return Promise.resolve({ data: baseDetailStats })
+      // The seed source has NO sticker; the prop does.
+      return Promise.resolve({ data: baseVehicle })
+    })
+    render(drawerEl({ open: true, vin: withSticker.vin, vehicle: withSticker, onClose: vi.fn(), onUpdated: vi.fn() }))
+    await screen.findByLabelText('edit.nickname *')
+
+    expect(screen.getByText('detail.viewWindowSticker')).toBeInTheDocument()
+  })
+
+  it('wires the two actions to their callbacks without submitting the settings form', async () => {
+    const onDownloadWindowSticker = vi.fn()
+    const onUploadWindowSticker = vi.fn()
+    mockedApi.get.mockImplementation((url: string) => {
+      if (url.includes('detail-stats')) return Promise.resolve({ data: baseDetailStats })
+      return Promise.resolve({ data: withSticker })
+    })
+    render(
+      drawerEl({
+        open: true,
+        vin: withSticker.vin,
+        vehicle: withSticker,
+        onClose: vi.fn(),
+        onUpdated: vi.fn(),
+        onDownloadWindowSticker,
+        onUploadWindowSticker,
+      }),
+    )
+    await screen.findByLabelText('edit.nickname *')
+
+    const view = screen.getByText('detail.viewWindowSticker').closest('button')!
+    const replace = screen.getByRole('button', { name: 'detail.replaceSticker' })
+
+    // Asserted on the attribute, not inferred from "no PUT happened": both
+    // buttons live inside #vehicle-edit-form, so without an explicit
+    // type="button" they are SUBMIT buttons and every click saves the vehicle.
+    // A post-click `expect(put).not.toHaveBeenCalled()` cannot catch that —
+    // react-hook-form validates asynchronously, so the PUT lands after the
+    // assertion and the test passes either way (verified by sabotage).
+    expect(view).toHaveAttribute('type', 'button')
+    expect(replace).toHaveAttribute('type', 'button')
+
+    fireEvent.click(view)
+    expect(onDownloadWindowSticker).toHaveBeenCalledTimes(1)
+
+    fireEvent.click(replace)
+    expect(onUploadWindowSticker).toHaveBeenCalledTimes(1)
+
+    // Belt-and-braces, now that it can actually observe a submit: flush the
+    // async validation both clicks would have kicked off.
+    await waitFor(() => expect(mockedApi.put).not.toHaveBeenCalled())
   })
 })

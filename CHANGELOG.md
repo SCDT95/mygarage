@@ -30,7 +30,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - LiveLink settings now open in a slide-in sidecar instead of a centred modal, with every checkbox replaced by a toggle switch.
 - Settings → Notifications: each provider's enable control and every per-event notification are now toggle switches, and the event groups are always expanded instead of hidden behind an accordion.
 - Editing a vehicle now opens a slide-in sidecar from the vehicle page instead of a separate full-page form, and saving returns you straight to the vehicle without a page reload.
-- The vehicle "Edit" panel is now "Vehicle Settings" and holds only the settings the info cards don't cover — nickname, type, usage tracking, fuel type and DEF; everything else is edited by clicking the card that shows it.
+- The vehicle "Edit" panel is now "Vehicle Settings" and holds only the settings the info cards don't cover — nickname, type, usage tracking, fuel type, DEF and the window sticker; everything else is edited by clicking the card that shows it.
+- The window sticker moved off the vehicle Overview into Vehicle Settings, and uploading one now opens a slide-in sidecar instead of a centred modal.
 - Vehicle Details, Powertrain and Warranty cards now appear even when empty, so their fields can be filled in on a vehicle whose VIN didn't decode.
 
 ### Removed
