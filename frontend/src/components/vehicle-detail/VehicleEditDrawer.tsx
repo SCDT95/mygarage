@@ -5,7 +5,7 @@ import { zodResolver } from '@hookform/resolvers/zod'
 import { Save, Droplets, Pencil } from 'lucide-react'
 import { toast } from 'sonner'
 import FormModalWrapper from '../FormModalWrapper'
-import { Button, Checkbox, Field, Input, Select } from '../ui'
+import { Button, Field, Input, Select, Toggle } from '../ui'
 import vehicleService from '../../services/vehicleService'
 import type { Vehicle, VehicleUpdate } from '../../types/vehicle'
 import { vehicleEditSchema, type VehicleEditFormData, VEHICLE_TYPES } from '../../schemas/vehicle'
@@ -108,7 +108,7 @@ export default function VehicleEditDrawer({
   // server's diesel-only DEF capacity rule.
   const isDieselSelected = isDieselFuelType(watchedFuelType)
 
-  // Shared by the "Enable DEF Tracking" checkbox and the "Clear DEF Tank
+  // Shared by the "Enable DEF Tracking" toggle and the "Clear DEF Tank
   // Capacity" hint button — both turn tracking off and drop any stored value.
   const clearDefTracking = () => {
     setDefEnabled(false)
@@ -301,10 +301,18 @@ export default function VehicleEditDrawer({
             </Field>
 
             <div className="mb-4 flex items-end">
-              <Checkbox
+              {/* Toggle, not Checkbox: this is a single on/off setting, which is
+                  the distinction the primitives draw (Checkbox is for picking
+                  items from a set). Toggle is controlled-only — it takes
+                  `checked`/`onChange(next)` and cannot accept a register()
+                  spread — so it is wired through watch/setValue instead. */}
+              <Toggle
                 id="secondary_usage_enabled"
-                {...register('secondary_usage_enabled')}
+                checked={!!watch('secondary_usage_enabled')}
                 disabled={isSubmitting}
+                onChange={(next) =>
+                  setValue('secondary_usage_enabled', next, { shouldDirty: true })
+                }
                 label={
                   watch('usage_unit') === 'hours'
                     ? t('edit.alsoTrackDistance')
@@ -342,12 +350,12 @@ export default function VehicleEditDrawer({
               {t('edit.defTracking')}
             </h3>
             <div className="space-y-4">
-              <Checkbox
+              <Toggle
                 id="def_enabled"
                 checked={defEnabled}
                 disabled={isSubmitting}
-                onChange={(e) => {
-                  if (e.target.checked) setDefEnabled(true)
+                onChange={(next) => {
+                  if (next) setDefEnabled(true)
                   else clearDefTracking()
                 }}
                 label={t('edit.enableDefTracking')}
