@@ -3,7 +3,7 @@ import { useTranslation } from 'react-i18next'
 import { useForm, type Resolver } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { Link } from 'react-router-dom'
-import { Save, Droplets, Pencil, FileText } from 'lucide-react'
+import { Save, Droplets, Pencil, FileText, Radio } from 'lucide-react'
 import { toast } from 'sonner'
 import FormModalWrapper from '../FormModalWrapper'
 import { Button, Field, Input, Select, Toggle } from '../ui'
@@ -33,6 +33,8 @@ interface VehicleEditDrawerProps {
   onDownloadWindowSticker: () => void
   /** Opens the window-sticker upload/OCR drawer, which stacks over this one. */
   onUploadWindowSticker: () => void
+  /** Opens the per-vehicle Torque Pro source drawer, which stacks over this one. */
+  onManageTorqueSources: () => void
 }
 
 /**
@@ -75,6 +77,7 @@ export default function VehicleEditDrawer({
   onUpdated,
   onDownloadWindowSticker,
   onUploadWindowSticker,
+  onManageTorqueSources,
 }: VehicleEditDrawerProps) {
   const { t } = useTranslation('vehicles')
   const [defEnabled, setDefEnabled] = useState(false)
@@ -506,6 +509,30 @@ export default function VehicleEditDrawer({
             )}
           </section>
         )}
+
+        {/* Connected Devices — moved off the Overview tab, where it was a whole
+            masonry card spending its entire body on one description line and
+            one launch button. Deliberately ungated on vehicle type, exactly as
+            that card was: a Torque source is revoked through the same drawer it
+            is created in, so hiding the launcher for (say) a trailer would
+            strand any source already registered against one. */}
+        <section>
+          <h3 className="mb-4 flex items-center gap-2 text-lg font-semibold text-text">
+            <Radio className="h-5 w-5" aria-hidden="true" />
+            {t('detail.connectedDevices')}
+          </h3>
+          <div className="flex items-center justify-between gap-4">
+            <p className="text-sm text-text-mute">{t('forms:modal.torque.description')}</p>
+            <Button
+              variant="secondary"
+              icon={Radio}
+              onClick={onManageTorqueSources}
+              title={t('forms:modal.torque.launchButtonTooltip')}
+            >
+              {t('forms:modal.torque.launchButton')}
+            </Button>
+          </div>
+        </section>
       </form>
       )}
     </FormModalWrapper>

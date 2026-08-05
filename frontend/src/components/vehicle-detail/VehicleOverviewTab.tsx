@@ -1,7 +1,7 @@
 import { lazy, Suspense } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Calendar, Radio } from 'lucide-react'
-import { Card, CardHeader, Mono, Button } from '../ui'
+import { Calendar } from 'lucide-react'
+import { Card, CardHeader, Mono } from '../ui'
 import CardEditOverlay, { EDITABLE_CARD_CLASS } from './CardEditOverlay'
 import type { VehicleCardKey } from './VehicleFieldsDrawer'
 import type { Vehicle } from '../../types/vehicle'
@@ -23,7 +23,6 @@ interface VehicleOverviewTabProps {
   vin: string
   vehicle: Vehicle
   lastLocation: LastLocation | null
-  onOpenModal: (modal: 'torqueSource') => void
   /** Opens the pricing editor sidecar. Omitted → the Pricing card is read-only. */
   onEditPricing?: () => void
   /** Opens the shared field editor sidecar for an info card (basic / details /
@@ -37,7 +36,7 @@ interface VehicleOverviewTabProps {
  * read-only collapsible card here.
  */
 export default function VehicleOverviewTab({
-  vin, vehicle, lastLocation, onOpenModal, onEditPricing, onEditCard,
+  vin, vehicle, lastLocation, onEditPricing, onEditCard,
 }: VehicleOverviewTabProps) {
   const { t } = useTranslation('vehicles')
   const { system: unitSystem } = useUnitPreference()
@@ -211,17 +210,6 @@ export default function VehicleOverviewTab({
               </div>
             </div>
           )}
-        </div>
-      </Card>
-
-      {/* Connected Devices (TorqueSource trigger only — P3-done body) */}
-      <Card breakInside>
-        <CardHeader title={t('detail.connectedDevices')} />
-        <div className="flex items-center justify-between gap-4">
-          <p className="text-sm text-text-mute">{t('forms:modal.torque.description')}</p>
-          <Button variant="primary" icon={Radio} onClick={() => onOpenModal('torqueSource')} title={t('forms:modal.torque.launchButtonTooltip')}>
-            {t('forms:modal.torque.launchButton')}
-          </Button>
         </div>
       </Card>
 

@@ -128,6 +128,10 @@ export default function TorqueSourceModal({ vin, isOpen, onClose }: TorqueSource
       title={t('modal.torque.title')}
       icon={Radio}
       width="md"
+      // Always launched from the Vehicle Settings sidecar, so it is always one
+      // rung deeper: +10 on the z ladder, and Escape isolated so closing this
+      // does not also close the settings drawer underneath it.
+      nested
       closeLabel={t('common:close')}
       footer={
         <button

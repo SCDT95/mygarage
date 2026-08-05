@@ -35,7 +35,6 @@ function renderTab(vehicle: Vehicle, onEditCard = vi.fn()) {
       vin={vehicle.vin}
       vehicle={vehicle}
       lastLocation={null}
-      onOpenModal={vi.fn()}
       onEditPricing={vi.fn()}
       onEditCard={onEditCard}
     />,

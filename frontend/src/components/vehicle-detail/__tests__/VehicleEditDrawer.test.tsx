@@ -58,23 +58,25 @@ const baseDetailStats: VehicleDetailStats = {
 }
 
 type DrawerProps = ComponentProps<typeof VehicleEditDrawer>
-type StickerProps = 'onDownloadWindowSticker' | 'onUploadWindowSticker'
+/** The three launcher callbacks — required props almost no test cares about. */
+type LauncherProps = 'onDownloadWindowSticker' | 'onUploadWindowSticker' | 'onManageTorqueSources'
 
 /**
  * Every render site goes through this. Two reasons it exists rather than each
  * test constructing the element inline: the window-sticker section renders a
  * react-router <Link>, so a bare render() throws "useHref() may be used only in
- * the context of a <Router>"; and the two sticker callbacks are required props
- * that almost no test cares about. Both are defaulted here and overridable.
+ * the context of a <Router>"; and the launcher callbacks are required props
+ * that almost no test cares about. All are defaulted here and overridable.
  */
 function drawerEl(
-  props: Omit<DrawerProps, StickerProps> & Partial<Pick<DrawerProps, StickerProps>>,
+  props: Omit<DrawerProps, LauncherProps> & Partial<Pick<DrawerProps, LauncherProps>>,
 ) {
   return (
     <MemoryRouter>
       <VehicleEditDrawer
         onDownloadWindowSticker={vi.fn()}
         onUploadWindowSticker={vi.fn()}
+        onManageTorqueSources={vi.fn()}
         {...props}
       />
     </MemoryRouter>
@@ -682,5 +684,54 @@ describe('VehicleEditDrawer — window sticker section', () => {
     // Belt-and-braces, now that it can actually observe a submit: flush the
     // async validation both clicks would have kicked off.
     await waitFor(() => expect(mockedApi.put).not.toHaveBeenCalled())
+  })
+})
+
+describe('VehicleEditDrawer — connected devices (Torque sources)', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+  })
+
+  it('renders the launcher and wires it without submitting the settings form', async () => {
+    const onManageTorqueSources = vi.fn()
+    mockedApi.get.mockImplementation((url: string) => {
+      if (url.includes('detail-stats')) return Promise.resolve({ data: baseDetailStats })
+      return Promise.resolve({ data: baseVehicle })
+    })
+    render(
+      drawerEl({
+        open: true,
+        vin: baseVehicle.vin,
+        vehicle: baseVehicle,
+        onClose: vi.fn(),
+        onUpdated: vi.fn(),
+        onManageTorqueSources,
+      }),
+    )
+    await screen.findByLabelText('edit.nickname *')
+
+    expect(screen.getByRole('heading', { name: 'detail.connectedDevices' })).toBeInTheDocument()
+    const launch = screen.getByRole('button', { name: 'forms:modal.torque.launchButton' })
+    // Inside #vehicle-edit-form: a submit-typed button here would PUT the
+    // vehicle on every click. The <Button> primitive defaults to "button" —
+    // this pins that it stays that way.
+    expect(launch).toHaveAttribute('type', 'button')
+
+    fireEvent.click(launch)
+    expect(onManageTorqueSources).toHaveBeenCalledTimes(1)
+    await waitFor(() => expect(mockedApi.put).not.toHaveBeenCalled())
+  })
+
+  it('stays visible for a non-motorized vehicle, so an existing source can still be revoked', async () => {
+    // Deliberately ungated on vehicle type, matching the Overview card it
+    // replaced. Sources are revoked through the same drawer they are created
+    // in, so hiding the launcher would strand any source already registered
+    // against a trailer — there would be no other way to reach it.
+    renderVehicleEdit({ ...baseVehicle, vehicle_type: 'Trailer' } as Vehicle)
+    await screen.findByLabelText('edit.nickname *')
+
+    expect(screen.getByRole('heading', { name: 'detail.connectedDevices' })).toBeInTheDocument()
+    // The type-gated neighbours are correctly absent on the same vehicle.
+    expect(screen.queryByRole('heading', { name: 'detail.windowSticker' })).not.toBeInTheDocument()
   })
 })

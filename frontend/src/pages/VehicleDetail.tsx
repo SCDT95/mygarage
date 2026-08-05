@@ -710,7 +710,6 @@ export default function VehicleDetail() {
             vin={vin!}
             vehicle={vehicle}
             lastLocation={lastLocation}
-            onOpenModal={setOpenModal}
             onEditPricing={() => setPricingDrawerOpen(true)}
             onEditCard={openFieldsCard}
           />
@@ -830,6 +829,7 @@ export default function VehicleDetail() {
           onUpdated={setVehicle}
           onDownloadWindowSticker={handleDownloadWindowSticker}
           onUploadWindowSticker={() => setOpenModal('windowSticker')}
+          onManageTorqueSources={() => setOpenModal('torqueSource')}
         />
       )}
 
