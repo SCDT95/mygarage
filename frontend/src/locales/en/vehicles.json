@@ -194,6 +194,7 @@
       "title": "Edit {{section}}",
       "saveError": "Couldn't save changes. Please try again."
     },
+    "cardEmpty": "Nothing recorded yet",
     "noWindowSticker": "No window sticker uploaded",
     "notSpecified": "Not specified",
     "offlineCachedData": "Offline: showing cached data",

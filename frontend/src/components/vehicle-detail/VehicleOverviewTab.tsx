@@ -53,6 +53,22 @@ export default function VehicleOverviewTab({
     vehicle.vehicle_type &&
     !['Trailer', 'FifthWheel', 'TravelTrailer'].includes(vehicle.vehicle_type)
 
+  // "Has anything" flags for the three VIN-decode-populated cards. When false,
+  // the card still renders (so it stays clickable via the edit overlay below)
+  // but shows a one-line empty state instead of the field grid.
+  const hasDetails = Boolean(
+    vehicle.trim || vehicle.body_class || vehicle.drive_type || vehicle.doors ||
+    vehicle.gvwr_class || vehicle.wheel_specs || vehicle.tire_specs ||
+    (!isMotorized && vehicle.fuel_type),
+  )
+  const hasPowertrain = Boolean(
+    vehicle.displacement_l || vehicle.cylinders || vehicle.fuel_type ||
+    vehicle.sticker_engine_description || vehicle.transmission_type ||
+    vehicle.transmission_speeds || vehicle.sticker_transmission_description ||
+    vehicle.sticker_drivetrain,
+  )
+  const hasWarranty = Boolean(vehicle.warranty_basic || vehicle.warranty_powertrain)
+
   const formatDate = (dateString?: string | null) => {
     if (!dateString) return t('detail.notSpecified')
     return formatDateForDisplay(dateString, { year: 'numeric', month: 'long', day: 'numeric' }, dateLocale)
@@ -91,10 +107,10 @@ export default function VehicleOverviewTab({
       </Card>
 
       {/* Vehicle Details (VIN-decoded) */}
-      {(vehicle.trim || vehicle.body_class || vehicle.drive_type || vehicle.doors || vehicle.gvwr_class || vehicle.wheel_specs || vehicle.tire_specs || (!isMotorized && vehicle.fuel_type)) && (
-        <Card breakInside className={onEditCard ? EDITABLE_CARD_CLASS : ''}>
-          {editOverlay('details', 'detail.vehicleDetails')}
-          <CardHeader title={t('detail.vehicleDetails')} />
+      <Card breakInside className={onEditCard ? EDITABLE_CARD_CLASS : ''}>
+        {editOverlay('details', 'detail.vehicleDetails')}
+        <CardHeader title={t('detail.vehicleDetails')} />
+        {hasDetails ? (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {vehicle.trim && (<div><p className="text-sm text-text-mute">{t('edit.trim')}</p><p className="font-medium text-text">{vehicle.trim}</p></div>)}
             {vehicle.body_class && (<div><p className="text-sm text-text-mute">{t('edit.bodyClass')}</p><p className="font-medium text-text">{vehicle.body_class}</p></div>)}
@@ -105,34 +121,40 @@ export default function VehicleOverviewTab({
             {vehicle.tire_specs && (<div><p className="text-sm text-text-mute">{t('detail.misc.tires')}</p><Mono size="sm" className="block">{vehicle.tire_specs}</Mono></div>)}
             {!isMotorized && vehicle.fuel_type && (<div><p className="text-sm text-text-mute">{t('edit.fuelType')}</p><p className="font-medium text-text">{t(`forms:fuel.fuelTypes.${vehicle.fuel_type}`, { defaultValue: vehicle.fuel_type })}</p></div>)}
           </div>
-        </Card>
-      )}
+        ) : (
+          <p className="text-sm text-text-mute">{t('detail.cardEmpty')}</p>
+        )}
+      </Card>
 
       {/* Powertrain (motorized only) */}
-      {isMotorized && (vehicle.displacement_l || vehicle.cylinders || vehicle.fuel_type || vehicle.sticker_engine_description || vehicle.transmission_type || vehicle.transmission_speeds || vehicle.sticker_transmission_description || vehicle.sticker_drivetrain) && (
+      {isMotorized && (
         <Card breakInside className={onEditCard ? EDITABLE_CARD_CLASS : ''}>
           {editOverlay('powertrain', 'detail.powertrain')}
           <CardHeader title={t('detail.powertrain')} />
-          <div className="space-y-3">
-            {(vehicle.displacement_l || vehicle.cylinders || vehicle.fuel_type || vehicle.sticker_engine_description) && (
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {vehicle.sticker_engine_description && (<div className="md:col-span-2"><p className="text-sm text-text-mute">{t('detail.misc.engine')}</p><p className="font-medium text-text">{vehicle.sticker_engine_description}</p></div>)}
-                {vehicle.displacement_l && (<div><p className="text-sm text-text-mute">{t('detail.misc.displacement')}</p><Mono size="sm" className="block">{t('detail.misc.displacementLiters', { value: vehicle.displacement_l })}</Mono></div>)}
-                {vehicle.cylinders && (<div><p className="text-sm text-text-mute">{t('edit.cylinders')}</p><Mono size="sm" className="block">{vehicle.cylinders}</Mono></div>)}
-                {vehicle.fuel_type && (<div><p className="text-sm text-text-mute">{t('edit.fuelType')}</p><p className="font-medium text-text">{t(`forms:fuel.fuelTypes.${vehicle.fuel_type}`, { defaultValue: vehicle.fuel_type })}</p></div>)}
-              </div>
-            )}
-            {(vehicle.transmission_type || vehicle.transmission_speeds || vehicle.sticker_transmission_description) && (
-              <div className={(vehicle.displacement_l || vehicle.cylinders || vehicle.fuel_type || vehicle.sticker_engine_description) ? 'pt-3 border-t border-border' : ''}>
+          {hasPowertrain ? (
+            <div className="space-y-3">
+              {(vehicle.displacement_l || vehicle.cylinders || vehicle.fuel_type || vehicle.sticker_engine_description) && (
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {vehicle.sticker_transmission_description && (<div className="md:col-span-2"><p className="text-sm text-text-mute">{t('detail.misc.transmission')}</p><p className="font-medium text-text">{vehicle.sticker_transmission_description}</p></div>)}
-                  {vehicle.transmission_type && (<div><p className="text-sm text-text-mute">{t('detail.misc.type')}</p><p className="font-medium text-text">{vehicle.transmission_type}</p></div>)}
-                  {vehicle.transmission_speeds && (<div><p className="text-sm text-text-mute">{t('detail.misc.speeds')}</p><Mono size="sm" className="block">{vehicle.transmission_speeds}</Mono></div>)}
-                  {vehicle.sticker_drivetrain && (<div><p className="text-sm text-text-mute">{t('detail.misc.drivetrain')}</p><p className="font-medium text-text">{vehicle.sticker_drivetrain}</p></div>)}
+                  {vehicle.sticker_engine_description && (<div className="md:col-span-2"><p className="text-sm text-text-mute">{t('detail.misc.engine')}</p><p className="font-medium text-text">{vehicle.sticker_engine_description}</p></div>)}
+                  {vehicle.displacement_l && (<div><p className="text-sm text-text-mute">{t('detail.misc.displacement')}</p><Mono size="sm" className="block">{t('detail.misc.displacementLiters', { value: vehicle.displacement_l })}</Mono></div>)}
+                  {vehicle.cylinders && (<div><p className="text-sm text-text-mute">{t('edit.cylinders')}</p><Mono size="sm" className="block">{vehicle.cylinders}</Mono></div>)}
+                  {vehicle.fuel_type && (<div><p className="text-sm text-text-mute">{t('edit.fuelType')}</p><p className="font-medium text-text">{t(`forms:fuel.fuelTypes.${vehicle.fuel_type}`, { defaultValue: vehicle.fuel_type })}</p></div>)}
                 </div>
-              </div>
-            )}
-          </div>
+              )}
+              {(vehicle.transmission_type || vehicle.transmission_speeds || vehicle.sticker_transmission_description) && (
+                <div className={(vehicle.displacement_l || vehicle.cylinders || vehicle.fuel_type || vehicle.sticker_engine_description) ? 'pt-3 border-t border-border' : ''}>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {vehicle.sticker_transmission_description && (<div className="md:col-span-2"><p className="text-sm text-text-mute">{t('detail.misc.transmission')}</p><p className="font-medium text-text">{vehicle.sticker_transmission_description}</p></div>)}
+                    {vehicle.transmission_type && (<div><p className="text-sm text-text-mute">{t('detail.misc.type')}</p><p className="font-medium text-text">{vehicle.transmission_type}</p></div>)}
+                    {vehicle.transmission_speeds && (<div><p className="text-sm text-text-mute">{t('detail.misc.speeds')}</p><Mono size="sm" className="block">{vehicle.transmission_speeds}</Mono></div>)}
+                    {vehicle.sticker_drivetrain && (<div><p className="text-sm text-text-mute">{t('detail.misc.drivetrain')}</p><p className="font-medium text-text">{vehicle.sticker_drivetrain}</p></div>)}
+                  </div>
+                </div>
+              )}
+            </div>
+          ) : (
+            <p className="text-sm text-text-mute">{t('detail.cardEmpty')}</p>
+          )}
         </Card>
       )}
 
@@ -219,16 +241,18 @@ export default function VehicleOverviewTab({
       )}
 
       {/* Warranty */}
-      {(vehicle.warranty_powertrain || vehicle.warranty_basic) && (
-        <Card breakInside className={onEditCard ? EDITABLE_CARD_CLASS : ''}>
-          {editOverlay('warranty', 'detail.warranty')}
-          <CardHeader title={t('detail.warranty')} />
+      <Card breakInside className={onEditCard ? EDITABLE_CARD_CLASS : ''}>
+        {editOverlay('warranty', 'detail.warranty')}
+        <CardHeader title={t('detail.warranty')} />
+        {hasWarranty ? (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {vehicle.warranty_basic && (<div><p className="text-sm text-text-mute">{t('detail.misc.basic')}</p><p className="font-medium text-text">{vehicle.warranty_basic}</p></div>)}
             {vehicle.warranty_powertrain && (<div><p className="text-sm text-text-mute">{t('detail.powertrain')}</p><p className="font-medium text-text">{vehicle.warranty_powertrain}</p></div>)}
           </div>
-        </Card>
-      )}
+        ) : (
+          <p className="text-sm text-text-mute">{t('detail.cardEmpty')}</p>
+        )}
+      </Card>
 
       {/* Environmental Ratings */}
       {(vehicle.environmental_rating_ghg || vehicle.environmental_rating_smog) && (
