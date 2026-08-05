@@ -77,4 +77,17 @@ describe('PricingDrawer', () => {
     await waitFor(() => expect(onUpdated).toHaveBeenCalledWith(baseVehicle))
     await waitFor(() => expect(onClose).toHaveBeenCalled())
   })
+
+  it('submits a cleared date as null, not an empty string', async () => {
+    // PricingDrawer sends the whole pricing subset every save, mapping each
+    // field through emptyToNull. An empty string here would fail Pydantic
+    // date parsing; undefined would silently no-op under exclude_unset.
+    renderDrawer()
+    fireEvent.change(screen.getByLabelText('edit.purchaseDate'), { target: { value: '' } })
+    fireEvent.click(screen.getByRole('button', { name: 'common:save' }))
+
+    await waitFor(() => expect(mockedUpdate).toHaveBeenCalled())
+    const [, payload] = mockedUpdate.mock.calls[0]
+    expect(payload.purchase_date).toBeNull()
+  })
 })

@@ -107,4 +107,21 @@ describe('VehicleFieldsDrawer', () => {
     expect(mockedUpdate).not.toHaveBeenCalled()
     expect(onClose).toHaveBeenCalledTimes(1)
   })
+
+  it('opens and saves a vehicle whose year is NULL in the DB without writing year', async () => {
+    // Guards the seeding path for a null numeric: it must seed as empty and
+    // stay OUT of the dirty-diff payload. A seed that produced "null" or a
+    // diff that fired on an untouched field would write the column.
+    const nullYear = { ...baseVehicle, year: null } as unknown as Vehicle
+    renderDrawer({ card: 'basic', vehicle: nullYear })
+    expect(screen.getByLabelText('edit.year')).toHaveValue(null)
+
+    fireEvent.change(screen.getByLabelText('edit.make'), { target: { value: 'Nissan' } })
+    fireEvent.click(screen.getByRole('button', { name: 'common:save' }))
+
+    await waitFor(() => expect(mockedUpdate).toHaveBeenCalled())
+    const [, payload] = mockedUpdate.mock.calls[0]
+    expect(payload).toEqual({ make: 'Nissan' })
+    expect(Object.prototype.hasOwnProperty.call(payload, 'year')).toBe(false)
+  })
 })
