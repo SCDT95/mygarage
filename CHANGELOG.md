@@ -42,6 +42,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Settings → System Configuration: removed the light/dark theme selector — the theme toggle in the top bar is now the single control.
 
 ### Fixed
+- LiveLink: revoking a Torque source or deleting a WiCAN device no longer fails with a server error once it has reported any data. Its telemetry, sessions and DTCs are kept.
 - Vehicle Analytics: spending anomalies now use your configured currency and language. The sentence was composed server-side with a hardcoded "$" and English text, so it ignored both (#131).
 - Fuel summary on hours-tracked vehicles no longer shows a distance-based cost-per-mile stat, and the imperial fuel rate now reads GPH.
 - OIDC: login failed with "Failed to verify ID token" against providers whose issuer ends in a slash (Rauthy), because the saved issuer URL has it stripped. The `iss` claim is now checked against the discovery document.

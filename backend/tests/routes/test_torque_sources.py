@@ -21,16 +21,19 @@ the checks these tests exist to prove.
 """
 
 import itertools
+from datetime import UTC, datetime
 
 import pytest
 from httpx import AsyncClient
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.models.drive_session import DriveSession
 from app.models.livelink_device import LiveLinkDevice
 from app.models.user import User
 from app.models.vehicle import Vehicle
 from app.models.vehicle_share import VehicleShare
+from app.models.vehicle_telemetry import VehicleTelemetry
 from app.services.auth import create_access_token
 
 # Module-level counter for unique identifiers across all tests in this file.
@@ -263,3 +266,76 @@ async def test_create_torque_source_forbidden_for_write_share_non_owner(
     )
 
     assert r.status_code == 403
+
+
+@pytest.mark.asyncio
+async def test_delete_torque_source_with_history_succeeds_and_retains_it(
+    client: AsyncClient, db_session: AsyncSession
+):
+    """A source that has actually uploaded can still be revoked, and its
+    history survives.
+
+    Regression: `LiveLinkDevice`'s drive_sessions / telemetry_records / dtcs
+    relationships carried no cascade rule, so deleting the parent made
+    SQLAlchemy try to NULL the children's `device_id` -- a column that is
+    `nullable=False` on all three. Every revoke of a source that had ever
+    uploaded anything died with
+
+        IntegrityError: NOT NULL constraint failed: drive_sessions.device_id
+
+    i.e. a 500. The pre-existing delete test only ever deleted a *fresh*
+    device, which has no children, so it never saw this.
+
+    `delete_device`'s own docstring states the intent -- "Historical
+    telemetry, sessions, and DTCs are retained" -- and none of those
+    `device_id` columns carries a ForeignKey, so there is no database
+    constraint to satisfy either way. Asserting retention pins that intent:
+    a `cascade="all, delete-orphan"` "fix" would also turn the 500 green
+    while silently destroying the user's driving history.
+    """
+    vin, owner_headers = await _make_owned_vehicle(db_session)
+    create_r = await client.post(
+        f"/api/vehicles/{vin}/livelink/torque-sources",
+        json={"label": "Has uploaded"},
+        headers=owner_headers,
+    )
+    device_id = create_r.json()["device_id"]
+
+    db_session.add(
+        DriveSession(
+            vin=vin,
+            device_id=device_id,
+            started_at=datetime(2026, 7, 22, 8, 21, 1, tzinfo=UTC).replace(tzinfo=None),
+        )
+    )
+    db_session.add(
+        VehicleTelemetry(
+            vin=vin,
+            device_id=device_id,
+            param_key="KFF1005",
+            value=17.635,
+            timestamp=datetime(2026, 7, 22, 8, 21, 1, tzinfo=UTC).replace(tzinfo=None),
+        )
+    )
+    await db_session.commit()
+
+    r = await client.delete(
+        f"/api/vehicles/{vin}/livelink/torque-sources/{device_id}", headers=owner_headers
+    )
+
+    assert r.status_code == 204, r.text
+
+    device = await db_session.execute(
+        select(LiveLinkDevice).where(LiveLinkDevice.device_id == device_id)
+    )
+    assert device.scalar_one_or_none() is None
+
+    sessions = await db_session.execute(
+        select(DriveSession).where(DriveSession.device_id == device_id)
+    )
+    assert len(sessions.scalars().all()) == 1, "drive history must survive a revoke"
+
+    telemetry = await db_session.execute(
+        select(VehicleTelemetry).where(VehicleTelemetry.device_id == device_id)
+    )
+    assert len(telemetry.scalars().all()) == 1, "telemetry must survive a revoke"

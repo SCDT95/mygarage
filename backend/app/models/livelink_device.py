@@ -85,23 +85,37 @@ class LiveLinkDevice(Base):
     current_session: Mapped[DriveSession | None] = relationship(
         "DriveSession", foreign_keys=[current_session_id]
     )
+    # `passive_deletes=True` on all three: deleting a device must NOT touch its
+    # history. Without it SQLAlchemy's default is to load the children and NULL
+    # their `device_id` on parent delete — but that column is `nullable=False`
+    # on telemetry, sessions and DTCs alike, so every delete of a device that
+    # had ever reported anything died with
+    #   IntegrityError: NOT NULL constraint failed: vehicle_telemetry.device_id
+    # i.e. a 500 from both the Torque-source revoke route and the admin device
+    # delete. Retaining the rows is the documented intent (see
+    # LiveLinkService.delete_device) — a user revoking a phone should not lose
+    # their driving history — and none of these columns carries a ForeignKey,
+    # so there is no database-level rule being deferred to here either.
     telemetry_records: Mapped[list[VehicleTelemetry]] = relationship(
         "VehicleTelemetry",
         back_populates="device",
         foreign_keys="[VehicleTelemetry.device_id]",
         primaryjoin="LiveLinkDevice.device_id == foreign(VehicleTelemetry.device_id)",
+        passive_deletes=True,
     )
     drive_sessions: Mapped[list[DriveSession]] = relationship(
         "DriveSession",
         back_populates="device",
         foreign_keys="[DriveSession.device_id]",
         primaryjoin="LiveLinkDevice.device_id == foreign(DriveSession.device_id)",
+        passive_deletes=True,
     )
     dtcs: Mapped[list[VehicleDTC]] = relationship(
         "VehicleDTC",
         back_populates="device",
         foreign_keys="[VehicleDTC.device_id]",
         primaryjoin="LiveLinkDevice.device_id == foreign(VehicleDTC.device_id)",
+        passive_deletes=True,
     )
 
     __table_args__ = (
