@@ -168,14 +168,18 @@ export default function VehicleOverviewTab({
           readable content, and the overlay button is the keyboard/AT action. */}
       <Card breakInside className={onEditPricing ? EDITABLE_CARD_CLASS : ''}>
         {onEditPricing && <CardEditOverlay label={t('detail.pricing.editTitle')} onClick={onEditPricing} />}
-        <CardHeader title={t('detail.pricing.title')} />
         {/* Purchase/sale beside MSRP rather than stacked above it — the two
             blocks are each narrow and short, so side by side roughly halves
-            the card's height. Falls back to a single column when there is no
-            MSRP data, so a purchase-only vehicle doesn't render a lopsided,
-            half-empty card. */}
-        <div className={`grid grid-cols-1 gap-x-6 gap-y-4 ${hasMsrp ? 'sm:grid-cols-2' : ''}`}>
-          <div className="space-y-3">
+            the card's height. Each column carries its own CardHeader, so the
+            two titles sit on one line and share one style; the divider between
+            them is the right column's border-l, centred in the gutter by
+            matching gap-x-8 with pl-8. Falls back to a single column when there
+            is no MSRP data, so a purchase-only vehicle doesn't render a
+            lopsided, half-empty card (and then shows no divider). */}
+        <div className={`grid grid-cols-1 gap-y-6 ${hasMsrp ? 'sm:grid-cols-2 sm:gap-x-8' : ''}`}>
+          <div>
+            <CardHeader title={t('detail.pricing.title')} />
+            <div className="space-y-4">
             <div>
               <p className="text-sm text-text-mute flex items-center gap-2"><Calendar className="w-4 h-4" /><span>{t('edit.purchaseDate')}</span></p>
               <Mono size="sm" className="mt-1 block">{formatDate(vehicle.purchase_date)}</Mono>
@@ -196,11 +200,12 @@ export default function VehicleOverviewTab({
                 </div>
               </>
             )}
+            </div>
           </div>
           {hasMsrp && (
-            <div>
-              <p className="text-xs font-semibold uppercase tracking-wide text-text-mute mb-3">{t('detail.msrpPricing')}</p>
-              <div className="grid grid-cols-2 gap-x-4 gap-y-3">
+            <div className="sm:border-l sm:border-border sm:pl-8">
+              <CardHeader title={t('detail.msrpPricing')} />
+              <div className="grid grid-cols-2 gap-x-4 gap-y-4">
                 {vehicle.msrp_base && (<div><p className="text-sm text-text-mute">{t('detail.misc.basePrice')}</p><Mono size="sm" className="block">{formatCurrency(vehicle.msrp_base, { currencyCode, locale })}</Mono></div>)}
                 {vehicle.msrp_options && (<div><p className="text-sm text-text-mute">{t('detail.misc.options')}</p><Mono size="sm" className="block">{formatCurrency(vehicle.msrp_options, { currencyCode, locale })}</Mono></div>)}
                 {vehicle.destination_charge && (<div><p className="text-sm text-text-mute">{t('detail.misc.destination')}</p><Mono size="sm" className="block">{formatCurrency(vehicle.destination_charge, { currencyCode, locale })}</Mono></div>)}
