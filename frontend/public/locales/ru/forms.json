@@ -373,13 +373,18 @@
     "created": "Создано",
     "dueDate": "Дата исполнения",
     "dueDateRequired": "Требуется дата исполнения",
+    "dueHours": "Срок (моточасы)",
     "dueMileage": "Пробег исполнения",
     "editTitle": "Редактировать напоминание",
+    "hoursRequired": "Для этого типа напоминания необходимо указать моточасы до срока",
+    "hoursUntilDue": "Моточасы до срока",
     "milesRequired": "Требуется пробег",
     "milesUntilDue": "Миль до исполнения",
+    "noHoursData": "Нет данных о моточасах — укажите абсолютное целевое значение",
     "noOdometerData": "Нет данных одометра",
     "optionalNotes": "Дополнительные заметки",
     "overdueHint": "Подсказка о просрочке",
+    "overdueHoursHint": "Это напоминание просрочено — укажите новый интервал от текущих моточасов",
     "reminderType": "Тип напоминания",
     "smartModeDescription": "Описание умного режима",
     "titlePlaceholder": "Введите заголовок",
@@ -472,5 +477,17 @@
     "editTitle": "Редактировать гарантию",
     "mileageLimit": "Ограничение пробега",
     "warrantyType": "Тип гарантии"
+  },
+  "hours": {
+    "createTitle": "Добавить показание моточасов",
+    "editTitle": "Редактировать показание моточасов",
+    "notesPlaceholder": "Ежемесячное показание, сервисное показание и т. д. ..."
+  },
+  "reminderForm": {
+    "hoursAbsolutePlaceholder": "напр. 850",
+    "hoursIntervalPlaceholder": "напр. 50",
+    "hoursTargetHint": "Сейчас: {{current}} + {{interval}} = цель {{target}} ч",
+    "typeHours": "Моточасы",
+    "typeHoursDescription": "Уведомить при определённом показании моточасов"
   }
 }

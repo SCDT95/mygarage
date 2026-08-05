@@ -117,7 +117,12 @@
     "notes": "Заметки",
     "notesPlaceholder": "Дополнительные заметки о контакте...",
     "gasStationFlag": "Заправочная станция",
-    "statePlaceholder": "Регион / область"
+    "statePlaceholder": "Регион / область",
+    "categoryAll": "Все",
+    "categoryGasStation": "АЗС",
+    "editContactNamed": "Редактировать: {{name}}",
+    "filterByCategory": "Фильтр по категории",
+    "saveChanges": "Сохранить изменения"
   },
   "poiFinder": {
     "title": "Найти точки интереса",
@@ -203,5 +208,15 @@
   "total": "Итого",
   "totalCost": "Общая стоимость",
   "update": "Обновить",
-  "user": "Пользователь"
+  "user": "Пользователь",
+  "engineHours": "Моточасы",
+  "validation": {
+    "engineHours": {
+      "negative": "Моточасы не могут быть отрицательными",
+      "tooLarge": "Значение моточасов слишком велико"
+    }
+  },
+  "supplies": {
+    "title": "Расходные материалы"
+  }
 }

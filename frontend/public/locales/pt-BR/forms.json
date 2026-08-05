@@ -373,13 +373,18 @@
     "created": "Criado",
     "dueDate": "Prazo (data)",
     "dueDateRequired": "Data de vencimento obrigatória",
+    "dueHours": "Vencimento (horas do motor)",
     "dueMileage": "Prazo (quilometragem)",
     "editTitle": "Editar lembrete",
+    "hoursRequired": "As horas do motor até o vencimento são obrigatórias para este tipo de lembrete",
+    "hoursUntilDue": "Horas do motor até o vencimento",
     "milesRequired": "Quilometragem obrigatória",
     "milesUntilDue": "Quilômetros até o vencimento",
+    "noHoursData": "Sem dados de horas do motor — informe as horas-alvo absolutas",
     "noOdometerData": "Sem dados do odômetro",
     "optionalNotes": "Notas opcionais",
     "overdueHint": "Dica de atraso",
+    "overdueHoursHint": "Este lembrete está atrasado — informe um novo intervalo a partir das horas atuais do motor",
     "reminderType": "Tipo de lembrete",
     "smartModeDescription": "O modo inteligente usa seu histórico de direção para estimar quando você atingirá a meta de quilometragem. A data funciona como um limite máximo — você será notificado pelo que ocorrer primeiro.",
     "titlePlaceholder": "ex.: Próxima troca de óleo",
@@ -472,5 +477,17 @@
     "editTitle": "Editar garantia",
     "mileageLimit": "Limite de quilometragem",
     "warrantyType": "Tipo de garantia"
+  },
+  "hours": {
+    "createTitle": "Adicionar leitura de horas do motor",
+    "editTitle": "Editar leitura de horas do motor",
+    "notesPlaceholder": "Leitura mensal, leitura de serviço, etc..."
+  },
+  "reminderForm": {
+    "hoursAbsolutePlaceholder": "ex.: 850",
+    "hoursIntervalPlaceholder": "ex.: 50",
+    "hoursTargetHint": "Atual: {{current}} + {{interval}} = meta de {{target}} h",
+    "typeHours": "Horas do motor",
+    "typeHoursDescription": "Notificar em uma leitura específica de horas do motor"
   }
 }

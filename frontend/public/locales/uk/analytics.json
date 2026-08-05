@@ -1,1 +1,26 @@
-{}
+{
+  "garage": {
+    "donutTotal": "Усього"
+  },
+  "garageHelp": {
+    "comparisonTable": {
+      "categoryColumnsDesc": "Витрати на кожен автомобіль у розбивці за обслуговуванням, покращеннями, техоглядом, ДТП, детейлінгом, паливом і DEF.",
+      "categoryColumnsLabel": "Стовпці категорій:"
+    },
+    "costSummary": {
+      "defDesc": "Загальні витрати на реагент AdBlue/DEF (показується, якщо хоча б один автомобіль використовує DEF).",
+      "defLabel": "DEF:"
+    }
+  },
+  "vehicle": {
+    "costPerHourAxis": "Вартість/година ({{currency}})",
+    "costPerHourLabel": "Вартість/година",
+    "costPerHourValue": "{{value}}/год",
+    "engineHoursAxis": "Мотогодини",
+    "engineHoursReading": "{{value}} год",
+    "fuelRateUnitLabel": "Витрата палива ({{unit}})",
+    "hoursAccumulatedTitle": "Накопичення мотогодин з часом",
+    "hoursEconomyAnalysis": "Аналіз ефективності за мотогодинами",
+    "hoursEconomyTrendTitle": "Динаміка ефективності за мотогодинами"
+  }
+}

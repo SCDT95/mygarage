@@ -117,7 +117,12 @@
     "notes": "Notatki",
     "notesPlaceholder": "Dodatkowe notatki o tym kontakcie...",
     "gasStationFlag": "Stacja paliw",
-    "statePlaceholder": "Województwo / region"
+    "statePlaceholder": "Województwo / region",
+    "categoryAll": "Wszystkie",
+    "categoryGasStation": "Stacja paliw",
+    "editContactNamed": "Edytuj: {{name}}",
+    "filterByCategory": "Filtruj według kategorii",
+    "saveChanges": "Zapisz zmiany"
   },
   "poiFinder": {
     "title": "Znajdź punkty zainteresowania",
@@ -203,5 +208,15 @@
   "total": "Razem",
   "totalCost": "Koszt całkowity",
   "update": "Zaktualizuj",
-  "user": "Użytkownik"
+  "user": "Użytkownik",
+  "engineHours": "Motogodziny",
+  "validation": {
+    "engineHours": {
+      "negative": "Motogodziny nie mogą być ujemne",
+      "tooLarge": "Wartość motogodzin jest zbyt duża"
+    }
+  },
+  "supplies": {
+    "title": "Materiały eksploatacyjne"
+  }
 }

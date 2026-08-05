@@ -41,7 +41,8 @@
       "fuel": "Carburant",
       "def": "DEF",
       "total": "Total"
-    }
+    },
+    "donutTotal": "Total"
   },
   "garageHelp": {
     "title": "Aide des analyses du garage",
@@ -62,7 +63,9 @@
       "insuranceLabel": "Assurance :",
       "insuranceDesc": "Coûts d’assurance combinés pour tous les véhicules.",
       "taxesLabel": "Taxes :",
-      "taxesDesc": "Dépenses totales d’immatriculation et de taxes."
+      "taxesDesc": "Dépenses totales d’immatriculation et de taxes.",
+      "defLabel": "DEF :",
+      "defDesc": "Coût total du liquide d'échappement diesel (affiché si un véhicule utilise du DEF)."
     },
     "categoryBreakdown": {
       "title": "Répartition des coûts par catégorie",
@@ -105,7 +108,9 @@
       "item1": "Les véhicules les plus/moins coûteux à utiliser",
       "item2": "Les véhicules avec des coûts d’entretien disproportionnés",
       "item3": "Les meilleures/pires performances de consommation de carburant",
-      "item4": "Les candidats au remplacement selon le coût total de possession"
+      "item4": "Les candidats au remplacement selon le coût total de possession",
+      "categoryColumnsLabel": "Colonnes de catégories :",
+      "categoryColumnsDesc": "Les dépenses de chaque véhicule ventilées par entretien, améliorations, contrôle technique, collision, esthétique, carburant et DEF."
     },
     "exportOptions": {
       "title": "Options d’exportation",
@@ -301,7 +306,16 @@
     "fuelEconomyChange": "Variation de la consommation",
     "costChangesByCategory": "Variations des coûts par catégorie",
     "period1Value": "Période 1 : {{value}}",
-    "period2Value": "Période 2 : {{value}}"
+    "period2Value": "Période 2 : {{value}}",
+    "costPerHourAxis": "Coût/heure ({{currency}})",
+    "costPerHourLabel": "Coût/heure",
+    "costPerHourValue": "{{value}}/h",
+    "engineHoursAxis": "Heures moteur",
+    "engineHoursReading": "{{value}} h",
+    "fuelRateUnitLabel": "Débit de carburant ({{unit}})",
+    "hoursAccumulatedTitle": "Cumul des heures moteur dans le temps",
+    "hoursEconomyAnalysis": "Analyse de l'efficacité par heures moteur",
+    "hoursEconomyTrendTitle": "Évolution de l'efficacité par heures moteur"
   },
   "vehicleHelp": {
     "title": "Aide des analyses",

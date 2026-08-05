@@ -117,7 +117,12 @@
     "zipCode": "CEP",
     "notes": "Observações",
     "notesPlaceholder": "Observações adicionais sobre este contato...",
-    "gasStationFlag": "Posto de gasolina"
+    "gasStationFlag": "Posto de gasolina",
+    "categoryAll": "Todos",
+    "categoryGasStation": "Posto de combustível",
+    "editContactNamed": "Editar {{name}}",
+    "filterByCategory": "Filtrar por categoria",
+    "saveChanges": "Salvar alterações"
   },
   "poiFinder": {
     "title": "Encontrar pontos de interesse",
@@ -203,5 +208,15 @@
   "total": "Total",
   "totalCost": "Custo total",
   "update": "Atualizar",
-  "user": "Usuário"
+  "user": "Usuário",
+  "engineHours": "Horas do motor",
+  "validation": {
+    "engineHours": {
+      "negative": "As horas do motor não podem ser negativas",
+      "tooLarge": "Valor de horas do motor muito alto"
+    }
+  },
+  "supplies": {
+    "title": "Suprimentos"
+  }
 }

@@ -46,7 +46,7 @@
     "reminderDone": "Przypomnienie wykonane",
     "searchPlaceholder": "Szukaj...",
     "subtitle": "Podtytuł",
-    "title": "Tytuł",
+    "title": "Kalendarz",
     "totalEvents": "Wszystkie wydarzenia",
     "upcomingEvents": "Nadchodzące wydarzenia",
     "vehicles": "Pojazdy"
@@ -56,6 +56,7 @@
     "addVehicle": "Dodaj pojazd",
     "allVehicles": "Wszystkie pojazdy",
     "byMaintenance": "Według konserwacji",
+    "filterTrigger": "Filtr: {{label}}",
     "filterVehicles": "Filtruj pojazdy",
     "getStarted": "Zaczynajmy",
     "loadError": "Błąd ładowania",
@@ -66,8 +67,16 @@
     "oldestFirst": "Najpierw najstarsze",
     "sharedWithMe": "Udostępnione dla mnie",
     "sortByName": "Sortuj po nazwie",
+    "sortTrigger": "Sortowanie: {{label}}",
     "sortVehicles": "Sortuj pojazdy",
-    "title": "Tytuł"
+    "title": "Mój garaż",
+    "fleet": {
+      "nextDueLabel": "Następny termin",
+      "nextDueNone": "Nic zaplanowanego",
+      "overdueCaption": "Zaległe · wymaga uwagi",
+      "spentLabel": "Wydano",
+      "upcomingCaption": "Nadchodzące · najbliższe 30 dni"
+    }
   },
   "defList": {
     "actions": "Akcje",
@@ -95,7 +104,7 @@
     "readOnlyNotice": "Wpisy DEF wymagają silnika Diesla — rekordy pokazane wyłącznie informacyjnie",
     "recordCount": "{{count}} запис(-ів)",
     "source": "Źródło",
-    "title": "Tytuł",
+    "title": "Rejestr DEF",
     "totalSpent": "Łącznie wydano",
     "type": "Typ"
   },
@@ -162,7 +171,33 @@
     "warranty": "Gwarancja",
     "windowSticker": "Naklejka na szybę",
     "windowStickerDownloadError": "Błąd pobierania naklejki na szybę",
-    "windowStickerUploaded": "Przesłano naklejkę na szybę"
+    "windowStickerUploaded": "Przesłano naklejkę na szybę",
+    "cardEdit": {
+      "saveError": "Nie udało się zapisać zmian. Spróbuj ponownie.",
+      "title": "Edytuj: {{section}}"
+    },
+    "cardEmpty": "Nic jeszcze nie zapisano",
+    "equipment": {
+      "add": "Dodaj",
+      "addPlaceholder": "Dodaj wyposażenie...",
+      "done": "Gotowe",
+      "editSubtitle": "Edytuj wyposażenie tego pojazdu",
+      "empty": "Brak wyposażenia. Dodaj pozycje poniżej.",
+      "remove": "Usuń {{item}}",
+      "saveError": "Nie udało się zapisać wyposażenia. Spróbuj ponownie."
+    },
+    "pricing": {
+      "editTitle": "Edytuj ceny",
+      "msrpHint": "Zwykle odczytywane z naklejki cenowej; edytuj, aby poprawić lub uzupełnić.",
+      "saveError": "Nie udało się zapisać cen. Spróbuj ponownie.",
+      "title": "Ceny"
+    },
+    "settings": {
+      "title": "Ustawienia pojazdu"
+    },
+    "misc": {
+      "supplies": "Materiały eksploatacyjne"
+    }
   },
   "documentList": {
     "confirmDelete": "Potwierdź usunięcie",
@@ -175,7 +210,7 @@
     "noRecords": "Brak rekordów",
     "noRecordsDesc": "Przycisk braku rekordów",
     "selectType": "Wybierz typ",
-    "title": "Tytuł",
+    "title": "Dokumenty",
     "titleLabel": "Etykieta tytułu",
     "typeLabel": "Etykieta typu",
     "updateError": "Błąd aktualizacji",
@@ -184,11 +219,13 @@
     "uploaded": "Przesłano"
   },
   "documentUpload": {
-    "title": "Tytuł",
+    "title": "Prześlij dokument",
     "uploadBtn": "Przycisk przesyłania",
     "uploading": "Przesyłanie..."
   },
   "edit": {
+    "alsoTrackDistance": "Śledź także dystans/przebieg",
+    "alsoTrackHours": "Śledź także motogodziny",
     "bodyClass": "Klasa nadwozia",
     "clearDefTankCapacity": "Wyczyść pojemność zbiornika DEF",
     "cylinders": "Cylindry",
@@ -222,7 +259,9 @@
     "addFillUp": "Dodaj tankowanie",
     "addFirstFillUp": "Dodaj pierwsze tankowanie",
     "avgFuelEconomy": "Średnie spalanie",
+    "avgFuelRate": "Śr. {{unit}}",
     "confirmDelete": "Potwierdź usunięcie",
+    "costPerHour": "Koszt/godz.",
     "date": "Data",
     "deleteError": "Błąd usuwania",
     "exportCSV": "Eksportuj CSV",
@@ -230,6 +269,7 @@
     "exportToCSV": "Eksportuj do CSV",
     "exporting": "Eksportowanie...",
     "fuelEconomy": "Oszczędność paliwa",
+    "fuelRate": "Zużycie paliwa",
     "full": "Pełny",
     "fullTank": "Pełny bak",
     "hauling": "Holowanie / transport",
@@ -248,7 +288,7 @@
     "recordCount": "{{count}} rekord(ów)",
     "searchPlaceholder": "Szukaj...",
     "showingResults": "Wyświetlanie {{shown}} z {{total}} rekordów",
-    "title": "Tytuł",
+    "title": "Historia tankowania",
     "totalCost": "Koszt całkowity",
     "totalSpent": "Łącznie wydano",
     "towing": "Holowanie"
@@ -269,7 +309,7 @@
     "policyNumber": "Numer polisy",
     "premiumAmount": "Kwota składki",
     "startDate": "Data rozpoczęcia",
-    "title": "Tytuł"
+    "title": "Polisy ubezpieczeniowe"
   },
   "lineItemEditor": {
     "cost": "Koszt",
@@ -354,7 +394,7 @@
     "vehicleRunning": "Pojazd uruchomiony",
     "wicanOffline": "Wican offline",
     "widget": {
-      "title": "Tytuł"
+      "title": "LiveLink"
     }
   },
   "noteList": {
@@ -367,7 +407,7 @@
     "noRecords": "Brak rekordów",
     "noRecordsDesc": "Przycisk braku rekordów",
     "noteCount": "{{count}} notatek",
-    "title": "Tytuł",
+    "title": "Notatki",
     "updated": "Zaktualizowano"
   },
   "odometerList": {
@@ -391,7 +431,7 @@
     "noRecordsDesc": "Przycisk braku rekordów",
     "notes": "Notatki",
     "recordCount": "{{count}} rekord(ów)",
-    "title": "Tytuł"
+    "title": "Odczyty licznika"
   },
   "photoGallery": {
     "deletePhoto": "Usuń zdjęcie",
@@ -420,7 +460,7 @@
     "noRecordsDesc": "Przycisk braku rekordów",
     "pricePerUnit": "Cena za jednostkę",
     "recordCount": "{{count}} rekord(ów)",
-    "title": "Tytuł",
+    "title": "Rejestr propanu",
     "totalGallons": "Wszystkie galony",
     "totalLiters": "Wszystkie litry",
     "totalSpent": "Łącznie wydano",
@@ -442,7 +482,7 @@
     "selectVehicle": "Wybierz pojazd",
     "serviceVisit": "Wizyta serwisowa",
     "serviceVisitDesc": "Przycisk wizyty serwisowej",
-    "title": "Tytuł",
+    "title": "Szybki wpis",
     "vehicle": "Pojazd",
     "whatLogging": "Co rejestrujemy?"
   },
@@ -472,7 +512,7 @@
     "resolvedOnly": "Tylko rozwiązane",
     "statusError": "Błąd statusu",
     "summary": "Podsumowanie",
-    "title": "Tytuł",
+    "title": "Akcje serwisowe",
     "viewOnCarComplaints": "Wyświetl w Car Complaints"
   },
   "reminderList": {
@@ -483,6 +523,7 @@
     "dismissError": "Błąd odrzucania",
     "dismissed": "Odrzucono",
     "due": "Termin",
+    "dueAtHours": "termin przy {{n}} godz.",
     "estimated": "Szacowane",
     "linkedToService": "Powiązane z serwisem",
     "loading": "Ładowanie...",
@@ -490,7 +531,7 @@
     "markDoneError": "Błąd oznaczania jako gotowe",
     "markedDone": "Oznaczono jako gotowe",
     "noReminders": "Brak {{status}} przypomnień",
-    "title": "Tytuł"
+    "title": "Przypomnienia"
   },
   "serviceList": {
     "attachments": "Załączniki",
@@ -515,12 +556,12 @@
     "showingResults": "Wyświetlanie {{shown}} z {{total}} wizyt",
     "subtotal": "Suma częściowa",
     "tax": "Podatek",
-    "title": "Tytuł",
+    "title": "Historia serwisowa",
     "total": "Razem",
     "visitCount": "{{count}} wizyt"
   },
   "serviceVisitAttachmentUpload": {
-    "title": "Tytuł"
+    "title": "Prześlij załącznik"
   },
   "spotRentalList": {
     "active": "Aktywne",
@@ -556,7 +597,7 @@
     "notes": "Notatki",
     "ongoing": "Trwające",
     "rentalCount": "{{count}} wynajmów",
-    "title": "Tytuł",
+    "title": "Wynajem miejsc",
     "total": "Razem",
     "totalBilled": "Razem zafakturowano",
     "totalSpent": "Łącznie wydano",
@@ -580,7 +621,7 @@
     "notes": "Notatki",
     "recordCount": "{{count}} rekord(ów)",
     "renewalDate": "Data odnowienia",
-    "title": "Tytuł",
+    "title": "Podatki i rejestracja",
     "total": "Razem",
     "type": "Typ"
   },
@@ -599,7 +640,7 @@
     "monthlyBreakdown": "Rozbicie miesięczne",
     "noRecords": "Brak rekordów",
     "notes": "Notatki",
-    "title": "Tytuł",
+    "title": "Transakcje opłat drogowych",
     "tollTag": "Tag opłaty drogowej",
     "total": "Razem",
     "totalAmount": "Całkowita kwota",
@@ -617,10 +658,10 @@
     "notes": "Notatki",
     "status": "Status",
     "tagCount": "{{count}} znaczników skonfigurowanych",
-    "title": "Tytuł"
+    "title": "Tagi opłat drogowych"
   },
   "transferHistory": {
-    "title": "Tytuł"
+    "title": "Historia przeniesień"
   },
   "vehicleCard": {
     "sold": "Sprzedany"
@@ -628,8 +669,10 @@
   "vehicleStats": {
     "docs": "Dokumenty",
     "fuel": "Paliwo",
+    "hoursValue": "{{value}} godz.",
     "lastFillUp": "Ostatnie tankowanie",
     "lastService": "Ostatni serwis",
+    "latestHours": "Ostatnie motogodziny",
     "latestOdometer": "Ostatni przebieg",
     "maintenance": "Konserwacja",
     "never": "Nigdy",
@@ -667,7 +710,7 @@
     "notes": "Notatki",
     "policyNumber": "Numer polisy",
     "startDate": "Data rozpoczęcia",
-    "title": "Tytuł",
+    "title": "Gwarancje",
     "warrantyCount": "{{count}} gwarancji śledzonych"
   },
   "windowSticker": {
@@ -697,9 +740,56 @@
     "model": "Model",
     "next": "Dalej",
     "nickname": "Przezwisko",
-    "title": "Tytuł",
+    "title": "Dodaj nowy pojazd",
     "trim": "Wersja wyposażenia",
     "vin": "VIN",
     "year": "Rok produkcji"
+  },
+  "hoursList": {
+    "actions": "Akcje",
+    "addFirstReading": "Dodaj pierwszy odczyt",
+    "addReading": "Dodaj odczyt",
+    "confirmDelete": "Czy na pewno usunąć ten wpis motogodzin?",
+    "date": "Data",
+    "deleteError": "Nie udało się usunąć wpisu",
+    "latestReading": "Ostatni odczyt",
+    "loading": "Ładowanie wpisów motogodzin...",
+    "noRecords": "Brak wpisów motogodzin",
+    "noRecordsDesc": "Śledź motogodziny swojego pojazdu w czasie",
+    "notes": "Notatki",
+    "recordCount": "Wpisy: {{count}}",
+    "source": "Źródło",
+    "sourceFuel": "Paliwo",
+    "sourceManual": "Ręcznie",
+    "sourceServiceVisit": "Serwis",
+    "tableCaption": "Historia odczytów motogodzin",
+    "title": "Odczyty motogodzin"
+  },
+  "vehicleStatisticsCardExtra": {
+    "archivedWatermark": "ZARCHIWIZOWANE",
+    "averageFuelEconomy": "Śr. {{unit}}",
+    "sharedBadge": "Udostępniony",
+    "sharedByCanEdit": "Udostępnione przez {{username}} (można edytować)",
+    "sharedByViewOnly": "Udostępnione przez {{username}} (tylko podgląd)",
+    "viewDetails": "Zobacz szczegóły"
+  },
+  "vehicleTypeLabels": {
+    "ATV": "Quad",
+    "Car": "Samochód",
+    "Electric": "Elektryczny",
+    "FifthWheel": "Przyczepa siodłowa",
+    "Hybrid": "Hybryda",
+    "Motorcycle": "Motocykl",
+    "RV": "Kamper",
+    "SUV": "SUV",
+    "Trailer": "Przyczepa",
+    "TravelTrailer": "Przyczepa kempingowa",
+    "Truck": "Pickup"
+  },
+  "vehicleLiveLinkWidget": {
+    "coolant": "Płyn chłodniczy",
+    "statusOffline": "Offline",
+    "statusParked": "Zaparkowany",
+    "statusRunning": "Pracuje"
   }
 }

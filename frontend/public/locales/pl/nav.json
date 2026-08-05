@@ -11,5 +11,16 @@
   "about": "O programie",
   "login": "Zaloguj się",
   "logout": "Wyloguj się",
-  "admin": "ADMINISTRATOR"
+  "admin": "ADMINISTRATOR",
+  "closeMenu": "Zamknij menu",
+  "openMenu": "Otwórz menu",
+  "notifications": "Powiadomienia",
+  "notificationsEmptyTitle": "Brak powiadomień",
+  "notificationsEmptyBody": "Wszystko na bieżąco. Nowe alerty pojawią się tutaj.",
+  "search": "Szukaj",
+  "searchPlaceholder": "Szukaj pojazdów, serwisu, VIN…",
+  "searchShellTitle": "Wyszukiwanie już wkrótce",
+  "searchShellBody": "Globalne wyszukiwanie pojazdów, historii serwisowej i numerów VIN jest w przygotowaniu.",
+  "themeToggle": "Przełącz motyw",
+  "supplies": "Materiały eksploatacyjne"
 }

@@ -373,13 +373,18 @@
     "created": "Створено",
     "dueDate": "Дата виконання",
     "dueDateRequired": "Потрібна дата виконання",
+    "dueHours": "Термін (мотогодини)",
     "dueMileage": "Пробіг виконання",
     "editTitle": "Редагувати нагадування",
+    "hoursRequired": "Для цього типу нагадування потрібно вказати мотогодини до терміну",
+    "hoursUntilDue": "Мотогодини до терміну",
     "milesRequired": "Потрібен пробіг",
     "milesUntilDue": "Миль до виконання",
+    "noHoursData": "Немає даних про мотогодини — вкажіть абсолютне цільове значення",
     "noOdometerData": "Немає даних одометра",
     "optionalNotes": "Додаткові нотатки",
     "overdueHint": "Підказка про прострочення",
+    "overdueHoursHint": "Це нагадування прострочене — вкажіть новий інтервал від поточних мотогодин",
     "reminderType": "Тип нагадування",
     "smartModeDescription": "Опис розумного режиму",
     "titlePlaceholder": "Введіть заголовок",
@@ -472,5 +477,17 @@
     "editTitle": "Редагувати гарантію",
     "mileageLimit": "Обмеження пробігу",
     "warrantyType": "Тип гарантії"
+  },
+  "hours": {
+    "createTitle": "Додати показання мотогодин",
+    "editTitle": "Редагувати показання мотогодин",
+    "notesPlaceholder": "Щомісячне показання, сервісне показання тощо..."
+  },
+  "reminderForm": {
+    "hoursAbsolutePlaceholder": "напр. 850",
+    "hoursIntervalPlaceholder": "напр. 50",
+    "hoursTargetHint": "Зараз: {{current}} + {{interval}} = ціль {{target}} год",
+    "typeHours": "Мотогодини",
+    "typeHoursDescription": "Сповістити за певного показання мотогодин"
   }
 }

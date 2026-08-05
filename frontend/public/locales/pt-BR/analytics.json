@@ -1,1 +1,26 @@
-{}
+{
+  "garage": {
+    "donutTotal": "Total"
+  },
+  "garageHelp": {
+    "comparisonTable": {
+      "categoryColumnsDesc": "Os gastos de cada veículo detalhados por manutenção, melhorias, inspeção, colisão, estética, combustível e DEF.",
+      "categoryColumnsLabel": "Colunas de categoria:"
+    },
+    "costSummary": {
+      "defDesc": "Custo total do fluido de escape diesel (exibido quando algum veículo usa DEF).",
+      "defLabel": "DEF:"
+    }
+  },
+  "vehicle": {
+    "costPerHourAxis": "Custo/hora ({{currency}})",
+    "costPerHourLabel": "Custo/hora",
+    "costPerHourValue": "{{value}}/h",
+    "engineHoursAxis": "Horas do motor",
+    "engineHoursReading": "{{value}} h",
+    "fuelRateUnitLabel": "Taxa de consumo ({{unit}})",
+    "hoursAccumulatedTitle": "Horas do motor acumuladas ao longo do tempo",
+    "hoursEconomyAnalysis": "Análise de eficiência por horas do motor",
+    "hoursEconomyTrendTitle": "Tendência de eficiência por horas do motor ao longo do tempo"
+  }
+}

@@ -131,7 +131,12 @@
     "gasStationFlag": "Tankstelle",
     "gasStations": "Tankstellen",
     "gasStationsFilterHint": "Nur Tankstellen anzeigen, die aus Kraftstoffeinträgen erstellt wurden",
-    "categoryRvPark": "Wohnmobilstellplatz"
+    "categoryRvPark": "Wohnmobilstellplatz",
+    "categoryAll": "Alle",
+    "categoryGasStation": "Tankstelle",
+    "editContactNamed": "{{name}} bearbeiten",
+    "filterByCategory": "Nach Kategorie filtern",
+    "saveChanges": "Änderungen speichern"
   },
   "supplies": {
     "title": "Vorräte",
@@ -572,6 +577,10 @@
     "fuel": {
       "fuelTypeTooLong": "Kraftstoffart zu lang",
       "obcTripDurationFormat": "Verwende Sekunden (z. B. 8100), HH:MM (z. B. 2:15) oder HH:MM:SS"
+    },
+    "engineHours": {
+      "negative": "Motorstunden dürfen nicht negativ sein",
+      "tooLarge": "Wert für Motorstunden zu groß"
     }
   },
   "httpError": {
@@ -606,5 +615,6 @@
     "formSubmitFallback": "Ein Fehler ist aufgetreten",
     "actionFailed": "Fehler beim Ausführen von {{action}}. {{message}}",
     "actionFailedCheckInput": "Fehler beim Ausführen von {{action}}. Bitte überprüfe deine Eingabe."
-  }
+  },
+  "engineHours": "Motorstunden"
 }

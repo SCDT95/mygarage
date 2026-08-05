@@ -131,7 +131,12 @@
     "gasStationFlag": "Station-service",
     "gasStations": "Stations-service",
     "gasStationsFilterHint": "Afficher uniquement les stations-service créées à partir des enregistrements de carburant",
-    "categoryRvPark": "Aire de camping-cars"
+    "categoryRvPark": "Aire de camping-cars",
+    "categoryAll": "Tous",
+    "categoryGasStation": "Station-service",
+    "editContactNamed": "Modifier {{name}}",
+    "filterByCategory": "Filtrer par catégorie",
+    "saveChanges": "Enregistrer les modifications"
   },
   "supplies": {
     "title": "Fournitures",
@@ -572,6 +577,10 @@
     "fuel": {
       "fuelTypeTooLong": "Type de carburant trop long",
       "obcTripDurationFormat": "Utilisez des secondes (ex. 8100), HH:MM (ex. 2:15) ou HH:MM:SS"
+    },
+    "engineHours": {
+      "negative": "Les heures moteur ne peuvent pas être négatives",
+      "tooLarge": "Valeur des heures moteur trop élevée"
     }
   },
   "httpError": {
@@ -606,5 +615,6 @@
     "formSubmitFallback": "Une erreur s'est produite",
     "actionFailed": "Échec de {{action}}. {{message}}",
     "actionFailedCheckInput": "Échec de {{action}}. Veuillez vérifier votre saisie."
-  }
+  },
+  "engineHours": "Heures moteur"
 }

@@ -18,6 +18,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Vehicle detail: Purchase, Sale and MSRP are combined into one editable Pricing card — edit purchase/sale dates and prices and the MSRP figures from a slide-in sidecar.
 
 ### Changed
+- Translations: filled 74 keys that were missing from every language (engine-hours tracking, the hours analytics charts, and the vehicle card/sidecar editors) plus the 36 that left the dashboard in English — French is now complete.
+- Polish, Russian and Ukrainian: fixed 23 screen titles that read "Title" in the local language (the garage heading showed "Tytuł"/"Заголовок" instead of "My Garage").
 - Refreshed the interface onto a consistent design system — shared cards, forms, buttons, chips and tables with a single accent-driven theme.
 - The vehicle "Maintenance" stat tile is now labelled "Reminders".
 - The Fuel tab shows its sub-tab bar only when there's more than one sub-tab (e.g. DEF), instead of a lone "Fuel" entry that just repeated the tab.

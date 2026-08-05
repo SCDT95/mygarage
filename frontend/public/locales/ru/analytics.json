@@ -1,1 +1,26 @@
-{}
+{
+  "garage": {
+    "donutTotal": "Всего"
+  },
+  "garageHelp": {
+    "comparisonTable": {
+      "categoryColumnsDesc": "Расходы по каждому автомобилю в разбивке по обслуживанию, улучшениям, техосмотру, ДТП, детейлингу, топливу и DEF.",
+      "categoryColumnsLabel": "Столбцы категорий:"
+    },
+    "costSummary": {
+      "defDesc": "Общие расходы на реагент AdBlue/DEF (показывается, если хотя бы один автомобиль использует DEF).",
+      "defLabel": "DEF:"
+    }
+  },
+  "vehicle": {
+    "costPerHourAxis": "Стоимость/час ({{currency}})",
+    "costPerHourLabel": "Стоимость/час",
+    "costPerHourValue": "{{value}}/ч",
+    "engineHoursAxis": "Моточасы",
+    "engineHoursReading": "{{value}} ч",
+    "fuelRateUnitLabel": "Расход топлива ({{unit}})",
+    "hoursAccumulatedTitle": "Накопление моточасов со временем",
+    "hoursEconomyAnalysis": "Анализ эффективности по моточасам",
+    "hoursEconomyTrendTitle": "Динамика эффективности по моточасам"
+  }
+}

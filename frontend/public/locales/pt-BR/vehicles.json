@@ -56,6 +56,7 @@
     "addVehicle": "Adicionar veículo",
     "allVehicles": "Todos os veículos",
     "byMaintenance": "Por manutenção",
+    "filterTrigger": "Filtro: {{label}}",
     "filterVehicles": "Filtrar veículos",
     "getStarted": "Primeiros passos",
     "loadError": "Erro ao carregar",
@@ -66,8 +67,16 @@
     "oldestFirst": "Mais antigos primeiro",
     "sharedWithMe": "Compartilhados comigo",
     "sortByName": "Ordenar por nome",
+    "sortTrigger": "Ordenação: {{label}}",
     "sortVehicles": "Ordenar veículos",
-    "title": "Minha Garagem"
+    "title": "Minha Garagem",
+    "fleet": {
+      "nextDueLabel": "Próximo vencimento",
+      "nextDueNone": "Nada agendado",
+      "overdueCaption": "Atrasado · requer atenção",
+      "spentLabel": "Gasto",
+      "upcomingCaption": "Próximos · próximos 30 dias"
+    }
   },
   "defList": {
     "actions": "Ações",
@@ -162,7 +171,33 @@
     "warranty": "Garantia",
     "windowSticker": "Etiqueta do vidro (Window Sticker)",
     "windowStickerDownloadError": "Erro ao baixar etiqueta do vidro",
-    "windowStickerUploaded": "Etiqueta do vidro enviada"
+    "windowStickerUploaded": "Etiqueta do vidro enviada",
+    "cardEdit": {
+      "saveError": "Não foi possível salvar as alterações. Tente novamente.",
+      "title": "Editar {{section}}"
+    },
+    "cardEmpty": "Nada registrado ainda",
+    "equipment": {
+      "add": "Adicionar",
+      "addPlaceholder": "Adicionar equipamento...",
+      "done": "Concluído",
+      "editSubtitle": "Editar o equipamento deste veículo",
+      "empty": "Nenhum equipamento ainda. Adicione itens abaixo.",
+      "remove": "Remover {{item}}",
+      "saveError": "Não foi possível salvar o equipamento. Tente novamente."
+    },
+    "pricing": {
+      "editTitle": "Editar preços",
+      "msrpHint": "Normalmente extraído do adesivo de preço; edite para corrigir ou adicionar.",
+      "saveError": "Não foi possível salvar os preços. Tente novamente.",
+      "title": "Preços"
+    },
+    "settings": {
+      "title": "Configurações do veículo"
+    },
+    "misc": {
+      "supplies": "Suprimentos"
+    }
   },
   "documentList": {
     "confirmDelete": "Confirmar exclusão",
@@ -189,6 +224,8 @@
     "uploading": "Enviando..."
   },
   "edit": {
+    "alsoTrackDistance": "Também acompanhar distância/odômetro",
+    "alsoTrackHours": "Também acompanhar horas do motor",
     "bodyClass": "Categoria da carroceria",
     "clearDefTankCapacity": "Limpar capacidade do tanque de DEF",
     "cylinders": "Cilindros",
@@ -222,7 +259,9 @@
     "addFillUp": "Adicionar abastecimento",
     "addFirstFillUp": "Adicionar primeiro abastecimento",
     "avgFuelEconomy": "Consumo médio",
+    "avgFuelRate": "Méd. {{unit}}",
     "confirmDelete": "Confirmar exclusão",
+    "costPerHour": "Custo/h",
     "date": "Data",
     "deleteError": "Erro ao excluir",
     "exportCSV": "Exportar CSV",
@@ -230,6 +269,7 @@
     "exportToCSV": "Exportar para CSV",
     "exporting": "Exportando...",
     "fuelEconomy": "Consumo de combustível",
+    "fuelRate": "Taxa de consumo",
     "full": "Cheio",
     "fullTank": "Tanque cheio",
     "hauling": "Transporte de carga",
@@ -483,6 +523,7 @@
     "dismissError": "Erro ao descartar",
     "dismissed": "Descartado",
     "due": "Prazo",
+    "dueAtHours": "vence em {{n}} h",
     "estimated": "Estimado",
     "linkedToService": "Vinculado ao serviço",
     "loading": "Carregando...",
@@ -628,8 +669,10 @@
   "vehicleStats": {
     "docs": "Documentos",
     "fuel": "Combustível",
+    "hoursValue": "{{value}} h",
     "lastFillUp": "Último abastecimento",
     "lastService": "Último serviço",
+    "latestHours": "Últimas horas do motor",
     "latestOdometer": "Último odômetro",
     "maintenance": "Manutenção",
     "never": "Nunca",
@@ -701,5 +744,52 @@
     "trim": "Versão / Acabamento",
     "vin": "VIN",
     "year": "Ano de fabricação"
+  },
+  "hoursList": {
+    "actions": "Ações",
+    "addFirstReading": "Adicionar primeira leitura",
+    "addReading": "Adicionar leitura",
+    "confirmDelete": "Tem certeza de que deseja excluir este registro de horas?",
+    "date": "Data",
+    "deleteError": "Falha ao excluir o registro",
+    "latestReading": "Última leitura",
+    "loading": "Carregando registros de horas...",
+    "noRecords": "Nenhum registro de horas ainda",
+    "noRecordsDesc": "Acompanhe as horas do motor do seu veículo ao longo do tempo",
+    "notes": "Notas",
+    "recordCount": "Registros: {{count}}",
+    "source": "Origem",
+    "sourceFuel": "Combustível",
+    "sourceManual": "Manual",
+    "sourceServiceVisit": "Serviço",
+    "tableCaption": "Histórico de leituras de horas do motor",
+    "title": "Leituras de horas do motor"
+  },
+  "vehicleStatisticsCardExtra": {
+    "archivedWatermark": "ARQUIVADO",
+    "averageFuelEconomy": "Méd. {{unit}}",
+    "sharedBadge": "Compartilhado",
+    "sharedByCanEdit": "Compartilhado por {{username}} (pode editar)",
+    "sharedByViewOnly": "Compartilhado por {{username}} (somente leitura)",
+    "viewDetails": "Ver detalhes"
+  },
+  "vehicleTypeLabels": {
+    "ATV": "Quadriciclo",
+    "Car": "Carro",
+    "Electric": "Elétrico",
+    "FifthWheel": "Trailer fifth wheel",
+    "Hybrid": "Híbrido",
+    "Motorcycle": "Motocicleta",
+    "RV": "Motorhome",
+    "SUV": "SUV",
+    "Trailer": "Reboque",
+    "TravelTrailer": "Trailer",
+    "Truck": "Caminhonete"
+  },
+  "vehicleLiveLinkWidget": {
+    "coolant": "Líquido de arrefecimento",
+    "statusOffline": "Offline",
+    "statusParked": "Estacionado",
+    "statusRunning": "Em funcionamento"
   }
 }

@@ -373,13 +373,18 @@
     "created": "Utworzono",
     "dueDate": "Termin (data)",
     "dueDateRequired": "Wymagany termin",
+    "dueHours": "Termin (motogodziny)",
     "dueMileage": "Termin (przebieg)",
     "editTitle": "Edytuj przypomnienie",
+    "hoursRequired": "Dla tego typu przypomnienia wymagane są motogodziny do terminu",
+    "hoursUntilDue": "Motogodziny do terminu",
     "milesRequired": "Wymagany przebieg",
     "milesUntilDue": "Przebieg do terminu",
+    "noHoursData": "Brak danych o motogodzinach — podaj docelową wartość bezwzględną",
     "noOdometerData": "Brak danych drogomierza",
     "optionalNotes": "Opcjonalne notatki",
     "overdueHint": "Wskazówka dotycząca zaległości",
+    "overdueHoursHint": "To przypomnienie jest zaległe — podaj nowy interwał od bieżących motogodzin",
     "reminderType": "Typ przypomnienia",
     "smartModeDescription": "Opis trybu inteligentnego",
     "titlePlaceholder": "Wprowadź tytuł",
@@ -472,5 +477,17 @@
     "editTitle": "Edytuj gwarancję",
     "mileageLimit": "Limit przebiegu",
     "warrantyType": "Rodzaj gwarancji"
+  },
+  "hours": {
+    "createTitle": "Dodaj odczyt motogodzin",
+    "editTitle": "Edytuj odczyt motogodzin",
+    "notesPlaceholder": "Odczyt miesięczny, odczyt serwisowy itp. ..."
+  },
+  "reminderForm": {
+    "hoursAbsolutePlaceholder": "np. 850",
+    "hoursIntervalPlaceholder": "np. 50",
+    "hoursTargetHint": "Obecnie: {{current}} + {{interval}} = cel {{target}} godz.",
+    "typeHours": "Motogodziny",
+    "typeHoursDescription": "Powiadom przy określonym odczycie motogodzin"
   }
 }

@@ -117,7 +117,12 @@
     "notes": "Нотатки",
     "notesPlaceholder": "Додаткові нотатки про контакт...",
     "gasStationFlag": "Заправна станція",
-    "statePlaceholder": "Область / регіон"
+    "statePlaceholder": "Область / регіон",
+    "categoryAll": "Усі",
+    "categoryGasStation": "АЗС",
+    "editContactNamed": "Редагувати: {{name}}",
+    "filterByCategory": "Фільтр за категорією",
+    "saveChanges": "Зберегти зміни"
   },
   "poiFinder": {
     "title": "Знайти точки інтересу",
@@ -203,5 +208,15 @@
   "total": "Разом",
   "totalCost": "Загальна вартість",
   "update": "Оновити",
-  "user": "Користувач"
+  "user": "Користувач",
+  "engineHours": "Мотогодини",
+  "validation": {
+    "engineHours": {
+      "negative": "Мотогодини не можуть бути від’ємними",
+      "tooLarge": "Значення мотогодин занадто велике"
+    }
+  },
+  "supplies": {
+    "title": "Витратні матеріали"
+  }
 }

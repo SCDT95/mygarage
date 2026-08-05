@@ -11,5 +11,16 @@
   "about": "Про програму",
   "login": "Увійти",
   "logout": "Вийти",
-  "admin": "АДМІНІСТРАТОР"
+  "admin": "АДМІНІСТРАТОР",
+  "closeMenu": "Закрити меню",
+  "openMenu": "Відкрити меню",
+  "notifications": "Сповіщення",
+  "notificationsEmptyTitle": "Немає сповіщень",
+  "notificationsEmptyBody": "Усе переглянуто. Нові сповіщення з’являться тут.",
+  "search": "Пошук",
+  "searchPlaceholder": "Пошук автомобілів, обслуговування, VIN…",
+  "searchShellTitle": "Пошук незабаром",
+  "searchShellBody": "Глобальний пошук за автомобілями, історією обслуговування та VIN незабаром з’явиться.",
+  "themeToggle": "Змінити тему",
+  "supplies": "Витратні матеріали"
 }

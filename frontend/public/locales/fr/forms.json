@@ -577,13 +577,18 @@
     "created": "Rappel créé",
     "dueDate": "Date d'échéance",
     "dueDateRequired": "La date d'échéance est requise pour ce type de rappel",
+    "dueHours": "Échéance (heures moteur)",
     "dueMileage": "Kilométrage d'échéance (odomètre)",
     "editTitle": "Modifier le rappel",
+    "hoursRequired": "Les heures moteur avant échéance sont requises pour ce type de rappel",
+    "hoursUntilDue": "Heures moteur avant échéance",
     "milesRequired": "Le nombre de miles avant échéance est requis pour ce type de rappel",
     "milesUntilDue": "Miles avant échéance",
+    "noHoursData": "Aucune donnée d'heures moteur — saisissez un objectif absolu",
     "noOdometerData": "Aucune donnée d'odomètre — saisissez un kilométrage cible absolu",
     "optionalNotes": "Notes optionnelles...",
     "overdueHint": "Ce rappel est en retard — saisissez un nouvel intervalle à partir du kilométrage actuel",
+    "overdueHoursHint": "Ce rappel est en retard — saisissez un nouvel intervalle à partir des heures moteur actuelles",
     "reminderType": "Type de rappel",
     "smartModeDescription": "Le mode intelligent utilise votre historique de conduite pour estimer quand vous atteindrez l'objectif kilométrique. La date sert de limite stricte — vous serez notifié à la première des deux échéances.",
     "titlePlaceholder": "ex. Prochaine vidange",
@@ -735,7 +740,12 @@
     "mileageIntervalPlaceholder": "ex. 5000",
     "mileageAbsolutePlaceholderImperial": "ex. 92000",
     "mileageAbsolutePlaceholderMetric": "ex. 148000",
-    "mileageTargetHint": "Actuel : {{current}} + {{interval}} = objectif {{target}} {{unit}}"
+    "mileageTargetHint": "Actuel : {{current}} + {{interval}} = objectif {{target}} {{unit}}",
+    "hoursAbsolutePlaceholder": "ex. 850",
+    "hoursIntervalPlaceholder": "ex. 50",
+    "hoursTargetHint": "Actuel : {{current}} + {{interval}} = objectif {{target}} h",
+    "typeHours": "Heures moteur",
+    "typeHoursDescription": "Notifier à un relevé d'heures moteur précis"
   },
   "propaneRecordForm": {
     "tankSizeOption": "{{size}} {{unit}} ({{kind}})",
@@ -842,5 +852,10 @@
     "fasTrak": "FasTrak",
     "iPass": "I-PASS",
     "other": "Autre"
+  },
+  "hours": {
+    "createTitle": "Ajouter un relevé d'heures moteur",
+    "editTitle": "Modifier le relevé d'heures moteur",
+    "notesPlaceholder": "Relevé mensuel, relevé d'entretien, etc."
   }
 }

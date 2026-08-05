@@ -277,6 +277,29 @@
       "vinVerified": "VIN : vérifié",
       "wheels": "Roues",
       "hours": "Heures"
+    },
+    "cardEdit": {
+      "saveError": "Impossible d'enregistrer les modifications. Veuillez réessayer.",
+      "title": "Modifier {{section}}"
+    },
+    "cardEmpty": "Rien d'enregistré pour l'instant",
+    "equipment": {
+      "add": "Ajouter",
+      "addPlaceholder": "Ajouter un équipement...",
+      "done": "Terminé",
+      "editSubtitle": "Modifier l'équipement de ce véhicule",
+      "empty": "Aucun équipement pour le moment. Ajoutez des éléments ci-dessous.",
+      "remove": "Retirer {{item}}",
+      "saveError": "Impossible d'enregistrer l'équipement. Veuillez réessayer."
+    },
+    "pricing": {
+      "editTitle": "Modifier les prix",
+      "msrpHint": "Normalement extrait de l'étiquette de prix ; modifiez pour corriger ou compléter.",
+      "saveError": "Impossible d'enregistrer les prix. Veuillez réessayer.",
+      "title": "Prix"
+    },
+    "settings": {
+      "title": "Paramètres du véhicule"
     }
   },
   "documentList": {
@@ -363,7 +386,9 @@
     "usageTracking": "Suivi d'utilisation",
     "usageDistance": "Distance (odomètre)",
     "usageHours": "Heures (compteur horaire)",
-    "currentHours": "Heures actuelles"
+    "currentHours": "Heures actuelles",
+    "alsoTrackDistance": "Suivre aussi la distance/l'odomètre",
+    "alsoTrackHours": "Suivre aussi les heures moteur"
   },
   "fuelList": {
     "actions": "Actions",
@@ -406,7 +431,10 @@
     "volumeUnit": "Volume ({{unit}})",
     "propaneUnit": "Propane ({{unit}})",
     "unitPrice": "Unit price",
-    "tableCaption": "Fuel fill-up history"
+    "tableCaption": "Fuel fill-up history",
+    "avgFuelRate": "Moy. {{unit}}",
+    "costPerHour": "Coût/h",
+    "fuelRate": "Débit de carburant"
   },
   "insuranceList": {
     "addFirstPolicy": "Ajouter votre première police d'assurance",
@@ -802,7 +830,8 @@
     "title": "Rappels",
     "statusDismissed": "Ignoré",
     "statusDone": "Terminé",
-    "statusPending": "En attente"
+    "statusPending": "En attente",
+    "dueAtHours": "échéance à {{n}} h"
   },
   "serviceList": {
     "attachments": "Pièces jointes",
@@ -1303,5 +1332,25 @@
     "deductible": "Franchise",
     "coverageLimits": "Limites de couverture",
     "notes": "Notes"
+  },
+  "hoursList": {
+    "actions": "Actions",
+    "addFirstReading": "Ajouter le premier relevé",
+    "addReading": "Ajouter un relevé",
+    "confirmDelete": "Voulez-vous vraiment supprimer ce relevé d'heures ?",
+    "date": "Date",
+    "deleteError": "Échec de la suppression de l'enregistrement",
+    "latestReading": "Dernier relevé",
+    "loading": "Chargement des relevés d'heures...",
+    "noRecords": "Aucun relevé d'heures pour le moment",
+    "noRecordsDesc": "Suivez les heures moteur de votre véhicule dans le temps",
+    "notes": "Notes",
+    "recordCount": "Enregistrements : {{count}}",
+    "source": "Source",
+    "sourceFuel": "Carburant",
+    "sourceManual": "Manuel",
+    "sourceServiceVisit": "Entretien",
+    "tableCaption": "Historique des relevés d'heures moteur",
+    "title": "Relevés d'heures moteur"
   }
 }
