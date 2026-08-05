@@ -339,3 +339,63 @@ async def test_delete_torque_source_with_history_succeeds_and_retains_it(
         select(VehicleTelemetry).where(VehicleTelemetry.device_id == device_id)
     )
     assert len(telemetry.scalars().all()) == 1, "telemetry must survive a revoke"
+
+
+@pytest.mark.asyncio
+async def test_create_torque_source_upload_url_is_absolute(
+    client: AsyncClient, db_session: AsyncSession
+):
+    """The upload URL must be pasteable into Torque Pro's Web Upload field.
+
+    Regression for #129. `app_base_url` is read here but has never been
+    written anywhere — not seeded, no settings UI, absent from the docs — so
+    it was always unset and this URL came back as a bare path:
+
+        /api/v1/torque/<token>/upload
+
+    A user cannot paste that into an Android app. The reporter substituted
+    the WiCAN ingest endpoint instead and got `405 Method Not Allowed`
+    (that route is POST-only; Torque uploads with GET), which is what the
+    issue was filed about. The Torque endpoint itself was fine all along.
+
+    Asserting on the scheme rather than an exact host: the origin is derived
+    from the request, so it tracks whatever host the deployment answers on.
+    """
+    vin, owner_headers = await _make_owned_vehicle(db_session)
+
+    r = await client.post(
+        f"/api/vehicles/{vin}/livelink/torque-sources",
+        json={"label": "Phone"},
+        headers=owner_headers,
+    )
+
+    assert r.status_code == 200, r.text
+    upload_url = r.json()["upload_url"]
+
+    assert upload_url.startswith(("http://", "https://")), (
+        f"upload_url must be absolute, got {upload_url!r}"
+    )
+    assert upload_url.endswith(f"/api/v1/torque/{r.json()['token']}/upload")
+
+
+@pytest.mark.asyncio
+async def test_create_torque_source_honours_x_forwarded_headers(
+    client: AsyncClient, db_session: AsyncSession
+):
+    """Behind Cloudflare Tunnel / Traefik the request's own URL is the internal
+    one, so the public origin has to come from the forwarded headers — the
+    reporter's deployment is exactly this shape."""
+    vin, owner_headers = await _make_owned_vehicle(db_session)
+
+    r = await client.post(
+        f"/api/vehicles/{vin}/livelink/torque-sources",
+        json={"label": "Phone"},
+        headers={
+            **owner_headers,
+            "X-Forwarded-Proto": "https",
+            "X-Forwarded-Host": "garage.example.com",
+        },
+    )
+
+    assert r.status_code == 200, r.text
+    assert r.json()["upload_url"].startswith("https://garage.example.com/api/v1/torque/")

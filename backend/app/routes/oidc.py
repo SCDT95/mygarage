@@ -30,7 +30,7 @@ from app.services import oidc as oidc_service
 from app.services.auth import create_access_token, get_current_admin_user, get_current_user
 from app.utils.datetime_utils import utc_now
 from app.utils.logging_utils import sanitize_for_log
-from app.utils.request_scheme import get_cookie_secure, get_request_scheme
+from app.utils.request_scheme import get_cookie_secure, get_external_base_url
 
 logger = logging.getLogger(__name__)
 
@@ -38,12 +38,12 @@ router = APIRouter(prefix="/api/auth/oidc", tags=["oidc"])
 
 
 def _external_base(request: Request) -> str:
-    """Scheme+host+prefix for URLs the browser/IdP will hit (#107)."""
-    scheme = get_request_scheme(request)
-    host = request.headers.get("x-forwarded-host", request.headers.get("host")) or str(
-        request.base_url.hostname
-    )
-    return f"{scheme}://{host}{settings.root_path}"
+    """Scheme+host+prefix for URLs the browser/IdP will hit (#107).
+
+    Thin alias over the shared helper, which the LiveLink/Torque ingest URLs
+    also use — the resolution rule lives in one place.
+    """
+    return get_external_base_url(request)
 
 
 def _frontend_base(request: Request) -> str:

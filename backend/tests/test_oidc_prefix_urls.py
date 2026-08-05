@@ -7,8 +7,8 @@ from urllib.parse import parse_qs, urlparse
 import pytest
 from httpx import AsyncClient
 
-from app.routes import oidc
-from app.routes.oidc import _external_base  # helper added in Step 3
+from app.routes.oidc import _external_base  # thin alias over request_scheme.get_external_base_url
+from app.utils import request_scheme
 from tests.integration.routes.test_oidc import clear_oidc_settings, set_settings
 
 
@@ -23,7 +23,9 @@ def test_external_base_includes_prefix(monkeypatch):
     from app import config
 
     monkeypatch.setattr(config.settings, "root_path", "/mygarage", raising=False)
-    monkeypatch.setattr(oidc, "get_request_scheme", lambda r: "https")  # avoid a heavy request mock
+    monkeypatch.setattr(
+        request_scheme, "get_request_scheme", lambda r: "https"
+    )  # avoid a heavy request mock
     assert _external_base(_Req("example.com")) == "https://example.com/mygarage"
 
 
@@ -31,7 +33,7 @@ def test_external_base_root_unchanged(monkeypatch):
     from app import config
 
     monkeypatch.setattr(config.settings, "root_path", "", raising=False)
-    monkeypatch.setattr(oidc, "get_request_scheme", lambda r: "https")
+    monkeypatch.setattr(request_scheme, "get_request_scheme", lambda r: "https")
     assert (
         _external_base(_Req("example.com")) == "https://example.com"
     )  # no prefix, no trailing slash

@@ -6,7 +6,7 @@ import json
 import logging
 from datetime import datetime
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from fastapi.responses import StreamingResponse
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -56,10 +56,29 @@ from app.services.telemetry_service import TelemetryService
 from app.services.torque_service import TorqueService
 from app.utils.csv_safe import sanitize_csv_row
 from app.utils.datetime_utils import utc_now
+from app.utils.request_scheme import get_external_base_url
 
 logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/api/vehicles/{vin}/livelink", tags=["Vehicle LiveLink"])
+
+
+async def _integration_base_url(request: Request, db: AsyncSession) -> str:
+    """Absolute origin for ingest URLs a user copies into an external device.
+
+    Prefers the operator-set `app_base_url`, and otherwise derives it from the
+    request. That fallback is the fix for #129: nothing has ever written
+    `app_base_url` — it is not seeded, has no settings UI and is in no
+    documentation — so it was always unset, and every integration URL was
+    handed to the user as a bare path like `/api/v1/torque/<token>/upload`.
+    Unusable in Torque Pro's Web Upload field, which is why the reporter fell
+    back to the WiCAN ingest endpoint and got 405 (that one is POST-only;
+    Torque sends GET).
+    """
+    configured = await SettingsService.get(db, "app_base_url")
+    if configured and configured.value and configured.value.strip():
+        return configured.value.strip().rstrip("/")
+    return get_external_base_url(request)
 
 
 async def verify_vehicle_access(
@@ -891,6 +910,7 @@ async def update_location_tracking(
 async def create_torque_source(
     vin: str,
     payload: TorqueSourceCreate,
+    request: Request,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(require_auth),
 ) -> TorqueSourceCreateResponse:
@@ -914,8 +934,8 @@ async def create_torque_source(
     device, raw_token = await TorqueService(db).create_source(vin, payload.label)
     await db.commit()
 
-    base_url = await SettingsService.get(db, "app_base_url")
-    upload_url = f"{base_url.value if base_url else ''}/api/v1/torque/{raw_token}/upload"
+    base_url = await _integration_base_url(request, db)
+    upload_url = f"{base_url}/api/v1/torque/{raw_token}/upload"
 
     return TorqueSourceCreateResponse(
         device_id=device.device_id,

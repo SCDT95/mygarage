@@ -9,6 +9,8 @@ import os
 
 from fastapi import Request
 
+from app.config import settings
+
 logger = logging.getLogger(__name__)
 
 
@@ -47,6 +49,36 @@ def get_request_scheme(request: Request) -> str:
 
     # Fall back to ASGI server's reported scheme
     return str(request.url.scheme).lower()
+
+
+def get_external_base_url(request: Request) -> str:
+    """Absolute origin (+ root_path) the outside world reaches this app on.
+
+    For URLs that must be usable *outside* the browser session that fetched
+    them — an OIDC redirect the IdP will call back, or an ingest URL a user
+    pastes into Torque Pro or a WiCAN dongle. Those cannot be relative.
+
+    Mirrors the OIDC resolution (#107): X-Forwarded-Proto/Host first, since
+    behind Cloudflare Tunnel or Traefik the request's own URL is the internal
+    one, then the Host header, then whatever the ASGI server reports.
+
+    Trust model: `Host`/`X-Forwarded-Host` are attacker-influenceable in
+    principle, so callers with an operator-configured base URL should prefer
+    that and treat this as the fallback. The value is only ever rendered back
+    to an already-authenticated user for copy-paste, never used to make a
+    server-side request.
+
+    Returns:
+        e.g. "https://garage.example.com" — no trailing slash unless
+        `root_path` supplies one.
+    """
+    scheme = get_request_scheme(request)
+    host = request.headers.get("x-forwarded-host", request.headers.get("host")) or str(
+        request.base_url.hostname
+    )
+    # Multi-proxy chains send a comma-separated list; leftmost is client-facing.
+    host = host.split(",")[0].strip()
+    return f"{scheme}://{host}{settings.root_path}"
 
 
 def get_cookie_secure(request: Request) -> bool:

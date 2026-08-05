@@ -3,7 +3,7 @@
 import logging
 from enum import StrEnum
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_db
@@ -43,6 +43,7 @@ from app.services.livelink_service import LiveLinkService
 from app.services.sd_backfill_service import SdBackfillService
 from app.services.settings_service import SettingsService
 from app.services.telemetry_service import TelemetryService
+from app.utils.request_scheme import get_external_base_url
 
 logger = logging.getLogger(__name__)
 
@@ -64,6 +65,7 @@ router = APIRouter(prefix="/api/livelink", tags=["LiveLink Admin"])
 
 @router.get("/settings", response_model=LiveLinkSettingsResponse)
 async def get_livelink_settings(
+    request: Request,
     db: AsyncSession = Depends(get_db),
     current_user: User | None = Depends(get_current_admin_user),
 ):
@@ -79,9 +81,15 @@ async def get_livelink_settings(
     token_hash = await SettingsService.get(db, "livelink_global_token_hash")
     has_global_token = bool(token_hash and token_hash.value)
 
-    # Build ingestion URL
-    base_url = await SettingsService.get(db, "app_base_url")
-    ingestion_url = f"{base_url.value if base_url else ''}/api/v1/livelink/ingest"
+    # Build ingestion URL. Absolute — a dongle is configured with this by
+    # copy-paste and cannot resolve a relative path (#129).
+    configured = await SettingsService.get(db, "app_base_url")
+    base_url = (
+        configured.value.strip().rstrip("/")
+        if configured and configured.value and configured.value.strip()
+        else get_external_base_url(request)
+    )
+    ingestion_url = f"{base_url}/api/v1/livelink/ingest"
 
     return LiveLinkSettingsResponse(
         enabled=await service.is_enabled(),
@@ -108,6 +116,7 @@ async def get_livelink_settings(
 @router.put("/settings", response_model=LiveLinkSettingsResponse)
 async def update_livelink_settings(
     updates: LiveLinkSettingsUpdate,
+    request: Request,
     db: AsyncSession = Depends(get_db),
     current_user: User | None = Depends(get_current_admin_user),
 ):
@@ -172,7 +181,7 @@ async def update_livelink_settings(
     await db.commit()
 
     # Return updated settings
-    return await get_livelink_settings(db=db, current_user=current_user)
+    return await get_livelink_settings(request=request, db=db, current_user=current_user)
 
 
 @router.post("/token", response_model=TokenGenerateResponse)
