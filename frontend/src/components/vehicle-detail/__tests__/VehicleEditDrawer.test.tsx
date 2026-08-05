@@ -17,15 +17,6 @@ vi.mock('../../../hooks/useUnitPreference', () => ({
   useUnitPreference: () => ({ system: 'metric', showBoth: false }),
 }))
 
-// CurrencyInputPrefix depends on this, which needs AuthProvider
-vi.mock('../../../hooks/useCurrencyPreference', () => ({
-  useCurrencyPreference: () => ({
-    currencyCode: 'USD',
-    locale: 'en-US',
-    formatCurrency: () => '$0.00',
-  }),
-}))
-
 import { toast } from 'sonner'
 import api from '../../../services/api'
 import VehicleEditDrawer from '../VehicleEditDrawer'
@@ -388,13 +379,15 @@ describe('VehicleEditDrawer — seeds from a fresh fetch, not the stale prop', (
     await waitFor(() => expect(nickname.value).toBe('Fresh Name'))
   })
 
-  it('does not render or submit DEF fields when the fresh vehicle is non-motorized', async () => {
-    // The prop is a stale/offline-cached snapshot saying "Car"; the server says
-    // Trailer. The DEF section is isMotorized-gated, so gating it on the stale
-    // prop would mount and register fields the fresh data never populated —
-    // which is how a mounted-but-unseeded field submits an explicit null.
-    const staleProp = { ...baseVehicle, vehicle_type: 'Car', def_tank_capacity_liters: '19.0' }
-    const freshNonMotorized = { ...baseVehicle, vehicle_type: 'Trailer', def_tank_capacity_liters: '19.0' }
+  it('does not render the DEF section when the fresh vehicle is non-motorized with no stored capacity', async () => {
+    // The prop is a stale/offline-cached snapshot saying "Car"; the server
+    // says Trailer, with no DEF capacity on record. The gate reads
+    // `seedSource` (the fresh source) via `isMotorized`, not the stale
+    // `vehicle` prop — gating on the stale prop would mount and register a
+    // field the fresh data never populated, which is how a mounted-but-
+    // unseeded field submits an explicit null.
+    const staleProp = { ...baseVehicle, vehicle_type: 'Car', def_tank_capacity_liters: null }
+    const freshNonMotorized = { ...baseVehicle, vehicle_type: 'Trailer', def_tank_capacity_liters: null }
     mockedApi.get.mockImplementation((url: string) => {
       if (url.includes('detail-stats')) return Promise.resolve({ data: baseDetailStats })
       return Promise.resolve({ data: freshNonMotorized })
@@ -408,7 +401,33 @@ describe('VehicleEditDrawer — seeds from a fresh fetch, not the stale prop', (
     fireEvent.click(screen.getByRole('button', { name: 'edit.saveChanges' }))
     await waitFor(() => expect(mockedApi.put).toHaveBeenCalled())
     const [, payload] = mockedApi.put.mock.calls[0] as [string, Record<string, unknown>]
-    expect(payload.def_tank_capacity_liters).not.toBe(null)
+    expect(payload.def_tank_capacity_liters).toBe(null)
+  })
+
+  // D6 (final-review fix wave): a non-motorized vehicle that already carries
+  // stored DEF capacity is a nonsense data state, but a real one — and the
+  // backend 400s if fuel_type moves away from diesel while capacity > 0.
+  // Gating the whole section on `isMotorized` alone stranded that vehicle
+  // with no UI path to the Clear button (which lives inside the same gate),
+  // so the gate widened to `(isMotorized || defEnabled)` — `defEnabled`
+  // seeds `true` whenever stored capacity is present, motorized or not.
+  it('renders the DEF section — and its Clear escape hatch — for a non-motorized vehicle that already carries stored capacity', async () => {
+    const nonMotorizedWithCapacity: Vehicle = {
+      ...baseVehicle,
+      vehicle_type: 'Trailer',
+      fuel_type: 'diesel',
+      def_tank_capacity_liters: '19.0',
+    }
+    renderVehicleEdit(nonMotorizedWithCapacity)
+
+    expect(await screen.findByLabelText('edit.enableDefTracking')).toBeInTheDocument()
+    expect(await screen.findByLabelText('edit.defTankCapacity (L)')).toBeInTheDocument()
+
+    // Switch away from diesel — the Clear button must be reachable so the
+    // vehicle isn't stranded on the backend's diesel-only capacity 400.
+    const select = (await screen.findByLabelText('edit.fuelType')) as HTMLSelectElement
+    fireEvent.change(select, { target: { value: 'gasoline' } })
+    expect(await screen.findByText('edit.clearDefTankCapacity')).toBeInTheDocument()
   })
 })
 

@@ -307,6 +307,36 @@ describe('vehicleEditSchema — date fields null-on-clear', () => {
   })
 })
 
+// M4 (final-review, final fix wave): this is the exact shape the branch's
+// one Critical lived in. purchasePriceSchema/soldPriceSchema originally
+// ended `.optional().transform()`, so an omitted key still hit the
+// transform and synthesized an explicit `null` on the output — which
+// survives JSON.stringify and force-clears the column via the backend's
+// `exclude_unset=True` partial update. They were reordered to
+// `.transform().optional()` (see purchasePriceSchema/soldPriceSchema
+// above), matching yearSchema/doorsSchema/cylindersSchema. Neither
+// VehicleEditDrawer (Vehicle Settings) nor VehicleWizard's create payload
+// registers purchase_price/sold_price any more — PricingDrawer owns them
+// exclusively — so every settings-panel save omits both keys, and this
+// pins that the parsed result has neither key as an *own property* at all
+// (not merely `undefined`, which `toEqual` would treat as equivalent to
+// absent and so would not discriminate the two schema orderings).
+describe('vehicleEditSchema — purchase_price/sold_price stay absent when omitted (Critical regression)', () => {
+  it('produces a result with neither purchase_price nor sold_price as an own property', () => {
+    const settingsPanelSubmit = {
+      ...base,
+      // purchase_price, sold_price intentionally absent — VehicleEditDrawer
+      // (Vehicle Settings) never registers either field; PricingDrawer is
+      // the only editor that submits them.
+    }
+
+    const result = vehicleEditSchema.parse(settingsPanelSubmit)
+
+    expect(Object.prototype.hasOwnProperty.call(result, 'purchase_price')).toBe(false)
+    expect(Object.prototype.hasOwnProperty.call(result, 'sold_price')).toBe(false)
+  })
+})
+
 // Task 19 extension: the numeric fields (purchase_price, sold_price, year,
 // doors, cylinders) collapsed a blanked input — which react-hook-form's
 // `valueAsNumber` turns into NaN — to `undefined`, same silent no-op against

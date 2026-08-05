@@ -124,7 +124,10 @@ interface VehicleFieldsDrawerProps {
   /** Which card's fields to edit. Retained during the close animation, so it
    *  may briefly stay set while `open` is false. Null before the first open. */
   card: VehicleCardKey | null
-  isMotorized: boolean
+  /** Unused inside the component (see `_isMotorized` below) — kept optional
+   *  rather than required so the interface stops implying it drives
+   *  behaviour. `VehicleDetail.tsx` still passes it; that's harmless. */
+  isMotorized?: boolean
   /** Receives the server's updated vehicle after a successful save. */
   onUpdated: (vehicle: Vehicle) => void
 }

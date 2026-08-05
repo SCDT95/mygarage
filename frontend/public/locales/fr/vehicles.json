@@ -333,12 +333,11 @@
     }
   },
   "edit": {
-    "basicInformation": "Informations de base",
     "bodyClass": "Type de carrosserie",
     "clearDefTankCapacity": "Effacer la capacité du réservoir DEF",
     "cylinders": "Cylindres",
     "defCapacityRequiresDieselHint": "La capacité du réservoir DEF nécessite un type de carburant diesel. Effacez la capacité ci-dessous pour changer le type de carburant, ou remettez-le sur diesel.",
-    "defTankCapacity": "Capacité du réservoir DEF (gallons)",
+    "defTankCapacity": "Capacité du réservoir DEF",
     "defTankCapacityHint": "Optionnel. Aide à estimer la capacité DEF restante.",
     "defTracking": "Suivi DEF",
     "dieselDefHint": "Ce véhicule utilise du diesel. Pensez à activer le suivi DEF.",
@@ -1238,17 +1237,7 @@
   },
   "vehicleEditPage": {
     "genericError": "Une erreur s'est produite",
-    "gvwrClass": "Classe GVWR",
     "nicknamePlaceholder": "Ma voiture",
-    "licensePlatePlaceholder": "ABC1234",
-    "makePlaceholder": "Toyota",
-    "modelPlaceholder": "Camry",
-    "trimPlaceholder": "EX, Limited, etc.",
-    "bodyClassPlaceholder": "Berline, coupé, etc.",
-    "driveTypePlaceholder": "FWD, RWD, AWD, 4WD",
-    "gvwrClassPlaceholder": "Classe 1, 2, etc.",
-    "transmissionTypePlaceholder": "Automatique, manuelle, CVT",
-    "transmissionSpeedsPlaceholder": "6 rapports, 8 rapports, etc.",
     "currentHoursPlaceholder": "ex. 123,5"
   },
   "inspectionResult": {

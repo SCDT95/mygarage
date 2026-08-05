@@ -189,7 +189,6 @@
     "uploading": "Завантаження..."
   },
   "edit": {
-    "basicInformation": "Основна інформація",
     "bodyClass": "Клас кузова",
     "clearDefTankCapacity": "Очистити ємність бака DEF",
     "cylinders": "Циліндри",

@@ -189,7 +189,6 @@
     "uploading": "Загрузка..."
   },
   "edit": {
-    "basicInformation": "Основная информация",
     "bodyClass": "Класс кузова",
     "clearDefTankCapacity": "Очистить емкость бака DEF",
     "cylinders": "Цилиндры",

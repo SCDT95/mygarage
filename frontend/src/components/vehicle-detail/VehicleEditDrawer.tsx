@@ -330,8 +330,12 @@ export default function VehicleEditDrawer({
           </div>
         </section>
 
-        {/* DEF Tracking — motorized only */}
-        {isMotorized && (
+        {/* DEF Tracking — motorized, OR a non-motorized vehicle that already
+            carries stored DEF capacity (a nonsense data state, but one with
+            no other UI path to clear it: the Clear button lives inside this
+            same gate, so a bare `isMotorized` check strands that vehicle on
+            a backend 400 the moment fuel type changes away from diesel). */}
+        {(isMotorized || defEnabled) && (
           <section>
             <h3 className="mb-4 flex items-center gap-2 text-lg font-semibold text-text">
               <Droplets className="h-5 w-5" aria-hidden="true" />

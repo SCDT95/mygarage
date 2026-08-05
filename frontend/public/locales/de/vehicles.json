@@ -308,12 +308,11 @@
       }
     },
     "edit": {
-      "basicInformation": "Grundlegende Informationen",
       "bodyClass": "Karosserieklasse",
       "clearDefTankCapacity": "DEF-Tankkapazität leeren",
       "cylinders": "Zylinder",
       "defCapacityRequiresDieselHint": "Die DEF-Tankkapazität erfordert die Kraftstoffart Diesel. Leere die Kapazität unten, um die Kraftstoffart zu ändern, oder wechsle zurück zu Diesel.",
-      "defTankCapacity": "DEF-Tankkapazität (Gallonen)",
+      "defTankCapacity": "DEF-Tankkapazität",
       "defTankCapacityHint": "Optional. Hilft bei der Schätzung der verbleibenden DEF-Kapazität.",
       "defTracking": "DEF-Verfolgung",
       "dieselDefHint": "Dieses Fahrzeug verbraucht Diesel. Erwäge die Aktivierung der DEF-Verfolgung.",
@@ -1183,17 +1182,7 @@
   },
   "vehicleEditPage": {
     "genericError": "Ein Fehler ist aufgetreten",
-    "gvwrClass": "ZGG-Klasse (GVWR)",
-    "nicknamePlaceholder": "Mein Auto",
-    "licensePlatePlaceholder": "ABC1234",
-    "makePlaceholder": "Toyota",
-    "modelPlaceholder": "Camry",
-    "trimPlaceholder": "EX, Limited etc.",
-    "bodyClassPlaceholder": "Limousine, Coupe etc.",
-    "driveTypePlaceholder": "FWD, RWD, AWD, 4WD",
-    "gvwrClassPlaceholder": "Klasse 1, 2 etc.",
-    "transmissionTypePlaceholder": "Automatik, Manuell, CVT",
-    "transmissionSpeedsPlaceholder": "6-Gang, 8-Gang etc."
+    "nicknamePlaceholder": "Mein Auto"
   },
   "inspectionResult": {
     "title": "Inspektionsergebnis",

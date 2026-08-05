@@ -356,12 +356,11 @@
   "edit": {
     "alsoTrackDistance": "Also track distance/odometer",
     "alsoTrackHours": "Also track engine hours",
-    "basicInformation": "Basic Information",
     "bodyClass": "Body Class",
     "clearDefTankCapacity": "Clear DEF Tank Capacity",
     "cylinders": "Cylinders",
     "defCapacityRequiresDieselHint": "DEF tank capacity requires a diesel fuel type. Clear the capacity below to change fuel type, or switch it back to diesel.",
-    "defTankCapacity": "DEF Tank Capacity (gallons)",
+    "defTankCapacity": "DEF Tank Capacity",
     "defTankCapacityHint": "Optional. Helps estimate remaining DEF capacity.",
     "defTracking": "DEF Tracking",
     "dieselDefHint": "This vehicle uses diesel fuel. Consider enabling DEF tracking.",
@@ -1285,18 +1284,8 @@
   },
   "vehicleEditPage": {
     "genericError": "An error occurred",
-    "gvwrClass": "GVWR Class",
     "currentHoursPlaceholder": "e.g. 123.5",
-    "nicknamePlaceholder": "My Car",
-    "licensePlatePlaceholder": "ABC1234",
-    "makePlaceholder": "Toyota",
-    "modelPlaceholder": "Camry",
-    "trimPlaceholder": "EX, Limited, etc.",
-    "bodyClassPlaceholder": "Sedan, Coupe, etc.",
-    "driveTypePlaceholder": "FWD, RWD, AWD, 4WD",
-    "gvwrClassPlaceholder": "Class 1, 2, etc.",
-    "transmissionTypePlaceholder": "Automatic, Manual, CVT",
-    "transmissionSpeedsPlaceholder": "6-Speed, 8-Speed, etc."
+    "nicknamePlaceholder": "My Car"
   },
   "inspectionResult": {
     "title": "Inspection Result",
