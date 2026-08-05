@@ -68,6 +68,7 @@ from app.services.def_service import DEFRecordService
 from app.services.fuel_service import calculate_average_hours_economy
 from app.services.service_visit_service import service_visit_cost_load_options
 from app.utils.cache import cached
+from app.utils.logging_utils import sanitize_for_log
 
 router = APIRouter(prefix="/api/analytics", tags=["analytics"])
 
@@ -1465,7 +1466,11 @@ async def export_analytics_pdf(
         vendor_analytics = await get_vendor_analytics(vin, db, current_user)
         vendor_data = vendor_analytics.model_dump()
     except Exception as e:
-        logger.error("Error fetching vendor analytics for %s: %s", vin, e)
+        logger.error(
+            "Error fetching vendor analytics for %s: %s",
+            sanitize_for_log(vin),
+            sanitize_for_log(str(e)),
+        )
         vendor_data = None
 
     # Fetch seasonal analytics
@@ -1473,7 +1478,11 @@ async def export_analytics_pdf(
         seasonal_analytics = await get_seasonal_analytics(vin, db, current_user)
         seasonal_data = seasonal_analytics.model_dump()
     except Exception as e:
-        logger.error("Error fetching seasonal analytics for %s: %s", vin, e)
+        logger.error(
+            "Error fetching seasonal analytics for %s: %s",
+            sanitize_for_log(vin),
+            sanitize_for_log(str(e)),
+        )
         seasonal_data = None
 
     # Fetch pending reminders for the "Upcoming Reminders" section
@@ -1483,7 +1492,11 @@ async def export_analytics_pdf(
         reminders = await reminder_service.list_reminders(vin, db, status="pending")
         reminders_data = [r.model_dump() for r in reminders]
     except Exception as e:
-        logger.error("Error fetching reminders for %s: %s", vin, e)
+        logger.error(
+            "Error fetching reminders for %s: %s",
+            sanitize_for_log(vin),
+            sanitize_for_log(str(e)),
+        )
         reminders_data = None
 
     # Convert analytics to dict for PDF generator
