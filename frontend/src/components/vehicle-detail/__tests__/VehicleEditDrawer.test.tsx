@@ -203,59 +203,6 @@ describe('VehicleEditDrawer — clear-on-blank vs. NOT NULL required fields', ()
     expect(select.value).toBe('Car')
   })
 
-  it('submits a nullable string field (trim) as null (not omitted) when cleared', async () => {
-    renderVehicleEdit({ ...baseVehicle, trim: 'Limited' })
-
-    const trimInput = (await screen.findByLabelText('edit.trim')) as HTMLInputElement
-    expect(trimInput.value).toBe('Limited')
-    fireEvent.change(trimInput, { target: { value: '' } })
-
-    const saveButton = screen.getByRole('button', { name: 'edit.saveChanges' })
-    fireEvent.click(saveButton)
-
-    await waitFor(() => expect(mockedApi.put).toHaveBeenCalled())
-
-    const [, payload] = mockedApi.put.mock.calls[0]
-    // `null` here (not `undefined`) matters: JSON.stringify drops
-    // `undefined` properties, which would silently no-op against the
-    // backend's `exclude_unset=True` partial-update logic.
-    expect(payload).toMatchObject({ trim: null })
-  })
-
-  it('saves a vehicle whose year is NULL in the DB without touching the year field', async () => {
-    renderVehicleEdit({ ...baseVehicle, year: null })
-
-    await screen.findByLabelText('edit.nickname *')
-
-    const saveButton = screen.getByRole('button', { name: 'edit.saveChanges' })
-    fireEvent.click(saveButton)
-
-    // Before the null-input fix, zod hard-failed on the null-seeded year
-    // ("expected number, received null") and blocked EVERY edit on such a
-    // vehicle until the user touched the year field.
-    await waitFor(() => expect(mockedApi.put).toHaveBeenCalled())
-
-    const [, payload] = mockedApi.put.mock.calls[0]
-    expect(payload).toMatchObject({ year: null, nickname: 'Test Car' })
-  })
-
-  it('submits purchase_date as null (not omitted) when the date is cleared', async () => {
-    renderVehicleEdit({ ...baseVehicle, purchase_date: '2020-03-15' })
-
-    const dateInput = (await screen.findByLabelText(
-      'edit.purchaseDate',
-    )) as HTMLInputElement
-    expect(dateInput.value).toBe('2020-03-15')
-    fireEvent.change(dateInput, { target: { value: '' } })
-
-    const saveButton = screen.getByRole('button', { name: 'edit.saveChanges' })
-    fireEvent.click(saveButton)
-
-    await waitFor(() => expect(mockedApi.put).toHaveBeenCalled())
-
-    const [, payload] = mockedApi.put.mock.calls[0]
-    expect(payload).toMatchObject({ purchase_date: null })
-  })
 })
 
 describe('VehicleEditDrawer — DEF tank capacity diesel-only gate', () => {
@@ -441,25 +388,27 @@ describe('VehicleEditDrawer — seeds from a fresh fetch, not the stale prop', (
     await waitFor(() => expect(nickname.value).toBe('Fresh Name'))
   })
 
-  it('does not clear engine fields when the stale prop and the fresh vehicle disagree on motorization', async () => {
-    // The prop is a stale/offline-cached snapshot saying "Car" (motorized);
-    // the server says the vehicle is now a Trailer (non-motorized).
-    const staleProp = { ...baseVehicle, vehicle_type: 'Car', trim: 'Limited', doors: 4 }
-    const freshNonMotorized = { ...baseVehicle, vehicle_type: 'Trailer', trim: 'Limited', doors: 4 }
+  it('does not render or submit DEF fields when the fresh vehicle is non-motorized', async () => {
+    // The prop is a stale/offline-cached snapshot saying "Car"; the server says
+    // Trailer. The DEF section is isMotorized-gated, so gating it on the stale
+    // prop would mount and register fields the fresh data never populated —
+    // which is how a mounted-but-unseeded field submits an explicit null.
+    const staleProp = { ...baseVehicle, vehicle_type: 'Car', def_tank_capacity_liters: '19.0' }
+    const freshNonMotorized = { ...baseVehicle, vehicle_type: 'Trailer', def_tank_capacity_liters: '19.0' }
     mockedApi.get.mockImplementation((url: string) => {
       if (url.includes('detail-stats')) return Promise.resolve({ data: baseDetailStats })
       return Promise.resolve({ data: freshNonMotorized })
     })
-    render(<VehicleEditDrawer open vin={staleProp.vin} vehicle={staleProp as Vehicle} onClose={vi.fn()} onUpdated={vi.fn()} />)
+    render(
+      <VehicleEditDrawer open vin={staleProp.vin} vehicle={staleProp as Vehicle} onClose={vi.fn()} onUpdated={vi.fn()} />,
+    )
     await screen.findByLabelText('edit.nickname *')
+    expect(screen.queryByLabelText('edit.enableDefTracking')).not.toBeInTheDocument()
+
     fireEvent.click(screen.getByRole('button', { name: 'edit.saveChanges' }))
     await waitFor(() => expect(mockedApi.put).toHaveBeenCalled())
     const [, payload] = mockedApi.put.mock.calls[0] as [string, Record<string, unknown>]
-    // Absent is fine (undefined), a real value is fine. An explicit null is the
-    // regression: it reaches the backend's setattr and CLEARS the column.
-    for (const k of ['trim','body_class','drive_type','doors','gvwr_class','displacement_l','cylinders','transmission_type','transmission_speeds']) {
-      expect(payload[k]).not.toBeNull()
-    }
+    expect(payload.def_tank_capacity_liters).not.toBe(null)
   })
 })
 

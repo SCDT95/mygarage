@@ -215,6 +215,7 @@
     "removeVehicle": "Remove Vehicle",
     "replaceSticker": "Replace sticker...",
     "saleInformation": "Sale Information",
+    "settings": { "title": "Vehicle Settings" },
     "share": "Share",
     "shareTooltip": "Share vehicle with other users",
     "shareVehicle": "Share Vehicle",

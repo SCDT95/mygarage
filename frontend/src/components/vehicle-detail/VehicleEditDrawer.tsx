@@ -6,7 +6,6 @@ import { Save, Droplets, Pencil } from 'lucide-react'
 import { toast } from 'sonner'
 import FormModalWrapper from '../FormModalWrapper'
 import { Button, Checkbox, Field, Input, Select } from '../ui'
-import CurrencyInputPrefix from '../common/CurrencyInputPrefix'
 import vehicleService from '../../services/vehicleService'
 import type { Vehicle, VehicleUpdate } from '../../types/vehicle'
 import { vehicleEditSchema, type VehicleEditFormData, VEHICLE_TYPES } from '../../schemas/vehicle'
@@ -19,9 +18,6 @@ import { getUsageTracking } from '../../utils/usageTracking'
 /** Vehicles with no engine, VIN-decoded drivetrain, or DEF system. */
 const NON_MOTORIZED_TYPES = ['Trailer', 'FifthWheel', 'TravelTrailer']
 
-const CURRENCY_INPUT_CLASS =
-  'ui-focus-input ui-motion w-full rounded-control border bg-surface-2 pl-7 pr-3 py-2 text-sm text-text font-mono tabular-nums'
-
 interface VehicleEditDrawerProps {
   open: boolean
   onClose: () => void
@@ -32,13 +28,25 @@ interface VehicleEditDrawerProps {
 }
 
 /**
- * Vehicle edit sidecar — the former /vehicles/:vin/edit page.
+ * Vehicle Settings sidecar — descended from the former /vehicles/:vin/edit
+ * page, trimmed to the fields no info-card editor covers. Every other field
+ * that page used to carry (year/make/model, VIN-decoded trim/body/drive/
+ * doors/gvwr, displacement/cylinders/transmission, license plate, purchase
+ * and sale info) now lives on an always-reachable card and its own drawer
+ * (VehicleFieldsDrawer, PricingDrawer); seeding or rendering them here would
+ * duplicate — and could race — those.
  *
- * The form logic is carried over verbatim from that page: react-hook-form +
+ * `fuel_type` is the one exception kept here rather than on a card: it
+ * directly gates the DEF Tracking section below (`isDieselFuelType`) and the
+ * backend's `_check_def_capacity_gate` 400s a vehicle that ends up
+ * non-diesel while still carrying DEF capacity, so fuel type and DEF
+ * capacity must be edited together, in the same submit.
+ *
+ * What's carried over verbatim from the old page: react-hook-form +
  * vehicleEditSchema, the seed effect's `[open]`-only dependency array (below —
  * it must not re-run just because `t` got a new identity, or a language switch
  * mid-edit would discard everything typed), the DEF enable/clear state machine,
- * the canonical-litres conversion, and the motorized branch. What changed is the
+ * the canonical-litres conversion, and the motorized gate. What changed is the
  * surface (a Drawer, not a route) and the save tail — the page ended with
  * `window.location.href` for a hard reload; here the parent applies the saved
  * vehicle in place.
@@ -62,11 +70,12 @@ export default function VehicleEditDrawer({
   const [defEnabled, setDefEnabled] = useState(false)
   // The vehicle the form is actually seeded from (the fresh refetch, or the
   // prop fallback if that refetch fails) — null until the seed resolves.
-  // Render-time gates (isMotorized, the non-motorized fuel section) must read
-  // THIS, not the `vehicle` prop: the prop can disagree with the fresh fetch
-  // on motorization, and gating a section on stale truth while seeding form
-  // values from fresh truth registers fields the fresh data never populates —
-  // `reset()` then submits them as explicit `null`, clearing real columns.
+  // The render-time isMotorized gate (below — it guards the DEF Tracking
+  // section) must read THIS, not the `vehicle` prop: the prop can disagree
+  // with the fresh fetch on motorization, and gating a section on stale
+  // truth while seeding form values from fresh truth registers fields the
+  // fresh data never populates — `reset()` then submits them as explicit
+  // `null`, clearing real columns.
   const [seedSource, setSeedSource] = useState<Vehicle | null>(null)
   const { system } = useUnitPreference()
 
@@ -122,11 +131,9 @@ export default function VehicleEditDrawer({
       vehicleService.getDetailStats(vin).catch(() => null),
     ])
     const source = fresh ?? vehicle
-    const vehicleIsMotorized = !NON_MOTORIZED_TYPES.includes(source.vehicle_type)
 
     const formData: Record<string, unknown> = {
       nickname: source.nickname,
-      license_plate: source.license_plate,
       vehicle_type: source.vehicle_type,
       usage_unit: source.usage_unit ?? 'distance',
       secondary_usage_enabled: detailStats?.secondary_usage_enabled ?? false,
@@ -135,13 +142,6 @@ export default function VehicleEditDrawer({
       // a fuel or service record carries a newer reading. Seed from the derived
       // latest reading; if detail-stats has none, leave it empty.
       current_hours: detailStats?.latest_hours != null ? Number(detailStats.latest_hours) : null,
-      year: source.year,
-      make: source.make,
-      model: source.model,
-      purchase_date: source.purchase_date,
-      purchase_price: source.purchase_price,
-      sold_date: source.sold_date,
-      sold_price: source.sold_price,
       // Always included (propane on fifth wheels).
       fuel_type: source.fuel_type,
       def_tank_capacity_liters: (() => {
@@ -159,25 +159,10 @@ export default function VehicleEditDrawer({
       source.def_tank_capacity_liters != null && Number(source.def_tank_capacity_liters) > 0
     setDefEnabled(hasTankCap)
 
-    // Non-motorized vehicles have no VIN-decoded or engine fields; leaving the
-    // keys absent is load-bearing (see schemas/vehicle.ts — an omitted key
-    // short-circuits to undefined rather than a column-clearing null).
-    if (vehicleIsMotorized) {
-      formData.trim = source.trim
-      formData.body_class = source.body_class
-      formData.drive_type = source.drive_type
-      formData.doors = source.doors
-      formData.gvwr_class = source.gvwr_class
-      formData.displacement_l = source.displacement_l
-      formData.cylinders = source.cylinders
-      formData.transmission_type = source.transmission_type
-      formData.transmission_speeds = source.transmission_speeds
-    }
-
-    // Publish the resolved source before reset() so the render-time gates
-    // (isMotorized, the fuel section) and the field values they admit change
-    // together, in the same tick — never gate on one snapshot while seeding
-    // from another.
+    // Publish the resolved source before reset() so the render-time isMotorized
+    // gate (and the DEF section it admits) changes together with the field
+    // values in the same tick — never gate on one snapshot while seeding from
+    // another.
     setSeedSource(source)
     reset(formData as VehicleEditFormData)
   }, [vin, vehicle, reset, system])
@@ -231,7 +216,7 @@ export default function VehicleEditDrawer({
     <FormModalWrapper
       isOpen={open}
       onClose={onClose}
-      title={t('edit.title')}
+      title={t('detail.settings.title')}
       icon={Pencil}
       width="lg"
       footer={
@@ -264,9 +249,9 @@ export default function VehicleEditDrawer({
         </div>
       ) : (
       <form id="vehicle-edit-form" onSubmit={handleSubmit(onSubmit)} className="p-6 space-y-6">
-        {/* Basic Information */}
+        {/* Basic — one flat group, no section heading. DEF Tracking below is
+            the one place a heading still earns its keep. */}
         <section>
-          <h3 className="mb-4 text-lg font-semibold text-text">{t('edit.basicInformation')}</h3>
           <div className="grid grid-cols-1 gap-x-4 sm:grid-cols-2">
             <Field id="nickname" label={t('edit.nickname')} required error={errors.nickname}>
               <Input
@@ -275,17 +260,6 @@ export default function VehicleEditDrawer({
                 {...register('nickname')}
                 placeholder={t('vehicleEditPage.nicknamePlaceholder')}
                 invalid={!!errors.nickname}
-                disabled={isSubmitting}
-              />
-            </Field>
-
-            <Field id="license_plate" label={t('edit.licensePlate')} error={errors.license_plate}>
-              <Input
-                id="license_plate"
-                type="text"
-                {...register('license_plate')}
-                placeholder={t('vehicleEditPage.licensePlatePlaceholder')}
-                invalid={!!errors.license_plate}
                 disabled={isSubmitting}
               />
             </Field>
@@ -304,6 +278,13 @@ export default function VehicleEditDrawer({
                   label: t(`vehicleTypeLabels.${type}`, { defaultValue: type }),
                 }))}
               />
+            </Field>
+
+            {/* Always included (propane on fifth wheels) — the one card
+                field VehicleFieldsDrawer does NOT edit, because it also
+                gates the DEF section directly below. */}
+            <Field id="fuel_type" label={t('edit.fuelType')} error={errors.fuel_type}>
+              <Select id="fuel_type" {...register('fuel_type')} invalid={!!errors.fuel_type} disabled={isSubmitting} placeholder="—" options={fuelOptions} />
             </Field>
 
             <Field id="usage_unit" label={t('edit.usageTracking')} error={errors.usage_unit}>
@@ -348,105 +329,6 @@ export default function VehicleEditDrawer({
             )}
           </div>
         </section>
-
-        {/* Vehicle Details */}
-        <section>
-          <h3 className="mb-4 text-lg font-semibold text-text">{t('edit.vehicleDetails')}</h3>
-          <div className="grid grid-cols-1 gap-x-4 sm:grid-cols-3">
-            <Field id="year" label={t('edit.year')} error={errors.year}>
-              <Input
-                id="year"
-                type="number"
-                min="1900"
-                max="2100"
-                {...register('year', { valueAsNumber: true })}
-                placeholder="2020"
-                invalid={!!errors.year}
-                disabled={isSubmitting}
-              />
-            </Field>
-
-            <Field id="make" label={t('edit.make')} error={errors.make}>
-              <Input
-                id="make"
-                type="text"
-                {...register('make')}
-                placeholder={t('vehicleEditPage.makePlaceholder')}
-                invalid={!!errors.make}
-                disabled={isSubmitting}
-              />
-            </Field>
-
-            <Field id="model" label={t('edit.model')} error={errors.model}>
-              <Input
-                id="model"
-                type="text"
-                {...register('model')}
-                placeholder={t('vehicleEditPage.modelPlaceholder')}
-                invalid={!!errors.model}
-                disabled={isSubmitting}
-              />
-            </Field>
-          </div>
-        </section>
-
-        {/* VIN Decoded Information — motorized only */}
-        {isMotorized && (
-          <section>
-            <h3 className="mb-4 text-lg font-semibold text-text">{t('edit.vinDecodedInfo')}</h3>
-            <div className="grid grid-cols-1 gap-x-4 sm:grid-cols-2">
-              <Field id="trim" label={t('edit.trim')} error={errors.trim}>
-                <Input id="trim" type="text" {...register('trim')} placeholder={t('vehicleEditPage.trimPlaceholder')} invalid={!!errors.trim} disabled={isSubmitting} />
-              </Field>
-
-              <Field id="body_class" label={t('edit.bodyClass')} error={errors.body_class}>
-                <Input id="body_class" type="text" {...register('body_class')} placeholder={t('vehicleEditPage.bodyClassPlaceholder')} invalid={!!errors.body_class} disabled={isSubmitting} />
-              </Field>
-
-              <Field id="drive_type" label={t('edit.driveType')} error={errors.drive_type}>
-                <Input id="drive_type" type="text" {...register('drive_type')} placeholder={t('vehicleEditPage.driveTypePlaceholder')} invalid={!!errors.drive_type} disabled={isSubmitting} />
-              </Field>
-
-              <Field id="doors" label={t('edit.doors')} error={errors.doors}>
-                <Input id="doors" type="number" {...register('doors', { valueAsNumber: true })} placeholder="4" invalid={!!errors.doors} disabled={isSubmitting} />
-              </Field>
-
-              <Field id="gvwr_class" label={t('vehicleEditPage.gvwrClass')} error={errors.gvwr_class}>
-                <Input id="gvwr_class" type="text" {...register('gvwr_class')} placeholder={t('vehicleEditPage.gvwrClassPlaceholder')} invalid={!!errors.gvwr_class} disabled={isSubmitting} />
-              </Field>
-            </div>
-          </section>
-        )}
-
-        {/* Engine & Transmission — motorized only */}
-        {isMotorized && (
-          <section>
-            <h3 className="mb-4 text-lg font-semibold text-text">{t('edit.engineTransmission')}</h3>
-            <div className="grid grid-cols-1 gap-x-4 sm:grid-cols-3">
-              <Field id="displacement_l" label={t('edit.displacement')} error={errors.displacement_l}>
-                <Input id="displacement_l" type="text" {...register('displacement_l')} placeholder="2,0" invalid={!!errors.displacement_l} disabled={isSubmitting} />
-              </Field>
-
-              <Field id="cylinders" label={t('edit.cylinders')} error={errors.cylinders}>
-                <Input id="cylinders" type="number" {...register('cylinders', { valueAsNumber: true })} placeholder="4" invalid={!!errors.cylinders} disabled={isSubmitting} />
-              </Field>
-
-              <Field id="fuel_type" label={t('edit.fuelType')} error={errors.fuel_type}>
-                <Select id="fuel_type" {...register('fuel_type')} invalid={!!errors.fuel_type} disabled={isSubmitting} placeholder="—" options={fuelOptions} />
-              </Field>
-            </div>
-
-            <div className="grid grid-cols-1 gap-x-4 sm:grid-cols-2">
-              <Field id="transmission_type" label={t('edit.transmissionType')} error={errors.transmission_type}>
-                <Input id="transmission_type" type="text" {...register('transmission_type')} placeholder={t('vehicleEditPage.transmissionTypePlaceholder')} invalid={!!errors.transmission_type} disabled={isSubmitting} />
-              </Field>
-
-              <Field id="transmission_speeds" label={t('edit.transmissionSpeeds')} error={errors.transmission_speeds}>
-                <Input id="transmission_speeds" type="text" {...register('transmission_speeds')} placeholder={t('vehicleEditPage.transmissionSpeedsPlaceholder')} invalid={!!errors.transmission_speeds} disabled={isSubmitting} />
-              </Field>
-            </div>
-          </section>
-        )}
 
         {/* DEF Tracking — motorized only */}
         {isMotorized && (
@@ -511,72 +393,6 @@ export default function VehicleEditDrawer({
             </div>
           </section>
         )}
-
-        {/* Fuel type for non-motorized vehicles (e.g. propane on fifth wheels) */}
-        {!isMotorized && seedSource.fuel_type && (
-          <section>
-            <h3 className="mb-4 text-lg font-semibold text-text">{t('edit.fuelInformation')}</h3>
-            <div className="grid grid-cols-1 gap-x-4 sm:grid-cols-2">
-              <Field id="fuel_type" label={t('edit.fuelType')} error={errors.fuel_type}>
-                <Select id="fuel_type" {...register('fuel_type')} invalid={!!errors.fuel_type} disabled={isSubmitting} placeholder="—" options={fuelOptions} />
-              </Field>
-            </div>
-          </section>
-        )}
-
-        {/* Purchase Information */}
-        <section>
-          <h3 className="mb-4 text-lg font-semibold text-text">{t('edit.purchaseInformation')}</h3>
-          <div className="grid grid-cols-1 gap-x-4 sm:grid-cols-2">
-            <Field id="purchase_date" label={t('edit.purchaseDate')} error={errors.purchase_date}>
-              <Input id="purchase_date" type="date" {...register('purchase_date')} invalid={!!errors.purchase_date} disabled={isSubmitting} />
-            </Field>
-
-            <Field id="purchase_price" label={t('edit.purchasePrice')} error={errors.purchase_price}>
-              <div className="relative">
-                <CurrencyInputPrefix />
-                <input
-                  type="number"
-                  id="purchase_price"
-                  min="0"
-                  step="0.01"
-                  {...register('purchase_price', { valueAsNumber: true })}
-                  placeholder="25000.00"
-                  aria-invalid={errors.purchase_price ? true : undefined}
-                  className={`${CURRENCY_INPUT_CLASS} ${errors.purchase_price ? 'border-danger' : 'border-border'}`}
-                  disabled={isSubmitting}
-                />
-              </div>
-            </Field>
-          </div>
-        </section>
-
-        {/* Sale Information */}
-        <section>
-          <h3 className="mb-4 text-lg font-semibold text-text">{t('edit.saleInformation')}</h3>
-          <div className="grid grid-cols-1 gap-x-4 sm:grid-cols-2">
-            <Field id="sold_date" label={t('edit.soldDate')} error={errors.sold_date}>
-              <Input id="sold_date" type="date" {...register('sold_date')} invalid={!!errors.sold_date} disabled={isSubmitting} />
-            </Field>
-
-            <Field id="sold_price" label={t('edit.soldPrice')} error={errors.sold_price}>
-              <div className="relative">
-                <CurrencyInputPrefix />
-                <input
-                  type="number"
-                  id="sold_price"
-                  min="0"
-                  step="0.01"
-                  {...register('sold_price', { valueAsNumber: true })}
-                  placeholder="20000.00"
-                  aria-invalid={errors.sold_price ? true : undefined}
-                  className={`${CURRENCY_INPUT_CLASS} ${errors.sold_price ? 'border-danger' : 'border-border'}`}
-                  disabled={isSubmitting}
-                />
-              </div>
-            </Field>
-          </div>
-        </section>
       </form>
       )}
     </FormModalWrapper>
