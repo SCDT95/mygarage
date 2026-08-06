@@ -73,10 +73,12 @@ def upgrade(engine=None):
             return
 
         # Perform migration
-        conn.execute(text("""
+        conn.execute(
+            text("""
             ALTER TABLE table_name
             ADD COLUMN new_column VARCHAR(50)
-        """))
+        """)
+        )
 
         print("✓ Migration completed successfully")
 
@@ -100,13 +102,15 @@ def upgrade(engine=None):
         inspector = inspect(engine)
 
         if not inspector.has_table("new_table"):
-            conn.execute(text(f"""
+            conn.execute(
+                text(f"""
                 CREATE TABLE new_table (
                     id {pk_type},
                     name VARCHAR(100) NOT NULL,
                     created_at {ts_type} DEFAULT CURRENT_TIMESTAMP
                 )
-            """))
+            """)
+            )
 ```
 
 ## PostgreSQL Compatibility Rules
