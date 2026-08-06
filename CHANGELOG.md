@@ -71,6 +71,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Security
 - Settings: sensitive values (OIDC client secret, notification tokens, SMTP password, POI API keys) are masked as `********` in API responses; saving a masked value keeps the stored secret.
+- Bump `cryptography` 48.0.1 → 50.0.0 (GHSA Bleichenbacher oracle in PKCS#7 `EnvelopedData`; unused here, alert cleanup).
+- Analytics: sanitize `vin` and exception text in the PDF-export error logs (CodeQL `py/log-injection`).
+- Frontend build: drop the `existsSync` check-then-read in the service-worker font injector (CodeQL `js/file-system-race`).
+
+### Build
+- Bump backend deps: fastapi 0.138.2 → 0.141.1, granian 2.7.8 → 2.8.1, ruff 0.15.20 → 0.16.1, joserfc, matplotlib, pandas, pandas-stubs, pillow-heif.
 
 ## [3.0.0-rc1] - 2026-07-17
 
