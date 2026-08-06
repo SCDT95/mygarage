@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [3.0.0-rc2] - 2026-08-06
+
+_Pre-release; promoting to stable will keep these entries._
+
 ### Added
 - CSV exports of fuel and odometer records now follow your unit preference — an imperial account gets miles, gallons and price per gallon instead of metric (#128). The file records which units it uses, so re-importing it converts back correctly.
 - The interface is now fully translatable — roughly 1,600 strings extracted across analytics, vehicle detail, wizards, modals, settings, notification setup, record forms, validation messages, dropdown options and server-supplied status values.
