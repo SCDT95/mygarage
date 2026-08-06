@@ -176,6 +176,12 @@ function stripComments(source: string): string {
 function scanMultilineJsx(rawSource: string, rel: string): Finding[] {
   const findings: Finding[] = []
   const source = stripComments(stripImports(rawSource))
+  // The `i18n-exempt` check below has to read comment text, but `stripComments`
+  // blanks out the very marker it is asked to find — so the escape hatch could
+  // never fire here, only in the line scanner. Both strippers blank characters
+  // in place (spaces, newlines kept), so this copy indexes identically to
+  // `source` and can be sliced with the same offsets.
+  const withComments = stripImports(rawSource)
   for (const m of source.matchAll(JSX_TEXT_MULTILINE)) {
     const raw = m[1]
     // `=> Promise<void>`: the arrow's own `>` is not a JSX delimiter.
@@ -191,7 +197,7 @@ function scanMultilineJsx(rawSource: string, rel: string): Finding[] {
     // single-line hits are already covered by the line scanner
     if (!raw.includes('\n')) continue
     const line = source.slice(0, m.index).split('\n').length
-    const context = source.slice(Math.max(0, m.index - 200), m.index)
+    const context = withComments.slice(Math.max(0, m.index - 200), m.index)
     if (context.includes('i18n-exempt')) continue
     findings.push({ file: rel, kind: 'jsx-text', text, line })
   }
