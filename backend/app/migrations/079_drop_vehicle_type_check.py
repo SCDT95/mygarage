@@ -20,9 +20,16 @@ Dialect-aware:
 
 Idempotent — skips when no vehicle_type CHECK is present (true on fresh
 create_all installs, since the model no longer declares it, and on re-runs).
-Forward-only. NON-FATAL: a failure leaves the old CHECK in place, which only
-blocks new-type inserts; the app boots and every existing operation works, so
-halting startup would be wrong.
+Forward-only.
+
+Declares no ``FATAL``, so a failure here does not by itself stop the app from
+booting. Do NOT read that as "a failure is contained": the runner aborts the
+whole run on any exception, so everything queued behind this migration is
+skipped too — including 080, 082 and 083, which ARE ``FATAL = True`` because
+the models declare their columns non-nullable. A failure here therefore
+disarms them and boots the app against a schema it cannot satisfy. That is
+what made the rc2 breakage present as a hard crash rather than a stale CHECK.
+Keep this migration's DDL handling conservative for that reason.
 """
 
 from __future__ import annotations
@@ -41,6 +48,36 @@ _CHECK_RE = re.compile(
     r"(?:CONSTRAINT\s+\w+\s+)?CHECK\s*\(\s*vehicle_type\s+IN\s*\([^)]*\)\s*\)",
     re.IGNORECASE | re.DOTALL,
 )
+
+
+def _strip_check(ddl: str) -> str:
+    """Remove the vehicle_type CHECK clause and repair the comma it leaves behind.
+
+    The clause appears in the wild in two shapes, and which one an install has
+    depends on how its ``vehicles`` table was built:
+
+      * inline on the column — ``vehicle_type VARCHAR(20) NOT NULL CHECK (...)``,
+        produced by the early hand-written CREATE TABLE migrations. Deleting the
+        clause leaves ``NOT NULL ,`` — already valid, nothing to repair.
+      * a table-level constraint on its own — ``, CHECK (...),`` — produced by
+        ``create_all`` for the ``CheckConstraint`` the model declared from
+        v2.14.0 until v3.0.0. Deleting the clause strands its comma, giving
+        ``,  ,`` mid-table or ``,  )`` at the end. Both are syntax errors, and
+        SQLite reports them as ``near ","`` / ``near ")"`` (reported by
+        @SCDT95 against v3.0.0-rc2, issue #137).
+
+    So the comma cannot be folded into ``_CHECK_RE``: in the inline shape the
+    trailing comma is the *column separator* and eating it welds two column
+    definitions together. Strip first, then normalise — that is safe for both.
+    """
+    out = _CHECK_RE.sub("", ddl)
+    # Constraint sat between two others: ", CHECK (...)," -> ",  ," -> ","
+    out = re.sub(r",\s*,", ",", out)
+    # Constraint was the last item in the table body: ", CHECK (...))" -> ",  )" -> ")"
+    # Safe against a real trailing comma inside a list such as PRIMARY KEY (a, b),
+    # because there the comma is followed by an identifier, not the closing paren.
+    out = re.sub(r",\s*\)", "\n)", out)
+    return out
 
 
 def _get_fallback_engine():
@@ -92,7 +129,7 @@ def _upgrade_sqlite(engine):
             ).fetchall()
         ]
 
-    new_ddl = _CHECK_RE.sub("", ddl)
+    new_ddl = _strip_check(ddl)
     new_ddl = re.sub(
         r'CREATE\s+TABLE\s+"?vehicles"?',
         'CREATE TABLE "vehicles_new"',

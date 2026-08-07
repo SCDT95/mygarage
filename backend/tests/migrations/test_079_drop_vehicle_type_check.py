@@ -20,19 +20,80 @@ from pathlib import Path
 import pytest
 from sqlalchemy import create_engine
 
-_VEHICLES_DDL = """
+_TYPES = (
+    "('Car','Truck','SUV','Motorcycle','RV','Trailer',"
+    "'FifthWheel','TravelTrailer','Electric','Hybrid')"
+)
+
+# The CHECK appears in four shapes in the wild, and the shape decides whether
+# stripping it strands a comma. Every test below runs against all four.
+#
+# `inline` is what the early hand-written CREATE TABLE migrations produced, and
+# was the ONLY shape covered before v3.0.0-rc3 — which is exactly why the
+# table-level breakage shipped green. `create_all` emitted the table-level shape
+# for the CheckConstraint the model declared from v2.14.0 until v3.0.0, so real
+# installs carry it (reported by @SCDT95 against rc2, PR #137).
+_VEHICLES_DDL_SHAPES = {
+    # Column constraint. Deleting the clause leaves "NOT NULL ," — already valid.
+    "inline": f"""
 CREATE TABLE "vehicles" (
     vin VARCHAR(17) PRIMARY KEY,
     nickname VARCHAR(100) NOT NULL,
     vehicle_type VARCHAR(20) NOT NULL
         CHECK (vehicle_type IN
-            ('Car','Truck','SUV','Motorcycle','RV','Trailer',
-             'FifthWheel','TravelTrailer','Electric','Hybrid')),
+            {_TYPES}),
     year INTEGER,
     user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
     created_at DATETIME
 );
-"""
+""",
+    # What create_all emits: all columns, then the table constraints. SQLite
+    # requires that order, so the CHECK can only ever be followed by another
+    # table constraint — never by a column. Strands ",  ," -> `near ","`.
+    "table_level_mid": f"""
+CREATE TABLE "vehicles" (
+    vin VARCHAR(17) NOT NULL,
+    nickname VARCHAR(100) NOT NULL,
+    vehicle_type VARCHAR(20) NOT NULL,
+    year INTEGER,
+    user_id INTEGER,
+    created_at DATETIME,
+    CHECK (vehicle_type IN {_TYPES}),
+    PRIMARY KEY (vin),
+    FOREIGN KEY(user_id) REFERENCES users (id) ON DELETE CASCADE
+);
+""",
+    # Same, but the CHECK is the final item in the body: strands ",  )" -> `near ")"`.
+    "table_level_last": f"""
+CREATE TABLE "vehicles" (
+    vin VARCHAR(17) NOT NULL,
+    nickname VARCHAR(100) NOT NULL,
+    vehicle_type VARCHAR(20) NOT NULL,
+    year INTEGER,
+    user_id INTEGER,
+    created_at DATETIME,
+    PRIMARY KEY (vin),
+    FOREIGN KEY(user_id) REFERENCES users (id) ON DELETE CASCADE,
+    CHECK (vehicle_type IN {_TYPES})
+);
+""",
+    # Named table constraint — same stranding, plus the CONSTRAINT <name> prefix.
+    "named_constraint": f"""
+CREATE TABLE "vehicles" (
+    vin VARCHAR(17) NOT NULL,
+    nickname VARCHAR(100) NOT NULL,
+    vehicle_type VARCHAR(20) NOT NULL,
+    year INTEGER,
+    user_id INTEGER,
+    created_at DATETIME,
+    CONSTRAINT check_vehicle_type CHECK (vehicle_type IN {_TYPES}),
+    PRIMARY KEY (vin),
+    FOREIGN KEY(user_id) REFERENCES users (id) ON DELETE CASCADE
+);
+""",
+}
+
+_SHAPES = pytest.mark.parametrize("ddl_shape", sorted(_VEHICLES_DDL_SHAPES))
 
 
 def _load_migration() -> types.ModuleType:
@@ -55,10 +116,10 @@ def _connect(db_file: Path) -> sqlite3.Connection:
     return conn
 
 
-def _setup_db(db_file: Path) -> None:
+def _setup_db(db_file: Path, ddl_shape: str = "inline") -> None:
     conn = _connect(db_file)
     conn.executescript(
-        _VEHICLES_DDL
+        _VEHICLES_DDL_SHAPES[ddl_shape]
         + """
         CREATE TABLE users (id INTEGER PRIMARY KEY, username VARCHAR(100));
         CREATE INDEX idx_vehicles_type ON vehicles(vehicle_type);
@@ -76,9 +137,10 @@ def _setup_db(db_file: Path) -> None:
     conn.close()
 
 
-def test_check_dropped_and_atv_insertable_preserving_data(tmp_path: Path) -> None:
+@_SHAPES
+def test_check_dropped_and_atv_insertable_preserving_data(tmp_path: Path, ddl_shape: str) -> None:
     db_file = tmp_path / "m079.db"
-    _setup_db(db_file)
+    _setup_db(db_file, ddl_shape)
     m = _load_migration()
 
     # Pre-migration: the CHECK rejects a new type.
@@ -133,9 +195,10 @@ def test_check_dropped_and_atv_insertable_preserving_data(tmp_path: Path) -> Non
     conn.close()
 
 
-def test_idempotent_rerun_is_noop(tmp_path: Path) -> None:
+@_SHAPES
+def test_idempotent_rerun_is_noop(tmp_path: Path, ddl_shape: str) -> None:
     db_file = tmp_path / "m079_idem.db"
-    _setup_db(db_file)
+    _setup_db(db_file, ddl_shape)
     m = _load_migration()
     engine = create_engine(f"sqlite:///{db_file}")
 
@@ -153,3 +216,34 @@ def test_idempotent_rerun_is_noop(tmp_path: Path) -> None:
         == 1
     )
     conn.close()
+
+
+@_SHAPES
+def test_strip_check_produces_valid_ddl_for_every_shape(ddl_shape: str) -> None:
+    """_strip_check must leave executable DDL whatever shape the CHECK was in.
+
+    Guards the comma repair directly, without a rebuild in the way, so a failure
+    points at the regex rather than at the table swap.
+    """
+    m = _load_migration()
+    stripped = m._strip_check(_VEHICLES_DDL_SHAPES[ddl_shape])
+    assert "CHECK" not in stripped.upper()
+    sqlite3.connect(":memory:").execute(
+        stripped.replace('"vehicles"', '"vehicles_new"').strip().rstrip(";")
+    )
+
+
+def test_strip_check_keeps_the_column_separator_comma() -> None:
+    """The inline shape's trailing comma separates COLUMNS — it must survive.
+
+    Folding the comma into _CHECK_RE (the first fix attempted for this bug)
+    passes every table-level shape and silently welds `vehicle_type` onto the
+    next column, so the table comes back a column short. Assert the columns,
+    not just that the DDL parses.
+    """
+    m = _load_migration()
+    stripped = m._strip_check(_VEHICLES_DDL_SHAPES["inline"])
+    conn = sqlite3.connect(":memory:")
+    conn.execute(stripped.replace('"vehicles"', '"vehicles_new"').strip().rstrip(";"))
+    cols = [r[1] for r in conn.execute('PRAGMA table_info("vehicles_new")')]
+    assert cols == ["vin", "nickname", "vehicle_type", "year", "user_id", "created_at"]
