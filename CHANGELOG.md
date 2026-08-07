@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [3.0.0-rc3] - 2026-08-06
+
+_Pre-release; promoting to stable will keep these entries._
+
 ### Fixed
 - SQLite upgrades could fail to start on 3.0.0-rc2 with `near ",": syntax error`. Migration 079 left a stray comma when removing the vehicle_type constraint, which also stopped the migrations behind it from running; thanks [@SCDT95](https://github.com/SCDT95) (#137).
 
