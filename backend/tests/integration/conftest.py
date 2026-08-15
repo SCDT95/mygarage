@@ -5,10 +5,29 @@ Integration tests use the database and test full request/response cycles.
 These fixtures extend the base conftest.py fixtures.
 """
 
-from datetime import datetime, timedelta
+from datetime import date, datetime, timedelta
 from decimal import Decimal
 
 import pytest
+
+# Seed dates for `test_vehicle_with_records` are FIXED, never relative to today.
+#
+# The test database is session-scoped and `db_session` does not roll back, so
+# every row this fixture commits stays visible to every later test in the run —
+# including tests that only asked for the bare `test_vehicle` fixture, which
+# shares the same VIN. A seed date computed as `datetime.now() - timedelta(...)`
+# therefore sweeps forward one day at a time until it lands on a date some other
+# test hardcodes for that VIN, at which point that test's `scalar_one()` raises
+# MultipleResultsFound. That is exactly what broke the v3.0.0 publish run: the
+# 90-day-old service visit became 2026-05-17 on 2026-08-15 and collided with
+# test_import_data.py's engine-hours import test.
+#
+# This anchor sits in a band the suite never uses — the date literals in tests
+# cluster in 2024-01..09, 2025-01/03/06/07/12 and 2026-01..05 — and being fixed,
+# it cannot drift into one later. Keep the offsets below relative to the anchor
+# so the spacing between records stays meaningful; if you add a seed row here,
+# pick another date in the same clear band.
+_SEED_ANCHOR = date(2023, 7, 15)
 
 
 @pytest.fixture
@@ -48,7 +67,7 @@ async def test_vehicle_with_records(test_vehicle, db_session):
     fuel_records = [
         FuelRecord(
             vin=test_vehicle["vin"],
-            date=(datetime.now() - timedelta(days=30)).date(),
+            date=_SEED_ANCHOR - timedelta(days=30),
             odometer_km=Decimal("22530.76"),  # 14000 mi
             liters=Decimal("45.425"),  # 12.0 gal
             cost=Decimal("42.00"),
@@ -59,7 +78,7 @@ async def test_vehicle_with_records(test_vehicle, db_session):
         ),
         FuelRecord(
             vin=test_vehicle["vin"],
-            date=(datetime.now() - timedelta(days=15)).date(),
+            date=_SEED_ANCHOR - timedelta(days=15),
             odometer_km=Decimal("23119.55"),  # 14366 mi
             liters=Decimal("43.532"),  # 11.5 gal
             cost=Decimal("40.25"),
@@ -70,7 +89,7 @@ async def test_vehicle_with_records(test_vehicle, db_session):
         ),
         FuelRecord(
             vin=test_vehicle["vin"],
-            date=datetime.now().date(),
+            date=_SEED_ANCHOR,
             odometer_km=Decimal("24140.10"),  # 15000 mi
             liters=Decimal("47.318"),  # 12.5 gal
             cost=Decimal("45.50"),
@@ -86,7 +105,7 @@ async def test_vehicle_with_records(test_vehicle, db_session):
         vin=test_vehicle["vin"],
         vendor_id=jiffy_vendor.id,
         service_category="Maintenance",
-        date=(datetime.now() - timedelta(days=90)).date(),
+        date=_SEED_ANCHOR - timedelta(days=90),
         odometer_km=Decimal("19312.08"),  # 12000 mi
         total_cost=Decimal("45.99"),
         notes="5W-30 synthetic oil",
@@ -95,7 +114,7 @@ async def test_vehicle_with_records(test_vehicle, db_session):
         vin=test_vehicle["vin"],
         vendor_id=discount_vendor.id,
         service_category="Maintenance",
-        date=(datetime.now() - timedelta(days=45)).date(),
+        date=_SEED_ANCHOR - timedelta(days=45),
         odometer_km=Decimal("21726.09"),  # 13500 mi
         total_cost=Decimal("25.00"),
         notes="Rotated and balanced",
