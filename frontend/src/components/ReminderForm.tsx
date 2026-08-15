@@ -28,7 +28,8 @@ import { UnitConverter, UnitFormatter } from '../utils/units'
 import { toCanonicalKm } from '../utils/decimalSafe'
 import { getUsageTracking } from '../utils/usageTracking'
 import api from '../services/api'
-import { getActionErrorMessage, parseApiError } from '../utils/httpErrorHandler'
+import { getActionErrorMessage } from '../utils/httpErrorHandler'
+import { applyControlledFieldErrors } from '../hooks/useApiFormErrors'
 import { getActiveLocale } from '@/constants/i18n'
 
 interface ReminderFormProps {
@@ -231,10 +232,20 @@ export default function ReminderForm({ vin, reminder, currentMileage, currentHou
       }
       onSuccess()
     } catch (err) {
-      const problems = parseApiError(err).fieldErrors
-      if (problems.length > 0) {
-        setFieldErrors(Object.fromEntries(problems.map((p) => [p.field, p.message])))
-      } else {
+      // Render targets: title, due_date, due_mileage_km, due_hours, notes.
+      // `reminder_type` has no Field wrapper (it's a button group), so a
+      // problem addressed to it must fall through to the banner below.
+      const { attached, unhandled, errorsByField } = applyControlledFieldErrors(err, [
+        'title',
+        'due_date',
+        'due_mileage_km',
+        'due_hours',
+        'notes',
+      ])
+      if (attached.length > 0) {
+        setFieldErrors(errorsByField)
+      }
+      if (attached.length === 0 || unhandled.length > 0) {
         setError(getActionErrorMessage(err, t('reminder.saveAction')))
       }
     } finally {

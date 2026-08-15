@@ -92,8 +92,12 @@ export default function LocalAuthModal({
       passwordSchema.parse(newPassword)
     } catch (err) {
       if (err instanceof Error) {
-        const zodError = err as { errors?: Array<{ message: string }> }
-        const errorMessage = zodError.errors?.[0]?.message || t('modal.localAuth.passwordRequirementsNotMet')
+        // Zod 4.4.3's ZodError has no `.errors` property at all (only
+        // `.issues` — `.errors` was a v3-only alias this codebase never
+        // ran against), so reading `.errors` here always returned
+        // `undefined` and this branch fell straight to the generic fallback.
+        const zodError = err as { issues?: Array<{ message: string }> }
+        const errorMessage = zodError.issues?.[0]?.message || t('modal.localAuth.passwordRequirementsNotMet')
         setPasswordChangeMessage({ type: 'error', text: errorMessage })
       } else {
         setPasswordChangeMessage({ type: 'error', text: t('modal.localAuth.passwordRequirementsNotMet') })

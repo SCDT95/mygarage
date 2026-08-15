@@ -12,7 +12,15 @@ import { parseDecimalInput } from '@/utils/decimalInput'
 import { INVALID_NUMBER } from '@/schemas/shared'
 
 interface NumberInputProps extends Omit<ComponentProps<typeof Input>, 'type' | 'inputMode'> {
-  /** Shown under the control when the typed value had two legal readings. */
+  /**
+   * Shown under the control when the typed value had two legal readings.
+   *
+   * Currently unwired: no consumer passes this prop, and `registerDecimal`
+   * below discards the `ambiguous` flag it computes. Wiring it for real needs
+   * a `watch` + re-parse in the consuming form's render, which is real work
+   * (final-review I7). The plumbing (this prop, its aria-describedby
+   * composition) is left in place for that future task.
+   */
   ambiguityHint?: string
 }
 
@@ -52,6 +60,11 @@ export function registerDecimal<T extends FieldValues>(
       const result = parseDecimalInput(String(raw ?? ''), getActiveLocale())
       if (result.kind === 'empty') return undefined
       if (result.kind === 'invalid') return INVALID_NUMBER
+      // `result.ambiguous` is computed (true when both separator readings are
+      // legal, e.g. "1.234" read as thousands-grouped vs. decimal) but
+      // discarded here — no caller currently threads it into `ambiguityHint`
+      // below. Wiring it needs a `watch` + re-parse in render; left for a
+      // future task (final-review I7 — see NumberInputProps.ambiguityHint).
       return result.value
     },
   })

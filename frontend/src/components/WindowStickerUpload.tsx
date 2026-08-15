@@ -2,7 +2,29 @@ import { useState, useRef, type SyntheticEvent } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Upload, FileText, DollarSign, Fuel, Edit2, Save, Palette, Shield, Leaf, Cog, Car } from 'lucide-react'
 import api from '../services/api'
-import { getActionErrorMessage, parseApiError } from '../utils/httpErrorHandler'
+import { getActionErrorMessage } from '../utils/httpErrorHandler'
+import { applyControlledFieldErrors } from '../hooks/useApiFormErrors'
+import { parseDecimalInput } from '../utils/decimalInput'
+import { getActiveLocale } from '@/constants/i18n'
+
+// Render targets: the ONLY 9 of ExtractedData's ~25 keys that have a
+// fieldErrors-wired <p role="alert"> in the JSX below (msrp_base,
+// msrp_options, destination_charge, msrp_total, exterior_color,
+// interior_color, warranty_powertrain, warranty_basic, assembly_location).
+// A 422 naming any other key (fuel_economy_*, sticker_*, wheel_specs,
+// tire_specs, environmental_rating_*, etc.) has nowhere to render and must
+// fall through to the banner instead of vanishing silently.
+const WINDOW_STICKER_KNOWN_FIELDS = [
+  'msrp_base',
+  'msrp_options',
+  'destination_charge',
+  'msrp_total',
+  'exterior_color',
+  'interior_color',
+  'warranty_powertrain',
+  'warranty_basic',
+  'assembly_location',
+] as const
 import { Drawer } from './ui'
 import { useCurrencySymbol } from '../hooks/useCurrencySymbol'
 
@@ -126,10 +148,14 @@ export default function WindowStickerUpload({ vin, onSuccess, onClose }: WindowS
       setSuccess(t('windowSticker.misc.uploadSuccess'))
       setEditMode(true)
     } catch (err) {
-      const problems = parseApiError(err).fieldErrors
-      if (problems.length > 0) {
-        setFieldErrors(Object.fromEntries(problems.map((p) => [p.field, p.message])))
-      } else {
+      const { attached, unhandled, errorsByField } = applyControlledFieldErrors(
+        err,
+        WINDOW_STICKER_KNOWN_FIELDS
+      )
+      if (attached.length > 0) {
+        setFieldErrors(errorsByField)
+      }
+      if (attached.length === 0 || unhandled.length > 0) {
         setError(getActionErrorMessage(err, t('windowSticker.uploadAction')))
       }
     } finally {
@@ -153,10 +179,14 @@ export default function WindowStickerUpload({ vin, onSuccess, onClose }: WindowS
         onClose()
       }, 1000)
     } catch (err) {
-      const problems = parseApiError(err).fieldErrors
-      if (problems.length > 0) {
-        setFieldErrors(Object.fromEntries(problems.map((p) => [p.field, p.message])))
-      } else {
+      const { attached, unhandled, errorsByField } = applyControlledFieldErrors(
+        err,
+        WINDOW_STICKER_KNOWN_FIELDS
+      )
+      if (attached.length > 0) {
+        setFieldErrors(errorsByField)
+      }
+      if (attached.length === 0 || unhandled.length > 0) {
         setError(getActionErrorMessage(err, t('windowSticker.saveAction')))
       }
     } finally {
@@ -169,9 +199,14 @@ export default function WindowStickerUpload({ vin, onSuccess, onClose }: WindowS
     return value.toString()
   }
 
+  // Final-review I9: stripping non-digits with `parseFloat(value.replace(/[^0-9.]/g, ''))`
+  // treats a comma as nothing rather than a decimal separator, so "528,25"
+  // becomes "52825" — a silent 100x error on all four MSRP fields below.
+  // Route through the same locale-aware parser NumberInput/registerDecimal
+  // uses elsewhere in the app instead of a bespoke regex.
   const parseCurrency = (value: string): number | undefined => {
-    const parsed = parseFloat(value.replace(/[^0-9.]/g, ''))
-    return isNaN(parsed) ? undefined : parsed
+    const result = parseDecimalInput(value, getActiveLocale())
+    return result.kind === 'value' ? result.value : undefined
   }
 
   return (

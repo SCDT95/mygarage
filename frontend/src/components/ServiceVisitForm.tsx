@@ -22,7 +22,8 @@ import { toCanonicalKm } from '../utils/decimalSafe'
 import { canonicalToDisplay, displayToCanonical } from '../utils/supplyUnits'
 import { getUsageTracking } from '../utils/usageTracking'
 import api from '../services/api'
-import { getActionErrorMessage, parseApiError } from '../utils/httpErrorHandler'
+import { getActionErrorMessage } from '../utils/httpErrorHandler'
+import { applyControlledFieldErrors } from '../hooks/useApiFormErrors'
 import { Button, Field, Input, Textarea, Mono } from './ui'
 import { formatCurrency, formatCurrencyZero } from '../utils/formatUtils'
 import { useCurrencyPreference } from '../hooks/useCurrencyPreference'
@@ -449,10 +450,24 @@ export default function ServiceVisitForm({
       onSuccess()
       onClose()
     } catch (err) {
-      const problems = parseApiError(err).fieldErrors
-      if (problems.length > 0) {
-        setFieldErrors(Object.fromEntries(problems.map((p) => [p.field, p.message])))
-      } else {
+      // Render targets: date, odometer_km, engine_hours, insurance_claim_number,
+      // notes, tax_amount, shop_supplies, misc_fees. vendor_id and line_items
+      // have no fieldErrors-wired Field, so a problem addressed to either must
+      // fall through to the banner below.
+      const { attached, unhandled, errorsByField } = applyControlledFieldErrors(err, [
+        'date',
+        'odometer_km',
+        'engine_hours',
+        'insurance_claim_number',
+        'notes',
+        'tax_amount',
+        'shop_supplies',
+        'misc_fees',
+      ])
+      if (attached.length > 0) {
+        setFieldErrors(errorsByField)
+      }
+      if (attached.length === 0 || unhandled.length > 0) {
         setError(getActionErrorMessage(err, t('service.saveAction')))
       }
     } finally {

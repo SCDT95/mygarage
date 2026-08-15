@@ -58,15 +58,25 @@ async function fillValidForm(user: ReturnType<typeof userEvent.setup>): Promise<
   await user.type(screen.getByLabelText('registerPage.confirmPasswordLabel'), 'Passw0rd!')
 }
 
-// Regression fence for the AuthContext bug found in Task 10c review: AuthContext
-// used to catch the AxiosError from POST /auth/register, collapse it to
-// `new Error(response.data.detail || ...)`, and re-throw. On a 422, `detail` is
-// an ARRAY of problem objects (FastAPI's validation-error shape), so the array
-// was truthy and `new Error(array)` stringified it — the user saw literal
-// "[object Object],[object Object]" text, and applyServerErrors' fieldErrors
-// path was permanently dead (parseApiError only populates fieldErrors from a
-// real AxiosError, which no longer existed by the time Register.tsx caught it).
-describe('Register — server-side 422 field-error wiring (Task 10c regression fence)', () => {
+// [Final-review correction] This describe block does NOT fence the AuthContext
+// bug found in Task 10c review — `vi.mock('../../contexts/AuthContext', ...)`
+// at the top of this file replaces `register` with `registerMock`, so the REAL
+// AuthContext.register (the code that used to collapse the AxiosError to
+// `new Error(response.data.detail || ...)`, losing the array `detail` and
+// dead-ending applyServerErrors' fieldErrors path) never runs here. Reverting
+// that AuthContext fix would NOT fail these tests — `registerMock` rejects
+// with an already-AxiosError-shaped object regardless of what the real
+// AuthContext does. The actual fence for the AuthContext fix is
+// `contexts/__tests__/AuthContext.test.tsx`'s "register propagates the
+// original AxiosError (array detail intact) instead of collapsing it to a
+// string Error" test, which exercises the real (unmocked) implementation.
+//
+// What THIS block genuinely fences is Register.tsx's OWN error-wiring —
+// applyServerErrors attaching a field-addressed 422 problem to the right
+// input, and getActionErrorMessage never stringifying an array `detail` as
+// `[object Object]` — given an AxiosError-shaped rejection of the kind a
+// (correctly) unmocked AuthContext would actually produce.
+describe('Register — server-side 422 field-error wiring', () => {
   it('a weak-password 422 attaches its message to the password field, not a generic banner or [object Object]', async () => {
     registerMock.mockRejectedValueOnce({
       isAxiosError: true,
@@ -106,13 +116,16 @@ describe('Register — server-side 422 field-error wiring (Task 10c regression f
     expect(document.body.textContent).not.toContain('[object Object]')
   })
 
-  it('confirms the field-error path is reachable at all — fails on the pre-fix AuthContext behavior', async () => {
+  it('confirms the field-error path is reachable at all — fails if Register\'s own applyServerErrors wiring regresses', async () => {
     // Same rejection, but this test exists purely to prove the assertion above
-    // isn't vacuously true. If AuthContext still collapsed the error to a
-    // plain Error (pre-fix), applyServerErrors would find fieldErrors === []
-    // (parseApiError only parses a real AxiosError), no alert role would ever
-    // render, and this findByRole would time out and fail — which is what
-    // happened when this test was run against the pre-fix AuthContext.
+    // isn't vacuously true. [Final-review correction: this does NOT exercise
+    // AuthContext — see the describe-block comment above — `registerMock`
+    // rejects directly, so AuthContext's own collapse-to-string-Error bug is
+    // untestable from here regardless of pass/fail.] If Register.tsx's OWN
+    // catch block stopped calling applyServerErrors correctly on this shape
+    // (e.g. reverted to reading `err.message` instead of parsing
+    // `fieldErrors`), no alert role would ever render and this findByRole
+    // would time out and fail.
     registerMock.mockRejectedValueOnce({
       isAxiosError: true,
       message: 'Request failed with status code 422',

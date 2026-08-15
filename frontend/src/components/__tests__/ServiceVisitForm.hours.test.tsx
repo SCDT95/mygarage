@@ -273,4 +273,40 @@ describe('ServiceVisitForm — server-side error wiring (Task 10 addendum)', () 
     await waitFor(() => expect(mockedApiPut).toHaveBeenCalled())
     await waitFor(() => expect(screen.getByText('Failed to {{action}}. {{message}}')).toBeInTheDocument())
   })
+
+  // Final-review I4 regression fence: `vendor_id` has no fieldErrors-wired
+  // Field (VendorSearch is mocked to a plain div here), so a 422 naming it
+  // used to write to fieldErrors state, render nothing, and — under the old
+  // `problems.length > 0 ? fieldErrors : setError(...)` gate — suppress the
+  // banner entirely. applyControlledFieldErrors's attached/unhandled split
+  // must still surface the banner when nothing attached.
+  it('a 422 naming ONLY a field with no render target (vendor_id) shows the banner, not silence', async () => {
+    mockedApiPut.mockRejectedValueOnce(axios422([
+      { type: 'value_error', loc: ['body', 'vendor_id'], msg: 'Vendor not found' },
+    ]))
+    render(<ServiceVisitForm {...DEFAULT_PROPS} visit={editableVisit()} />)
+    await waitFor(() => expect(odometerInput()).toBeInTheDocument())
+
+    fireEvent.submit(drawerForm())
+
+    await waitFor(() => expect(mockedApiPut).toHaveBeenCalled())
+    expect(await screen.findByText('Failed to {{action}}. Please check your input.')).toBeInTheDocument()
+  })
+
+  it('a 422 with one mapped field and one unmapped field shows BOTH the field message and the banner', async () => {
+    mockedApiPut.mockRejectedValueOnce(axios422([
+      { type: 'string_too_long', loc: ['body', 'notes'], msg: 'Notes must be 5000 characters or fewer' },
+      { type: 'value_error', loc: ['body', 'vendor_id'], msg: 'Vendor not found' },
+    ]))
+    render(<ServiceVisitForm {...DEFAULT_PROPS} visit={editableVisit()} />)
+    await waitFor(() => expect(odometerInput()).toBeInTheDocument())
+
+    fireEvent.submit(drawerForm())
+
+    await waitFor(() => expect(mockedApiPut).toHaveBeenCalled())
+    await waitFor(() =>
+      expect(screen.getByText('Notes must be 5000 characters or fewer')).toBeInTheDocument()
+    )
+    expect(screen.getByText('Failed to {{action}}. Please check your input.')).toBeInTheDocument()
+  })
 })

@@ -1,0 +1,138 @@
+import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { render, screen, fireEvent } from '../../__tests__/test-utils'
+import userEvent from '@testing-library/user-event'
+
+const apiPost = vi.fn()
+const apiPatch = vi.fn()
+vi.mock('../../services/api', () => ({
+  default: {
+    post: (...args: unknown[]) => apiPost(...args),
+    patch: (...args: unknown[]) => apiPatch(...args),
+  },
+}))
+vi.mock('../../hooks/useCurrencyPreference', () => ({
+  useCurrencyPreference: () => ({ currencyCode: 'USD', locale: 'en-US', formatCurrency: vi.fn() }),
+}))
+
+import WindowStickerUpload from '../WindowStickerUpload'
+
+beforeEach(() => {
+  vi.clearAllMocks()
+  apiPost.mockResolvedValue({ data: { msrp_base: 30000 } })
+})
+
+// Drives the form to the post-extraction edit screen (extractedData set),
+// which is the real-world precondition for a field-level 422 from the
+// `/window-sticker/data` PATCH — the extraction endpoint itself doesn't know
+// about individual MSRP/color/warranty fields.
+const uploadAndReachEditScreen = async (user: ReturnType<typeof userEvent.setup>) => {
+  const input = document.querySelector('input[type="file"]') as HTMLInputElement
+  const file = new File(['%PDF-1.4'], 'sticker.pdf', { type: 'application/pdf' })
+  await user.upload(input, file)
+  await user.click(screen.getByRole('button', { name: 'windowSticker.uploadAndExtract' }))
+  await screen.findByRole('button', { name: 'windowSticker.misc.saveData' })
+}
+
+// Final-review I4 regression fence: WindowStickerUpload has 9 fieldErrors-wired
+// render targets against ~25 possible ExtractedData payload keys. Before the
+// fix, `if (problems.length > 0) { setFieldErrors(...) } else { setError(...) }`
+// meant a 422 naming an unmapped key (e.g. fuel_economy_city, which has no
+// Field in this form) wrote to fieldErrors state, rendered nothing, and
+// suppressed the banner too — total silence on a real backend rejection.
+describe('WindowStickerUpload — server-side error wiring (final-review I4)', () => {
+  it('a 422 naming ONLY an unmapped field (fuel_economy_city) on save still shows the banner, not silence', async () => {
+    const user = userEvent.setup({ applyAccept: false })
+    apiPatch.mockRejectedValueOnce({
+      isAxiosError: true,
+      message: 'Request failed with status code 422',
+      response: {
+        status: 422,
+        data: {
+          detail: [{ type: 'greater_than_equal', loc: ['body', 'fuel_economy_city'], msg: 'Input should be >= 0' }],
+        },
+      },
+    })
+
+    render(<WindowStickerUpload vin="V1" onSuccess={vi.fn()} onClose={vi.fn()} />)
+    await uploadAndReachEditScreen(user)
+    await user.click(screen.getByRole('button', { name: 'windowSticker.misc.saveData' }))
+
+    await vi.waitFor(() => expect(apiPatch).toHaveBeenCalledTimes(1))
+    expect(
+      await screen.findByText('Failed to {{action}}. Please check your input.')
+    ).toBeInTheDocument()
+  })
+
+  it('a 422 naming a mapped field (msrp_base) attaches to that field AND does not ALSO show the generic banner', async () => {
+    const user = userEvent.setup({ applyAccept: false })
+    apiPatch.mockRejectedValueOnce({
+      isAxiosError: true,
+      message: 'Request failed with status code 422',
+      response: {
+        status: 422,
+        data: {
+          detail: [{ type: 'greater_than_equal', loc: ['body', 'msrp_base'], msg: 'Input should be >= 0' }],
+        },
+      },
+    })
+
+    render(<WindowStickerUpload vin="V1" onSuccess={vi.fn()} onClose={vi.fn()} />)
+    await uploadAndReachEditScreen(user)
+    await user.click(screen.getByRole('button', { name: 'windowSticker.misc.saveData' }))
+
+    await vi.waitFor(() => expect(apiPatch).toHaveBeenCalledTimes(1))
+    const alert = await screen.findByRole('alert')
+    expect(alert).toHaveTextContent('Input should be >= 0')
+    // Fully-mapped 422 (attached>0, unhandled===0): the field error alone is
+    // enough, the generic banner must stay silent — no double-report.
+    expect(screen.queryByText('Failed to {{action}}. Please check your input.')).not.toBeInTheDocument()
+  })
+
+  it('a 422 with one mapped and one unmapped field shows BOTH the field message and the banner', async () => {
+    const user = userEvent.setup({ applyAccept: false })
+    apiPatch.mockRejectedValueOnce({
+      isAxiosError: true,
+      message: 'Request failed with status code 422',
+      response: {
+        status: 422,
+        data: {
+          detail: [
+            { type: 'greater_than_equal', loc: ['body', 'msrp_base'], msg: 'Input should be >= 0' },
+            { type: 'greater_than_equal', loc: ['body', 'fuel_economy_city'], msg: 'Input should be >= 0' },
+          ],
+        },
+      },
+    })
+
+    render(<WindowStickerUpload vin="V1" onSuccess={vi.fn()} onClose={vi.fn()} />)
+    await uploadAndReachEditScreen(user)
+    await user.click(screen.getByRole('button', { name: 'windowSticker.misc.saveData' }))
+
+    await vi.waitFor(() => expect(apiPatch).toHaveBeenCalledTimes(1))
+    await screen.findByRole('alert')
+    expect(
+      await screen.findByText('Failed to {{action}}. Please check your input.')
+    ).toBeInTheDocument()
+  })
+})
+
+// Final-review I9 regression fence: `parseCurrency` stripped everything but
+// digits and dots with `parseFloat(value.replace(/[^0-9.]/g, ''))`, so a
+// comma decimal ("528,25") had its comma silently dropped instead of read as
+// a separator — "52825" instead of "528.25", a silent 100x error on all four
+// MSRP fields. Fixed by routing through the same parseDecimalInput the rest
+// of the app's numeric inputs use.
+describe('WindowStickerUpload — MSRP field parsing (final-review I9)', () => {
+  it('reads a comma-decimal MSRP as 528.25, not a 100x-inflated 52825', async () => {
+    const user = userEvent.setup({ applyAccept: false })
+    render(<WindowStickerUpload vin="V1" onSuccess={vi.fn()} onClose={vi.fn()} />)
+    await uploadAndReachEditScreen(user)
+    // A successful upload starts in edit mode already (setEditMode(true)),
+    // so the MSRP inputs are enabled without an extra toggle click.
+
+    const msrpBaseInput = screen.getByPlaceholderText('91,860')
+    fireEvent.change(msrpBaseInput, { target: { value: '528,25' } })
+
+    expect(msrpBaseInput).toHaveValue('528.25')
+  })
+})

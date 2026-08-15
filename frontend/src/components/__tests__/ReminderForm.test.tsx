@@ -113,4 +113,58 @@ describe('ReminderForm — server-side error wiring (Task 10 addendum)', () => {
     await vi.waitFor(() => expect(createMock).toHaveBeenCalledTimes(1))
     await vi.waitFor(() => expect(screen.getByText('Failed to {{action}}. {{message}}')).toBeInTheDocument())
   })
+
+  // Final-review I4 regression fence: a 422 naming a field with NO render
+  // target (reminder_type is a button group, not a Field) used to write to
+  // fieldErrors state, render nothing for it, and — because the old gate was
+  // `problems.length > 0 ? fieldErrors : setError(...)` — suppress the banner
+  // too. The fix (applyControlledFieldErrors's attached/unhandled split) must
+  // surface SOMETHING when a problem is left over even though another
+  // problem DID attach.
+  it('a 422 with one mapped field and one unmapped field still shows the banner for the unmapped one (fails if the silent-failure gate regresses)', async () => {
+    createMock.mockRejectedValueOnce({
+      isAxiosError: true,
+      message: 'Request failed with status code 422',
+      response: {
+        status: 422,
+        data: {
+          detail: [
+            { type: 'string_too_long', loc: ['body', 'notes'], msg: 'Notes must be 2000 characters or fewer' },
+            { type: 'enum', loc: ['body', 'reminder_type'], msg: 'Invalid reminder type' },
+          ],
+        },
+      },
+    })
+    render(<ReminderForm vin="V1" onClose={vi.fn()} onSuccess={vi.fn()} />)
+    fillMinimal()
+    fireEvent.click(screen.getByRole('button', { name: 'common:create' }))
+
+    await vi.waitFor(() => expect(createMock).toHaveBeenCalledTimes(1))
+    // The mapped field still gets its own message...
+    await vi.waitFor(() =>
+      expect(screen.getByText('Notes must be 2000 characters or fewer')).toBeInTheDocument()
+    )
+    // ...AND the unmapped reminder_type problem must not vanish silently —
+    // it has to surface via the generic action-failed banner.
+    expect(screen.getByText('Failed to {{action}}. Please check your input.')).toBeInTheDocument()
+  })
+
+  it('a 422 naming ONLY an unmapped field shows the banner, not silence (fails if attached.length===0 check regresses)', async () => {
+    createMock.mockRejectedValueOnce({
+      isAxiosError: true,
+      message: 'Request failed with status code 422',
+      response: {
+        status: 422,
+        data: {
+          detail: [{ type: 'enum', loc: ['body', 'reminder_type'], msg: 'Invalid reminder type' }],
+        },
+      },
+    })
+    render(<ReminderForm vin="V1" onClose={vi.fn()} onSuccess={vi.fn()} />)
+    fillMinimal()
+    fireEvent.click(screen.getByRole('button', { name: 'common:create' }))
+
+    await vi.waitFor(() => expect(createMock).toHaveBeenCalledTimes(1))
+    expect(await screen.findByText('Failed to {{action}}. Please check your input.')).toBeInTheDocument()
+  })
 })

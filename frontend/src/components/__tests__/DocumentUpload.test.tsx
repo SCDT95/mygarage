@@ -96,4 +96,30 @@ describe('DocumentUpload — centered upload modal: guard + upload', () => {
     close.click()
     expect(onClose).toHaveBeenCalled()
   })
+
+  // Final-review I4 regression fence: `file` has no fieldErrors-wired Field
+  // (only title/document_type/description do), so a 422 naming it used to
+  // write to fieldErrors state, render nothing, and — under the old
+  // `problems.length > 0 ? fieldErrors : setError(...)` gate — suppress the
+  // banner too. applyControlledFieldErrors's attached/unhandled split must
+  // still surface the banner when nothing attached.
+  it('a 422 naming ONLY file (no render target) shows the banner, not silence', async () => {
+    const user = userEvent.setup({ applyAccept: false })
+    uploadMock.mockRejectedValueOnce({
+      isAxiosError: true,
+      message: 'Request failed with status code 422',
+      response: {
+        status: 422,
+        data: { detail: [{ type: 'value_error', loc: ['body', 'file'], msg: 'Unsupported file content' }] },
+      },
+    })
+    render(<DocumentUpload vin="V1" onSuccess={vi.fn()} onClose={vi.fn()} />)
+    const file = new File(['%PDF-1.4'], 'policy.pdf', { type: 'application/pdf' })
+    await user.upload(fileInput(), file)
+    await user.click(screen.getByRole('button', { name: 'documentUpload.uploadBtn' }))
+    await vi.waitFor(() => expect(uploadMock).toHaveBeenCalledTimes(1))
+    expect(
+      await screen.findByText('Failed to {{action}}. Please check your input.')
+    ).toBeInTheDocument()
+  })
 })

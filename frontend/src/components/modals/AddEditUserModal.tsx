@@ -84,9 +84,13 @@ export default function AddEditUserModal({ isOpen, onClose, user, onSave, curren
       try {
         passwordSchema.parse(formData.password)
       } catch (err) {
-        const error = err as { errors?: Array<{ message: string }> }
+        // Zod 4.4.3's ZodError has no `.errors` property at all (only
+        // `.issues` — `.errors` was a v3-only alias this codebase never ran
+        // against), so reading `.errors` here always returned `undefined`
+        // and this always fell through to the generic fallback message.
+        const error = err as { issues?: Array<{ message: string }> }
         validationErrors.password =
-          error.errors?.[0]?.message || t('common:validation.password.invalid')
+          error.issues?.[0]?.message || t('common:validation.password.invalid')
       }
 
       if (formData.password !== formData.confirmPassword) {
