@@ -15,14 +15,14 @@ import { makeNumericField } from './shared'
  * makeOptionalCurrencySchema factory itself: its $99,999.99 ceiling doesn't
  * exist on the backend for any of these (spot_rental_billing.py has no
  * upper bound on any of them), so borrowing it would reject values the API
- * accepts. monthly_rate/electric/water/waste were `.nonnegative()` with no
- * max before Task 8 — preserved as min:0/max:Infinity. total had NO
- * constraint at all (not even non-negative) — preserved as
- * min:-Infinity/max:Infinity. A `total >= 0` floor is arguably a real
- * improvement (a negative billing total is nonsense), but tightening
- * validation is a product decision that belongs in its own change, not a
- * side effect of this message-formatting fix, so it stays unconstrained
- * (review-response round 2 — see task-8-report.md).
+ * accepts. All five — including `total` — were `.nonnegative()` with no max
+ * before Task 8 (see `git show a920cbc:frontend/src/schemas/spotRentalBilling.ts`):
+ * preserved as min:0/max:Infinity. [Final-review I6 correction: an earlier
+ * ruling here claimed `total` had NO constraint at all and set it to
+ * min:-Infinity — that premise was wrong, verified against the pre-Task-8
+ * source above, which shows `total` DID have `.nonnegative()` same as its
+ * four siblings. This was a lost floor, not an absent one; restored rather
+ * than left as a "product decision for later."]
  */
 export const makeSpotRentalBillingSchema = (t: TFunction) =>
   z.object({
@@ -56,13 +56,10 @@ export const makeSpotRentalBillingSchema = (t: TFunction) =>
       invalidKey: 'common:validation.amount.invalid',
     }),
     total: makeNumericField(t, {
-      min: -Infinity,
+      min: 0,
       max: Infinity,
-      // Unreachable at +/-Infinity — total never had a constraint in
-      // either direction, so these two just point at the same message as
-      // invalidKey rather than earning their own dead-code text.
-      negativeKey: 'common:validation.amount.invalid',
-      tooLargeKey: 'common:validation.amount.invalid',
+      negativeKey: 'common:validation.amount.negative',
+      tooLargeKey: 'common:validation.amount.tooLarge',
       invalidKey: 'common:validation.amount.invalid',
     }),
     notes: z.string().max(1000, 'Notes must be 1000 characters or less').optional(),

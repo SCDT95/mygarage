@@ -1,6 +1,6 @@
 import { z } from 'zod'
 import type { TFunction } from 'i18next'
-import { makeOptionalCurrencySchema } from './shared'
+import { makeNumericField } from './shared'
 
 /**
  * Insurance policy schema matching backend Pydantic validators.
@@ -35,9 +35,16 @@ export const PREMIUM_FREQUENCIES = [
  * (`Decimal | None`); the bug (#140) was that the form sent the raw string
  * `"528,25"` for a comma-decimal locale and `""` for an untouched optional
  * field, both of which the backend's 422 rejected with no per-field detail.
- * Routing them through `makeOptionalCurrencySchema` fixes both: it parses via
- * the locale-aware `NumberInput`/`registerDecimal` and reports its own
- * `common:validation.amount.invalid` instead of a bare status code.
+ * Routing them through the locale-aware `NumberInput`/`registerDecimal` fixes
+ * both — it reports `common:validation.amount.invalid` instead of a bare
+ * status code.
+ *
+ * NOT `makeOptionalCurrencySchema` though: that factory's 99,999.99 ceiling
+ * doesn't exist on the backend (`insurance.py` — `ge=0`, no `le`), and
+ * insurance is THE #140 form, so a client-side cap here would reject
+ * legitimate values (a high-value collector-car policy, a commercial umbrella
+ * premium) the API accepts. Bespoke min:0/max:Infinity via the exported
+ * `makeNumericField`, same technique as `warranty.mileage_limit_km`.
  */
 export const makeInsuranceSchema = (t: TFunction) =>
   z.object({
@@ -46,9 +53,21 @@ export const makeInsuranceSchema = (t: TFunction) =>
     policy_type: z.string().min(1, t('common:validation.policyType.required')),
     start_date: z.string().min(1, t('common:validation.date.required')),
     end_date: z.string().min(1, t('common:validation.date.required')),
-    premium_amount: makeOptionalCurrencySchema(t),
+    premium_amount: makeNumericField(t, {
+      min: 0,
+      max: Infinity,
+      negativeKey: 'common:validation.amount.negative',
+      tooLargeKey: 'common:validation.amount.tooLarge',
+      invalidKey: 'common:validation.amount.invalid',
+    }),
     premium_frequency: z.string().optional(),
-    deductible: makeOptionalCurrencySchema(t),
+    deductible: makeNumericField(t, {
+      min: 0,
+      max: Infinity,
+      negativeKey: 'common:validation.amount.negative',
+      tooLargeKey: 'common:validation.amount.tooLarge',
+      invalidKey: 'common:validation.amount.invalid',
+    }),
     coverage_limits: z.string().optional(),
     notes: z.string().optional(),
   })

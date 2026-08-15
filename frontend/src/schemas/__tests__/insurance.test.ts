@@ -84,4 +84,25 @@ describe('Insurance Schema', () => {
     const result = schema.safeParse({ ...validInsurance, premium_amount: '528,25' })
     expect(result.success).toBe(false)
   })
+
+  // Final-review I5: makeOptionalCurrencySchema's 99,999.99 ceiling doesn't
+  // exist on the backend (insurance.py — `ge=0`, no `le`), and insurance is
+  // THE #140 form. A high-value policy premium/deductible must not be
+  // client-side-rejected when the API would accept it.
+  it('accepts a premium_amount/deductible above the old 99,999.99 currency-factory ceiling', () => {
+    const result = schema.safeParse({
+      ...validInsurance,
+      premium_amount: 500000,
+      deductible: 250000,
+    })
+    expect(result.success).toBe(true)
+  })
+
+  it('still rejects a negative premium_amount (the floor is real, only the ceiling was removed)', () => {
+    const result = schema.safeParse({ ...validInsurance, premium_amount: -100 })
+    expect(result.success).toBe(false)
+    if (!result.success) {
+      expect(result.error.issues[0].message).toBe('common:validation.amount.negative')
+    }
+  })
 })

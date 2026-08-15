@@ -73,12 +73,19 @@ describe('Spot Rental Billing Schema', () => {
     expect(result.success).toBe(true)
   })
 
-  // total had NO constraint at all before Task 8 — not even non-negative.
-  // Tightening validation is a product decision, not a side effect of this
-  // fix, so a negative total must still pass; only INVALID_NUMBER/NaN reject.
-  it('total stays fully unconstrained — accepts a large value AND a negative one', () => {
+  // Final-review I6: an earlier ruling here claimed `total` had NO constraint
+  // at all pre-Task-8 and left it unbounded in both directions. That premise
+  // was wrong — `git show a920cbc:frontend/src/schemas/spotRentalBilling.ts`
+  // shows `total` DID have `.nonnegative()`, same as its four siblings; it
+  // lost its floor, it never lacked one. Restored: still no upper bound (the
+  // backend imposes none), but a negative total is rejected again.
+  it('accepts a total above the currency factory\'s ceiling (no upper bound) but rejects a negative one (the floor is real)', () => {
     expect(spotRentalBillingSchema.safeParse({ ...validBilling, total: 250_000 }).success).toBe(true)
-    expect(spotRentalBillingSchema.safeParse({ ...validBilling, total: -50 }).success).toBe(true)
+    const result = spotRentalBillingSchema.safeParse({ ...validBilling, total: -50 })
+    expect(result.success).toBe(false)
+    if (!result.success) {
+      expect(result.error.issues[0].message).toBe('common:validation.amount.negative')
+    }
   })
 
   it('rejects notes over 1000 characters', () => {

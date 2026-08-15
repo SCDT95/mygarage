@@ -1,6 +1,6 @@
 import { z } from 'zod'
 import type { TFunction } from 'i18next'
-import { makeOptionalCurrencySchema } from './shared'
+import { makeNumericField } from './shared'
 
 const tollTagIdSchema = z
   .number()
@@ -9,9 +9,8 @@ const tollTagIdSchema = z
   .optional()
 
 /**
- * Factory, not a constant — `amount` routes through `makeOptionalCurrencySchema`,
- * which needs `t` for its translated messages (see schemas/auth.ts header for why
- * every validator here is a factory).
+ * Factory, not a constant — `amount` needs `t` for its translated messages
+ * (see schemas/auth.ts header for why every validator here is a factory).
  *
  * `amount` moved onto `NumberInput`/`registerDecimal` (Task 8), so it can now
  * carry the `INVALID_NUMBER` sentinel for unparseable text, not just `number` /
@@ -21,11 +20,22 @@ const tollTagIdSchema = z
  * leak, not a translated message. `toll_tag_id` stays on the old shape
  * deliberately: its <Select> only ever emits a numeric string or '', which
  * `valueAsNumber` still turns into a number or NaN, never the sentinel.
+ *
+ * NOT `makeOptionalCurrencySchema` though: that factory's 99,999.99 ceiling
+ * doesn't exist on the backend (`toll.py` — `ge=0`, no `le`). Bespoke
+ * min:0/max:Infinity via the exported `makeNumericField`, same technique as
+ * `warranty.mileage_limit_km` and `insurance.premium_amount`/`deductible`.
  */
 export const makeTollTransactionSchema = (t: TFunction) =>
   z.object({
     transaction_date: z.string().min(1, 'Transaction date is required'),
-    amount: makeOptionalCurrencySchema(t),
+    amount: makeNumericField(t, {
+      min: 0,
+      max: Infinity,
+      negativeKey: 'common:validation.amount.negative',
+      tooLargeKey: 'common:validation.amount.tooLarge',
+      invalidKey: 'common:validation.amount.invalid',
+    }),
     location: z.string().min(1, 'Location is required'),
     toll_tag_id: tollTagIdSchema,
     notes: z.string().optional(),

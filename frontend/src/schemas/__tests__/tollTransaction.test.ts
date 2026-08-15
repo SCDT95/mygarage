@@ -87,4 +87,16 @@ describe('Toll Transaction Schema', () => {
       expect(result.error.issues[0].message).toBe('common:validation.amount.invalid')
     }
   })
+
+  // Final-review I5: makeOptionalCurrencySchema's 99,999.99 ceiling doesn't
+  // exist on the backend (toll.py — `ge=0`, no `le`). A large toll amount
+  // (e.g. an unusual bulk/commercial toll charge) must not be client-side
+  // rejected when the API would accept it.
+  it('accepts an amount above the old 99,999.99 currency-factory ceiling', () => {
+    const result = tollTransactionSchema.safeParse({
+      ...validTransaction,
+      amount: 150000,
+    })
+    expect(result.success).toBe(true)
+  })
 })
