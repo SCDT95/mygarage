@@ -16,6 +16,8 @@
 
 import { AxiosError } from 'axios'
 import i18next from 'i18next'
+import { parseValidationErrors, isValidationProblemArray } from './apiValidation'
+import type { FieldProblem } from './apiValidation'
 
 /**
  * Translate an error string without ever risking a throw.
@@ -94,6 +96,8 @@ export interface ParsedApiError {
   message: string
   /** Raw error detail from API response */
   detail?: string
+  /** Field-addressable problems from a 422. Empty for every other error. */
+  fieldErrors: FieldProblem[]
   /** Whether this is a network/connectivity error */
   isNetworkError: boolean
   /** Whether this is a timeout error */
@@ -113,7 +117,15 @@ export function parseApiError(error: unknown, context?: string): ParsedApiError 
   // Handle Axios errors
   if (isAxiosError(error)) {
     const status = error.response?.status || 0
-    const detail = (error.response?.data as { detail?: string })?.detail || error.message
+    const rawDetail = (error.response?.data as { detail?: unknown })?.detail
+    const fieldErrors = parseValidationErrors(rawDetail)
+    // `detail` is human-facing text ONLY. A 422 sends an array, which must never
+    // be stringified into a toast — fieldErrors carries that content.
+    const detail = isValidationProblemArray(rawDetail)
+      ? undefined
+      : typeof rawDetail === 'string'
+        ? rawDetail
+        : error.message
 
     // Network error (no response)
     if (!error.response) {
@@ -121,6 +133,7 @@ export function parseApiError(error: unknown, context?: string): ParsedApiError 
         status: 0,
         message: translate(NETWORK_ERROR),
         detail: error.message,
+        fieldErrors: [],
         isNetworkError: true,
         isTimeout: error.code === 'ECONNABORTED',
         shouldRetry: true,
@@ -140,6 +153,7 @@ export function parseApiError(error: unknown, context?: string): ParsedApiError 
       status,
       message,
       detail,
+      fieldErrors,
       isNetworkError: false,
       isTimeout: status === 504,
       shouldRetry: [502, 503, 504].includes(status),
@@ -152,6 +166,7 @@ export function parseApiError(error: unknown, context?: string): ParsedApiError 
       status: 0,
       message: error.message || translate(GENERIC_ERROR),
       detail: error.message,
+      fieldErrors: [],
       isNetworkError: false,
       isTimeout: false,
       shouldRetry: false,
@@ -163,6 +178,7 @@ export function parseApiError(error: unknown, context?: string): ParsedApiError 
     status: 0,
     message: translate(UNEXPECTED_ERROR),
     detail: String(error),
+    fieldErrors: [],
     isNetworkError: false,
     isTimeout: false,
     shouldRetry: false,
