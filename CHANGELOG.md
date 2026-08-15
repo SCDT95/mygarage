@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [3.0.1] - 2026-08-15
+
 ### Fixed
 - Forms now report validation errors on the field that caused them, instead of a bare `Request failed with status code 422` (#140).
 - Numeric fields accept either decimal separator — `528,25` and `528.25` both work. (The window sticker's MSRP fields are not yet covered.)
