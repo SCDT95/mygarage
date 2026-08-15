@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
 import api from '../services/api'
+import { getActionErrorMessage } from '../utils/httpErrorHandler'
 import { Car, Wrench, Fuel, Shield, FileText, HelpCircle, Droplets } from 'lucide-react'
 import {
   ResponsiveContainer,
@@ -149,7 +150,7 @@ export default function GarageAnalytics() {
           })
         )
       } catch (err) {
-        const errorMessage = err instanceof Error ? err.message : t('garage.genericError')
+        const errorMessage = getActionErrorMessage(err, t('garage.loadAction'))
         setError(errorMessage)
 
         // If offline, try to load from cache

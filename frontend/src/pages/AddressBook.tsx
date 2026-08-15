@@ -363,7 +363,7 @@ export function AddressBookForm({ entry, onClose, onSuccess }: AddressBookFormPr
       await api.delete(`/address-book/${entry.id}`)
       onSuccess()
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : t('addressBook.deleteError'))
+      toast.error(getActionErrorMessage(err, t('addressBook.deleteAction')))
     }
   }
 

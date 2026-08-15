@@ -12,6 +12,7 @@ import { UnitFormatter } from '../utils/units'
 import { priceToDisplay } from '../utils/decimalSafe'
 import { usePropaneRecords, useDeletePropaneRecord } from '../hooks/queries/usePropaneRecords'
 import { useQueryClient } from '@tanstack/react-query'
+import { getActionErrorMessage } from '../utils/httpErrorHandler'
 import { Button, IconButton, Card, Mono, DataTable, EmptyState } from './ui'
 import type { DataTableColumn } from './ui'
 
@@ -52,7 +53,7 @@ export default function PropaneRecordList({ vin }: PropaneRecordListProps) {
         toast.success(t('propaneList.deleted'))
       },
       onError: (err) => {
-        toast.error(err instanceof Error ? err.message : t('propaneList.deleteError'))
+        toast.error(getActionErrorMessage(err, t('propaneList.deleteAction')))
       },
     })
   }

@@ -58,7 +58,7 @@ export default function Supplies() {
 
     deleteMutation.mutate(supply.id, {
       onSuccess: () => toast.success(t('supplies.deleted')),
-      onError: (err) => toast.error(err instanceof Error ? err.message : t('supplies.deleteError')),
+      onError: (err) => toast.error(getActionErrorMessage(err, t('supplies.deleteAction'))),
     })
   }
 

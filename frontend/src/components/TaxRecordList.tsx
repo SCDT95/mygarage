@@ -6,6 +6,7 @@ import { toast } from 'sonner'
 import { formatDateForDisplay } from '../utils/dateUtils'
 import { formatCurrency } from '../utils/formatUtils'
 import { useCurrencyPreference } from '../hooks/useCurrencyPreference'
+import { getActionErrorMessage } from '../utils/httpErrorHandler'
 import type { TaxRecord } from '../types/tax'
 import TaxRecordForm from './TaxRecordForm'
 import { useTaxRecords, useDeleteTaxRecord } from '../hooks/queries/useTaxRecords'
@@ -44,7 +45,7 @@ export default function TaxRecordList({ vin }: TaxRecordListProps) {
 
     deleteMutation.mutate(id, {
       onError: (err) => {
-        toast.error(err instanceof Error ? err.message : t('taxList.deleteError'))
+        toast.error(getActionErrorMessage(err, t('taxList.deleteAction')))
       },
     })
   }

@@ -12,6 +12,7 @@ import { UnitConverter, UnitFormatter } from '../utils/units'
 import { useDEFRecords, useDEFAnalytics, useDeleteDEFRecord } from '../hooks/queries/useDEFRecords'
 import { useQueryClient } from '@tanstack/react-query'
 import { getActiveLocale } from '@/constants/i18n'
+import { getActionErrorMessage } from '../utils/httpErrorHandler'
 import { Button, IconButton, Card, Mono, Chip, DataTable, EmptyState } from './ui'
 import type { DataTableColumn } from './ui'
 
@@ -59,7 +60,7 @@ export default function DEFRecordList({ vin, readOnly = false }: DEFRecordListPr
         toast.success(t('defList.deleted'))
       },
       onError: (err) => {
-        toast.error(err instanceof Error ? err.message : t('defList.deleteError'))
+        toast.error(getActionErrorMessage(err, t('defList.deleteAction')))
       },
     })
   }

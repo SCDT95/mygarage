@@ -31,6 +31,7 @@ import {
 import type { LucideIcon } from 'lucide-react'
 import vehicleService from '../services/vehicleService'
 import api from '../services/api'
+import { getActionErrorMessage } from '../utils/httpErrorHandler'
 import { withBase } from '../utils/basePath'
 import type { Vehicle, VehicleDetailStats } from '../types/vehicle'
 import type { LastLocation } from '../types/trips'
@@ -324,7 +325,7 @@ export default function VehicleDetail() {
       toast.success(t('detail.exportSuccess'))
     } catch (err) {
       toast.error(t('detail.exportError'), {
-        description: err instanceof Error ? err.message : undefined
+        description: getActionErrorMessage(err, t('detail.exportAction'))
       })
     } finally {
       setExporting(false)
@@ -384,7 +385,7 @@ export default function VehicleDetail() {
       await loadVehicle()
     } catch (err) {
       toast.error(t('detail.importError'), {
-        description: err instanceof Error ? err.message : undefined
+        description: getActionErrorMessage(err, t('detail.importAction'))
       })
     } finally {
       setImporting(false)

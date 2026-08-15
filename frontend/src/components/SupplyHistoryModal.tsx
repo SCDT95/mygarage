@@ -194,7 +194,7 @@ function PurchaseRow({ entry, supply, system }: LedgerRowProps) {
       window.URL.revokeObjectURL(url)
       document.body.removeChild(a)
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : t('supplies.history.downloadError'))
+      toast.error(getActionErrorMessage(err, t('supplies.history.downloadAction')))
     } finally {
       setDownloading(false)
     }
@@ -204,7 +204,7 @@ function PurchaseRow({ entry, supply, system }: LedgerRowProps) {
     if (!confirm(t('supplies.history.confirmDeletePurchase'))) return
     deletePurchase.mutate(entry.id, {
       onSuccess: () => toast.success(t('supplies.history.purchaseDeleted')),
-      onError: (err) => toast.error(err instanceof Error ? err.message : t('supplies.history.purchaseDeleteError')),
+      onError: (err) => toast.error(getActionErrorMessage(err, t('supplies.history.purchaseDeleteAction'))),
     })
   }
 
@@ -212,7 +212,7 @@ function PurchaseRow({ entry, supply, system }: LedgerRowProps) {
     if (!confirm(t('supplies.history.confirmDeleteReceipt'))) return
     deleteReceipt.mutate(entry.id, {
       onSuccess: () => toast.success(t('supplies.history.receiptDeleted')),
-      onError: (err) => toast.error(err instanceof Error ? err.message : t('supplies.history.receiptDeleteError')),
+      onError: (err) => toast.error(getActionErrorMessage(err, t('supplies.history.receiptDeleteAction'))),
     })
   }
 
@@ -224,7 +224,7 @@ function PurchaseRow({ entry, supply, system }: LedgerRowProps) {
       { purchaseId: entry.id, formData },
       {
         onSuccess: () => toast.success(t('supplies.history.receiptUploaded')),
-        onError: (err) => toast.error(err instanceof Error ? err.message : t('supplies.history.receiptUploadError')),
+        onError: (err) => toast.error(getActionErrorMessage(err, t('supplies.history.receiptUploadAction'))),
       }
     )
     setSelectedFile(null)
@@ -332,7 +332,7 @@ function UsageRow({ entry, supply, system }: LedgerRowProps) {
     if (!confirm(t('supplies.history.confirmDeleteAdjustment'))) return
     deleteAdjustment.mutate(entry.id, {
       onSuccess: () => toast.success(t('supplies.history.adjustmentDeleted')),
-      onError: (err) => toast.error(err instanceof Error ? err.message : t('supplies.history.adjustmentDeleteError')),
+      onError: (err) => toast.error(getActionErrorMessage(err, t('supplies.history.adjustmentDeleteAction'))),
     })
   }
 

@@ -121,6 +121,7 @@
     "cost": "Cost",
     "dataQuality": "Data Quality",
     "date": "Date",
+    "deleteAction": "delete the DEF record",
     "deleteError": "Failed to delete DEF record",
     "deleted": "DEF record deleted",
     "estimatedDays": "~{{count}} days",
@@ -298,7 +299,9 @@
       "vinMismatch": "VIN: Mismatch",
       "vinVerified": "VIN: Verified",
       "wheels": "Wheels"
-    }
+    },
+    "exportAction": "export vehicle data",
+    "importAction": "import vehicle data"
   },
   "documentList": {
     "confirmDelete": "Are you sure you want to delete this document?",
@@ -325,7 +328,10 @@
     "typeManual": "Manual",
     "typeOther": "Other",
     "typeReceipt": "Receipt",
-    "typeRegistration": "Registration"
+    "typeRegistration": "Registration",
+    "deleteAction": "delete the document",
+    "downloadAction": "download the document",
+    "updateAction": "update the document"
   },
   "documentUpload": {
     "title": "Upload Document",
@@ -351,7 +357,8 @@
       "typeOther": "Other",
       "selectFile": "Select File",
       "errorOccurred": "An error occurred"
-    }
+    },
+    "uploadAction": "upload the document"
   },
   "edit": {
     "alsoTrackDistance": "Also track distance/odometer",
@@ -432,7 +439,10 @@
     "volumeUnit": "Volume ({{unit}})",
     "propaneUnit": "Propane ({{unit}})",
     "unitPrice": "Unit price",
-    "tableCaption": "Fuel fill-up history"
+    "tableCaption": "Fuel fill-up history",
+    "exportAction": "export fuel records",
+    "importAction": "import fuel records",
+    "deleteAction": "delete the fuel record"
   },
   "hoursList": {
     "actions": "Actions",
@@ -440,6 +450,7 @@
     "addReading": "Add Reading",
     "confirmDelete": "Are you sure you want to delete this hours record?",
     "date": "Date",
+    "deleteAction": "delete the hours record",
     "deleteError": "Failed to delete record",
     "latestReading": "Latest Reading",
     "loading": "Loading hours records...",
@@ -460,6 +471,7 @@
     "confirmDelete": "Are you sure you want to delete this insurance policy?",
     "coverageLimits": "Coverage Limits",
     "deductible": "Deductible",
+    "deleteAction": "delete the insurance policy",
     "deleteError": "Failed to delete insurance policy",
     "endDate": "End Date",
     "expired": "Expired",
@@ -677,6 +689,7 @@
     "addNote": "Add Note",
     "confirmDelete": "Are you sure you want to delete this note?",
     "created": "Created",
+    "deleteAction": "delete the note",
     "deleteError": "Failed to delete note",
     "loading": "Loading notes...",
     "noRecords": "No notes yet",
@@ -691,11 +704,14 @@
     "addReading": "Add Reading",
     "confirmDelete": "Are you sure you want to delete this odometer record?",
     "date": "Date",
+    "deleteAction": "delete the odometer record",
     "deleteError": "Failed to delete record",
+    "exportAction": "export odometer records",
     "exportCSV": "Export CSV",
     "exportError": "Failed to export data",
     "exportToCSV": "Export to CSV",
     "exporting": "Exporting...",
+    "importAction": "import odometer records",
     "importCSV": "Import CSV",
     "importError": "Failed to import data",
     "importFromCSV": "Import from CSV",
@@ -737,7 +753,11 @@
       "noCaption": "No caption",
       "editCaption": "Edit caption",
       "save": "Save",
-      "errorOccurred": "An error occurred"
+      "errorOccurred": "An error occurred",
+      "loadAction": "load photos",
+      "deleteAction": "delete the photo",
+      "setMainAction": "set the main photo",
+      "captionAction": "update the photo caption"
     }
   },
   "photoUpload": {
@@ -754,7 +774,8 @@
     "previewAlt": "Preview",
     "selectFile": "Select File",
     "setAsMain": "Set as main vehicle photo",
-    "title": "Upload Photo"
+    "title": "Upload Photo",
+    "uploadAction": "upload the photo"
   },
   "propaneList": {
     "actions": "Actions",
@@ -763,6 +784,7 @@
     "confirmDelete": "Are you sure you want to delete this propane record?",
     "cost": "Cost",
     "date": "Date",
+    "deleteAction": "delete the propane record",
     "deleteError": "Failed to delete propane record",
     "deleted": "Propane record deleted",
     "gallons": "Gallons",
@@ -828,7 +850,10 @@
     "title": "Safety Recalls",
     "viewOnCarComplaints": "View on CarComplaints.com",
     "checkNHTSATitle": "Check NHTSA for recalls",
-    "notAvailable": "N/A"
+    "notAvailable": "N/A",
+    "nhtsaCheckAction": "check for recalls",
+    "deleteAction": "delete the recall",
+    "statusAction": "update the recall status"
   },
   "reminderList": {
     "addReminder": "Add Reminder",
@@ -855,6 +880,7 @@
     "attachments": "Attachments",
     "confirmDelete": "Are you sure you want to delete this service visit and all its line items?",
     "costBreakdown": "Cost Breakdown",
+    "deleteAction": "delete the service visit",
     "deleteFailed": "Delete failed",
     "deleteFailedDesc": "Failed to delete visit",
     "deleted": "Service visit deleted",
@@ -887,7 +913,8 @@
     "errorUploadFailed": "Failed to upload file",
     "supportedFormats": "Supported formats: JPG, PNG, GIF, PDF (max 10MB)",
     "upload": "Upload",
-    "uploading": "Uploading..."
+    "uploading": "Uploading...",
+    "uploadAction": "upload the attachment"
   },
   "spotRentalList": {
     "active": "Active",
@@ -932,7 +959,9 @@
     "waste": "Waste",
     "water": "Water",
     "weekly": "Weekly",
-    "addBilling": "Add Billing"
+    "addBilling": "Add Billing",
+    "deleteAction": "delete the spot rental",
+    "billingDeleteAction": "delete the billing entry"
   },
   "taxList": {
     "actions": "Actions",
@@ -941,6 +970,7 @@
     "amount": "Amount",
     "confirmDelete": "Are you sure you want to delete this tax record?",
     "datePaid": "Date Paid",
+    "deleteAction": "delete the tax record",
     "deleteError": "Failed to delete tax record",
     "loading": "Loading tax records...",
     "noRecords": "No tax or registration records yet",
@@ -959,9 +989,11 @@
     "amount": "Amount",
     "averagePerTransaction": "Average per Transaction",
     "confirmDelete": "Are you sure you want to delete this toll transaction?",
+    "deleteAction": "delete the toll transaction",
     "deleteError": "Failed to delete toll transaction",
     "error": "An error occurred",
     "export": "Export",
+    "exportAction": "export toll transactions",
     "exportError": "Failed to export data",
     "exporting": "Exporting...",
     "month": "Month",
@@ -981,6 +1013,7 @@
     "addFirstTollTag": "Add Your First Toll Tag",
     "addTollTag": "Add Toll Tag",
     "confirmDelete": "Are you sure you want to delete this toll tag?",
+    "deleteAction": "delete the toll tag",
     "deleteError": "Failed to delete toll tag",
     "loading": "Loading toll tags...",
     "noRecords": "No toll tags configured yet",
@@ -1038,7 +1071,8 @@
     "createAsNew": "Create \"{{query}}\" as new vendor",
     "created": "Created vendor: {{name}}",
     "nameRequired": "Vendor name is required",
-    "createFailed": "Failed to create vendor"
+    "createFailed": "Failed to create vendor",
+    "createAction": "create the vendor"
   },
   "vinDemo": {
     "enterVIN": "Enter VIN"
@@ -1070,6 +1104,7 @@
     "addWarranty": "Add Warranty",
     "confirmDelete": "Are you sure you want to delete this warranty?",
     "coverageDetails": "Coverage Details",
+    "deleteAction": "delete the warranty",
     "deleteError": "Failed to delete warranty",
     "endDate": "End Date",
     "expired": "Expired",
@@ -1168,7 +1203,9 @@
       "vinLabel": "VIN",
       "vinMismatch": "(mismatch!)",
       "warranty": "Warranty"
-    }
+    },
+    "uploadAction": "upload the window sticker",
+    "saveAction": "save the window sticker data"
   },
   "wizard": {
     "color": "Color",
@@ -1228,7 +1265,10 @@
     "unknownSize": "Unknown size",
     "sizeBytes": "{{size}} B",
     "sizeKb": "{{size}} KB",
-    "sizeMb": "{{size}} MB"
+    "sizeMb": "{{size}} MB",
+    "loadAction": "load the attachments",
+    "deleteAction": "delete the attachment",
+    "downloadAction": "download the attachment"
   },
   "livelinkDtcs": {
     "filterAll": "All",
@@ -1257,6 +1297,7 @@
     "extractedData": "Extracted Data",
     "or": "or",
     "parse": "Parse PDF",
+    "parseAction": "parse the insurance PDF",
     "parseSuccess": "PDF parsed successfully!",
     "parsing": "Parsing PDF...",
     "reviewHint": "You can review and edit all fields before saving the policy",

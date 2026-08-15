@@ -7,6 +7,7 @@ import { formatDateForDisplay, formatDateForInput } from '../utils/dateUtils'
 import { useDateLocale } from '../hooks/useDateLocale'
 import { formatCurrency } from '../utils/formatUtils'
 import { useCurrencyPreference } from '../hooks/useCurrencyPreference'
+import { getActionErrorMessage } from '../utils/httpErrorHandler'
 import { Button, IconButton, Mono, EmptyState } from './ui'
 
 interface InsuranceListProps {
@@ -29,7 +30,7 @@ export default function InsuranceList({ vin, onAddClick, onEditClick }: Insuranc
 
     deleteMutation.mutate(policyId, {
       onError: (err) => {
-        toast.error(err instanceof Error ? err.message : t('insuranceList.deleteError'))
+        toast.error(getActionErrorMessage(err, t('insuranceList.deleteAction')))
       },
     })
   }

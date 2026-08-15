@@ -42,7 +42,8 @@
       "fuel": "Fuel",
       "def": "DEF",
       "total": "Total"
-    }
+    },
+    "loadAction": "load garage analytics"
   },
   "garageHelp": {
     "title": "Garage Analytics Help",

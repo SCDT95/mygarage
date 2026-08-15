@@ -5,6 +5,7 @@ import { FileText, Plus, Trash2, Download, Edit3, Save, X } from 'lucide-react'
 import { Button, IconButton, Card, Chip, Mono, EmptyState, Field, Input, Select, Textarea } from './ui'
 import { toast } from 'sonner'
 import api from '../services/api'
+import { getActionErrorMessage } from '../utils/httpErrorHandler'
 import type { Document } from '../types/document'
 import { useDocuments, useDeleteDocument } from '../hooks/queries/useDocuments'
 import { useQueryClient } from '@tanstack/react-query'
@@ -36,7 +37,7 @@ export default function DocumentList({ vin, onAddClick }: DocumentListProps) {
 
     deleteMutation.mutate(documentId, {
       onError: (err) => {
-        toast.error(err instanceof Error ? err.message : t('documentList.deleteError'))
+        toast.error(getActionErrorMessage(err, t('documentList.deleteAction')))
       },
     })
   }
@@ -56,7 +57,7 @@ export default function DocumentList({ vin, onAddClick }: DocumentListProps) {
       window.URL.revokeObjectURL(url)
       document.body.removeChild(a)
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : t('documentList.downloadError'))
+      toast.error(getActionErrorMessage(err, t('documentList.downloadAction')))
     }
   }
 
@@ -80,7 +81,7 @@ export default function DocumentList({ vin, onAddClick }: DocumentListProps) {
       queryClient.invalidateQueries({ queryKey: ['documents', vin] })
       setEditingId(null)
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : t('documentList.updateError'))
+      toast.error(getActionErrorMessage(err, t('documentList.updateAction')))
     }
   }
 

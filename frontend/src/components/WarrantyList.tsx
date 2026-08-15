@@ -7,6 +7,7 @@ import { formatDateForDisplay, formatDateForInput } from '../utils/dateUtils'
 import { useDateLocale } from '../hooks/useDateLocale'
 import { useUnitPreference } from '../hooks/useUnitPreference'
 import { UnitFormatter } from '../utils/units'
+import { getActionErrorMessage } from '../utils/httpErrorHandler'
 import { Button, IconButton, Mono, EmptyState } from './ui'
 
 interface WarrantyListProps {
@@ -29,7 +30,7 @@ export default function WarrantyList({ vin, onAddClick, onEditClick }: WarrantyL
 
     deleteMutation.mutate(warrantyId, {
       onError: (err) => {
-        toast.error(err instanceof Error ? err.message : t('warrantyList.deleteError'))
+        toast.error(getActionErrorMessage(err, t('warrantyList.deleteAction')))
       },
     })
   }

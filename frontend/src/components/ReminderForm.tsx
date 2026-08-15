@@ -28,6 +28,7 @@ import { UnitConverter, UnitFormatter } from '../utils/units'
 import { toCanonicalKm } from '../utils/decimalSafe'
 import { getUsageTracking } from '../utils/usageTracking'
 import api from '../services/api'
+import { getActionErrorMessage, parseApiError } from '../utils/httpErrorHandler'
 import { getActiveLocale } from '@/constants/i18n'
 
 interface ReminderFormProps {
@@ -104,6 +105,7 @@ export default function ReminderForm({ vin, reminder, currentMileage, currentHou
   const reminderTypeOptions = reminderTypeOrder.map((value) => ({ value, ...REMINDER_TYPE_DEFS[value] }))
 
   const [error, setError] = useState<string | null>(null)
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({})
   const [submitting, setSubmitting] = useState(false)
   const [title, setTitle] = useState(reminder?.title ?? '')
   const [reminderType, setReminderType] = useState<ReminderType>(
@@ -165,6 +167,7 @@ export default function ReminderForm({ vin, reminder, currentMileage, currentHou
   const handleSubmit = async (e: SyntheticEvent<HTMLFormElement>) => {
     e.preventDefault()
     setError(null)
+    setFieldErrors({})
 
     if (!title.trim()) {
       setError(t('reminder.titleRequired'))
@@ -228,7 +231,12 @@ export default function ReminderForm({ vin, reminder, currentMileage, currentHou
       }
       onSuccess()
     } catch (err) {
-      setError(err instanceof Error ? err.message : t('common:error'))
+      const problems = parseApiError(err).fieldErrors
+      if (problems.length > 0) {
+        setFieldErrors(Object.fromEntries(problems.map((p) => [p.field, p.message])))
+      } else {
+        setError(getActionErrorMessage(err, t('reminder.saveAction')))
+      }
     } finally {
       setSubmitting(false)
     }
@@ -258,7 +266,7 @@ export default function ReminderForm({ vin, reminder, currentMileage, currentHou
           </div>
         )}
 
-        <Field id="reminder-title" label={t('common:title')} required>
+        <Field id="reminder-title" label={t('common:title')} required error={fieldErrors.title}>
           <Input
             id="reminder-title"
             type="text"
@@ -295,7 +303,7 @@ export default function ReminderForm({ vin, reminder, currentMileage, currentHou
         </div>
 
         {['date', 'both', 'smart'].includes(reminderType) && (
-          <Field id="reminder-due-date" label={t('reminder.dueDate')} required>
+          <Field id="reminder-due-date" label={t('reminder.dueDate')} required error={fieldErrors.due_date}>
             <Input
               id="reminder-due-date"
               type="date"
@@ -313,6 +321,7 @@ export default function ReminderForm({ vin, reminder, currentMileage, currentHou
               label={hasMileage ? t('reminder.milesUntilDue') : t('reminder.dueMileage')}
               unit={UnitFormatter.getDistanceUnit(system)}
               required
+              error={fieldErrors.due_mileage_km}
             >
               <Input
                 id="reminder-mileage"
@@ -361,6 +370,7 @@ export default function ReminderForm({ vin, reminder, currentMileage, currentHou
               label={hasHours ? t('reminder.hoursUntilDue') : t('reminder.dueHours')}
               unit="hr"
               required
+              error={fieldErrors.due_hours}
             >
               <Input
                 id="reminder-hours"
@@ -404,7 +414,7 @@ export default function ReminderForm({ vin, reminder, currentMileage, currentHou
           </div>
         )}
 
-        <Field id="reminder-notes" label={t('common:notes')}>
+        <Field id="reminder-notes" label={t('common:notes')} error={fieldErrors.notes}>
           <Textarea
             id="reminder-notes"
             value={notes}

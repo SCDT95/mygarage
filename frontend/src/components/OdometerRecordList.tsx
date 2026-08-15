@@ -8,6 +8,7 @@ import api from '../services/api'
 import { useUnitPreference } from '../hooks/useUnitPreference'
 import { UnitFormatter } from '../utils/units'
 import { useOdometerRecords, useDeleteOdometerRecord, useImportOdometerCSV } from '../hooks/queries/useOdometerRecords'
+import { getActionErrorMessage } from '../utils/httpErrorHandler'
 import { Button, IconButton, Card, Mono, Badge, DataTable, EmptyState } from './ui'
 import type { DataTableColumn } from './ui'
 
@@ -61,7 +62,7 @@ export default function OdometerRecordList({ vin, onAddClick, onEditClick }: Odo
       window.URL.revokeObjectURL(url)
       document.body.removeChild(a)
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : t('odometerList.exportError'))
+      toast.error(getActionErrorMessage(err, t('odometerList.exportAction')))
     } finally {
       setExporting(false)
     }
@@ -101,7 +102,7 @@ export default function OdometerRecordList({ vin, onAddClick, onEditClick }: Odo
         }
       },
       onError: (err) => {
-        toast.error(err instanceof Error ? err.message : t('odometerList.importError'))
+        toast.error(getActionErrorMessage(err, t('odometerList.importAction')))
       },
       onSettled: () => {
         // Reset file input
@@ -119,7 +120,7 @@ export default function OdometerRecordList({ vin, onAddClick, onEditClick }: Odo
 
     deleteMutation.mutate(recordId, {
       onError: (err) => {
-        toast.error(err instanceof Error ? err.message : t('odometerList.deleteError'))
+        toast.error(getActionErrorMessage(err, t('odometerList.deleteAction')))
       },
     })
   }

@@ -25,6 +25,7 @@ import type { ServiceVisit, ServiceLineItem } from '../types/serviceVisit'
 import type { Attachment } from '../types/attachment'
 import type { Vehicle } from '../types/vehicle'
 import api from '../services/api'
+import { getActionErrorMessage } from '../utils/httpErrorHandler'
 import { withBase } from '../utils/basePath'
 import { useUnitPreference } from '../hooks/useUnitPreference'
 import { UnitFormatter } from '../utils/units'
@@ -158,7 +159,7 @@ export default function ServiceVisitList({
       },
       onError: (err) => {
         toast.error(t('serviceList.deleteFailed'), {
-          description: err instanceof Error ? err.message : t('serviceList.deleteFailedDesc'),
+          description: getActionErrorMessage(err, t('serviceList.deleteAction')),
         })
       },
     })

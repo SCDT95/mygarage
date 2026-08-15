@@ -138,7 +138,8 @@
     "filterByCategory": "Filter by category",
     "editContactNamed": "Edit {{name}}",
     "saveChanges": "Save Changes",
-    "saveAction": "save the contact"
+    "saveAction": "save the contact",
+    "deleteAction": "delete the contact"
   },
   "supplies": {
     "title": "Supplies",
@@ -209,7 +210,12 @@
       "adjustmentLogged": "Adjustment logged",
       "adjustmentHint": "Records stock removed outside of a service job (e.g. spillage, gifted, discarded).",
       "logPurchaseAction": "log the purchase",
-      "logAdjustmentAction": "log the adjustment"
+      "logAdjustmentAction": "log the adjustment",
+      "downloadAction": "download the receipt",
+      "purchaseDeleteAction": "delete the purchase",
+      "receiptDeleteAction": "delete the receipt",
+      "receiptUploadAction": "upload the receipt",
+      "adjustmentDeleteAction": "delete the adjustment"
     },
     "usedTab": {
       "title": "Supplies Used",
@@ -219,7 +225,8 @@
       "empty": "No supplies logged for this vehicle yet.",
       "quantity": "Quantity",
       "viewVisit": "View service visit"
-    }
+    },
+    "deleteAction": "delete the supply"
   },
   "poiFinder": {
     "title": "Find Points of Interest",

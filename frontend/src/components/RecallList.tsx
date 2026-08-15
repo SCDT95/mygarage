@@ -5,6 +5,7 @@ import { toast } from 'sonner'
 import type { Recall } from '../types/recall'
 import type { Vehicle } from '../types/vehicle'
 import api from '../services/api'
+import { getActionErrorMessage } from '../utils/httpErrorHandler'
 import { formatDateForDisplay } from '../utils/dateUtils'
 import { useDateLocale } from '../hooks/useDateLocale'
 import { useRecallRecords, useDeleteRecallRecord, useCheckNHTSA, useToggleRecallResolved } from '../hooks/queries/useRecallRecords'
@@ -75,7 +76,7 @@ export default function RecallList({ vin, onAddClick, onEditClick, onRefresh }: 
         toast.success(t('recallList.nhtsaSuccess'))
       },
       onError: (err) => {
-        toast.error(err instanceof Error ? err.message : t('recallList.nhtsaError'))
+        toast.error(getActionErrorMessage(err, t('recallList.nhtsaCheckAction')))
       },
     })
   }
@@ -87,7 +88,7 @@ export default function RecallList({ vin, onAddClick, onEditClick, onRefresh }: 
 
     deleteMutation.mutate(recallId, {
       onError: (err) => {
-        toast.error(err instanceof Error ? err.message : t('recallList.deleteError'))
+        toast.error(getActionErrorMessage(err, t('recallList.deleteAction')))
       },
     })
   }
@@ -97,7 +98,7 @@ export default function RecallList({ vin, onAddClick, onEditClick, onRefresh }: 
       { recallId: recall.id, isResolved: !recall.is_resolved },
       {
         onError: (err) => {
-          toast.error(err instanceof Error ? err.message : t('recallList.statusError'))
+          toast.error(getActionErrorMessage(err, t('recallList.statusAction')))
         },
       }
     )

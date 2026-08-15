@@ -2,6 +2,7 @@ import { useState, useRef, type SyntheticEvent } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Upload, FileText, DollarSign, Fuel, Edit2, Save, Palette, Shield, Leaf, Cog, Car } from 'lucide-react'
 import api from '../services/api'
+import { getActionErrorMessage, parseApiError } from '../utils/httpErrorHandler'
 import { Drawer } from './ui'
 import { useCurrencySymbol } from '../hooks/useCurrencySymbol'
 
@@ -52,6 +53,7 @@ export default function WindowStickerUpload({ vin, onSuccess, onClose }: WindowS
   const currencySymbol = useCurrencySymbol()
   const [uploading, setUploading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({})
   const [success, setSuccess] = useState<string | null>(null)
   const [file, setFile] = useState<File | null>(null)
   const [extractedData, setExtractedData] = useState<ExtractedData | null>(null)
@@ -109,6 +111,7 @@ export default function WindowStickerUpload({ vin, onSuccess, onClose }: WindowS
 
     setUploading(true)
     setError(null)
+    setFieldErrors({})
     setSuccess(null)
 
     try {
@@ -123,7 +126,12 @@ export default function WindowStickerUpload({ vin, onSuccess, onClose }: WindowS
       setSuccess(t('windowSticker.misc.uploadSuccess'))
       setEditMode(true)
     } catch (err) {
-      setError(err instanceof Error ? err.message : t('windowSticker.misc.errorOccurred'))
+      const problems = parseApiError(err).fieldErrors
+      if (problems.length > 0) {
+        setFieldErrors(Object.fromEntries(problems.map((p) => [p.field, p.message])))
+      } else {
+        setError(getActionErrorMessage(err, t('windowSticker.uploadAction')))
+      }
     } finally {
       setUploading(false)
     }
@@ -134,6 +142,7 @@ export default function WindowStickerUpload({ vin, onSuccess, onClose }: WindowS
 
     setUploading(true)
     setError(null)
+    setFieldErrors({})
 
     try {
       await api.patch(`/vehicles/${vin}/window-sticker/data`, extractedData)
@@ -144,7 +153,12 @@ export default function WindowStickerUpload({ vin, onSuccess, onClose }: WindowS
         onClose()
       }, 1000)
     } catch (err) {
-      setError(err instanceof Error ? err.message : t('windowSticker.misc.errorOccurred'))
+      const problems = parseApiError(err).fieldErrors
+      if (problems.length > 0) {
+        setFieldErrors(Object.fromEntries(problems.map((p) => [p.field, p.message])))
+      } else {
+        setError(getActionErrorMessage(err, t('windowSticker.saveAction')))
+      }
     } finally {
       setUploading(false)
     }
@@ -304,6 +318,9 @@ export default function WindowStickerUpload({ vin, onSuccess, onClose }: WindowS
                         placeholder="91,860"
                         className="w-full px-3 py-2 bg-garage-surface border border-garage-border rounded text-garage-text text-sm disabled:opacity-60"
                       />
+                      {fieldErrors.msrp_base && (
+                        <p role="alert" className="mt-1 text-xs text-danger-500">{fieldErrors.msrp_base}</p>
+                      )}
                     </div>
                     <div>
                       <label className="block text-xs text-garage-text-muted mb-1">{t('detail.misc.options')}</label>
@@ -318,6 +335,9 @@ export default function WindowStickerUpload({ vin, onSuccess, onClose }: WindowS
                         placeholder="11,055"
                         className="w-full px-3 py-2 bg-garage-surface border border-garage-border rounded text-garage-text text-sm disabled:opacity-60"
                       />
+                      {fieldErrors.msrp_options && (
+                        <p role="alert" className="mt-1 text-xs text-danger-500">{fieldErrors.msrp_options}</p>
+                      )}
                     </div>
                     <div>
                       <label className="block text-xs text-garage-text-muted mb-1">{t('detail.misc.destination')}</label>
@@ -332,6 +352,9 @@ export default function WindowStickerUpload({ vin, onSuccess, onClose }: WindowS
                         placeholder="2,095"
                         className="w-full px-3 py-2 bg-garage-surface border border-garage-border rounded text-garage-text text-sm disabled:opacity-60"
                       />
+                      {fieldErrors.destination_charge && (
+                        <p role="alert" className="mt-1 text-xs text-danger-500">{fieldErrors.destination_charge}</p>
+                      )}
                     </div>
                     <div>
                       <label className="block text-xs text-garage-text-muted mb-1">{t('detail.misc.totalMsrp')}</label>
@@ -346,6 +369,9 @@ export default function WindowStickerUpload({ vin, onSuccess, onClose }: WindowS
                         placeholder="102,915"
                         className="w-full px-3 py-2 bg-garage-surface border border-garage-border rounded text-garage-text text-sm disabled:opacity-60"
                       />
+                      {fieldErrors.msrp_total && (
+                        <p role="alert" className="mt-1 text-xs text-danger-500">{fieldErrors.msrp_total}</p>
+                      )}
                     </div>
                   </div>
                 </div>
@@ -371,6 +397,9 @@ export default function WindowStickerUpload({ vin, onSuccess, onClose }: WindowS
                         placeholder={t('windowSticker.misc.exteriorColorPlaceholder')}
                         className="w-full px-3 py-2 bg-garage-surface border border-garage-border rounded text-garage-text text-sm disabled:opacity-60"
                       />
+                      {fieldErrors.exterior_color && (
+                        <p role="alert" className="mt-1 text-xs text-danger-500">{fieldErrors.exterior_color}</p>
+                      )}
                     </div>
                     <div>
                       <label className="block text-xs text-garage-text-muted mb-1">{t('detail.misc.interiorColor')}</label>
@@ -385,6 +414,9 @@ export default function WindowStickerUpload({ vin, onSuccess, onClose }: WindowS
                         placeholder={t('windowSticker.misc.interiorColorPlaceholder')}
                         className="w-full px-3 py-2 bg-garage-surface border border-garage-border rounded text-garage-text text-sm disabled:opacity-60"
                       />
+                      {fieldErrors.interior_color && (
+                        <p role="alert" className="mt-1 text-xs text-danger-500">{fieldErrors.interior_color}</p>
+                      )}
                     </div>
                   </div>
                 </div>
@@ -532,6 +564,9 @@ export default function WindowStickerUpload({ vin, onSuccess, onClose }: WindowS
                         placeholder={t('windowSticker.misc.warrantyPowertrainPlaceholder')}
                         className="w-full px-3 py-2 bg-garage-surface border border-garage-border rounded text-garage-text text-sm disabled:opacity-60"
                       />
+                      {fieldErrors.warranty_powertrain && (
+                        <p role="alert" className="mt-1 text-xs text-danger-500">{fieldErrors.warranty_powertrain}</p>
+                      )}
                     </div>
                     <div>
                       <label className="block text-xs text-garage-text-muted mb-1">{t('detail.misc.basic')}</label>
@@ -546,6 +581,9 @@ export default function WindowStickerUpload({ vin, onSuccess, onClose }: WindowS
                         placeholder={t('windowSticker.misc.warrantyBasicPlaceholder')}
                         className="w-full px-3 py-2 bg-garage-surface border border-garage-border rounded text-garage-text text-sm disabled:opacity-60"
                       />
+                      {fieldErrors.warranty_basic && (
+                        <p role="alert" className="mt-1 text-xs text-danger-500">{fieldErrors.warranty_basic}</p>
+                      )}
                     </div>
                   </div>
                 </div>
@@ -612,6 +650,9 @@ export default function WindowStickerUpload({ vin, onSuccess, onClose }: WindowS
                         placeholder={t('windowSticker.misc.assemblyLocationPlaceholder')}
                         className="w-full px-3 py-2 bg-garage-surface border border-garage-border rounded text-garage-text text-sm disabled:opacity-60"
                       />
+                      {fieldErrors.assembly_location && (
+                        <p role="alert" className="mt-1 text-xs text-danger-500">{fieldErrors.assembly_location}</p>
+                      )}
                     </div>
                     {extractedData.window_sticker_extracted_vin && (
                       <div>

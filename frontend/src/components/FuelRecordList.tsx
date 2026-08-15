@@ -13,6 +13,7 @@ import { UnitFormatter } from '../utils/units'
 import { priceToDisplay } from '../utils/decimalSafe'
 import { getUsageTracking } from '../utils/usageTracking'
 import { useFuelRecords, useDeleteFuelRecord, useImportFuelCSV } from '../hooks/queries/useFuelRecords'
+import { getActionErrorMessage } from '../utils/httpErrorHandler'
 import { Button, IconButton, Card, Mono, DataTable, Badge, SearchField, EmptyState, Checkbox } from './ui'
 import type { DataTableColumn } from './ui'
 
@@ -131,7 +132,7 @@ export default function FuelRecordList({ vin, onAddClick, onEditClick }: FuelRec
       window.URL.revokeObjectURL(url)
       document.body.removeChild(a)
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : t('fuelList.exportError'))
+      toast.error(getActionErrorMessage(err, t('fuelList.exportAction')))
     } finally {
       setExporting(false)
     }
@@ -160,7 +161,7 @@ export default function FuelRecordList({ vin, onAddClick, onEditClick }: FuelRec
         }
       },
       onError: (err) => {
-        toast.error(err instanceof Error ? err.message : t('fuelList.importError'))
+        toast.error(getActionErrorMessage(err, t('fuelList.importAction')))
       },
       onSettled: () => {
         // Reset file input
@@ -178,7 +179,7 @@ export default function FuelRecordList({ vin, onAddClick, onEditClick }: FuelRec
 
     deleteMutation.mutate(recordId, {
       onError: (err) => {
-        toast.error(err instanceof Error ? err.message : t('fuelList.deleteError'))
+        toast.error(getActionErrorMessage(err, t('fuelList.deleteAction')))
       },
     })
   }

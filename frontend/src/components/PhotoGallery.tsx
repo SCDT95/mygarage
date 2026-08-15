@@ -17,6 +17,7 @@ import vehicleService from '../services/vehicleService'
 import { useOnlineStatus } from '../hooks/useOnlineStatus'
 import { formatAPITimestamp } from '../utils/parseAPITimestamp'
 import { withBase } from '../utils/basePath'
+import { getActionErrorMessage } from '../utils/httpErrorHandler'
 
 interface PhotoGalleryProps {
   vin: string
@@ -64,7 +65,7 @@ function PhotoGallery({ vin, onAddClick }: PhotoGalleryProps) {
           return
         }
       }
-      setError(err instanceof Error ? err.message : t('photoGallery.misc.errorOccurred'))
+      setError(getActionErrorMessage(err, t('photoGallery.misc.loadAction')))
     } finally {
       setLoading(false)
     }
@@ -91,7 +92,7 @@ function PhotoGallery({ vin, onAddClick }: PhotoGalleryProps) {
       await fetchPhotos()
     } catch (err) {
       toast.error(t('photoGallery.misc.deleteError'), {
-        description: err instanceof Error ? err.message : undefined
+        description: getActionErrorMessage(err, t('photoGallery.misc.deleteAction'))
       })
     } finally {
       setDeletingId(null)
@@ -111,7 +112,7 @@ function PhotoGallery({ vin, onAddClick }: PhotoGalleryProps) {
       toast.success(t('photoGallery.misc.mainPhotoUpdated'))
     } catch (err) {
       toast.error(t('photoGallery.misc.setMainError'), {
-        description: err instanceof Error ? err.message : undefined
+        description: getActionErrorMessage(err, t('photoGallery.misc.setMainAction'))
       })
     }
   }
@@ -146,7 +147,7 @@ function PhotoGallery({ vin, onAddClick }: PhotoGalleryProps) {
       toast.success(t('photoGallery.misc.captionUpdated'))
     } catch (err) {
       toast.error(t('photoGallery.misc.captionError'), {
-        description: err instanceof Error ? err.message : undefined
+        description: getActionErrorMessage(err, t('photoGallery.misc.captionAction'))
       })
     } finally {
       setSavingCaption(false)
