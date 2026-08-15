@@ -9,7 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 - Forms now report validation errors on the field that caused them, instead of a bare `Request failed with status code 422` (#140).
-- Numeric fields accept either decimal separator — `528,25` and `528.25` both work.
+- Numeric fields accept either decimal separator — `528,25` and `528.25` both work. (The window sticker's MSRP fields are not yet covered.)
 - Optional numeric fields left blank now save as empty instead of being rejected (#140).
 - Invalid text typed into a numeric field — like `abc`, or a comma decimal on a mismatched keyboard — is now reported instead of being silently discarded on save.
 - Registering with a weak password now shows the actual reason on the password field, instead of `[object Object],[object Object]`.
