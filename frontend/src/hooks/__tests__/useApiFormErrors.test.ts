@@ -62,17 +62,16 @@ describe('applyServerErrors', () => {
     expect(setFieldError).not.toHaveBeenCalled()
   })
 
-  it('verifies compile-time type safety for valid field names', () => {
+  it('rejects a field name the form does not register (compile-time)', () => {
+    // Fence for the ReadonlyArray<Path<T>> signature. If someone widens
+    // knownFields back to string[], @ts-expect-error becomes an UNUSED
+    // suppression and tsc fails — which is the point.
     const setFieldError = vi.fn()
-    // This should compile because both 'premium_amount' and 'deductible' exist on TestValues
-    const knownFields: ReadonlyArray<Path<TestValues>> = ['premium_amount', 'deductible']
-    const r = applyServerErrors(setFieldError, axios422([
-      { type: 'decimal_parsing', loc: ['body', 'premium_amount'], msg: 'Invalid amount' },
-    ]), knownFields)
-
-    expect(r.attached.map(p => p.field)).toEqual(['premium_amount'])
-    expect(setFieldError).toHaveBeenCalledWith('premium_amount', {
-      type: 'server', message: 'Invalid amount',
-    })
+    applyServerErrors<TestValues>(setFieldError, new Error('x'), [
+      'premium_amount',
+      // @ts-expect-error — not a key of TestValues
+      'policy_numbr',
+    ])
+    expect(setFieldError).not.toHaveBeenCalled()
   })
 })
