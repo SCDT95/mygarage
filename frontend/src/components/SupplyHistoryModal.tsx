@@ -27,6 +27,8 @@ import type { AddressBookEntry } from '@/types/addressBook'
 import type { UnitSystem } from '@/utils/units'
 import type { components } from '@/types/api.generated'
 import { getActiveLocale } from '@/constants/i18n'
+import { applyServerErrors } from '@/hooks/useApiFormErrors'
+import { getActionErrorMessage } from '@/utils/httpErrorHandler'
 
 type SupplyLedgerEntry = components['schemas']['SupplyLedgerEntry']
 
@@ -437,6 +439,7 @@ function PurchaseForm({
     handleSubmit,
     reset,
     formState: { errors, isSubmitting },
+    setError: setFieldError,
   } = useForm<PurchaseFormValues>({
     defaultValues: {
       date: formatDateForInput(),
@@ -474,7 +477,18 @@ function PurchaseForm({
       if (fileInputRef.current) fileInputRef.current.value = ''
       onDone()
     } catch (err) {
-      setError(err instanceof Error ? err.message : t('error'))
+      // attached.length === 0 catches a non-422 failure (network drop, 500):
+      // it carries no field problems at all, so `unhandled` alone would stay
+      // empty and this banner would never show.
+      const { attached, unhandled } = applyServerErrors<PurchaseFormValues>(setFieldError, err, [
+        'date',
+        'quantity',
+        'total_cost',
+        'supplier_id',
+      ])
+      if (attached.length === 0 || unhandled.length > 0) {
+        setError(getActionErrorMessage(err, t('supplies.history.logPurchaseAction')))
+      }
     }
   }
 
@@ -614,6 +628,7 @@ function AdjustmentForm({
     handleSubmit,
     reset,
     formState: { errors, isSubmitting },
+    setError: setFieldError,
   } = useForm<AdjustmentFormValues>({ defaultValues: { quantity: undefined } })
 
   const onSubmit = async (values: AdjustmentFormValues) => {
@@ -625,7 +640,13 @@ function AdjustmentForm({
       reset({ quantity: undefined })
       onDone()
     } catch (err) {
-      setError(err instanceof Error ? err.message : t('error'))
+      // attached.length === 0 catches a non-422 failure (network drop, 500):
+      // it carries no field problems at all, so `unhandled` alone would stay
+      // empty and this banner would never show.
+      const { attached, unhandled } = applyServerErrors<AdjustmentFormValues>(setFieldError, err, ['quantity'])
+      if (attached.length === 0 || unhandled.length > 0) {
+        setError(getActionErrorMessage(err, t('supplies.history.logAdjustmentAction')))
+      }
     }
   }
 

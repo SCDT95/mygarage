@@ -8,6 +8,8 @@ import type { Recall, RecallCreate, RecallUpdate } from '../types/recall'
 import { makeRecallSchema, type RecallFormData } from '../schemas/recall'
 import { useCreateRecallRecord, useUpdateRecallRecord } from '../hooks/queries/useRecallRecords'
 import { Button, Field, Input, Textarea, Checkbox } from './ui'
+import { applyServerErrors } from '../hooks/useApiFormErrors'
+import { getActionErrorMessage } from '../utils/httpErrorHandler'
 
 interface RecallFormProps {
   vin: string
@@ -32,6 +34,7 @@ export default function RecallForm({ vin, recall, onClose, onSuccess }: RecallFo
     register,
     handleSubmit,
     formState: { errors, isSubmitting },
+    setError: setFieldError,
   } = useForm<RecallFormData>({
     resolver: zodResolver(schema),
     defaultValues: {
@@ -74,7 +77,22 @@ export default function RecallForm({ vin, recall, onClose, onSuccess }: RecallFo
       onSuccess()
       onClose()
     } catch (err) {
-      setError(err instanceof Error ? err.message : t('common:error'))
+      // attached.length === 0 catches a non-422 failure (network drop, 500):
+      // it carries no field problems at all, so `unhandled` alone would stay
+      // empty and this banner would never show.
+      const { attached, unhandled } = applyServerErrors<RecallFormData>(setFieldError, err, [
+        'nhtsa_campaign_number',
+        'component',
+        'summary',
+        'consequence',
+        'remedy',
+        'date_announced',
+        'is_resolved',
+        'notes',
+      ])
+      if (attached.length === 0 || unhandled.length > 0) {
+        setError(getActionErrorMessage(err, t('recall.saveAction')))
+      }
     }
   }
 

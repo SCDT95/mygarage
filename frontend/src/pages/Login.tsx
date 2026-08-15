@@ -10,6 +10,8 @@ import { makeLoginSchema, type LoginFormData } from '../schemas/auth'
 import { FormError } from '../components/FormError'
 import AuthPageLayout from '../components/AuthPageLayout'
 import { withBase } from '../utils/basePath'
+import { applyServerErrors } from '../hooks/useApiFormErrors'
+import { getActionErrorMessage } from '../utils/httpErrorHandler'
 
 export default function Login() {
   const { t } = useTranslation('common')
@@ -21,6 +23,7 @@ export default function Login() {
     register: registerField,
     handleSubmit,
     formState: { errors, isSubmitting },
+    setError: setFieldError,
   } = useForm<LoginFormData>({
     resolver: zodResolver(schema),
   })
@@ -64,7 +67,13 @@ export default function Login() {
       const user = await login(data.username, data.password)
       navigate(resolvePostLoginRoute(user), { replace: true })
     } catch (err) {
-      setError(err instanceof Error ? err.message : t('login.error'))
+      // attached.length === 0 catches a non-422 failure (network drop, 500):
+      // it carries no field problems at all, so `unhandled` alone would stay
+      // empty and this banner would never show.
+      const { attached, unhandled } = applyServerErrors<LoginFormData>(setFieldError, err, ['username', 'password'])
+      if (attached.length === 0 || unhandled.length > 0) {
+        setError(getActionErrorMessage(err, t('login.signInAction')))
+      }
     }
   }
 

@@ -1284,6 +1284,7 @@
   },
   "vehicleEditPage": {
     "genericError": "An error occurred",
+    "saveAction": "save vehicle settings",
     "currentHoursPlaceholder": "e.g. 123.5",
     "nicknamePlaceholder": "My Car"
   },

@@ -83,7 +83,8 @@
     "registerLink": "Register here",
     "oidcSignIn": "Sign in with {{provider}}",
     "continueWithPassword": "Or continue with password",
-    "error": "Invalid username or password"
+    "error": "Invalid username or password",
+    "signInAction": "sign in"
   },
   "oidc": {
     "signingIn": "Signing you in...",
@@ -136,7 +137,8 @@
     "categoryAll": "All",
     "filterByCategory": "Filter by category",
     "editContactNamed": "Edit {{name}}",
-    "saveChanges": "Save Changes"
+    "saveChanges": "Save Changes",
+    "saveAction": "save the contact"
   },
   "supplies": {
     "title": "Supplies",
@@ -166,6 +168,7 @@
     "negativeWarning": "Logged usage exceeds recorded purchases",
     "activeToggle": "Active (uncheck to archive)",
     "viewHistory": "View history",
+    "saveAction": "save the supply",
     "history": {
       "title": "History: {{name}}",
       "loading": "Loading history...",
@@ -204,7 +207,9 @@
       "receipt": "Receipt (optional)",
       "purchaseLogged": "Purchase logged",
       "adjustmentLogged": "Adjustment logged",
-      "adjustmentHint": "Records stock removed outside of a service job (e.g. spillage, gifted, discarded)."
+      "adjustmentHint": "Records stock removed outside of a service job (e.g. spillage, gifted, discarded).",
+      "logPurchaseAction": "log the purchase",
+      "logAdjustmentAction": "log the adjustment"
     },
     "usedTab": {
       "title": "Supplies Used",
@@ -377,6 +382,7 @@
     "passwordRequirements": "Must have: 8+ chars, uppercase, lowercase, number, special char (!@#$...)",
     "submitting": "Creating account...",
     "failed": "Registration failed. Please try again.",
+    "createAccountAction": "create your account",
     "strength": {
       "weak": "Weak",
       "medium": "Medium",

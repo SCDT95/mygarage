@@ -12,6 +12,7 @@
     "brand": "Brand",
     "createTitle": "Add DEF Record",
     "editTitle": "Edit DEF Record",
+    "saveAction": "save the DEF record",
     "tankLevelAfterFill": "Tank Level After Fill",
     "wherePurchased": "Where Purchased"
   },
@@ -25,6 +26,7 @@
     "defAutoCreatesHint": "Auto-creates a DEF observation record for analytics",
     "defTankLevel": "DEF Tank Level",
     "editTitle": "Edit Fuel Record",
+    "saveAction": "save the fuel record",
     "electricTip": "Efficiency metrics (kWh/100mi) are calculated from charging records.",
     "energy": "Energy",
     "fuelType": "Fuel Type",
@@ -557,6 +559,7 @@
     "createTitle": "Add Propane Record",
     "editTitle": "Edit Propane Record",
     "numberOfTanks": "Number of Tanks",
+    "saveAction": "save the propane record",
     "selectTankSize": "Select tank size...",
     "tankInfo": "Tank Information (Optional)",
     "tankSize": "Tank Size",
@@ -574,6 +577,7 @@
     "nhtsaCampaignNumber": "NHTSA Campaign Number",
     "remedy": "Remedy",
     "remedyPlaceholder": "How to fix or address the issue...",
+    "saveAction": "save the recall",
     "summary": "Summary",
     "summaryPlaceholder": "Brief description of the recall issue...",
     "updateRecall": "Update Recall"
@@ -653,6 +657,7 @@
     "noSkip": "No, Skip",
     "notesPlaceholder": "Additional notes about this rental...",
     "rateType": "Rate Type",
+    "saveAction": "save the spot rental",
     "saveToAddressBook": "Save to Address Book?",
     "saveToAddressBookPrompt": "Would you like to save \"{{name}}\" to your address book for quicker access in the future?",
     "waste": "Waste",
@@ -666,6 +671,7 @@
     "editTitle": "Edit Tax/Registration Record",
     "renewalDate": "Renewal Date",
     "renewalDateHint": "When this registration or tax is due for renewal",
+    "saveAction": "save the tax record",
     "selectType": "Select type"
   },
   "toll": {
@@ -679,6 +685,8 @@
     "locationPlaceholder": "e.g., Hardy Toll Road - Spring, I-45 North Tollway",
     "noActiveTollTags": "No active toll tags configured. Add a toll tag first to link transactions.",
     "noneManualPayment": "None / Manual Payment",
+    "saveTagAction": "save the toll tag",
+    "saveTransactionAction": "save the toll transaction",
     "selectTollSystem": "Select toll system...",
     "tagNotesPlaceholder": "Additional notes about this toll tag...",
     "tagNumber": "Tag Number",

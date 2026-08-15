@@ -14,6 +14,8 @@ import { toCanonicalKm, toCanonicalLiters, priceToDisplay, priceToCanonical } fr
 import { formatDateForInput } from '../utils/dateUtils'
 import CurrencyInputPrefix from './common/CurrencyInputPrefix'
 import { Button, Field, Input, NumberInput, Textarea, registerDecimal } from './ui'
+import { applyServerErrors } from '../hooks/useApiFormErrors'
+import { getActionErrorMessage } from '../utils/httpErrorHandler'
 
 // `labelKey` is translated at render time; the fraction labels are numerals and
 // stay as-is (they are not prose).
@@ -77,6 +79,7 @@ export default function DEFRecordForm({
     formState: { errors, isSubmitting },
     setValue,
     watch,
+    setError: setFieldError,
   } = useForm<DefRecordFormData>({
     resolver: zodResolver(schema) as Resolver<DefRecordFormData>,
     defaultValues: {
@@ -152,7 +155,23 @@ export default function DEFRecordForm({
       onSuccess()
       onClose()
     } catch (err) {
-      setError(err instanceof Error ? err.message : t('common:error'))
+      // attached.length === 0 catches a non-422 failure (network drop, 500):
+      // it carries no field problems at all, so `unhandled` alone would stay
+      // empty and this banner would never show.
+      const { attached, unhandled } = applyServerErrors<DefRecordFormData>(setFieldError, err, [
+        'date',
+        'odometer_km',
+        'fill_level',
+        'liters',
+        'price_per_unit',
+        'cost',
+        'source',
+        'brand',
+        'notes',
+      ])
+      if (attached.length === 0 || unhandled.length > 0) {
+        setError(getActionErrorMessage(err, t('def.saveAction')))
+      }
     }
   }
 

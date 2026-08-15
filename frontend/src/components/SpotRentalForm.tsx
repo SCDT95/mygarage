@@ -14,6 +14,8 @@ import api from '../services/api'
 import { useCreateSpotRental, useUpdateSpotRental } from '../hooks/queries/useSpotRentals'
 import { toast } from 'sonner'
 import { formatDateForInput } from '../utils/dateUtils'
+import { applyServerErrors } from '../hooks/useApiFormErrors'
+import { getActionErrorMessage } from '../utils/httpErrorHandler'
 
 interface SpotRentalFormProps {
   vin: string
@@ -48,6 +50,7 @@ export default function SpotRentalForm({ vin, rental, onClose, onSuccess }: Spot
     watch,
     setValue,
     formState: { errors, isSubmitting },
+    setError: setFieldError,
   } = useForm<SpotRentalFormData>({
     resolver: zodResolver(schema) as Resolver<SpotRentalFormData>,
     defaultValues: {
@@ -188,7 +191,27 @@ export default function SpotRentalForm({ vin, rental, onClose, onSuccess }: Spot
         }
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : t('common:error'))
+      // attached.length === 0 catches a non-422 failure (network drop, 500):
+      // it carries no field problems at all, so `unhandled` alone would stay
+      // empty and this banner would never show.
+      const { attached, unhandled } = applyServerErrors<SpotRentalFormData>(setFieldError, err, [
+        'location_name',
+        'location_address',
+        'check_in_date',
+        'check_out_date',
+        'nightly_rate',
+        'weekly_rate',
+        'monthly_rate',
+        'electric',
+        'water',
+        'waste',
+        'total_cost',
+        'amenities',
+        'notes',
+      ])
+      if (attached.length === 0 || unhandled.length > 0) {
+        setError(getActionErrorMessage(err, t('spotRental.saveAction')))
+      }
     }
   }
 

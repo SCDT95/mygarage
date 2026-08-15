@@ -29,6 +29,8 @@ import { Button, Field, Input, NumberInput, Select, Textarea, Checkbox, register
 import { formatDateForInput } from '../utils/dateUtils'
 import TimeInput24, { normalizeTime, formatTimeForInput } from './common/TimeInput24'
 import { useTimeFormat } from '../hooks/useTimeFormat'
+import { applyServerErrors } from '../hooks/useApiFormErrors'
+import { getActionErrorMessage } from '../utils/httpErrorHandler'
 
 const MORE_DETAILS_KEY = 'fuel_form:more_details_expanded'
 
@@ -137,6 +139,7 @@ export default function FuelRecordForm({ vin, record, onClose, onSuccess }: Fuel
     setValue,
     watch,
     getValues,
+    setError: setFieldError,
   } = useForm<FuelRecordFormData>({
     resolver: zodResolver(schema) as Resolver<FuelRecordFormData>,
     defaultValues: {
@@ -463,7 +466,39 @@ export default function FuelRecordForm({ vin, record, onClose, onSuccess }: Fuel
       onSuccess()
       onClose()
     } catch (err) {
-      setError(err instanceof Error ? err.message : t('common:error'))
+      // attached.length === 0 catches a non-422 failure (network drop, 500):
+      // it carries no field problems at all, so `unhandled` alone would stay
+      // empty and this banner would never show.
+      const { attached, unhandled } = applyServerErrors<FuelRecordFormData>(setFieldError, err, [
+        'date',
+        'odometer_km',
+        'engine_hours',
+        'liters',
+        'kwh',
+        'propane_liters',
+        'price_per_unit',
+        'price_basis',
+        'rebate',
+        'cost',
+        'fuel_type',
+        'is_full_tank',
+        'missed_fillup',
+        'is_hauling',
+        'def_fill_level',
+        'fuel_type_used',
+        'one_time_visit',
+        'driver_name_freetext',
+        'payment_method',
+        'trip_type',
+        'outside_temp_c',
+        'obc_l_per_100km',
+        'obc_avg_speed_kmh',
+        'obc_trip_duration_s',
+        'notes',
+      ])
+      if (attached.length === 0 || unhandled.length > 0) {
+        setError(getActionErrorMessage(err, t('fuel.saveAction')))
+      }
     }
   }
 

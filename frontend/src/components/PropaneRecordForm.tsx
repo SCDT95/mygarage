@@ -13,6 +13,8 @@ import { toCanonicalKg, toCanonicalLiters, priceToDisplay, priceToCanonical } fr
 import { formatDateForInput } from '../utils/dateUtils'
 import CurrencyInputPrefix from './common/CurrencyInputPrefix'
 import { Button, Field, Input, NumberInput, Select, Textarea, registerDecimal } from './ui'
+import { applyServerErrors } from '../hooks/useApiFormErrors'
+import { getActionErrorMessage } from '../utils/httpErrorHandler'
 
 // Propane density: 1 kg ≈ 1.968 L (1 gal ≈ 1.923 kg, 1 gal = 3.78541 L).
 const KG_TO_LITERS = 1.968
@@ -66,6 +68,7 @@ export default function PropaneRecordForm({
     formState: { errors, isSubmitting },
     setValue,
     watch,
+    setError: setFieldError,
   } = useForm<PropaneRecordFormData>({
     resolver: zodResolver(schema) as Resolver<PropaneRecordFormData>,
     defaultValues: {
@@ -196,7 +199,22 @@ export default function PropaneRecordForm({
       onSuccess()
       onClose()
     } catch (err) {
-      setError(err instanceof Error ? err.message : t('common:error'))
+      // attached.length === 0 catches a non-422 failure (network drop, 500):
+      // it carries no field problems at all, so `unhandled` alone would stay
+      // empty and this banner would never show.
+      const { attached, unhandled } = applyServerErrors<PropaneRecordFormData>(setFieldError, err, [
+        'date',
+        'tank_size_kg',
+        'tank_quantity',
+        'propane_liters',
+        'price_per_unit',
+        'cost',
+        'vendor',
+        'notes',
+      ])
+      if (attached.length === 0 || unhandled.length > 0) {
+        setError(getActionErrorMessage(err, t('propane.saveAction')))
+      }
     }
   }
 

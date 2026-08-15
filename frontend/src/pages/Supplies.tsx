@@ -21,6 +21,8 @@ import FormModalWrapper from '@/components/FormModalWrapper'
 import SupplyHistoryModal from '@/components/SupplyHistoryModal'
 import type { Supply, SupplyCreate, SupplyUpdate } from '@/types/supplies'
 import { getActiveLocale } from '@/constants/i18n'
+import { applyServerErrors } from '@/hooks/useApiFormErrors'
+import { getActionErrorMessage } from '@/utils/httpErrorHandler'
 
 export default function Supplies() {
   const { t } = useTranslation('common')
@@ -255,6 +257,7 @@ export function SupplyForm({ supply, onClose, onSuccess }: SupplyFormProps) {
     register,
     handleSubmit,
     formState: { errors, isSubmitting },
+    setError: setFieldError,
   } = useForm<SupplyFormData>({
     resolver: zodResolver(schema),
     defaultValues: {
@@ -296,7 +299,20 @@ export function SupplyForm({ supply, onClose, onSuccess }: SupplyFormProps) {
       onSuccess()
       onClose()
     } catch (err) {
-      setError(err instanceof Error ? err.message : t('common:error'))
+      // attached.length === 0 catches a non-422 failure (network drop, 500):
+      // it carries no field problems at all, so `unhandled` alone would stay
+      // empty and this banner would never show.
+      const { attached, unhandled } = applyServerErrors<SupplyFormData>(setFieldError, err, [
+        'name',
+        'unit_type',
+        'part_number',
+        'category',
+        'notes',
+        'vin',
+      ])
+      if (attached.length === 0 || unhandled.length > 0) {
+        setError(getActionErrorMessage(err, t('supplies.saveAction')))
+      }
     }
   }
 

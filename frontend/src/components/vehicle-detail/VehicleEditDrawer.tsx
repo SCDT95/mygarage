@@ -15,6 +15,8 @@ import { useUnitPreference } from '../../hooks/useUnitPreference'
 import { UnitConverter, UnitFormatter } from '../../utils/units'
 import { toCanonicalLiters } from '../../utils/decimalSafe'
 import { getUsageTracking } from '../../utils/usageTracking'
+import { applyServerErrors } from '../../hooks/useApiFormErrors'
+import { getActionErrorMessage } from '../../utils/httpErrorHandler'
 
 /** Vehicles with no engine, VIN-decoded drivetrain, or DEF system. */
 const NON_MOTORIZED_TYPES = ['Trailer', 'FifthWheel', 'TravelTrailer']
@@ -110,6 +112,7 @@ export default function VehicleEditDrawer({
     reset,
     setValue,
     watch,
+    setError: setFieldError,
   } = useForm<VehicleEditFormData>({
     resolver: zodResolver(schema) as Resolver<VehicleEditFormData>,
     defaultValues: {},
@@ -225,7 +228,22 @@ export default function VehicleEditDrawer({
       onUpdated(updated)
       onClose()
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : t('vehicleEditPage.genericError'))
+      // A non-422 failure (network drop, 500, plain throw) carries no field
+      // problems at all — `unhandled` alone would stay empty and this branch
+      // would never fire, silently dropping all feedback. `attached.length
+      // === 0` catches that case; it's only skipped when every problem found
+      // a field to land on.
+      const { attached, unhandled } = applyServerErrors<VehicleEditFormData>(setFieldError, err, [
+        'nickname',
+        'vehicle_type',
+        'fuel_type',
+        'usage_unit',
+        'current_hours',
+        'def_tank_capacity_liters',
+      ])
+      if (attached.length === 0 || unhandled.length > 0) {
+        toast.error(getActionErrorMessage(err, t('vehicleEditPage.saveAction')))
+      }
     }
   }
 
