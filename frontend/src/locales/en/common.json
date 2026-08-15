@@ -512,27 +512,38 @@
     },
     "odometer": {
       "negative": "Odometer cannot be negative",
-      "tooLarge": "Odometer value too large"
+      "tooLarge": "Odometer value too large",
+      "invalid": "Enter a valid number",
+      "required": "Odometer is required"
     },
     "engineHours": {
       "negative": "Engine hours cannot be negative",
-      "tooLarge": "Engine hours value too large"
+      "tooLarge": "Engine hours value too large",
+      "invalid": "Enter a valid number",
+      "required": "Engine hours are required"
     },
     "amount": {
       "negative": "Amount cannot be negative",
-      "tooLarge": "Amount too large"
+      "tooLarge": "Amount too large",
+      "invalid": "Enter a valid number",
+      "required": "Amount is required"
     },
     "volume": {
       "negative": "Volume cannot be negative",
-      "tooLarge": "Volume too large"
+      "tooLarge": "Volume too large",
+      "invalid": "Enter a valid number",
+      "required": "Volume is required"
     },
     "price": {
       "negative": "Price cannot be negative",
-      "tooLarge": "Price too large"
+      "tooLarge": "Price too large",
+      "invalid": "Enter a valid number",
+      "required": "Price is required"
     },
     "kwh": {
       "negative": "kWh cannot be negative",
-      "tooLarge": "kWh too large"
+      "tooLarge": "kWh too large",
+      "invalid": "Enter a valid number"
     },
     "date": {
       "required": "Date is required",
