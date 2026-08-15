@@ -7,18 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-## [3.0.0-rc3] - 2026-08-06
-
-_Pre-release; promoting to stable will keep these entries._
-
-### Fixed
-- SQLite upgrades could fail to start on 3.0.0-rc2 with `near ",": syntax error`. Migration 079 left a stray comma when removing the vehicle_type constraint, which also stopped the migrations behind it from running; thanks [@SCDT95](https://github.com/SCDT95) (#137).
-
-## [3.0.0-rc2] - 2026-08-06
-
-_Pre-release; promoting to stable will keep these entries._
+## [3.0.0] - 2026-08-14
 
 ### Added
+- Parts & supplies: light inventory for consumables — track purchases, usage, on-hand quantity, and average unit cost per supply; consume supplies inside a service visit (cost folds into the visit total); a per-vehicle "Supplies used" tab and a full history view. Household-shared catalog (#122).
+- Torque Pro: ingest OBD2 telemetry and GPS from the Torque Pro Android app via a per-device upload URL, managed alongside WiCAN devices (#117).
+- Trips & location: GPS-breadcrumb trips from Torque with a route map, a last-known-location card, and a per-vehicle location-tracking opt-out (#118).
 - CSV exports of fuel and odometer records now follow your unit preference — an imperial account gets miles, gallons and price per gallon instead of metric (#128). The file records which units it uses, so re-importing it converts back correctly.
 - The interface is now fully translatable — roughly 1,600 strings extracted across analytics, vehicle detail, wizards, modals, settings, notification setup, record forms, validation messages, dropdown options and server-supplied status values.
 - German: complete translation of all six namespaces; thanks [@SCDT95](https://github.com/SCDT95) (#125, #126).
@@ -48,8 +42,10 @@ _Pre-release; promoting to stable will keep these entries._
 - The window sticker moved off the vehicle Overview into Vehicle Settings, and uploading one now opens a slide-in sidecar instead of a centred modal.
 - Torque Pro sources moved off the vehicle Overview into Vehicle Settings, replacing the "Connected Devices" card.
 - Vehicle Details, Powertrain and Warranty cards now appear even when empty, so their fields can be filled in on a vehicle whose VIN didn't decode.
+- Migration runner: squash (`REPLACES`) support plus a create_all↔migrations schema-parity diagnostic; reconciled long-standing schema drift (address_book NOT NULL tightening, dropped dead imperial columns, deduplicated indexes).
 
 ### Removed
+- Maintenance templates: the retired feature and its endpoints are gone — application had been a no-op 410 since the schedule system was removed in 2.31.0.
 - Dropped 14 unreachable components, schemas and types (~1790 lines) left behind by earlier refactors, along with the translation keys only they used.
 - Settings → System Configuration: removed the light/dark theme selector — the theme toggle in the top bar is now the single control.
 
@@ -79,6 +75,8 @@ _Pre-release; promoting to stable will keep these entries._
 - Reminders: the notification scheduler could crash on a later run once any reminder had been notified, from a naive vs timezone-aware timestamp comparison.
 - Deleting a service visit no longer leaves its auto-synced odometer reading behind as an orphaned record.
 - Pop-up notifications raised while a slide-in panel is open are now announced by screen readers and can be dismissed.
+- Migration 079 left a stray comma that could break SQLite startup with `near ",": syntax error` and stall the migrations behind it (caught in 3.0.0-rc2); thanks [@SCDT95](https://github.com/SCDT95) (#137).
+- PostgreSQL: migrations 054/055 no longer create duplicate foreign keys against a `create_all` baseline (supported-dialect correctness fix; SQLite unaffected).
 
 ### Security
 - Settings: sensitive values (OIDC client secret, notification tokens, SMTP password, POI API keys) are masked as `********` in API responses; saving a masked value keeps the stored secret.
@@ -88,22 +86,6 @@ _Pre-release; promoting to stable will keep these entries._
 
 ### Build
 - Bump backend deps: fastapi 0.138.2 → 0.141.1, granian 2.7.8 → 2.8.1, ruff 0.15.20 → 0.16.1, joserfc, matplotlib, pandas, pandas-stubs, pillow-heif.
-
-## [3.0.0-rc1] - 2026-07-17
-
-### Added
-- Parts & supplies: light inventory for consumables — track purchases, usage, on-hand quantity, and average unit cost per supply; consume supplies inside a service visit (cost folds into the visit total); a per-vehicle "Supplies used" tab and a full history view. Household-shared catalog (#122).
-- Torque Pro: ingest OBD2 telemetry and GPS from the Torque Pro Android app via a per-device upload URL, managed alongside WiCAN devices (#117).
-- Trips & location: GPS-breadcrumb trips from Torque with a route map, a last-known-location card, and a per-vehicle location-tracking opt-out (#118).
-
-### Changed
-- Migration runner: squash (`REPLACES`) support plus a create_all↔migrations schema-parity diagnostic; reconciled long-standing schema drift (address_book NOT NULL tightening, dropped dead imperial columns, deduplicated indexes).
-
-### Removed
-- Maintenance templates: the retired feature and its endpoints are gone — application had been a no-op 410 since the schedule system was removed in 2.31.0.
-
-### Fixed
-- PostgreSQL: migrations 054/055 no longer create duplicate foreign keys against a `create_all` baseline (supported-dialect correctness fix; SQLite unaffected).
 
 ## [2.31.0] - 2026-07-15
 
