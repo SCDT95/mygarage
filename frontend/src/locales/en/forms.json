@@ -123,6 +123,7 @@
     "premiumAmount": "Premium Amount",
     "premiumFrequency": "Premium Frequency",
     "provider": "Provider",
+    "saveAction": "save the policy",
     "selectFrequency": "Select frequency..."
   },
   "modal": {

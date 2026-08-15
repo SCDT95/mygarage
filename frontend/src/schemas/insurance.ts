@@ -1,4 +1,6 @@
 import { z } from 'zod'
+import type { TFunction } from 'i18next'
+import { makeOptionalCurrencySchema } from './shared'
 
 /**
  * Insurance policy schema matching backend Pydantic validators.
@@ -27,17 +29,32 @@ export const PREMIUM_FREQUENCIES = [
   { value: 'Annual', labelKey: 'forms:premiumFrequencies.annual' },
 ] as const
 
-export const insuranceSchema = z.object({
-  provider: z.string().min(1, 'Provider is required'),
-  policy_number: z.string().min(1, 'Policy number is required'),
-  policy_type: z.string().min(1, 'Policy type is required'),
-  start_date: z.string().min(1, 'Start date is required'),
-  end_date: z.string().min(1, 'End date is required'),
-  premium_amount: z.string().optional(),
-  premium_frequency: z.string().optional(),
-  deductible: z.string().optional(),
-  coverage_limits: z.string().optional(),
-  notes: z.string().optional(),
-})
+/**
+ * Factory, not a module-level constant — see the header of schemas/auth.ts for
+ * why. `premium_amount` and `deductible` are genuinely optional on the backend
+ * (`Decimal | None`); the bug (#140) was that the form sent the raw string
+ * `"528,25"` for a comma-decimal locale and `""` for an untouched optional
+ * field, both of which the backend's 422 rejected with no per-field detail.
+ * Routing them through `makeOptionalCurrencySchema` fixes both: it parses via
+ * the locale-aware `NumberInput`/`registerDecimal` and reports its own
+ * `common:validation.amount.invalid` instead of a bare status code.
+ */
+export const makeInsuranceSchema = (t: TFunction) =>
+  z.object({
+    provider: z.string().min(1, t('common:validation.provider.required')),
+    policy_number: z.string().min(1, t('common:validation.policyNumber.required')),
+    policy_type: z.string().min(1, t('common:validation.policyType.required')),
+    start_date: z.string().min(1, t('common:validation.date.required')),
+    end_date: z.string().min(1, t('common:validation.date.required')),
+    premium_amount: makeOptionalCurrencySchema(t),
+    premium_frequency: z.string().optional(),
+    deductible: makeOptionalCurrencySchema(t),
+    coverage_limits: z.string().optional(),
+    notes: z.string().optional(),
+  })
 
-export type InsuranceFormData = z.infer<typeof insuranceSchema>
+// premium_amount/deductible are `unknown` going in (raw NumberInput text or a
+// number from defaultValues) and `number | undefined` coming out — the
+// resolver is cast to the output type at the call site (see InsuranceForm),
+// matching the sibling record forms built on the same shared.ts factories.
+export type InsuranceFormData = z.output<ReturnType<typeof makeInsuranceSchema>>

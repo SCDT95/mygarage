@@ -549,6 +549,15 @@
       "required": "Date is required",
       "invalidFormat": "Invalid date format"
     },
+    "provider": {
+      "required": "Provider is required"
+    },
+    "policyNumber": {
+      "required": "Policy number is required"
+    },
+    "policyType": {
+      "required": "Policy type is required"
+    },
     "description": {
       "required": "Description is required",
       "tooLong": "Description too long (max 500 characters)"

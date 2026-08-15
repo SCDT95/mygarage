@@ -46,7 +46,10 @@ describe('InsuranceForm — footer submit association (coupled contract, keep gr
     const user = userEvent.setup()
     render(<InsuranceForm vin="TEST12345678901234" onClose={vi.fn()} onSuccess={vi.fn()} />)
     await user.click(screen.getByRole('button', { name: 'common:create' }))
-    expect(await screen.findByText('Provider is required')).toBeInTheDocument()
+    // The i18n mock echoes keys; provider's required message is now
+    // translated via t('common:validation.provider.required') instead of a
+    // hardcoded English string.
+    expect(await screen.findByText('common:validation.provider.required')).toBeInTheDocument()
     expect(createMutateAsync).not.toHaveBeenCalled()
   })
 })
@@ -64,9 +67,12 @@ describe('InsuranceForm — routing + exact payload (SDQ-C)', () => {
       policy_type: 'Liability',
       start_date: '2026-01-01',
       end_date: '2026-12-31',
-      premium_amount: '120.00',
+      // premium_amount/deductible are numbers now — registerDecimal parses
+      // the typed text via the locale-aware decimal reader, and the schema's
+      // output type is `number | undefined`, not the raw string.
+      premium_amount: 120,
       premium_frequency: 'Monthly',
-      deductible: '500',
+      deductible: 500,
       coverage_limits: '100/300',
       notes: 'note',
     })
@@ -95,11 +101,15 @@ describe('InsuranceForm — routing + exact payload (SDQ-C)', () => {
       policy_type: 'Comprehensive',
       start_date: '2025-01-01',
       end_date: '2025-12-31',
-      premium_amount: '90',
+      // premium_amount/deductible are numbers now (see the create-payload
+      // test above). notes is null, not '' — the payload rule sends null,
+      // never '', for a cleared optional field; the record's stored empty
+      // string is never re-touched by this test, so it round-trips to null.
+      premium_amount: 90,
       premium_frequency: 'Monthly',
-      deductible: '250',
+      deductible: 250,
       coverage_limits: '50/100',
-      notes: '',
+      notes: null,
     })
     expect(createMutateAsync).not.toHaveBeenCalled()
   })
