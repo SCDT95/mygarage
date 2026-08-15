@@ -49,15 +49,36 @@ describe('Spot Rental Billing Schema', () => {
     expect(result.success).toBe(false)
   })
 
-  // Task 8b: these now route through the shared makeNumericField (via
-  // makeOptionalCurrencySchema), which rejects NaN as invalid rather than
-  // treating it as empty — see shared.test.ts.
+  // Task 8b: these now route through the shared makeNumericField, which
+  // rejects NaN as invalid rather than treating it as empty — see
+  // shared.test.ts.
   it('rejects NaN values as invalid rather than silently discarding them', () => {
     const result = spotRentalBillingSchema.safeParse({
       ...validBilling,
       monthly_rate: NaN,
     })
     expect(result.success).toBe(false)
+  })
+
+  // Review-response round 2: monthly_rate/electric/water/waste must NOT
+  // have picked up makeOptionalCurrencySchema's $99,999.99 ceiling — none of
+  // the five fields on this schema had an upper bound before Task 8, and
+  // spot_rental_billing.py doesn't impose one either. A value above the
+  // borrowed-factory ceiling must still pass.
+  it('accepts a monthly_rate above the currency factory\'s ceiling (the field itself has no upper bound)', () => {
+    const result = spotRentalBillingSchema.safeParse({
+      ...validBilling,
+      monthly_rate: 250_000,
+    })
+    expect(result.success).toBe(true)
+  })
+
+  // total had NO constraint at all before Task 8 — not even non-negative.
+  // Tightening validation is a product decision, not a side effect of this
+  // fix, so a negative total must still pass; only INVALID_NUMBER/NaN reject.
+  it('total stays fully unconstrained — accepts a large value AND a negative one', () => {
+    expect(spotRentalBillingSchema.safeParse({ ...validBilling, total: 250_000 }).success).toBe(true)
+    expect(spotRentalBillingSchema.safeParse({ ...validBilling, total: -50 }).success).toBe(true)
   })
 
   it('rejects notes over 1000 characters', () => {

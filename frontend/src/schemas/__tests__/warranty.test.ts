@@ -47,15 +47,28 @@ describe('Warranty Schema', () => {
     expect(result.success).toBe(false)
   })
 
-  // Task 8b: mileage_limit_km now routes through the shared makeNumericField
-  // (via makeOptionalOdometerSchema), which rejects NaN as invalid rather
-  // than treating it as empty — see shared.test.ts.
+  // Task 8b: mileage_limit_km now routes through the shared makeNumericField,
+  // which rejects NaN as invalid rather than treating it as empty — see
+  // shared.test.ts.
   it('rejects NaN mileage_limit as invalid rather than silently discarding it', () => {
     const result = warrantySchema.safeParse({
       ...validWarranty,
       mileage_limit_km: NaN,
     })
     expect(result.success).toBe(false)
+  })
+
+  // Review-response round 2: mileage_limit_km must NOT have picked up
+  // makeOptionalOdometerSchema's 9,999,999 km ceiling — this field never had
+  // an upper bound, and the backend (warranty.py) allows up to
+  // 99,999,999.99. A value above the borrowed-factory ceiling but still
+  // realistic must pass.
+  it('accepts a mileage_limit_km above the odometer factory\'s ceiling (the field itself has no upper bound)', () => {
+    const result = warrantySchema.safeParse({
+      ...validWarranty,
+      mileage_limit_km: 50_000_000,
+    })
+    expect(result.success).toBe(true)
   })
 
   it('accepts non-integer mileage_limit_km (canonical km Decimal)', () => {
