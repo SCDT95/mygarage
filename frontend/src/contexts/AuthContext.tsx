@@ -104,57 +104,53 @@ export function AuthProvider({ children }: { children: ReactNode}) {
     loadUser()
   }, [loadUser])
 
+  // Login/register deliberately do NOT catch-and-rewrap. The original AxiosError
+  // (with its `.response.data.detail` — an array on a 422) has to reach the
+  // caller intact: Login.tsx/Register.tsx call `applyServerErrors`, which needs
+  // a real AxiosError for `parseApiError` to populate `fieldErrors`. Collapsing
+  // it to `new Error(string)` here previously (a) stringified a 422's array
+  // detail into literal "[object Object],[object Object]" text, and (b) made
+  // the per-field error path permanently dead code, since `parseApiError` only
+  // parses `fieldErrors` from a real AxiosError.
   const login = async (username: string, password: string): Promise<User> => {
-    try {
-      const response = await api.post('/auth/login', { username, password })
-      const newToken = response.data.access_token
-      const csrfToken = response.data.csrf_token // Security Enhancement v2.10.0
+    const response = await api.post('/auth/login', { username, password })
+    const newToken = response.data.access_token
+    const csrfToken = response.data.csrf_token // Security Enhancement v2.10.0
 
-      // Store CSRF token for state-changing requests
-      if (csrfToken) {
-        setCSRFToken(csrfToken)
+    // Store CSRF token for state-changing requests
+    if (csrfToken) {
+      setCSRFToken(csrfToken)
 
-        // Verify token was stored successfully
-        const storedToken = getCSRFToken()
-        if (storedToken !== csrfToken) {
-          console.error('[Auth] Failed to store CSRF token in sessionStorage')
-          throw new Error('Failed to initialize session. Please try again or check browser settings.')
-        }
+      // Verify token was stored successfully
+      const storedToken = getCSRFToken()
+      if (storedToken !== csrfToken) {
+        console.error('[Auth] Failed to store CSRF token in sessionStorage')
+        throw new Error('Failed to initialize session. Please try again or check browser settings.')
       }
-
-      // Cookie is set by backend automatically
-      // Token state updated for backward compatibility
-      setToken(newToken)
-
-      // Load user info — retry once if cookie isn't available yet
-      let loadedUser: User
-      try {
-        const userResponse = await api.get('/auth/me')
-        loadedUser = userResponse.data
-      } catch {
-        // Browser may not have processed Set-Cookie yet; retry after a tick
-        await new Promise(resolve => setTimeout(resolve, 50))
-        const userResponse = await api.get('/auth/me')
-        loadedUser = userResponse.data
-      }
-      setUser(loadedUser)
-      return loadedUser
-    } catch (error: unknown) {
-      const err = error as { response?: { data?: { detail?: string } }; message?: string }
-      const errorMessage = err.response?.data?.detail || err.message || 'Login failed'
-      throw new Error(errorMessage, { cause: error })
     }
+
+    // Cookie is set by backend automatically
+    // Token state updated for backward compatibility
+    setToken(newToken)
+
+    // Load user info — retry once if cookie isn't available yet
+    let loadedUser: User
+    try {
+      const userResponse = await api.get('/auth/me')
+      loadedUser = userResponse.data
+    } catch {
+      // Browser may not have processed Set-Cookie yet; retry after a tick
+      await new Promise(resolve => setTimeout(resolve, 50))
+      const userResponse = await api.get('/auth/me')
+      loadedUser = userResponse.data
+    }
+    setUser(loadedUser)
+    return loadedUser
   }
 
   const register = async (username: string, email: string, password: string) => {
-    try {
-      await api.post('/auth/register', { username, email, password })
-      // Registration successful - user needs to login
-    } catch (error: unknown) {
-      const err = error as { response?: { data?: { detail?: string } }; message?: string }
-      const errorMessage = err.response?.data?.detail || err.message || 'Registration failed'
-      throw new Error(errorMessage, { cause: error })
-    }
+    await api.post('/auth/register', { username, email, password })
+    // Registration successful - user needs to login
   }
 
   const refreshUser = useCallback(async () => {

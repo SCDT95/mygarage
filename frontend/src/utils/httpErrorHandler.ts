@@ -218,8 +218,13 @@ export function getActionErrorMessage(error: unknown, action: string): string {
     return failed()
   }
 
-  // For validation errors, show the backend detail verbatim when there is one
-  if (parsed.status === 400 || parsed.status === 422) {
+  // For validation errors and not-found lookups, show the backend detail
+  // verbatim when there is one. A 404 raised as `HTTPException(404, "X not
+  // found")` is exactly as specific as a 422's message — letting it fall
+  // through to the generic "resource not found" template below (`failed()`)
+  // discards that specificity at every call site that surfaces a 404 (e.g.
+  // "Vehicle not found" vs "Share not found" vs "Backup file not found").
+  if (parsed.status === 400 || parsed.status === 422 || parsed.status === 404) {
     return (
       parsed.detail ||
       tSafe('httpError.actionFailedCheckInput', 'Failed to {{action}}. Please check your input.', {
