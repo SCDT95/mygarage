@@ -19,6 +19,7 @@ import { useDateLocale } from '../hooks/useDateLocale'
 import { UnitFormatter, UnitConverter } from '../utils/units'
 import { formatDateForDisplay } from '../utils/dateUtils'
 import { withBase } from '../utils/basePath'
+import { getActionErrorMessage } from '../utils/httpErrorHandler'
 
 // Map event type -> Schedule-X calendarId for per-type coloring
 const EVENT_CALENDARS = {
@@ -342,8 +343,7 @@ export default function CalendarPage() {
           completed++
         } catch (err: unknown) {
           failed++
-          const error = err as { response?: { data?: { detail?: string } }; message?: string }
-          const errorMessage = error.response?.data?.detail || error.message || t('calendar.misc.networkError')
+          const errorMessage = getActionErrorMessage(err, t('calendar.misc.completeReminderAction'))
           errors.push(`${event.title}: ${errorMessage}`)
         }
       }

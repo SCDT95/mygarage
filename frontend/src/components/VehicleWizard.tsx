@@ -6,7 +6,7 @@
  * Step 4: Review & Create
  */
 
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useNavigate } from 'react-router-dom'
 import { useForm, type Resolver } from 'react-hook-form'
@@ -14,12 +14,13 @@ import { zodResolver } from '@hookform/resolvers/zod'
 import { ChevronLeft, ChevronRight, Check } from 'lucide-react'
 import VINInput from './VINInput'
 import { FormError } from './FormError'
-import { Stepper, Drawer, Button, Select } from './ui'
+import { Stepper, Drawer, Button, Select, NumberInput, registerDecimal } from './ui'
 import type { VINDecodeResponse } from '../types/vin'
 import type { VehicleCreate } from '../types/vehicle'
 import { FUEL_TYPE_VALUES, FUEL_TYPE_LABELS, type FuelType } from '../constants/fuel'
+import { getActionErrorMessage } from '../utils/httpErrorHandler'
 import vehicleService from '../services/vehicleService'
-import { vehicleEditSchema, VEHICLE_TYPES, type VehicleEditFormData } from '../schemas/vehicle'
+import { makeVehicleEditSchema, VEHICLE_TYPES, type VehicleEditFormData } from '../schemas/vehicle'
 import { useCurrencyPreference } from '../hooks/useCurrencyPreference'
 
 interface VehicleWizardProps {
@@ -35,6 +36,11 @@ export default function VehicleWizard({ onClose, onSuccess }: VehicleWizardProps
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
+  // Zod bakes its messages in at construction, so the schema is rebuilt when
+  // the language changes. Only the resolver depends on it — no fetch, no
+  // reset() — so a rebuild can't discard what the user typed.
+  const schema = useMemo(() => makeVehicleEditSchema(t), [t])
+
   // Form management with react-hook-form + Zod
   const {
     register,
@@ -44,7 +50,7 @@ export default function VehicleWizard({ onClose, onSuccess }: VehicleWizardProps
     getValues,
     formState: { errors },
   } = useForm<VehicleEditFormData>({
-    resolver: zodResolver(vehicleEditSchema) as Resolver<VehicleEditFormData>,
+    resolver: zodResolver(schema) as Resolver<VehicleEditFormData>,
     mode: 'onChange',
     defaultValues: {
       nickname: '',
@@ -191,12 +197,7 @@ export default function VehicleWizard({ onClose, onSuccess }: VehicleWizardProps
       }
       onClose()
     } catch (err: unknown) {
-      if (err && typeof err === 'object' && 'response' in err) {
-        const response = (err as { response?: { data?: { detail?: string } } }).response
-        setError(response?.data?.detail || t('wizard.misc.createFailed'))
-      } else {
-        setError(t('wizard.misc.createFailed'))
-      }
+      setError(getActionErrorMessage(err, t('wizard.misc.createAction')))
       setLoading(false)
     }
   }
@@ -346,10 +347,9 @@ export default function VehicleWizard({ onClose, onSuccess }: VehicleWizardProps
 
               <div>
                 <label className="block text-sm font-medium text-text-mid mb-2">{t('wizard.year')}</label>
-                <input
-                  type="number"
-                  {...register('year', { valueAsNumber: true })}
-                  className="w-full bg-surface border border-border rounded-control px-4 py-2 text-text focus:outline-none focus:border-(--accent-solid)"
+                <NumberInput
+                  {...registerDecimal(register, 'year')}
+                  invalid={!!errors.year}
                   placeholder="2019"
                 />
                 <FormError error={errors.year} />
@@ -423,11 +423,9 @@ export default function VehicleWizard({ onClose, onSuccess }: VehicleWizardProps
                 <label className="block text-sm font-medium text-text-mid mb-2">
                   {t('edit.purchasePrice')}
                 </label>
-                <input
-                  type="number"
-                  step="0.01"
-                  {...register('purchase_price', { valueAsNumber: true })}
-                  className="w-full bg-surface border border-border rounded-control px-4 py-2 text-text focus:outline-none focus:border-(--accent-solid)"
+                <NumberInput
+                  {...registerDecimal(register, 'purchase_price')}
+                  invalid={!!errors.purchase_price}
                   placeholder="15 000,00"
                 />
                 <FormError error={errors.purchase_price} />
@@ -474,10 +472,9 @@ export default function VehicleWizard({ onClose, onSuccess }: VehicleWizardProps
 
               <div>
                 <label className="block text-sm font-medium text-text-mid mb-2">{t('edit.doors')}</label>
-                <input
-                  type="number"
-                  {...register('doors', { valueAsNumber: true })}
-                  className="w-full bg-surface border border-border rounded-control px-4 py-2 text-text focus:outline-none focus:border-(--accent-solid)"
+                <NumberInput
+                  {...registerDecimal(register, 'doors')}
+                  invalid={!!errors.doors}
                   placeholder="4"
                 />
                 <FormError error={errors.doors} />
@@ -500,10 +497,9 @@ export default function VehicleWizard({ onClose, onSuccess }: VehicleWizardProps
 
               <div>
                 <label className="block text-sm font-medium text-text-mid mb-2">{t('edit.cylinders')}</label>
-                <input
-                  type="number"
-                  {...register('cylinders', { valueAsNumber: true })}
-                  className="w-full bg-surface border border-border rounded-control px-4 py-2 text-text focus:outline-none focus:border-(--accent-solid)"
+                <NumberInput
+                  {...registerDecimal(register, 'cylinders')}
+                  invalid={!!errors.cylinders}
                   placeholder="4"
                 />
                 <FormError error={errors.cylinders} />

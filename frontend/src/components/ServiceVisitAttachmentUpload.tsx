@@ -2,6 +2,7 @@ import { useState, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Upload, X, AlertCircle } from 'lucide-react'
 import api from '../services/api'
+import { getActionErrorMessage } from '../utils/httpErrorHandler'
 import { Button, IconButton } from './ui'
 
 interface ServiceVisitAttachmentUploadProps {
@@ -80,7 +81,7 @@ export default function ServiceVisitAttachmentUpload({
       // Notify parent
       onUploadSuccess()
     } catch (err) {
-      setError(err instanceof Error ? err.message : t('serviceVisitAttachmentUpload.errorUploadFailed'))
+      setError(getActionErrorMessage(err, t('serviceVisitAttachmentUpload.uploadAction')))
     } finally {
       setUploading(false)
     }

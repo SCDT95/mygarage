@@ -2,6 +2,7 @@ import { useTranslation } from 'react-i18next'
 import { useState } from 'react'
 import { Shield, Info, CheckCircle, AlertCircle, Eye, EyeOff, Loader } from 'lucide-react'
 import api from '@/services/api'
+import { getActionErrorMessage } from '@/utils/httpErrorHandler'
 import { withBase } from '@/utils/basePath'
 import { Select } from '@/components/ui'
 import FormModalWrapper from '../FormModalWrapper'
@@ -85,11 +86,10 @@ export default function OIDCModal({
       }
       setOidcTestResult(data)
     } catch (error) {
-      const apiError = error as { response?: { data?: { detail?: string } } }
       setOidcTestResult({
         ok: false,
         error: 'request_failed',
-        detail: apiError.response?.data?.detail || t('modal.oidc.testEndpointError'),
+        detail: getActionErrorMessage(error, t('modal.oidc.testAction')),
       })
     } finally {
       setOidcTestLoading(false)

@@ -5,11 +5,13 @@ import { zodResolver } from '@hookform/resolvers/zod'
 import { Save } from 'lucide-react'
 import FormModalWrapper from './FormModalWrapper'
 import CurrencyInputPrefix from './common/CurrencyInputPrefix'
-import { Button, Field, Input, Select, Textarea } from './ui'
+import { Button, Field, Input, NumberInput, Select, Textarea, registerDecimal } from './ui'
 import type { TaxRecord, TaxRecordCreate, TaxRecordUpdate } from '../types/tax'
 import { makeTaxRecordSchema, type TaxRecordFormData, TAX_TYPES } from '../schemas/tax'
 import { useCreateTaxRecord, useUpdateTaxRecord } from '../hooks/queries/useTaxRecords'
 import { formatDateForInput } from '../utils/dateUtils'
+import { applyServerErrors } from '../hooks/useApiFormErrors'
+import { getActionErrorMessage } from '../utils/httpErrorHandler'
 
 interface TaxRecordFormProps {
   vin: string
@@ -48,7 +50,19 @@ export default function TaxRecordForm({ vin, record, onClose, onSuccess }: TaxRe
       onSuccess()
       onClose()
     } catch (err) {
-      setError(err instanceof Error ? err.message : t('common:error'))
+      // attached.length === 0 catches a non-422 failure (network drop, 500):
+      // it carries no field problems at all, so `unhandled` alone would stay
+      // empty and this banner would never show.
+      const { attached, unhandled } = applyServerErrors<TaxRecordFormData>(setFieldError, err, [
+        'date',
+        'tax_type',
+        'amount',
+        'renewal_date',
+        'notes',
+      ])
+      if (attached.length === 0 || unhandled.length > 0) {
+        setError(getActionErrorMessage(err, t('tax.saveAction')))
+      }
     }
   }
 
@@ -61,6 +75,7 @@ export default function TaxRecordForm({ vin, record, onClose, onSuccess }: TaxRe
     register,
     handleSubmit,
     formState: { errors, isSubmitting },
+    setError: setFieldError,
   } = useForm<TaxRecordFormData>({
     resolver: zodResolver(schema) as Resolver<TaxRecordFormData>,
     defaultValues: {
@@ -119,16 +134,13 @@ export default function TaxRecordForm({ vin, record, onClose, onSuccess }: TaxRe
             <Field id="amount" label={t('common:amount')} required error={errors.amount}>
               <div className="relative">
                 <CurrencyInputPrefix />
-                <input
-                  type="number"
+                <NumberInput
                   id="amount"
-                  min="0"
-                  step="0.01"
-                  {...register('amount', { valueAsNumber: true })}
+                  {...registerDecimal(register, 'amount')}
                   placeholder="85.50"
-                  aria-invalid={errors.amount ? true : undefined}
-                  className={`ui-focus-input ui-motion w-full rounded-control border bg-surface-2 pl-7 pr-3 py-2 text-sm text-text font-mono tabular-nums ${errors.amount ? 'border-danger' : 'border-border'}`}
+                  invalid={!!errors.amount}
                   disabled={isSubmitting}
+                  className="pl-7"
                 />
               </div>
             </Field>

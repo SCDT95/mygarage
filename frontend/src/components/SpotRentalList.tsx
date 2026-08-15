@@ -10,6 +10,7 @@ import type { SpotRental, SpotRentalBilling } from '../types/spotRental'
 import SpotRentalForm from './SpotRentalForm'
 import BillingEntryForm from './BillingEntryForm'
 import api from '../services/api'
+import { getActionErrorMessage } from '../utils/httpErrorHandler'
 import { useSpotRentals, useDeleteSpotRental } from '../hooks/queries/useSpotRentals'
 import { Button, IconButton, Chip, Mono, EmptyState } from './ui'
 
@@ -49,7 +50,7 @@ export default function SpotRentalList({ vin }: SpotRentalListProps) {
 
     deleteRental.mutate(id, {
       onError: (err) => {
-        toast.error(err instanceof Error ? err.message : t('spotRentalList.deleteError'))
+        toast.error(getActionErrorMessage(err, t('spotRentalList.deleteAction')))
       },
     })
   }
@@ -88,7 +89,7 @@ export default function SpotRentalList({ vin }: SpotRentalListProps) {
       queryClient.invalidateQueries({ queryKey: ['spotRentals', vin] })
       toast.success(t('spotRentalList.billingDeleted'))
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : t('spotRentalList.billingDeleteError'))
+      toast.error(getActionErrorMessage(err, t('spotRentalList.billingDeleteAction')))
     }
   }
 
@@ -181,7 +182,7 @@ export default function SpotRentalList({ vin }: SpotRentalListProps) {
       {error && (
         <div className="flex items-start gap-2 p-3 bg-danger/10 border border-danger/20 rounded-md mb-4">
           <AlertCircle aria-hidden="true" className="w-4 h-4 text-danger flex-shrink-0 mt-0.5" />
-          <p className="text-sm text-danger">{error.message}</p>
+          <p className="text-sm text-danger">{getActionErrorMessage(error, t('spotRentalList.loadAction'))}</p>
         </div>
       )}
 

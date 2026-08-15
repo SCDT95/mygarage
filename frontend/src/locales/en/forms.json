@@ -6,12 +6,14 @@
     "editTitle": "Edit Billing Entry",
     "failedToSave": "Failed to save billing entry. Please try again.",
     "notesPlaceholder": "Any additional notes about this billing period...",
+    "saveAction": "save the billing entry",
     "spotRentalNotFound": "Spot rental not found"
   },
   "def": {
     "brand": "Brand",
     "createTitle": "Add DEF Record",
     "editTitle": "Edit DEF Record",
+    "saveAction": "save the DEF record",
     "tankLevelAfterFill": "Tank Level After Fill",
     "wherePurchased": "Where Purchased"
   },
@@ -25,6 +27,7 @@
     "defAutoCreatesHint": "Auto-creates a DEF observation record for analytics",
     "defTankLevel": "DEF Tank Level",
     "editTitle": "Edit Fuel Record",
+    "saveAction": "save the fuel record",
     "electricTip": "Efficiency metrics (kWh/100mi) are calculated from charging records.",
     "energy": "Energy",
     "fuelType": "Fuel Type",
@@ -109,7 +112,8 @@
   "hours": {
     "createTitle": "Add Engine Hours Reading",
     "editTitle": "Edit Engine Hours Reading",
-    "notesPlaceholder": "Monthly reading, service reading, etc..."
+    "notesPlaceholder": "Monthly reading, service reading, etc...",
+    "saveAction": "save the hours record"
   },
   "insurance": {
     "coverageLimits": "Coverage Limits",
@@ -123,6 +127,7 @@
     "premiumAmount": "Premium Amount",
     "premiumFrequency": "Premium Frequency",
     "provider": "Provider",
+    "saveAction": "save the policy",
     "selectFrequency": "Select frequency..."
   },
   "modal": {
@@ -185,12 +190,16 @@
     "exampleVins": "Example VINs to Try",
     "externalProvider": "external provider",
     "failedToArchive": "Failed to archive vehicle",
+    "archiveAction": "archive the vehicle",
     "failedToCheckFirmware": "Failed to check firmware updates",
     "failedToCopy": "Failed to copy to clipboard",
     "failedToCreateUser": "Failed to create user",
+    "createUserAction": "create the user",
     "failedToDelete": "Failed to delete vehicle",
+    "deleteVehicleAction": "delete the vehicle",
     "failedToDeleteDevice": "Failed to delete device",
     "failedToDeleteUser": "Failed to delete user",
+    "deleteUserAction": "delete the user",
     "failedToGenerateDeviceToken": "Failed to generate device token",
     "failedToGenerateToken": "Failed to generate token",
     "failedToLoadFamilyData": "Failed to load family management data",
@@ -201,18 +210,24 @@
     "failedToRestartMqtt": "Failed to restart MQTT subscriber",
     "failedToRevokeDeviceToken": "Failed to revoke device token",
     "failedToRevokeShare": "Failed to revoke share",
+    "revokeShareAction": "revoke the share",
     "failedToSaveMqtt": "Failed to save MQTT settings",
     "failedToSaveSettings": "Failed to save settings",
     "failedToSendCommand": "Failed to send command to device",
     "failedToShareVehicle": "Failed to share vehicle",
+    "shareVehicleAction": "share the vehicle",
     "failedToTestMqtt": "Failed to test MQTT connection",
     "failedToTransfer": "Failed to transfer vehicle",
+    "transferAction": "transfer the vehicle",
     "failedToUpdateDashboard": "Failed to update dashboard visibility",
     "failedToUpdateDevice": "Failed to update device",
     "failedToUpdateMultiUser": "Failed to update multi-user setting",
     "failedToUpdatePermission": "Failed to update permission",
+    "updatePermissionAction": "update the sharing permission",
     "failedToUpdateStatus": "Failed to update user status",
+    "updateStatusAction": "update the user status",
     "failedToUpdateUser": "Failed to update user",
+    "updateUserAction": "update the user",
     "familyManagement": "Family Management",
     "familyManagementDescription": "Manage family members, vehicles, and dashboard visibility",
     "firmwareCheckComplete": "Firmware check complete",
@@ -374,6 +389,7 @@
       "codeLabel": "Code",
       "testConnection": "Test Connection",
       "testEndpointError": "Failed to call OIDC test endpoint",
+      "testAction": "test the OIDC connection",
       "setupStep1": "In Authentik, create a new OAuth2/OIDC Provider",
       "setupStep2": "Set Client Type to \"Confidential\"",
       "setupStep3": "Copy the Redirect URI shown above to the provider's configuration",
@@ -391,6 +407,7 @@
       "passwordRequirementsNotMet": "Password does not meet requirements",
       "passwordChanged": "Password changed successfully!",
       "changePasswordFailed": "Failed to change password. Please try again.",
+      "changePasswordAction": "change the password",
       "notSetUpDesc": "Local authentication is currently not set up. Register the first user to enable authentication.",
       "firstUserAdminNote": "The first registered user will automatically become an administrator.",
       "registerFirstUser": "Register First User",
@@ -545,17 +562,20 @@
     "createTitle": "Add Note",
     "editTitle": "Edit Note",
     "freeFormHint": "Free-form text, no character limit",
-    "titleOptional": "Title (Optional)"
+    "titleOptional": "Title (Optional)",
+    "saveAction": "save the note"
   },
   "odometer": {
     "createTitle": "Add Odometer Reading",
     "editTitle": "Edit Odometer Reading",
-    "notesPlaceholder": "Monthly reading, trip odometer, etc..."
+    "notesPlaceholder": "Monthly reading, trip odometer, etc...",
+    "saveAction": "save the odometer record"
   },
   "propane": {
     "createTitle": "Add Propane Record",
     "editTitle": "Edit Propane Record",
     "numberOfTanks": "Number of Tanks",
+    "saveAction": "save the propane record",
     "selectTankSize": "Select tank size...",
     "tankInfo": "Tank Information (Optional)",
     "tankSize": "Tank Size",
@@ -573,6 +593,7 @@
     "nhtsaCampaignNumber": "NHTSA Campaign Number",
     "remedy": "Remedy",
     "remedyPlaceholder": "How to fix or address the issue...",
+    "saveAction": "save the recall",
     "summary": "Summary",
     "summaryPlaceholder": "Brief description of the recall issue...",
     "updateRecall": "Update Recall"
@@ -595,6 +616,7 @@
     "overdueHint": "This reminder is overdue — enter a new interval from current mileage",
     "overdueHoursHint": "This reminder is overdue — enter a new interval from current engine hours",
     "reminderType": "Reminder Type",
+    "saveAction": "save the reminder",
     "smartModeDescription": "Smart mode uses your usage history to estimate when you'll hit the target. The date acts as a hard cap — you'll be notified by whichever comes first.",
     "titlePlaceholder": "e.g., Next oil change",
     "titleRequired": "Title is required",
@@ -612,6 +634,7 @@
     "insuranceClaim": "Insurance Claim #",
     "miscFees": "Misc Fees",
     "partsSupplies": "Parts/Supplies",
+    "saveAction": "save the service visit",
     "servicesPerformed": "Services Performed",
     "shopSupplies": "Shop Supplies",
     "subtotal": "Subtotal",
@@ -652,6 +675,7 @@
     "noSkip": "No, Skip",
     "notesPlaceholder": "Additional notes about this rental...",
     "rateType": "Rate Type",
+    "saveAction": "save the spot rental",
     "saveToAddressBook": "Save to Address Book?",
     "saveToAddressBookPrompt": "Would you like to save \"{{name}}\" to your address book for quicker access in the future?",
     "waste": "Waste",
@@ -665,6 +689,7 @@
     "editTitle": "Edit Tax/Registration Record",
     "renewalDate": "Renewal Date",
     "renewalDateHint": "When this registration or tax is due for renewal",
+    "saveAction": "save the tax record",
     "selectType": "Select type"
   },
   "toll": {
@@ -678,6 +703,8 @@
     "locationPlaceholder": "e.g., Hardy Toll Road - Spring, I-45 North Tollway",
     "noActiveTollTags": "No active toll tags configured. Add a toll tag first to link transactions.",
     "noneManualPayment": "None / Manual Payment",
+    "saveTagAction": "save the toll tag",
+    "saveTransactionAction": "save the toll transaction",
     "selectTollSystem": "Select toll system...",
     "tagNotesPlaceholder": "Additional notes about this toll tag...",
     "tagNumber": "Tag Number",
@@ -693,7 +720,8 @@
     "createTitle": "Add Warranty",
     "editTitle": "Edit Warranty",
     "mileageLimit": "Mileage Limit",
-    "warrantyType": "Warranty Type"
+    "warrantyType": "Warranty Type",
+    "saveAction": "save the warranty"
   },
   "localAuthModalExtra": {
     "strength": {
@@ -724,14 +752,17 @@
     "finish": "Finish",
     "cancel": "Cancel",
     "failedToTestApiKey": "Failed to test API key",
-    "failedToAddProvider": "Failed to add provider"
+    "testApiKeyAction": "test the API key",
+    "failedToAddProvider": "Failed to add provider",
+    "addProviderAction": "add the provider"
   },
   "editProviderModal": {
     "apiKeyLabel": "API Key (leave blank to keep current)",
     "currentApiKey": "Current: {{value}}",
     "save": "Save",
     "cancel": "Cancel",
-    "failedToUpdateProvider": "Failed to update provider"
+    "failedToUpdateProvider": "Failed to update provider",
+    "updateAction": "update the provider"
   },
   "reminderForm": {
     "typeDate": "Date",

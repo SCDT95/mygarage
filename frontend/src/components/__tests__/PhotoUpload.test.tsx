@@ -100,4 +100,30 @@ describe('PhotoUpload — centered upload modal: guard + upload', () => {
     close.click()
     expect(onClose).toHaveBeenCalled()
   })
+
+  // Final-review I4 regression fence: `set_as_main` has no fieldErrors-wired
+  // Field (it's a bare Checkbox), so a 422 naming it used to write to
+  // fieldErrors state, render nothing, and — under the old
+  // `problems.length > 0 ? fieldErrors : setError(...)` gate — suppress the
+  // banner too. applyControlledFieldErrors's attached/unhandled split must
+  // still surface the banner when nothing attached.
+  it('a 422 naming ONLY set_as_main (no render target) shows the banner, not silence', async () => {
+    const user = userEvent.setup({ applyAccept: false })
+    postMock.mockRejectedValueOnce({
+      isAxiosError: true,
+      message: 'Request failed with status code 422',
+      response: {
+        status: 422,
+        data: { detail: [{ type: 'bool_parsing', loc: ['body', 'set_as_main'], msg: 'Invalid boolean' }] },
+      },
+    })
+    render(<PhotoUpload vin="V1" onSuccess={vi.fn()} onClose={vi.fn()} />)
+    const file = new File(['ÿØÿ'], 'front.jpg', { type: 'image/jpeg' })
+    await user.upload(fileInput(), file)
+    await user.click(screen.getByRole('button', { name: 'photoUpload.uploadBtn' }))
+    await vi.waitFor(() => expect(postMock).toHaveBeenCalledTimes(1))
+    expect(
+      await screen.findByText('Failed to {{action}}. Please check your input.')
+    ).toBeInTheDocument()
+  })
 })

@@ -2,6 +2,8 @@ import { useState, useRef, type SyntheticEvent } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Upload, X } from 'lucide-react'
 import api from '../services/api'
+import { getActionErrorMessage } from '../utils/httpErrorHandler'
+import { applyControlledFieldErrors } from '../hooks/useApiFormErrors'
 import { Button, IconButton, Field, Input, Checkbox } from './ui'
 
 interface PhotoUploadProps {
@@ -14,6 +16,7 @@ export default function PhotoUpload({ vin, onSuccess, onClose }: PhotoUploadProp
   const { t } = useTranslation('vehicles')
   const [uploading, setUploading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({})
   const [preview, setPreview] = useState<string | null>(null)
   const [file, setFile] = useState<File | null>(null)
   const [caption, setCaption] = useState('')
@@ -78,6 +81,7 @@ export default function PhotoUpload({ vin, onSuccess, onClose }: PhotoUploadProp
 
     setUploading(true)
     setError(null)
+    setFieldErrors({})
 
     try {
       const formData = new FormData()
@@ -94,7 +98,15 @@ export default function PhotoUpload({ vin, onSuccess, onClose }: PhotoUploadProp
       onSuccess()
       onClose()
     } catch (err) {
-      setError(err instanceof Error ? err.message : t('photoUpload.errorGeneric'))
+      // Render targets: caption only. `set_as_main` has no Field wrapper, so
+      // a problem addressed to it must hit the banner instead of vanishing.
+      const { attached, unhandled, errorsByField } = applyControlledFieldErrors(err, ['caption'])
+      if (attached.length > 0) {
+        setFieldErrors(errorsByField)
+      }
+      if (attached.length === 0 || unhandled.length > 0) {
+        setError(getActionErrorMessage(err, t('photoUpload.uploadAction')))
+      }
     } finally {
       setUploading(false)
     }
@@ -170,7 +182,7 @@ export default function PhotoUpload({ vin, onSuccess, onClose }: PhotoUploadProp
                 />
               </div>
 
-              <Field id="caption" label={t('photoUpload.captionLabel')}>
+              <Field id="caption" label={t('photoUpload.captionLabel')} error={fieldErrors.caption}>
                 <Input
                   id="caption"
                   type="text"

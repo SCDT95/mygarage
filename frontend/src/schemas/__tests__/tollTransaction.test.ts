@@ -1,5 +1,9 @@
 import { describe, it, expect } from 'vitest'
-import { tollTransactionSchema } from '../tollTransaction'
+import { makeTollTransactionSchema } from '../tollTransaction'
+import { INVALID_NUMBER } from '../shared'
+
+const t = ((key: string) => key) as unknown as Parameters<typeof makeTollTransactionSchema>[0]
+const tollTransactionSchema = makeTollTransactionSchema(t)
 
 describe('Toll Transaction Schema', () => {
   const validTransaction = {
@@ -40,14 +44,20 @@ describe('Toll Transaction Schema', () => {
     expect(result.success).toBe(false)
   })
 
-  it('transforms NaN amount to undefined', () => {
+  // Task 8b: `amount` routes through the shared makeNumericField, which no
+  // longer treats NaN as empty — it can now only arrive from a control that
+  // failed to parse, never an empty one, so it's rejected as invalid instead
+  // of silently discarded. `toll_tag_id` (below) is unaffected: it keeps its
+  // own bespoke NaN-to-undefined transform since its <Select> stays on
+  // valueAsNumber and never produces the INVALID_NUMBER sentinel.
+  it('rejects NaN amount as invalid rather than silently discarding it', () => {
     const result = tollTransactionSchema.safeParse({
       ...validTransaction,
       amount: NaN,
     })
-    expect(result.success).toBe(true)
-    if (result.success) {
-      expect(result.data.amount).toBeUndefined()
+    expect(result.success).toBe(false)
+    if (!result.success) {
+      expect(result.error.issues[0].message).toBe('common:validation.amount.invalid')
     }
   })
 
@@ -60,5 +70,33 @@ describe('Toll Transaction Schema', () => {
     if (result.success) {
       expect(result.data.toll_tag_id).toBeUndefined()
     }
+  })
+
+  // Task 8: `amount` moved onto NumberInput/registerDecimal, which can hand the
+  // schema the INVALID_NUMBER sentinel for unparseable text (typing "abc") — the
+  // old `z.number().or(z.nan())` shape only recognized number/NaN, so a sentinel
+  // failed the whole union and zod reported its generic "expected number,
+  // received symbol", leaking an implementation detail instead of a real message.
+  it('rejects the INVALID_NUMBER sentinel with the translated amount-invalid message, not a raw zod union error', () => {
+    const result = tollTransactionSchema.safeParse({
+      ...validTransaction,
+      amount: INVALID_NUMBER,
+    })
+    expect(result.success).toBe(false)
+    if (!result.success) {
+      expect(result.error.issues[0].message).toBe('common:validation.amount.invalid')
+    }
+  })
+
+  // Final-review I5: makeOptionalCurrencySchema's 99,999.99 ceiling doesn't
+  // exist on the backend (toll.py — `ge=0`, no `le`). A large toll amount
+  // (e.g. an unusual bulk/commercial toll charge) must not be client-side
+  // rejected when the API would accept it.
+  it('accepts an amount above the old 99,999.99 currency-factory ceiling', () => {
+    const result = tollTransactionSchema.safeParse({
+      ...validTransaction,
+      amount: 150000,
+    })
+    expect(result.success).toBe(true)
   })
 })

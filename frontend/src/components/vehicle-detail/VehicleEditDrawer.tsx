@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useMemo, useState, useEffect, useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useForm, type Resolver } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
@@ -6,15 +6,17 @@ import { Link } from 'react-router-dom'
 import { Save, Droplets, Pencil, FileText, Radio } from 'lucide-react'
 import { toast } from 'sonner'
 import FormModalWrapper from '../FormModalWrapper'
-import { Button, Field, Input, Select, Toggle } from '../ui'
+import { Button, Field, Input, NumberInput, Select, Toggle, registerDecimal } from '../ui'
 import vehicleService from '../../services/vehicleService'
 import type { Vehicle, VehicleUpdate } from '../../types/vehicle'
-import { vehicleEditSchema, type VehicleEditFormData, VEHICLE_TYPES } from '../../schemas/vehicle'
+import { makeVehicleEditSchema, type VehicleEditFormData, VEHICLE_TYPES } from '../../schemas/vehicle'
 import { FUEL_TYPE_VALUES, FUEL_TYPE_LABELS, isDieselFuelType } from '../../constants/fuel'
 import { useUnitPreference } from '../../hooks/useUnitPreference'
 import { UnitConverter, UnitFormatter } from '../../utils/units'
 import { toCanonicalLiters } from '../../utils/decimalSafe'
 import { getUsageTracking } from '../../utils/usageTracking'
+import { applyServerErrors } from '../../hooks/useApiFormErrors'
+import { getActionErrorMessage } from '../../utils/httpErrorHandler'
 
 /** Vehicles with no engine, VIN-decoded drivetrain, or DEF system. */
 const NON_MOTORIZED_TYPES = ['Trailer', 'FifthWheel', 'TravelTrailer']
@@ -53,7 +55,7 @@ interface VehicleEditDrawerProps {
  * capacity must be edited together, in the same submit.
  *
  * What's carried over verbatim from the old page: react-hook-form +
- * vehicleEditSchema, the seed effect's `[open]`-only dependency array (below —
+ * makeVehicleEditSchema, the seed effect's `[open]`-only dependency array (below —
  * it must not re-run just because `t` got a new identity, or a language switch
  * mid-edit would discard everything typed), the DEF enable/clear state machine,
  * the canonical-litres conversion, and the motorized gate. What changed is the
@@ -97,6 +99,12 @@ export default function VehicleEditDrawer({
     ? WINDOW_STICKER_TYPES.includes(seedSource.vehicle_type)
     : false
 
+  // Zod bakes its messages in at construction, so the schema is rebuilt when
+  // the language changes. Only the resolver depends on it — no fetch, no
+  // reset() — so a rebuild can't discard what the user typed. (Distinct from
+  // the seed effect below, which deliberately stays [open]-only.)
+  const schema = useMemo(() => makeVehicleEditSchema(t), [t])
+
   const {
     register,
     handleSubmit,
@@ -104,8 +112,9 @@ export default function VehicleEditDrawer({
     reset,
     setValue,
     watch,
+    setError: setFieldError,
   } = useForm<VehicleEditFormData>({
-    resolver: zodResolver(vehicleEditSchema) as Resolver<VehicleEditFormData>,
+    resolver: zodResolver(schema) as Resolver<VehicleEditFormData>,
     defaultValues: {},
   })
 
@@ -219,7 +228,22 @@ export default function VehicleEditDrawer({
       onUpdated(updated)
       onClose()
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : t('vehicleEditPage.genericError'))
+      // A non-422 failure (network drop, 500, plain throw) carries no field
+      // problems at all — `unhandled` alone would stay empty and this branch
+      // would never fire, silently dropping all feedback. `attached.length
+      // === 0` catches that case; it's only skipped when every problem found
+      // a field to land on.
+      const { attached, unhandled } = applyServerErrors<VehicleEditFormData>(setFieldError, err, [
+        'nickname',
+        'vehicle_type',
+        'fuel_type',
+        'usage_unit',
+        'current_hours',
+        'def_tank_capacity_liters',
+      ])
+      if (attached.length === 0 || unhandled.length > 0) {
+        toast.error(getActionErrorMessage(err, t('vehicleEditPage.saveAction')))
+      }
     }
   }
 
@@ -339,12 +363,9 @@ export default function VehicleEditDrawer({
 
             {usageTracking.tracksHours && (
               <Field id="current_hours" label={t('edit.currentHours')} error={errors.current_hours}>
-                <Input
+                <NumberInput
                   id="current_hours"
-                  type="number"
-                  step="0.1"
-                  min="0"
-                  {...register('current_hours', { valueAsNumber: true })}
+                  {...registerDecimal(register, 'current_hours')}
                   placeholder={t('vehicleEditPage.currentHoursPlaceholder')}
                   invalid={!!errors.current_hours}
                   disabled={isSubmitting}
@@ -390,13 +411,9 @@ export default function VehicleEditDrawer({
                     error={errors.def_tank_capacity_liters}
                     hint={isDieselSelected ? t('edit.defTankCapacityHint') : undefined}
                   >
-                    <Input
+                    <NumberInput
                       id="def_tank_capacity_liters"
-                      type="number"
-                      step="0.01"
-                      min="0"
-                      max="9999.99"
-                      {...register('def_tank_capacity_liters', { valueAsNumber: true })}
+                      {...registerDecimal(register, 'def_tank_capacity_liters')}
                       disabled={isSubmitting || !isDieselSelected}
                       invalid={!!errors.def_tank_capacity_liters}
                       placeholder={system === 'imperial' ? '5.0' : '19.0'}

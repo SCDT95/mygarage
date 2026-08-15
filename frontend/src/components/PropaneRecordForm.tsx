@@ -1,18 +1,20 @@
-import { useState, useEffect } from 'react'
+import { useMemo, useState, useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useForm, type Resolver } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { Save } from 'lucide-react'
 import FormModalWrapper from './FormModalWrapper'
 import type { FuelRecord, FuelRecordCreate, FuelRecordUpdate } from '../types/fuel'
-import { propaneRecordSchema, type PropaneRecordFormData } from '../schemas/propane'
+import { makePropaneRecordSchema, type PropaneRecordFormData } from '../schemas/propane'
 import { useCreatePropaneRecord, useUpdatePropaneRecord } from '../hooks/queries/usePropaneRecords'
 import { useUnitPreference } from '../hooks/useUnitPreference'
 import { UnitConverter, UnitFormatter } from '../utils/units'
 import { toCanonicalKg, toCanonicalLiters, priceToDisplay, priceToCanonical } from '../utils/decimalSafe'
 import { formatDateForInput } from '../utils/dateUtils'
 import CurrencyInputPrefix from './common/CurrencyInputPrefix'
-import { Button, Field, Input, Select, Textarea } from './ui'
+import { Button, Field, Input, NumberInput, Select, Textarea, registerDecimal } from './ui'
+import { applyServerErrors } from '../hooks/useApiFormErrors'
+import { getActionErrorMessage } from '../utils/httpErrorHandler'
 
 // Propane density: 1 kg ≈ 1.968 L (1 gal ≈ 1.923 kg, 1 gal = 3.78541 L).
 const KG_TO_LITERS = 1.968
@@ -55,14 +57,20 @@ export default function PropaneRecordForm({
     return match ? match[1] : ''
   }
 
+  // Zod bakes its messages in at construction, so the schema is rebuilt when
+  // the language changes. Only the resolver depends on it — no fetch, no
+  // reset() — so a rebuild can't discard what the user typed.
+  const schema = useMemo(() => makePropaneRecordSchema(t), [t])
+
   const {
     register,
     handleSubmit,
     formState: { errors, isSubmitting },
     setValue,
     watch,
+    setError: setFieldError,
   } = useForm<PropaneRecordFormData>({
-    resolver: zodResolver(propaneRecordSchema) as Resolver<PropaneRecordFormData>,
+    resolver: zodResolver(schema) as Resolver<PropaneRecordFormData>,
     defaultValues: {
       date: formatDateForInput(record?.date),
       propane_liters: (() => {
@@ -191,7 +199,22 @@ export default function PropaneRecordForm({
       onSuccess()
       onClose()
     } catch (err) {
-      setError(err instanceof Error ? err.message : t('common:error'))
+      // attached.length === 0 catches a non-422 failure (network drop, 500):
+      // it carries no field problems at all, so `unhandled` alone would stay
+      // empty and this banner would never show.
+      const { attached, unhandled } = applyServerErrors<PropaneRecordFormData>(setFieldError, err, [
+        'date',
+        'tank_size_kg',
+        'tank_quantity',
+        'propane_liters',
+        'price_per_unit',
+        'cost',
+        'vendor',
+        'notes',
+      ])
+      if (attached.length === 0 || unhandled.length > 0) {
+        setError(getActionErrorMessage(err, t('propane.saveAction')))
+      }
     }
   }
 
@@ -248,7 +271,7 @@ export default function PropaneRecordForm({
               </Field>
 
               <Field id="tank_quantity" label={t('propane.numberOfTanks')} error={errors.tank_quantity}>
-                <Input type="number" id="tank_quantity" mono {...register('tank_quantity', { valueAsNumber: true })} min="1" step="1" invalid={!!errors.tank_quantity} disabled={isSubmitting} />
+                <NumberInput id="tank_quantity" {...registerDecimal(register, 'tank_quantity')} invalid={!!errors.tank_quantity} disabled={isSubmitting} />
               </Field>
             </div>
 
@@ -266,20 +289,20 @@ export default function PropaneRecordForm({
           </div>
 
           <Field id="propane_liters" label={t('propaneRecordForm.propaneVolume')} unit={UnitFormatter.getVolumeUnit(system)} error={errors.propane_liters}>
-            <Input type="number" id="propane_liters" mono {...register('propane_liters', { valueAsNumber: true })} min="0" step="0.001" placeholder={system === 'imperial' ? '10.500' : '39.750'} invalid={!!errors.propane_liters} disabled={isSubmitting} />
+            <NumberInput id="propane_liters" {...registerDecimal(register, 'propane_liters')} placeholder={system === 'imperial' ? '10.500' : '39.750'} invalid={!!errors.propane_liters} disabled={isSubmitting} />
           </Field>
 
           <div className="grid grid-cols-2 gap-4">
             <Field id="price_per_unit" label={`${t('fuel.pricePer')} ${UnitFormatter.getVolumeUnit(system)}`} error={errors.price_per_unit}>
               <div className="relative">
                 <CurrencyInputPrefix />
-                <input type="number" id="price_per_unit" {...register('price_per_unit', { valueAsNumber: true })} min="0" step="0.001" placeholder={system === 'imperial' ? '2.899' : '0.766'} aria-invalid={errors.price_per_unit ? true : undefined} className={`ui-focus-input ui-motion w-full rounded-control border bg-surface-2 pl-7 pr-3 py-2 text-sm text-text font-mono tabular-nums ${errors.price_per_unit ? 'border-danger' : 'border-border'}`} disabled={isSubmitting} />
+                <NumberInput id="price_per_unit" {...registerDecimal(register, 'price_per_unit')} placeholder={system === 'imperial' ? '2.899' : '0.766'} invalid={!!errors.price_per_unit} disabled={isSubmitting} className="pl-7" />
               </div>
             </Field>
             <Field id="cost" label={t('common:totalCost')} error={errors.cost} hint={t('fuel.autoCalculatedHint')}>
               <div className="relative">
                 <CurrencyInputPrefix />
-                <input type="number" id="cost" {...register('cost', { valueAsNumber: true })} min="0" step="0.01" placeholder="30.44" aria-invalid={errors.cost ? true : undefined} className={`ui-focus-input ui-motion w-full rounded-control border bg-surface-2 pl-7 pr-3 py-2 text-sm text-text font-mono tabular-nums ${errors.cost ? 'border-danger' : 'border-border'}`} disabled={isSubmitting} />
+                <NumberInput id="cost" {...registerDecimal(register, 'cost')} placeholder="30.44" invalid={!!errors.cost} disabled={isSubmitting} className="pl-7" />
               </div>
             </Field>
           </div>

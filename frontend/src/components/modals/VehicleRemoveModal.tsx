@@ -12,6 +12,7 @@ import { useState } from 'react'
 import { Archive, Trash2, AlertTriangle, Eye, EyeOff } from 'lucide-react'
 import { toast } from 'sonner'
 import api from '@/services/api'
+import { getActionErrorMessage } from '@/utils/httpErrorHandler'
 import { Select } from '@/components/ui'
 import type { Vehicle } from '@/types/vehicle'
 
@@ -68,12 +69,7 @@ export default function VehicleRemoveModal({ isOpen, onClose, vehicle, onConfirm
       onClose()
       resetForm()
     } catch (error: unknown) {
-      const detail = (error as { response?: { data?: { detail?: string } } }).response?.data?.detail
-      if (typeof detail === 'string') {
-        toast.error(detail)
-      } else {
-        toast.error(t('modal.failedToArchive'))
-      }
+      toast.error(getActionErrorMessage(error, t('modal.archiveAction')))
     } finally {
       setLoading(false)
     }
@@ -90,12 +86,7 @@ export default function VehicleRemoveModal({ isOpen, onClose, vehicle, onConfirm
       onClose()
       resetForm()
     } catch (error: unknown) {
-      const detail = (error as { response?: { data?: { detail?: string } } }).response?.data?.detail
-      if (typeof detail === 'string') {
-        toast.error(detail)
-      } else {
-        toast.error(t('modal.failedToDelete'))
-      }
+      toast.error(getActionErrorMessage(error, t('modal.deleteVehicleAction')))
     } finally {
       setLoading(false)
     }

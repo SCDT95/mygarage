@@ -5,6 +5,7 @@ import { FileText, Plus, Trash2, Edit3, Calendar } from 'lucide-react'
 import { toast } from 'sonner'
 import type { Note } from '../types/note'
 import { useNotes, useDeleteNote } from '../hooks/queries/useNotes'
+import { getActionErrorMessage } from '../utils/httpErrorHandler'
 import { Button, IconButton, Card, Mono, EmptyState } from './ui'
 
 interface NoteListProps {
@@ -27,7 +28,7 @@ export default function NoteList({ vin, onAddClick, onEditClick }: NoteListProps
 
     deleteMutation.mutate(noteId, {
       onError: (err) => {
-        toast.error(err instanceof Error ? err.message : t('noteList.deleteError'))
+        toast.error(getActionErrorMessage(err, t('noteList.deleteAction')))
       },
     })
   }
@@ -51,7 +52,7 @@ export default function NoteList({ vin, onAddClick, onEditClick }: NoteListProps
   if (error) {
     return (
       <div className="bg-danger/10 border border-danger rounded-lg p-4">
-        <p className="text-danger">{error.message}</p>
+        <p className="text-danger">{getActionErrorMessage(error, t('noteList.loadAction'))}</p>
       </div>
     )
   }

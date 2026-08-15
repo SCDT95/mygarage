@@ -85,3 +85,42 @@ describe('TaxRecordForm — routing + exact payload (SDQ-C)', () => {
     expect(screen.getByLabelText('tax.datePaid *')).toHaveAttribute('id', 'date')
   })
 })
+
+describe('TaxRecordForm — amount field on NumberInput (Task 8)', () => {
+  it('is a textbox, not a spinbutton, and accepts a comma decimal', async () => {
+    const user = userEvent.setup()
+    render(<TaxRecordForm vin="V1" onClose={vi.fn()} onSuccess={vi.fn()} />)
+    const amountInput = screen.getByLabelText('common:amount *')
+    expect(amountInput).toHaveAttribute('type', 'text')
+    expect(screen.getByRole('textbox', { name: 'common:amount *' })).toBe(amountInput)
+
+    await user.clear(screen.getByLabelText('tax.datePaid *'))
+    await user.type(screen.getByLabelText('tax.datePaid *'), '2026-03-01')
+    await user.selectOptions(screen.getByLabelText('taxRecordForm.type'), 'Registration')
+    // renewal_date defaults to '' (not undefined), which fails makeDateSchema's
+    // min(1) even though the field is .optional() — same edge the pre-existing
+    // create test above deliberately avoids by filling it.
+    await user.clear(screen.getByLabelText('tax.renewalDate'))
+    await user.type(screen.getByLabelText('tax.renewalDate'), '2027-03-01')
+    await user.type(amountInput, '85,50')
+    await user.click(screen.getByRole('button', { name: 'common:create' }))
+
+    await waitFor(() => expect(createMutateAsync).toHaveBeenCalledTimes(1))
+    expect(createMutateAsync.mock.calls[0][0]).toMatchObject({ amount: 85.5 })
+  })
+
+  it('rejects unparseable text instead of silently discarding it', async () => {
+    const user = userEvent.setup()
+    render(<TaxRecordForm vin="V1" onClose={vi.fn()} onSuccess={vi.fn()} />)
+    await user.clear(screen.getByLabelText('tax.datePaid *'))
+    await user.type(screen.getByLabelText('tax.datePaid *'), '2026-03-01')
+    await user.selectOptions(screen.getByLabelText('taxRecordForm.type'), 'Registration')
+    await user.type(screen.getByLabelText('common:amount *'), 'abc')
+    await user.click(screen.getByRole('button', { name: 'common:create' }))
+
+    await waitFor(() =>
+      expect(screen.getByText('common:validation.amount.invalid')).toBeInTheDocument()
+    )
+    expect(createMutateAsync).not.toHaveBeenCalled()
+  })
+})

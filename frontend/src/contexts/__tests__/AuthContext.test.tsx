@@ -1,4 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { useState } from 'react'
 import { render, screen, waitFor, act } from '@testing-library/react'
 import { AuthProvider, useAuth } from '../AuthContext'
 
@@ -33,6 +34,9 @@ const mockedApi = api as any
 // Test component to expose auth context values
 function AuthConsumer() {
   const { user, isAuthenticated, isAdmin, loading, authMode, login, logout, register } = useAuth()
+  // Captures whatever login()/register() reject with, unmodified, so tests can
+  // inspect its shape (real AxiosError vs a pre-flattened plain Error).
+  const [caughtError, setCaughtError] = useState<unknown>(null)
   return (
     <div>
       <span data-testid="loading">{String(loading)}</span>
@@ -40,9 +44,24 @@ function AuthConsumer() {
       <span data-testid="admin">{String(isAdmin)}</span>
       <span data-testid="auth-mode">{authMode}</span>
       <span data-testid="username">{user?.username || 'none'}</span>
+      <span data-testid="caught-error-detail">
+        {JSON.stringify(
+          (caughtError as { response?: { data?: { detail?: unknown } } } | null)?.response?.data
+            ?.detail ?? null
+        )}
+      </span>
+      <span data-testid="caught-error-is-axios">
+        {String(Boolean((caughtError as { isAxiosError?: boolean } | null)?.isAxiosError))}
+      </span>
       <button onClick={() => login('testuser', 'password123')}>Login</button>
+      <button onClick={() => login('testuser', 'wrongpass').catch(setCaughtError)}>
+        Login (bad credentials)
+      </button>
       <button onClick={() => logout()}>Logout</button>
       <button onClick={() => register('newuser', 'new@test.com', 'pass123')}>Register</button>
+      <button onClick={() => register('newuser', 'new@test.com', 'weak').catch(setCaughtError)}>
+        Register (weak password)
+      </button>
     </div>
   )
 }
@@ -275,6 +294,84 @@ describe('AuthContext', () => {
       email: 'new@test.com',
       password: 'pass123',
     })
+  })
+
+  // Regression fence for Task 10c review CRITICAL 1: register()/login() used to
+  // catch the AxiosError, collapse it to `new Error(response.data.detail || ...)`,
+  // and re-throw — a 422's `detail` is an ARRAY, so the array got string-coerced
+  // into "[object Object],[object Object]" and the original AxiosError shape
+  // (needed by parseApiError/applyServerErrors downstream in Login.tsx/
+  // Register.tsx) was destroyed. Both must now propagate the original error
+  // untouched.
+  it('register propagates the original AxiosError (array detail intact) instead of collapsing it to a string Error', async () => {
+    mockedApi.get.mockResolvedValueOnce({
+      data: { settings: [{ key: 'auth_mode', value: 'none' }] },
+    })
+
+    render(
+      <AuthProvider>
+        <AuthConsumer />
+      </AuthProvider>
+    )
+
+    await waitFor(() => {
+      expect(screen.getByTestId('loading')).toHaveTextContent('false')
+    })
+
+    const problemDetail = [
+      { type: 'value_error', loc: ['body', 'password'], msg: 'Password must contain at least one special character' },
+    ]
+    mockedApi.post.mockRejectedValueOnce({
+      isAxiosError: true,
+      message: 'Request failed with status code 422',
+      response: { status: 422, data: { detail: problemDetail } },
+    })
+
+    await act(async () => {
+      screen.getByText('Register (weak password)').click()
+    })
+
+    await waitFor(() => {
+      expect(screen.getByTestId('caught-error-is-axios')).toHaveTextContent('true')
+    })
+    // The array survived intact — NOT stringified via `new Error(array)`
+    // (which would render as "[object Object],[object Object]"), NOT dropped.
+    const rendered = screen.getByTestId('caught-error-detail').textContent
+    expect(rendered).not.toContain('[object Object]')
+    expect(JSON.parse(rendered ?? 'null')).toEqual(problemDetail)
+  })
+
+  it('login propagates the original AxiosError instead of collapsing it to a string Error', async () => {
+    mockedApi.get.mockResolvedValueOnce({
+      data: { settings: [{ key: 'auth_mode', value: 'none' }] },
+    })
+
+    render(
+      <AuthProvider>
+        <AuthConsumer />
+      </AuthProvider>
+    )
+
+    await waitFor(() => {
+      expect(screen.getByTestId('loading')).toHaveTextContent('false')
+    })
+
+    mockedApi.post.mockRejectedValueOnce({
+      isAxiosError: true,
+      message: 'Request failed with status code 401',
+      response: { status: 401, data: { detail: 'Incorrect username or password' } },
+    })
+
+    await act(async () => {
+      screen.getByText('Login (bad credentials)').click()
+    })
+
+    await waitFor(() => {
+      expect(screen.getByTestId('caught-error-is-axios')).toHaveTextContent('true')
+    })
+    expect(screen.getByTestId('caught-error-detail')).toHaveTextContent(
+      'Incorrect username or password'
+    )
   })
 
   it('isAdmin reflects user admin status', async () => {

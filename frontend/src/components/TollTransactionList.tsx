@@ -10,6 +10,7 @@ import { useDateLocale } from '../hooks/useDateLocale'
 import { useCurrencyPreference } from '../hooks/useCurrencyPreference'
 import { useTollTransactions, useTollTags, useTollTransactionSummary, useDeleteTollTransaction } from '../hooks/queries/useTollRecords'
 import api from '../services/api'
+import { getActionErrorMessage } from '../utils/httpErrorHandler'
 import { Button, IconButton, Card, Mono, EmptyState, DataTable, Select } from './ui'
 import type { DataTableColumn } from './ui'
 
@@ -53,7 +54,7 @@ export default function TollTransactionList({ vin, onAddClick, onEditClick }: To
         queryClient.invalidateQueries({ queryKey: ['tollTransactionSummary', vin] })
       },
       onError: (err) => {
-        toast.error(err instanceof Error ? err.message : t('tollList.deleteError'))
+        toast.error(getActionErrorMessage(err, t('tollList.deleteAction')))
       },
     })
   }
@@ -79,7 +80,7 @@ export default function TollTransactionList({ vin, onAddClick, onEditClick }: To
       window.URL.revokeObjectURL(url)
       document.body.removeChild(a)
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : t('tollList.exportError'))
+      toast.error(getActionErrorMessage(err, t('tollList.exportAction')))
     } finally {
       setExporting(false)
     }
@@ -116,7 +117,7 @@ export default function TollTransactionList({ vin, onAddClick, onEditClick }: To
   if (transactionsError) {
     return (
       <div className="bg-danger/10 border border-danger rounded-lg p-4">
-        <p className="text-danger">{transactionsError instanceof Error ? transactionsError.message : t('tollList.error')}</p>
+        <p className="text-danger">{getActionErrorMessage(transactionsError, t('tollList.loadAction'))}</p>
       </div>
     )
   }

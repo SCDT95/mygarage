@@ -13,6 +13,7 @@ import {
   Archive,
 } from 'lucide-react'
 import api from '@/services/api'
+import { getActionErrorMessage } from '@/utils/httpErrorHandler'
 import { formatDateTime } from '@/utils/parseAPITimestamp'
 import { useTimeFormat } from '@/hooks/useTimeFormat'
 
@@ -149,8 +150,7 @@ export default function SettingsBackupTab() {
         })
       }
     } catch (err: unknown) {
-      const error = err as { response?: { data?: { detail?: string } }; message?: string }
-      setMessage({ type: 'error', text: error.response?.data?.detail || error.message || t('backupTab.restoreFailed') })
+      setMessage({ type: 'error', text: getActionErrorMessage(err, t('backupTab.restoreAction')) })
     }
   }
 
@@ -164,8 +164,7 @@ export default function SettingsBackupTab() {
       setMessage({ type: 'success', text: t('backupTab.deleteSuccess', { filename }) })
       await loadData()
     } catch (err: unknown) {
-      const error = err as { response?: { data?: { detail?: string } }; message?: string }
-      setMessage({ type: 'error', text: error.response?.data?.detail || error.message || t('backupTab.deleteError') })
+      setMessage({ type: 'error', text: getActionErrorMessage(err, t('backupTab.deleteAction')) })
     }
   }
 
@@ -182,8 +181,7 @@ export default function SettingsBackupTab() {
       setMessage({ type: 'success', text: response.data.message || t('backupTab.uploadSuccess') })
       await loadData()
     } catch (err: unknown) {
-      const error = err as { response?: { data?: { detail?: string } }; message?: string }
-      setMessage({ type: 'error', text: error.response?.data?.detail || error.message || t('backupTab.uploadFailed') })
+      setMessage({ type: 'error', text: getActionErrorMessage(err, t('backupTab.uploadAction')) })
     } finally {
       if (settingsFileInputRef.current) settingsFileInputRef.current.value = ''
       if (fullFileInputRef.current) fullFileInputRef.current.value = ''

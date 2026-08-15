@@ -22,6 +22,8 @@ import { toCanonicalKm } from '../utils/decimalSafe'
 import { canonicalToDisplay, displayToCanonical } from '../utils/supplyUnits'
 import { getUsageTracking } from '../utils/usageTracking'
 import api from '../services/api'
+import { getActionErrorMessage } from '../utils/httpErrorHandler'
+import { applyControlledFieldErrors } from '../hooks/useApiFormErrors'
 import { Button, Field, Input, Textarea, Mono } from './ui'
 import { formatCurrency, formatCurrencyZero } from '../utils/formatUtils'
 import { useCurrencyPreference } from '../hooks/useCurrencyPreference'
@@ -130,6 +132,7 @@ export default function ServiceVisitForm({
     return map
   }, [supplies])
   const [error, setError] = useState<string | null>(null)
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({})
   const [submitting, setSubmitting] = useState(false)
   const [attachmentRefreshKey, setAttachmentRefreshKey] = useState(0)
   const nextTempIdRef = useRef(-1)
@@ -318,6 +321,7 @@ export default function ServiceVisitForm({
   const handleSubmit = async (e: SyntheticEvent<HTMLFormElement>) => {
     e.preventDefault()
     setError(null)
+    setFieldErrors({})
 
     // On edit, refuse to submit until the supplies list has loaded and hydrated.
     // Otherwise supplies_used is still [] and the backend (which replaces a line
@@ -446,7 +450,26 @@ export default function ServiceVisitForm({
       onSuccess()
       onClose()
     } catch (err) {
-      setError(err instanceof Error ? err.message : t('common:error'))
+      // Render targets: date, odometer_km, engine_hours, insurance_claim_number,
+      // notes, tax_amount, shop_supplies, misc_fees. vendor_id and line_items
+      // have no fieldErrors-wired Field, so a problem addressed to either must
+      // fall through to the banner below.
+      const { attached, unhandled, errorsByField } = applyControlledFieldErrors(err, [
+        'date',
+        'odometer_km',
+        'engine_hours',
+        'insurance_claim_number',
+        'notes',
+        'tax_amount',
+        'shop_supplies',
+        'misc_fees',
+      ])
+      if (attached.length > 0) {
+        setFieldErrors(errorsByField)
+      }
+      if (attached.length === 0 || unhandled.length > 0) {
+        setError(getActionErrorMessage(err, t('service.saveAction')))
+      }
     } finally {
       setSubmitting(false)
     }
@@ -488,7 +511,7 @@ export default function ServiceVisitForm({
             <h3 className="text-sm font-semibold text-text-mute uppercase tracking-wide">{t('service.visitDetails')}</h3>
 
             <div className={`grid grid-cols-1 ${isMotorized ? 'md:grid-cols-2' : ''} gap-4`}>
-              <Field id="service-date" label={t('common:date')} required>
+              <Field id="service-date" label={t('common:date')} required error={fieldErrors.date}>
                 <Input
                   type="date"
                   id="service-date"
@@ -500,7 +523,7 @@ export default function ServiceVisitForm({
               </Field>
 
               {isMotorized && tracksDistance && (
-                <Field id="service-odometer" label={t('common:mileage')} unit={UnitFormatter.getDistanceUnit(system)}>
+                <Field id="service-odometer" label={t('common:mileage')} unit={UnitFormatter.getDistanceUnit(system)} error={fieldErrors.odometer_km}>
                   <Input
                     type="number"
                     id="service-odometer"
@@ -519,7 +542,7 @@ export default function ServiceVisitForm({
             {/* Task 14 — engine-hours reading (hour-metered vehicles). Dimensionless:
                 NO unit conversion regardless of system, unlike odometer_km above. */}
             {isMotorized && tracksHours && (
-              <Field id="service-engine-hours" label={t('common:engineHours')} unit="hr">
+              <Field id="service-engine-hours" label={t('common:engineHours')} unit="hr" error={fieldErrors.engine_hours}>
                 <Input
                   type="number"
                   id="service-engine-hours"
@@ -543,7 +566,7 @@ export default function ServiceVisitForm({
               />
             </div>
 
-            <Field id="insurance-claim" label={t('service.insuranceClaim')}>
+            <Field id="insurance-claim" label={t('service.insuranceClaim')} error={fieldErrors.insurance_claim_number}>
               <Input
                 type="text"
                 id="insurance-claim"
@@ -554,7 +577,7 @@ export default function ServiceVisitForm({
               />
             </Field>
 
-            <Field id="visit-notes" label={t('service.visitNotes')}>
+            <Field id="visit-notes" label={t('service.visitNotes')} error={fieldErrors.notes}>
               <Textarea
                 id="visit-notes"
                 rows={2}
@@ -607,7 +630,7 @@ export default function ServiceVisitForm({
           <div className="space-y-4">
             <h3 className="text-sm font-semibold text-text-mute uppercase tracking-wide">{t('service.taxAndFees')}</h3>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <Field id="tax-amount" label={t('service.tax')}>
+              <Field id="tax-amount" label={t('service.tax')} error={fieldErrors.tax_amount}>
                 <div className="relative">
                   <CurrencyInputPrefix />
                   <input
@@ -623,7 +646,7 @@ export default function ServiceVisitForm({
                   />
                 </div>
               </Field>
-              <Field id="shop-supplies" label={t('service.shopSupplies')}>
+              <Field id="shop-supplies" label={t('service.shopSupplies')} error={fieldErrors.shop_supplies}>
                 <div className="relative">
                   <CurrencyInputPrefix />
                   <input
@@ -639,7 +662,7 @@ export default function ServiceVisitForm({
                   />
                 </div>
               </Field>
-              <Field id="misc-fees" label={t('service.miscFees')}>
+              <Field id="misc-fees" label={t('service.miscFees')} error={fieldErrors.misc_fees}>
                 <div className="relative">
                   <CurrencyInputPrefix />
                   <input

@@ -42,7 +42,8 @@
       "fuel": "Fuel",
       "def": "DEF",
       "total": "Total"
-    }
+    },
+    "loadAction": "load garage analytics"
   },
   "garageHelp": {
     "title": "Garage Analytics Help",
@@ -329,7 +330,8 @@
         "body": "Log at least three full-tank fuel entries to unlock detailed fuel-economy insights.",
         "title": "Insufficient fuel data"
       }
-    }
+    },
+    "loadAction": "load vehicle analytics"
   },
   "vehicleHelp": {
     "title": "Analytics Help",
@@ -461,7 +463,9 @@
     "exportCsv": "Export CSV",
     "generating": "Generating report...",
     "pdfError": "Failed to generate report",
-    "csvError": "Failed to export data"
+    "csvError": "Failed to export data",
+    "pdfAction": "generate the report",
+    "csvAction": "export the data"
   },
   "confidenceLevels": {
     "high": "High",

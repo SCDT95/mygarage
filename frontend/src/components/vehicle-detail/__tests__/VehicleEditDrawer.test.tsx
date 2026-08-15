@@ -525,13 +525,25 @@ describe('VehicleEditDrawer — conversion behaviour', () => {
   })
 
   it('toasts and stays open when the save fails', async () => {
+    // A plain Error (network drop, 500, etc.) carries no field-level detail —
+    // applyServerErrors returns both `attached` and `unhandled` empty, so the
+    // toast fallback must fire on `attached.length === 0`, not on
+    // `unhandled.length > 0` alone (that stays empty here too and would
+    // silently drop the failure).
     mockedApi.put.mockRejectedValue(new Error('Boom'))
     const { onClose, onUpdated } = renderVehicleEdit(baseVehicle)
 
     await screen.findByLabelText('edit.nickname *')
     fireEvent.click(screen.getByRole('button', { name: 'edit.saveChanges' }))
 
-    await waitFor(() => expect(toast.error).toHaveBeenCalledWith('Boom'))
+    // i18next isn't initialized in this test environment (only the
+    // react-i18next hook is mocked), so getActionErrorMessage's generic
+    // fallback resolves to i18next's unresolved defaultValue template rather
+    // than an interpolated string. This still proves the toast fired via the
+    // generic-failure branch, which is what this test is verifying.
+    await waitFor(() =>
+      expect(toast.error).toHaveBeenCalledWith('Failed to {{action}}. {{message}}')
+    )
     expect(onUpdated).not.toHaveBeenCalled()
     expect(onClose).not.toHaveBeenCalled()
   })

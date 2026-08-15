@@ -17,6 +17,7 @@ import { useTranslation } from 'react-i18next'
 
 import { Drawer } from './ui'
 import api from '../services/api'
+import { getActionErrorMessage } from '../utils/httpErrorHandler'
 import type { AddressBookEntry } from '../types/addressBook'
 
 interface AddressBookQuickAddModalProps {
@@ -87,13 +88,7 @@ export default function AddressBookQuickAddModal({
       onAdded(response.data)
       onClose()
     } catch (err: unknown) {
-      let message = t('addressBookQuickAdd.addFailed')
-      if (err && typeof err === 'object' && 'response' in err) {
-        const detail = (err as { response?: { data?: { detail?: string } } })
-          .response?.data?.detail
-        if (typeof detail === 'string') message = detail
-      }
-      setErrorMessage(message)
+      setErrorMessage(getActionErrorMessage(err, t('addressBookQuickAdd.addAction')))
     } finally {
       setSubmitting(false)
     }

@@ -31,6 +31,7 @@ import {
 import type { LucideIcon } from 'lucide-react'
 import vehicleService from '../services/vehicleService'
 import api from '../services/api'
+import { getActionErrorMessage } from '../utils/httpErrorHandler'
 import { withBase } from '../utils/basePath'
 import type { Vehicle, VehicleDetailStats } from '../types/vehicle'
 import type { LastLocation } from '../types/trips'
@@ -78,33 +79,6 @@ import TorqueSourceModal from '../components/modals/TorqueSourceModal'
 import { useOnlineStatus } from '../hooks/useOnlineStatus'
 import { useAuth } from '../contexts/AuthContext'
 import { getUsageTracking } from '../utils/usageTracking'
-
-type ApiError = {
-  response?: {
-    data?: {
-      detail?: string
-    }
-  }
-  message?: string
-}
-
-const getApiErrorMessage = (error: unknown, fallback: string) => {
-  if (error && typeof error === 'object') {
-    const apiError = error as ApiError
-    if (apiError.response?.data?.detail) {
-      return apiError.response.data.detail
-    }
-    if (apiError.message) {
-      return apiError.message
-    }
-  }
-
-  if (error instanceof Error) {
-    return error.message
-  }
-
-  return fallback
-}
 
 /** Per-record-type tallies returned by the JSON import endpoint. */
 type ImportSectionResult = {
@@ -180,7 +154,7 @@ export default function VehicleDetail() {
           }
         }
       }
-      setError(getApiErrorMessage(error, tRef.current('detail.misc.loadError')))
+      setError(getActionErrorMessage(error, tRef.current('detail.misc.loadAction')))
     } finally {
       setLoading(false)
     }
@@ -324,7 +298,7 @@ export default function VehicleDetail() {
       toast.success(t('detail.exportSuccess'))
     } catch (err) {
       toast.error(t('detail.exportError'), {
-        description: err instanceof Error ? err.message : undefined
+        description: getActionErrorMessage(err, t('detail.exportAction'))
       })
     } finally {
       setExporting(false)
@@ -384,7 +358,7 @@ export default function VehicleDetail() {
       await loadVehicle()
     } catch (err) {
       toast.error(t('detail.importError'), {
-        description: err instanceof Error ? err.message : undefined
+        description: getActionErrorMessage(err, t('detail.importAction'))
       })
     } finally {
       setImporting(false)

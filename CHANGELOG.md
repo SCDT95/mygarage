@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+- Forms now report validation errors on the field that caused them, instead of a bare `Request failed with status code 422` (#140).
+- Numeric fields accept either decimal separator — `528,25` and `528.25` both work. (The window sticker's MSRP fields are not yet covered.)
+- Optional numeric fields left blank now save as empty instead of being rejected (#140).
+- Invalid text typed into a numeric field — like `abc`, or a comma decimal on a mismatched keyboard — is now reported instead of being silently discarded on save.
+- Registering with a weak password now shows the actual reason on the password field, instead of `[object Object],[object Object]`.
+- Error messages across the app no longer show raw text like `Request failed with status code 500`; 404s keep the backend's specific reason (e.g. "Recipient user not found") instead of a generic message.
+- Service history PDF: repaired text overlap, clipping and column alignment, and the Description column now shows the actual service detail instead of "N/A" on every row; thanks [@SCDT95](https://github.com/SCDT95) (#145).
+- Building the Docker image locally no longer takes ~18 minutes on many-core machines; the frontend build stage moved off Alpine to a glibc base.
+
 ## [3.0.0] - 2026-08-14
 
 ### Added

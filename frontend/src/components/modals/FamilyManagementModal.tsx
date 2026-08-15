@@ -15,6 +15,7 @@ import {
 } from 'lucide-react'
 import { toast } from 'sonner'
 import api from '@/services/api'
+import { getActionErrorMessage } from '@/utils/httpErrorHandler'
 import { useAuth } from '@/contexts/AuthContext'
 import { familyService } from '@/services/familyService'
 import type { FamilyMemberData } from '@/types/family'
@@ -218,9 +219,7 @@ export default function FamilyManagementModal({ isOpen, onClose }: FamilyManagem
       toast.success(u.is_active ? t('modal.userDisabled') : t('modal.userEnabled'))
       await reloadAll()
     } catch (err) {
-      const error = err as { response?: { data?: { detail?: string } } }
-      const detail = error.response?.data?.detail
-      toast.error(typeof detail === 'string' ? detail : t('modal.failedToUpdateStatus'))
+      toast.error(getActionErrorMessage(err, t('modal.updateStatusAction')))
     } finally {
       setUpdatingUserId(null)
     }

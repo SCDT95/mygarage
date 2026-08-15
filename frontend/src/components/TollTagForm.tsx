@@ -13,6 +13,8 @@ import {
   TOLL_SYSTEM_OPTIONS,
 } from '../schemas/tollTag'
 import { useCreateTollTag, useUpdateTollTag } from '../hooks/queries/useTollRecords'
+import { applyServerErrors } from '../hooks/useApiFormErrors'
+import { getActionErrorMessage } from '../utils/httpErrorHandler'
 
 interface TollTagFormProps {
   vin: string
@@ -37,6 +39,7 @@ export default function TollTagForm({ vin, tag, onClose, onSuccess }: TollTagFor
     register,
     handleSubmit,
     formState: { errors, isSubmitting },
+    setError: setFieldError,
   } = useForm<TollTagFormData>({
     resolver: zodResolver(schema),
     defaultValues: {
@@ -71,7 +74,18 @@ export default function TollTagForm({ vin, tag, onClose, onSuccess }: TollTagFor
       onSuccess()
       onClose()
     } catch (err) {
-      setError(err instanceof Error ? err.message : t('common:error'))
+      // attached.length === 0 catches a non-422 failure (network drop, 500):
+      // it carries no field problems at all, so `unhandled` alone would stay
+      // empty and this banner would never show.
+      const { attached, unhandled } = applyServerErrors<TollTagFormData>(setFieldError, err, [
+        'toll_system',
+        'tag_number',
+        'status',
+        'notes',
+      ])
+      if (attached.length === 0 || unhandled.length > 0) {
+        setError(getActionErrorMessage(err, t('toll.saveTagAction')))
+      }
     }
   }
 

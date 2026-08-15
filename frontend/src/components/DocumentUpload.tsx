@@ -2,6 +2,8 @@ import { useState, useRef, type SyntheticEvent } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Upload, X, FileText } from 'lucide-react'
 import { useUploadDocument } from '../hooks/queries/useDocuments'
+import { getActionErrorMessage } from '../utils/httpErrorHandler'
+import { applyControlledFieldErrors } from '../hooks/useApiFormErrors'
 import { Button, IconButton, Mono, Field, Input, Select, Textarea } from './ui'
 
 interface DocumentUploadProps {
@@ -15,6 +17,7 @@ export default function DocumentUpload({ vin, onSuccess, onClose }: DocumentUplo
   const uploadMutation = useUploadDocument(vin)
   const [uploading, setUploading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({})
   const [file, setFile] = useState<File | null>(null)
   const [title, setTitle] = useState('')
   const [documentType, setDocumentType] = useState<string>('')
@@ -80,6 +83,7 @@ export default function DocumentUpload({ vin, onSuccess, onClose }: DocumentUplo
 
     setUploading(true)
     setError(null)
+    setFieldErrors({})
 
     try {
       const formData = new FormData()
@@ -93,7 +97,19 @@ export default function DocumentUpload({ vin, onSuccess, onClose }: DocumentUplo
       onSuccess()
       onClose()
     } catch (err) {
-      setError(err instanceof Error ? err.message : t('documentUpload.misc.errorOccurred'))
+      // Render targets: title, document_type, description. `file` has no
+      // Field wrapper, so a problem addressed to it must hit the banner.
+      const { attached, unhandled, errorsByField } = applyControlledFieldErrors(err, [
+        'title',
+        'document_type',
+        'description',
+      ])
+      if (attached.length > 0) {
+        setFieldErrors(errorsByField)
+      }
+      if (attached.length === 0 || unhandled.length > 0) {
+        setError(getActionErrorMessage(err, t('documentUpload.uploadAction')))
+      }
     } finally {
       setUploading(false)
     }
@@ -181,7 +197,7 @@ export default function DocumentUpload({ vin, onSuccess, onClose }: DocumentUplo
                 </div>
               </div>
 
-              <Field id="title" label={t('documentList.titleLabel')} required>
+              <Field id="title" label={t('documentList.titleLabel')} required error={fieldErrors.title}>
                 <Input
                   id="title"
                   type="text"
@@ -193,7 +209,7 @@ export default function DocumentUpload({ vin, onSuccess, onClose }: DocumentUplo
                 />
               </Field>
 
-              <Field id="document_type" label={t('documentUpload.misc.documentTypeLabel')}>
+              <Field id="document_type" label={t('documentUpload.misc.documentTypeLabel')} error={fieldErrors.document_type}>
                 <Select
                   id="document_type"
                   value={documentType}
@@ -210,7 +226,7 @@ export default function DocumentUpload({ vin, onSuccess, onClose }: DocumentUplo
                 />
               </Field>
 
-              <Field id="description" label={t('documentList.descriptionLabel')}>
+              <Field id="description" label={t('documentList.descriptionLabel')} error={fieldErrors.description}>
                 <Textarea
                   id="description"
                   rows={3}

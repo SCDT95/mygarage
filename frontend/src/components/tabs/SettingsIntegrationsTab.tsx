@@ -4,6 +4,7 @@ import { CheckCircle, AlertCircle, Plug, Shield, Check, X, Plus, Radio, Settings
 import { useSettings } from '@/contexts/SettingsContext'
 import { useAuth } from '@/contexts/AuthContext'
 import api from '@/services/api'
+import { getActionErrorMessage } from '@/utils/httpErrorHandler'
 import { livelinkService } from '@/services/livelinkService'
 import type { LiveLinkSettings, LiveLinkDeviceListResponse, DeviceFirmwareStatus } from '@/types/livelink'
 import AddProviderModal from '../modals/AddProviderModal'
@@ -160,8 +161,7 @@ export default function SettingsIntegrationsTab() {
       await loadProviders()
       setMessage({ type: 'success', text: t('integrations.providerRemoved') })
     } catch (error: unknown) {
-      const err = error as { response?: { data?: { detail?: string } } }
-      setMessage({ type: 'error', text: err.response?.data?.detail || t('integrations.removeProviderError') })
+      setMessage({ type: 'error', text: getActionErrorMessage(error, t('integrations.removeProviderAction')) })
     }
   }
 

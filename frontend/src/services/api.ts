@@ -144,10 +144,14 @@ api.interceptors.response.use(
 
     // Handle 403 CSRF errors with retry
     if (error.response?.status === 403) {
-      const detail = error.response?.data?.detail || ''
+      // `detail` drives CSRF auto-retry, not user-facing text — never route
+      // it through getActionErrorMessage. A 422 sends an array here, so
+      // guard the type before the substring test; on an array this just
+      // means the CSRF path isn't taken, never a throw.
+      const detail: unknown = error.response?.data?.detail
 
       // CSRF error - try to recover once before redirecting
-      if (detail.includes('CSRF') && !originalRequest._csrfRetried) {
+      if (typeof detail === 'string' && detail.includes('CSRF') && !originalRequest._csrfRetried) {
         originalRequest._csrfRetried = true
         console.log('[CSRF] Token invalid/expired, attempting recovery...')
 

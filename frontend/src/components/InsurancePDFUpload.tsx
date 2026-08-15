@@ -2,6 +2,7 @@ import { useState, useRef } from 'react'
 import { createPortal } from 'react-dom'
 import { useTranslation } from 'react-i18next'
 import api from '../services/api'
+import { getActionErrorMessage } from '../utils/httpErrorHandler'
 import { InsurancePDFParseResponse, InsurancePolicyCreate } from '../types/insurance'
 import { CloudUpload, X, AlertTriangle, CheckCircle } from 'lucide-react'
 import { Button, Card, IconButton, Chip } from './ui'
@@ -116,7 +117,7 @@ export default function InsurancePDFUpload({ vin, onDataExtracted, onClose }: In
 
       setParseResult(response.data)
     } catch (err) {
-      setError(err instanceof Error ? err.message : t('insurancePdfUpload.errorParseFailed'))
+      setError(getActionErrorMessage(err, t('insurancePdfUpload.parseAction')))
     } finally {
       setUploading(false)
     }

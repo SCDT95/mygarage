@@ -3,6 +3,7 @@ import { useState, useEffect, useMemo, type SyntheticEvent } from 'react'
 import { X, Eye, EyeOff } from 'lucide-react'
 import { toast } from 'sonner'
 import api from '@/services/api'
+import { getActionErrorMessage } from '@/utils/httpErrorHandler'
 import { Select } from '@/components/ui'
 import { makePasswordSchema } from '@/schemas/auth'
 import { RELATIONSHIP_PRESETS } from '@/types/family'
@@ -83,9 +84,13 @@ export default function AddEditUserModal({ isOpen, onClose, user, onSave, curren
       try {
         passwordSchema.parse(formData.password)
       } catch (err) {
-        const error = err as { errors?: Array<{ message: string }> }
+        // Zod 4.4.3's ZodError has no `.errors` property at all (only
+        // `.issues` — `.errors` was a v3-only alias this codebase never ran
+        // against), so reading `.errors` here always returned `undefined`
+        // and this always fell through to the generic fallback message.
+        const error = err as { issues?: Array<{ message: string }> }
         validationErrors.password =
-          error.errors?.[0]?.message || t('common:validation.password.invalid')
+          error.issues?.[0]?.message || t('common:validation.password.invalid')
       }
 
       if (formData.password !== formData.confirmPassword) {
@@ -149,13 +154,8 @@ export default function AddEditUserModal({ isOpen, onClose, user, onSave, curren
       onSave()
       onClose()
     } catch (err) {
-      const error = err as { response?: { data?: { detail?: string } } }
-      const detail = error.response?.data?.detail
-      if (typeof detail === 'string') {
-        toast.error(detail)
-      } else {
-        toast.error(isEditMode ? t('modal.failedToUpdateUser') : t('modal.failedToCreateUser'))
-      }
+      const action = isEditMode ? t('modal.updateUserAction') : t('modal.createUserAction')
+      toast.error(getActionErrorMessage(err, action))
     } finally {
       setLoading(false)
     }

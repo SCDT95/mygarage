@@ -177,7 +177,7 @@ describe('VehicleDetail', () => {
     renderVehicleDetail()
 
     await waitFor(() => {
-      expect(screen.getByText('Network Error')).toBeInTheDocument()
+      expect(screen.getByText('Failed to {{action}}. {{message}}')).toBeInTheDocument()
     })
     expect(screen.getByText('detail.backToDashboard')).toBeInTheDocument()
   })
@@ -232,7 +232,7 @@ describe('VehicleDetail', () => {
     renderVehicleDetail()
 
     await waitFor(() => {
-      expect(screen.getByText('Network Error')).toBeInTheDocument()
+      expect(screen.getByText('Failed to {{action}}. {{message}}')).toBeInTheDocument()
     })
 
     Object.defineProperty(navigator, 'onLine', { value: originalOnLine, configurable: true })

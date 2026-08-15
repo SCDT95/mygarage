@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import type { TFunction } from 'i18next'
 import { makeDefRecordSchema } from '../def'
+import { INVALID_NUMBER } from '../shared'
 
 // Same shape as the global react-i18next mock in src/__tests__/setup.ts:
 // messages come back as their i18n key, which is all these tests need.
@@ -54,15 +55,15 @@ describe('DEF Record Schema', () => {
     expect(result.success).toBe(false)
   })
 
-  it('transforms NaN fill_level to undefined', () => {
+  // Task 8b: fill_level now routes through the shared makeNumericField,
+  // which rejects NaN as invalid rather than treating it as empty — see
+  // shared.test.ts.
+  it('rejects NaN fill_level as invalid rather than silently discarding it', () => {
     const result = defRecordSchema.safeParse({
       ...validDef,
       fill_level: NaN,
     })
-    expect(result.success).toBe(true)
-    if (result.success) {
-      expect(result.data.fill_level).toBeUndefined()
-    }
+    expect(result.success).toBe(false)
   })
 
   it('rejects negative mileage', () => {
@@ -79,5 +80,20 @@ describe('DEF Record Schema', () => {
       source: 'A'.repeat(101),
     })
     expect(result.success).toBe(false)
+  })
+
+  // Regression for the CRITICAL finding: the pre-refactor `.or(z.nan())`
+  // shape couldn't recognize INVALID_NUMBER (the sentinel registerDecimal
+  // emits for unparseable text) and leaked zod's raw "Invalid input:
+  // expected number, received symbol" instead of a translated message.
+  it('rejects the INVALID_NUMBER sentinel with the translated fill-level-invalid message, not a raw zod union error', () => {
+    const result = defRecordSchema.safeParse({
+      ...validDef,
+      fill_level: INVALID_NUMBER,
+    })
+    expect(result.success).toBe(false)
+    if (!result.success) {
+      expect(result.error.issues[0].message).toBe('common:validation.def.fillLevelInvalid')
+    }
   })
 })

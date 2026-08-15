@@ -11,12 +11,17 @@
  *     either. `t('installPrompt.title')` shipped through both blind spots and
  *     rendered raw to users.
  *
- *  2. Every `labelKey` / `descriptionKey` on an option-list constant must
- *     resolve too. Those are read back as t(option.labelKey) at the render
- *     site, so check 1's literal scan cannot see them — an unmerged or
- *     mistyped key ships a raw "forms:taxTypes.tolls" straight into a
- *     <select> with nothing to catch it. Such constants usually live in schema
- *     modules that never call useTranslation, so their keys must be written
+ *  2. Every `labelKey` / `descriptionKey` on an option-list constant, AND every
+ *     `negativeKey` / `tooLargeKey` / `invalidKey` / `requiredKey` /
+ *     `integerKey` passed to `makeNumericField` (schemas/shared.ts), must
+ *     resolve too. Both are read back as t(...) at the render/validation
+ *     site — option labels via t(option.labelKey), numeric-field messages via
+ *     t(opts.negativeKey) etc. inside makeNumericField's superRefine — so
+ *     check 1's literal scan cannot see either: an unmerged or mistyped key
+ *     ships a raw "forms:taxTypes.tolls" straight into a <select>, or a raw
+ *     "common:validation.amount.negative" straight into a form error, with
+ *     nothing to catch it. Such constants usually live in schema modules that
+ *     never call useTranslation, so their keys must be written
  *     namespace-qualified; a bare one is reported.
  *
  *  3. Every directory in public/locales must be a language the app can load.
@@ -85,8 +90,10 @@ interface Violation {
   line: number
   key: string
   searched: string[]
-  /** How the key is written in source — a labelKey never appears as t('...'). */
+  /** How the key is written in source — a field key never appears as t('...'). */
   via: 'call' | 'field'
+  /** The field name for a `via: 'field'` violation (e.g. 'labelKey', 'negativeKey'). Unused for 'call'. */
+  field?: string
 }
 
 const violations: Violation[] = []
@@ -99,6 +106,7 @@ function record(
   rawKey: string,
   bound: string[],
   via: 'call' | 'field',
+  field?: string,
 ): void {
   let key = rawKey
   let searched = bound
@@ -115,6 +123,7 @@ function record(
     line: text.slice(0, index).split('\n').length,
     key: rawKey,
     searched,
+    field,
     via,
   })
 }
@@ -158,16 +167,23 @@ for (const file of walk(SRC)) {
     record(file, text, m.index ?? 0, rawKey, scope, 'call')
   }
 
-  // `labelKey` / `descriptionKey` fields on option-list constants, resolved at
-  // the render site as t(option.labelKey). That indirection is invisible to the
-  // t('literal') scan above, so a typo or an unmerged key ships a raw
-  // "forms:taxTypes.tolls" into a <select> with nothing to catch it.
+  // `labelKey` / `descriptionKey` fields on option-list constants (resolved at
+  // the render site as t(option.labelKey)), and `negativeKey` / `tooLargeKey` /
+  // `invalidKey` / `requiredKey` / `integerKey` passed to `makeNumericField`
+  // (resolved inside its superRefine as t(opts.negativeKey) etc.). Both
+  // indirections are invisible to the t('literal') scan above, so a typo or
+  // an unmerged key ships a raw "forms:taxTypes.tolls" into a <select>, or a
+  // raw "common:validation.amount.negative" into a form error, with nothing
+  // to catch it.
   //
-  // These constants often live in schema modules that never call
-  // useTranslation, so a bare key there has no namespace to resolve against and
-  // is reported — such a key MUST be written namespace-qualified.
-  for (const m of text.matchAll(/\b(?:labelKey|descriptionKey):\s*['"]([^'"]+)['"]/g)) {
-    const rawKey = m[1]
+  // These constants/factory calls often live in schema modules that never
+  // call useTranslation, so a bare key there has no namespace to resolve
+  // against and is reported — such a key MUST be written namespace-qualified.
+  for (const m of text.matchAll(
+    /\b(labelKey|descriptionKey|negativeKey|tooLargeKey|invalidKey|requiredKey|integerKey):\s*['"]([^'"]+)['"]/g
+  )) {
+    const field = m[1]
+    const rawKey = m[2]
     if (bound.length === 0 && !rawKey.includes(':')) {
       violations.push({
         file: relative(ROOT, file),
@@ -175,10 +191,11 @@ for (const file of walk(SRC)) {
         key: rawKey,
         searched: ['<no useTranslation in this file — qualify the key as "ns:key">'],
         via: 'field',
+        field,
       })
       continue
     }
-    record(file, text, m.index ?? 0, rawKey, bound, 'field')
+    record(file, text, m.index ?? 0, rawKey, bound, 'field', field)
   }
 }
 
@@ -194,7 +211,7 @@ if (violations.length > 0) {
   console.log(`✗ ${violations.length} translation key(s) used in code but missing from English:\n`)
   for (const v of violations) {
     console.log(`  ${v.file}:${v.line}`)
-    const shown = v.via === 'call' ? `t('${v.key}')` : `labelKey: '${v.key}'`
+    const shown = v.via === 'call' ? `t('${v.key}')` : `${v.field ?? 'labelKey'}: '${v.key}'`
     console.log(`    ${shown} — not in ${v.searched.map(n => `${n}.json`).join(' or ')}`)
   }
   console.log('\nThese render as the raw key to users — English has no fallback.')

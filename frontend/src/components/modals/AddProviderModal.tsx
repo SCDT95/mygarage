@@ -1,6 +1,7 @@
 import { useTranslation } from 'react-i18next'
 import { useState } from 'react'
 import api from '../../services/api'
+import { getActionErrorMessage } from '../../utils/httpErrorHandler'
 import { Drawer } from '../ui'
 
 enum ModalStep {
@@ -66,8 +67,7 @@ export default function AddProviderModal({ isOpen, onClose, onProviderAdded }: P
         setErrorMessage(response.data.message)
       }
     } catch (error: unknown) {
-      const err = error as { response?: { data?: { detail?: string } } }
-      setErrorMessage(err.response?.data?.detail || t('addProviderModal.failedToTestApiKey'))
+      setErrorMessage(getActionErrorMessage(error, t('addProviderModal.testApiKeyAction')))
     } finally {
       setIsTestingKey(false)
     }
@@ -84,8 +84,7 @@ export default function AddProviderModal({ isOpen, onClose, onProviderAdded }: P
       onProviderAdded()
       handleClose()
     } catch (error: unknown) {
-      const err = error as { response?: { data?: { detail?: string } } }
-      setErrorMessage(err.response?.data?.detail || t('addProviderModal.failedToAddProvider'))
+      setErrorMessage(getActionErrorMessage(error, t('addProviderModal.addProviderAction')))
     }
   }
 

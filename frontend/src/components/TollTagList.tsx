@@ -4,6 +4,7 @@ import { CreditCard, Plus, Trash2, Edit3, CheckCircle, XCircle } from 'lucide-re
 import { toast } from 'sonner'
 import type { TollTag } from '../types/toll'
 import { useTollTags, useDeleteTollTag } from '../hooks/queries/useTollRecords'
+import { getActionErrorMessage } from '../utils/httpErrorHandler'
 import { Button, IconButton, Mono, Chip, EmptyState } from './ui'
 
 /**
@@ -41,7 +42,7 @@ export default function TollTagList({ vin, onAddClick, onEditClick }: TollTagLis
 
     deleteMutation.mutate(tagId, {
       onError: (err) => {
-        toast.error(err instanceof Error ? err.message : t('tollTagList.deleteError'))
+        toast.error(getActionErrorMessage(err, t('tollTagList.deleteAction')))
       },
     })
   }
@@ -57,7 +58,7 @@ export default function TollTagList({ vin, onAddClick, onEditClick }: TollTagLis
   if (error) {
     return (
       <div className="bg-danger/10 border border-danger rounded-lg p-4">
-        <p className="text-danger">{error.message}</p>
+        <p className="text-danger">{getActionErrorMessage(error, t('tollTagList.loadAction'))}</p>
       </div>
     )
   }

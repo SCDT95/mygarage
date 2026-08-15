@@ -1,16 +1,23 @@
 import { useTranslation } from 'react-i18next'
-import { useState } from 'react'
-import { useForm } from 'react-hook-form'
+import { useMemo, useState } from 'react'
+import { useForm, type Resolver } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { Save, FileUp } from 'lucide-react'
 import FormModalWrapper from './FormModalWrapper'
-import { Button, Field, Input, Select, Textarea } from './ui'
+import { Button, Field, Input, NumberInput, Select, Textarea, registerDecimal } from './ui'
 import { toast } from 'sonner'
 import type { InsurancePolicy, InsurancePolicyCreate, InsurancePolicyUpdate } from '../types/insurance'
-import { insuranceSchema, type InsuranceFormData, POLICY_TYPES, PREMIUM_FREQUENCIES } from '../schemas/insurance'
+import {
+  makeInsuranceSchema,
+  type InsuranceFormData,
+  POLICY_TYPES,
+  PREMIUM_FREQUENCIES,
+} from '../schemas/insurance'
 import InsurancePDFUpload from './InsurancePDFUpload'
 import { useCreateInsuranceRecord, useUpdateInsuranceRecord } from '../hooks/queries/useInsuranceRecords'
 import { formatDateForInput } from '../utils/dateUtils'
+import { applyServerErrors } from '../hooks/useApiFormErrors'
+import { getActionErrorMessage } from '../utils/httpErrorHandler'
 
 interface InsuranceFormProps {
   vin: string
@@ -27,22 +34,29 @@ export default function InsuranceForm({ vin, record, onClose, onSuccess }: Insur
   const [showPDFUpload, setShowPDFUpload] = useState(false)
   const [autoFilledFields, setAutoFilledFields] = useState<Set<string>>(new Set())
 
+  // Zod bakes its messages in at construction, so the schema is rebuilt when
+  // the language changes. Only the resolver depends on it — no fetch, no
+  // reset() — so a rebuild can't discard what the user typed.
+  const schema = useMemo(() => makeInsuranceSchema(t), [t])
+
   const {
     register,
     handleSubmit,
     formState: { errors, isSubmitting },
     setValue,
+    setError: setFieldError,
   } = useForm<InsuranceFormData>({
-    resolver: zodResolver(insuranceSchema),
+    resolver: zodResolver(schema) as Resolver<InsuranceFormData>,
     defaultValues: {
       provider: record?.provider || '',
       policy_number: record?.policy_number || '',
       policy_type: record?.policy_type || '',
       start_date: formatDateForInput(record?.start_date),
       end_date: formatDateForInput(record?.end_date === '' || record?.end_date === null ? undefined : record?.end_date),
-      premium_amount: record?.premium_amount ?? undefined,
+      // The API returns these as strings (or numbers); the schema now wants numbers.
+      premium_amount: record?.premium_amount != null ? Number(record.premium_amount) : undefined,
       premium_frequency: record?.premium_frequency ?? undefined,
-      deductible: record?.deductible ?? undefined,
+      deductible: record?.deductible != null ? Number(record.deductible) : undefined,
       coverage_limits: record?.coverage_limits ?? undefined,
       notes: record?.notes ?? undefined,
     },
@@ -64,26 +78,31 @@ export default function InsuranceForm({ vin, record, onClose, onSuccess }: Insur
     if (extractedData.policy_type) setValue('policy_type', extractedData.policy_type)
     if (extractedData.start_date) setValue('start_date', extractedData.start_date)
     if (extractedData.end_date) setValue('end_date', extractedData.end_date)
-    if (extractedData.premium_amount) setValue('premium_amount', String(extractedData.premium_amount))
+    if (extractedData.premium_amount) setValue('premium_amount', Number(extractedData.premium_amount))
     if (extractedData.premium_frequency) setValue('premium_frequency', extractedData.premium_frequency)
-    if (extractedData.deductible) setValue('deductible', String(extractedData.deductible))
+    if (extractedData.deductible) setValue('deductible', Number(extractedData.deductible))
     if (extractedData.coverage_limits) setValue('coverage_limits', extractedData.coverage_limits)
     if (extractedData.notes) setValue('notes', extractedData.notes)
   }
 
   const onSubmit = async (data: InsuranceFormData) => {
     try {
+      // Send null, never '', for a cleared optional field — every field on
+      // this form is mounted, so an explicit null correctly clears the
+      // column. The old code forwarded the raw '' from an untouched
+      // deductible straight to a backend `Decimal | None` column, which is
+      // half of #140 (the other half was the unparsed comma decimal).
       const payload: InsurancePolicyCreate | InsurancePolicyUpdate = {
         provider: data.provider,
         policy_number: data.policy_number,
         policy_type: data.policy_type,
         start_date: data.start_date,
         end_date: data.end_date,
-        premium_amount: data.premium_amount,
-        premium_frequency: data.premium_frequency,
-        deductible: data.deductible,
-        coverage_limits: data.coverage_limits,
-        notes: data.notes,
+        premium_amount: data.premium_amount ?? null,
+        premium_frequency: data.premium_frequency || null,
+        deductible: data.deductible ?? null,
+        coverage_limits: data.coverage_limits || null,
+        notes: data.notes || null,
       }
 
       if (isEdit) {
@@ -95,7 +114,24 @@ export default function InsuranceForm({ vin, record, onClose, onSuccess }: Insur
       onSuccess()
       onClose()
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : t('insurance.failedToSave'))
+      // attached.length === 0 catches a non-422 failure (network drop, 500):
+      // it carries no field problems at all, so `unhandled` alone would stay
+      // empty and this toast would never show.
+      const { attached, unhandled } = applyServerErrors<InsuranceFormData>(setFieldError, err, [
+        'provider',
+        'policy_number',
+        'policy_type',
+        'start_date',
+        'end_date',
+        'premium_amount',
+        'premium_frequency',
+        'deductible',
+        'coverage_limits',
+        'notes',
+      ])
+      if (attached.length === 0 || unhandled.length > 0) {
+        toast.error(getActionErrorMessage(err, t('insurance.saveAction')))
+      }
     }
   }
 
@@ -166,7 +202,13 @@ export default function InsuranceForm({ vin, record, onClose, onSuccess }: Insur
 
           <div className="grid grid-cols-2 gap-4">
             <Field id="premium_amount" label={t('insurance.premiumAmount')} error={errors.premium_amount}>
-              <Input id="premium_amount" type="text" {...register('premium_amount')} placeholder={t('insuranceForm.premiumAmountPlaceholder')} disabled={isSubmitting} />
+              <NumberInput
+                id="premium_amount"
+                {...registerDecimal(register, 'premium_amount')}
+                placeholder={t('insuranceForm.premiumAmountPlaceholder')}
+                invalid={!!errors.premium_amount}
+                disabled={isSubmitting}
+              />
             </Field>
             <Field id="premium_frequency" label={t('insurance.premiumFrequency')} error={errors.premium_frequency}>
               <Select
@@ -180,7 +222,13 @@ export default function InsuranceForm({ vin, record, onClose, onSuccess }: Insur
           </div>
 
           <Field id="deductible" label={t('insurance.deductible')} error={errors.deductible}>
-            <Input id="deductible" type="text" {...register('deductible')} placeholder={t('insuranceForm.deductiblePlaceholder')} disabled={isSubmitting} />
+            <NumberInput
+              id="deductible"
+              {...registerDecimal(register, 'deductible')}
+              placeholder={t('insuranceForm.deductiblePlaceholder')}
+              invalid={!!errors.deductible}
+              disabled={isSubmitting}
+            />
           </Field>
 
           <Field id="coverage_limits" label={t('insurance.coverageLimits')}>

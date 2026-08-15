@@ -1,10 +1,10 @@
 import { useTranslation } from 'react-i18next'
-import { useState, useEffect } from 'react'
+import { useMemo, useState, useEffect } from 'react'
 import { useForm, type Resolver } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { Save } from 'lucide-react'
 import FormModalWrapper from './FormModalWrapper'
-import { Button, Field, Input, Textarea } from './ui'
+import { Button, Field, Input, NumberInput, Textarea, registerDecimal } from './ui'
 import CurrencyInputPrefix from './common/CurrencyInputPrefix'
 import type {
   SpotRentalBilling,
@@ -12,11 +12,12 @@ import type {
   SpotRentalBillingUpdate
 } from '../types/spotRental'
 import {
-  spotRentalBillingSchema,
+  makeSpotRentalBillingSchema,
   type SpotRentalBillingFormData
 } from '../schemas/spotRentalBilling'
 import { useCreateBillingEntry, useUpdateBillingEntry } from '../hooks/queries/useSpotRentals'
 import { formatDateForInput } from '../utils/dateUtils'
+import { getActionErrorMessage } from '../utils/httpErrorHandler'
 
 interface BillingEntryFormProps {
   vin: string
@@ -39,6 +40,11 @@ export default function BillingEntryForm({
   const createMutation = useCreateBillingEntry(vin, rentalId)
   const updateMutation = useUpdateBillingEntry(vin, rentalId)
 
+  // Zod bakes its messages in at construction, so the schema is rebuilt when
+  // the language changes. Only the resolver depends on it — no fetch, no
+  // reset() — so a rebuild can't discard what the user typed.
+  const schema = useMemo(() => makeSpotRentalBillingSchema(t), [t])
+
   const {
     register,
     handleSubmit,
@@ -46,7 +52,7 @@ export default function BillingEntryForm({
     setValue,
     formState: { errors, isSubmitting }
   } = useForm<SpotRentalBillingFormData>({
-    resolver: zodResolver(spotRentalBillingSchema) as Resolver<SpotRentalBillingFormData>,
+    resolver: zodResolver(schema) as Resolver<SpotRentalBillingFormData>,
     defaultValues: {
       billing_date: formatDateForInput(billing?.billing_date),
       monthly_rate: billing?.monthly_rate != null ? Number(billing.monthly_rate) : undefined,
@@ -101,20 +107,7 @@ export default function BillingEntryForm({
       onClose()
     } catch (err: unknown) {
       console.error('Failed to save billing entry:', err)
-      if (err && typeof err === 'object' && 'response' in err) {
-        const axiosError = err as {
-          response?: { data?: { detail?: string }; status?: number }
-        }
-        if (axiosError.response?.data?.detail) {
-          setError(axiosError.response.data.detail)
-        } else if (axiosError.response?.status === 404) {
-          setError(t('billing.spotRentalNotFound'))
-        } else {
-          setError(t('billing.failedToSave'))
-        }
-      } else {
-        setError(t('billing.failedToSave'))
-      }
+      setError(getActionErrorMessage(err, t('billing.saveAction')))
     }
   }
 
@@ -148,16 +141,13 @@ export default function BillingEntryForm({
           <Field id="monthly_rate" label={t('spotRental.monthlyRate')} error={errors.monthly_rate}>
             <div className="relative">
               <CurrencyInputPrefix />
-              <input
-                type="number"
+              <NumberInput
                 id="monthly_rate"
-                min="0"
-                step="0.01"
-                {...register('monthly_rate', { valueAsNumber: true })}
+                {...registerDecimal(register, 'monthly_rate')}
                 placeholder="0.00"
-                aria-invalid={errors.monthly_rate ? true : undefined}
-                className={`ui-focus-input ui-motion w-full rounded-control border bg-surface-2 pl-7 pr-3 py-2 text-sm text-text font-mono tabular-nums ${errors.monthly_rate ? 'border-danger' : 'border-border'}`}
+                invalid={!!errors.monthly_rate}
                 disabled={isSubmitting}
+                className="pl-7"
               />
             </div>
           </Field>
@@ -166,16 +156,13 @@ export default function BillingEntryForm({
             <Field id="electric" label={t('billingEntryForm.electric')} error={errors.electric}>
               <div className="relative">
                 <CurrencyInputPrefix />
-                <input
-                  type="number"
+                <NumberInput
                   id="electric"
-                  min="0"
-                  step="0.01"
-                  {...register('electric', { valueAsNumber: true })}
+                  {...registerDecimal(register, 'electric')}
                   placeholder="0.00"
-                  aria-invalid={errors.electric ? true : undefined}
-                  className={`ui-focus-input ui-motion w-full rounded-control border bg-surface-2 pl-7 pr-3 py-2 text-sm text-text font-mono tabular-nums ${errors.electric ? 'border-danger' : 'border-border'}`}
+                  invalid={!!errors.electric}
                   disabled={isSubmitting}
+                  className="pl-7"
                 />
               </div>
             </Field>
@@ -183,16 +170,13 @@ export default function BillingEntryForm({
             <Field id="water" label={t('billingEntryForm.water')} error={errors.water}>
               <div className="relative">
                 <CurrencyInputPrefix />
-                <input
-                  type="number"
+                <NumberInput
                   id="water"
-                  min="0"
-                  step="0.01"
-                  {...register('water', { valueAsNumber: true })}
+                  {...registerDecimal(register, 'water')}
                   placeholder="0.00"
-                  aria-invalid={errors.water ? true : undefined}
-                  className={`ui-focus-input ui-motion w-full rounded-control border bg-surface-2 pl-7 pr-3 py-2 text-sm text-text font-mono tabular-nums ${errors.water ? 'border-danger' : 'border-border'}`}
+                  invalid={!!errors.water}
                   disabled={isSubmitting}
+                  className="pl-7"
                 />
               </div>
             </Field>
@@ -200,16 +184,13 @@ export default function BillingEntryForm({
             <Field id="waste" label={t('billingEntryForm.waste')} error={errors.waste}>
               <div className="relative">
                 <CurrencyInputPrefix />
-                <input
-                  type="number"
+                <NumberInput
                   id="waste"
-                  min="0"
-                  step="0.01"
-                  {...register('waste', { valueAsNumber: true })}
+                  {...registerDecimal(register, 'waste')}
                   placeholder="0.00"
-                  aria-invalid={errors.waste ? true : undefined}
-                  className={`ui-focus-input ui-motion w-full rounded-control border bg-surface-2 pl-7 pr-3 py-2 text-sm text-text font-mono tabular-nums ${errors.waste ? 'border-danger' : 'border-border'}`}
+                  invalid={!!errors.waste}
                   disabled={isSubmitting}
+                  className="pl-7"
                 />
               </div>
             </Field>
@@ -218,14 +199,11 @@ export default function BillingEntryForm({
           <Field id="total" label={t('common:total')} hint={t('billing.autoCalculatedHint')} error={errors.total}>
             <div className="relative">
               <CurrencyInputPrefix />
-              <input
-                type="number"
+              <NumberInput
                 id="total"
-                min="0"
-                step="0.01"
-                {...register('total', { valueAsNumber: true })}
+                {...registerDecimal(register, 'total')}
                 placeholder={t('billingEntryForm.autoCalculatedPlaceholder')}
-                className="ui-focus-input ui-motion w-full rounded-control border border-border bg-surface-2 pl-7 pr-3 py-2 text-sm text-text font-mono tabular-nums"
+                className="pl-7"
                 readOnly
               />
             </div>

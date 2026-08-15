@@ -21,12 +21,14 @@ import { formatDateForDisplay, formatDateForInput } from '@/utils/dateUtils'
 import { FormError } from '@/components/FormError'
 import FormModalWrapper from '@/components/FormModalWrapper'
 import CurrencyInputPrefix from '@/components/common/CurrencyInputPrefix'
-import { Select } from '@/components/ui'
+import { NumberInput, Select, registerDecimal } from '@/components/ui'
 import type { Supply } from '@/types/supplies'
 import type { AddressBookEntry } from '@/types/addressBook'
 import type { UnitSystem } from '@/utils/units'
 import type { components } from '@/types/api.generated'
 import { getActiveLocale } from '@/constants/i18n'
+import { applyServerErrors } from '@/hooks/useApiFormErrors'
+import { getActionErrorMessage } from '@/utils/httpErrorHandler'
 
 type SupplyLedgerEntry = components['schemas']['SupplyLedgerEntry']
 
@@ -99,7 +101,7 @@ export default function SupplyHistoryModal({ supply, onClose }: SupplyHistoryMod
           <div className="flex items-start gap-2 p-3 bg-danger/10 border border-danger/20 rounded-md">
             <AlertTriangle className="w-4 h-4 text-danger flex-shrink-0 mt-0.5" />
             <p className="text-sm text-danger">
-              {error instanceof Error ? error.message : t('supplies.history.loadError')}
+              {getActionErrorMessage(error, t('supplies.history.loadAction'))}
             </p>
           </div>
         )}
@@ -192,7 +194,7 @@ function PurchaseRow({ entry, supply, system }: LedgerRowProps) {
       window.URL.revokeObjectURL(url)
       document.body.removeChild(a)
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : t('supplies.history.downloadError'))
+      toast.error(getActionErrorMessage(err, t('supplies.history.downloadAction')))
     } finally {
       setDownloading(false)
     }
@@ -202,7 +204,7 @@ function PurchaseRow({ entry, supply, system }: LedgerRowProps) {
     if (!confirm(t('supplies.history.confirmDeletePurchase'))) return
     deletePurchase.mutate(entry.id, {
       onSuccess: () => toast.success(t('supplies.history.purchaseDeleted')),
-      onError: (err) => toast.error(err instanceof Error ? err.message : t('supplies.history.purchaseDeleteError')),
+      onError: (err) => toast.error(getActionErrorMessage(err, t('supplies.history.purchaseDeleteAction'))),
     })
   }
 
@@ -210,7 +212,7 @@ function PurchaseRow({ entry, supply, system }: LedgerRowProps) {
     if (!confirm(t('supplies.history.confirmDeleteReceipt'))) return
     deleteReceipt.mutate(entry.id, {
       onSuccess: () => toast.success(t('supplies.history.receiptDeleted')),
-      onError: (err) => toast.error(err instanceof Error ? err.message : t('supplies.history.receiptDeleteError')),
+      onError: (err) => toast.error(getActionErrorMessage(err, t('supplies.history.receiptDeleteAction'))),
     })
   }
 
@@ -222,7 +224,7 @@ function PurchaseRow({ entry, supply, system }: LedgerRowProps) {
       { purchaseId: entry.id, formData },
       {
         onSuccess: () => toast.success(t('supplies.history.receiptUploaded')),
-        onError: (err) => toast.error(err instanceof Error ? err.message : t('supplies.history.receiptUploadError')),
+        onError: (err) => toast.error(getActionErrorMessage(err, t('supplies.history.receiptUploadAction'))),
       }
     )
     setSelectedFile(null)
@@ -330,7 +332,7 @@ function UsageRow({ entry, supply, system }: LedgerRowProps) {
     if (!confirm(t('supplies.history.confirmDeleteAdjustment'))) return
     deleteAdjustment.mutate(entry.id, {
       onSuccess: () => toast.success(t('supplies.history.adjustmentDeleted')),
-      onError: (err) => toast.error(err instanceof Error ? err.message : t('supplies.history.adjustmentDeleteError')),
+      onError: (err) => toast.error(getActionErrorMessage(err, t('supplies.history.adjustmentDeleteAction'))),
     })
   }
 
@@ -378,6 +380,35 @@ function UsageRow({ entry, supply, system }: LedgerRowProps) {
 // Log purchase / adjustment forms
 // ---------------------------------------------------------------------------
 
+/**
+ * Neither inline form below has a zod resolver, so RHF's own `min` rule is
+ * what normally enforces a positive quantity. But RHF's built-in min/max
+ * check coerces the field value with unary `+` to compare it — which throws
+ * a TypeError when the value is the `INVALID_NUMBER` symbol `registerDecimal`
+ * emits for unparseable text (e.g. typing "abc"). A `validate` function
+ * receives the raw value without that coercion, so it can reject the same
+ * cases (empty, too small, and now also non-numeric) with the same message.
+ */
+function validateSupplyQuantity(value: unknown, message: string): true | string {
+  return typeof value === 'number' && !Number.isNaN(value) && value >= 0.001 ? true : message
+}
+
+/**
+ * `total_cost` is optional (unlike quantity, which is required) — an
+ * `undefined` value must pass here, since `required` isn't set on this field
+ * and there is no other rule to catch the empty case first. Anything typed
+ * — including unparseable text (the INVALID_NUMBER sentinel) — must be a
+ * real, non-negative number. Native `min="0"` used to be the only guard
+ * before this field was migrated off `type="number"`; without an equivalent
+ * `validate` rule a negative total_cost reaches the API with no client-side
+ * error at all (the backend's `ge=0` still rejects it, but as a generic
+ * banner instead of a field message).
+ */
+function validateNonNegativeCost(value: unknown, message: string): true | string {
+  if (value === undefined) return true
+  return typeof value === 'number' && !Number.isNaN(value) && value >= 0 ? true : message
+}
+
 interface PurchaseFormValues {
   date: string
   quantity: number
@@ -408,6 +439,7 @@ function PurchaseForm({
     handleSubmit,
     reset,
     formState: { errors, isSubmitting },
+    setError: setFieldError,
   } = useForm<PurchaseFormValues>({
     defaultValues: {
       date: formatDateForInput(),
@@ -445,7 +477,18 @@ function PurchaseForm({
       if (fileInputRef.current) fileInputRef.current.value = ''
       onDone()
     } catch (err) {
-      setError(err instanceof Error ? err.message : t('error'))
+      // attached.length === 0 catches a non-422 failure (network drop, 500):
+      // it carries no field problems at all, so `unhandled` alone would stay
+      // empty and this banner would never show.
+      const { attached, unhandled } = applyServerErrors<PurchaseFormValues>(setFieldError, err, [
+        'date',
+        'quantity',
+        'total_cost',
+        'supplier_id',
+      ])
+      if (attached.length === 0 || unhandled.length > 0) {
+        setError(getActionErrorMessage(err, t('supplies.history.logPurchaseAction')))
+      }
     }
   }
 
@@ -477,19 +520,13 @@ function PurchaseForm({
           <label htmlFor="purchase-quantity" className="block text-xs font-medium text-garage-text mb-1">
             {t('supplies.history.quantity')} {unitLabel && `(${unitLabel})`} <span className="text-danger">*</span>
           </label>
-          <input
-            type="number"
+          <NumberInput
             id="purchase-quantity"
-            step="0.01"
-            min="0.01"
-            {...register('quantity', {
-              valueAsNumber: true,
+            {...registerDecimal(register, 'quantity', {
               required: t('supplies.history.quantityRequired'),
-              min: { value: 0.001, message: t('supplies.history.quantityRequired') },
+              validate: (val) => validateSupplyQuantity(val, t('supplies.history.quantityRequired')),
             })}
-            className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-primary bg-garage-bg text-garage-text ${
-              errors.quantity ? 'border-red-500' : 'border-garage-border'
-            }`}
+            invalid={!!errors.quantity}
             disabled={isSubmitting}
           />
           <FormError error={errors.quantity} />
@@ -503,16 +540,17 @@ function PurchaseForm({
           </label>
           <div className="relative">
             <CurrencyInputPrefix />
-            <input
-              type="number"
+            <NumberInput
               id="purchase-cost"
-              step="0.01"
-              min="0"
-              {...register('total_cost', { valueAsNumber: true })}
-              className="w-full pl-7 pr-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-primary bg-garage-bg text-garage-text border-garage-border"
+              {...registerDecimal(register, 'total_cost', {
+                validate: (val) => validateNonNegativeCost(val, t('validation.amount.negative')),
+              })}
+              invalid={!!errors.total_cost}
+              className="pl-7"
               disabled={isSubmitting}
             />
           </div>
+          <FormError error={errors.total_cost} />
         </div>
         <div>
           <label htmlFor="purchase-supplier" className="block text-xs font-medium text-garage-text mb-1">
@@ -590,6 +628,7 @@ function AdjustmentForm({
     handleSubmit,
     reset,
     formState: { errors, isSubmitting },
+    setError: setFieldError,
   } = useForm<AdjustmentFormValues>({ defaultValues: { quantity: undefined } })
 
   const onSubmit = async (values: AdjustmentFormValues) => {
@@ -601,7 +640,13 @@ function AdjustmentForm({
       reset({ quantity: undefined })
       onDone()
     } catch (err) {
-      setError(err instanceof Error ? err.message : t('error'))
+      // attached.length === 0 catches a non-422 failure (network drop, 500):
+      // it carries no field problems at all, so `unhandled` alone would stay
+      // empty and this banner would never show.
+      const { attached, unhandled } = applyServerErrors<AdjustmentFormValues>(setFieldError, err, ['quantity'])
+      if (attached.length === 0 || unhandled.length > 0) {
+        setError(getActionErrorMessage(err, t('supplies.history.logAdjustmentAction')))
+      }
     }
   }
 
@@ -621,19 +666,13 @@ function AdjustmentForm({
         <label htmlFor="adjustment-quantity" className="block text-xs font-medium text-garage-text mb-1">
           {t('supplies.history.quantity')} {unitLabel && `(${unitLabel})`} <span className="text-danger">*</span>
         </label>
-        <input
-          type="number"
+        <NumberInput
           id="adjustment-quantity"
-          step="0.01"
-          min="0.01"
-          {...register('quantity', {
-            valueAsNumber: true,
+          {...registerDecimal(register, 'quantity', {
             required: t('supplies.history.quantityRequired'),
-            min: { value: 0.001, message: t('supplies.history.quantityRequired') },
+            validate: (val) => validateSupplyQuantity(val, t('supplies.history.quantityRequired')),
           })}
-          className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-primary bg-garage-bg text-garage-text ${
-            errors.quantity ? 'border-red-500' : 'border-garage-border'
-          }`}
+          invalid={!!errors.quantity}
           disabled={isSubmitting}
         />
         <FormError error={errors.quantity} />

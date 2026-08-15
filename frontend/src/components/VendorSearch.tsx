@@ -4,6 +4,7 @@ import { Search, Building2, Plus, X } from 'lucide-react'
 import { toast } from 'sonner'
 import type { Vendor, VendorCreate } from '../types/vendor'
 import api from '../services/api'
+import { getActionErrorMessage } from '../utils/httpErrorHandler'
 
 interface VendorSearchProps {
   value?: number
@@ -120,7 +121,7 @@ export default function VendorSearch({
       // ``name`` is user-entered — interpolated as data, never used as a key.
       toast.success(t('vendorSearch.created', { name: newVendor.name }))
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : t('vendorSearch.createFailed'))
+      toast.error(getActionErrorMessage(err, t('vendorSearch.createAction')))
     } finally {
       setCreating(false)
     }

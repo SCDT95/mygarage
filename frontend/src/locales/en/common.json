@@ -42,7 +42,9 @@
     "locationUnavailable": "Location information is unavailable.",
     "locationTimeout": "Location request timed out.",
     "searchFailed": "Failed to search for shops",
+    "searchAction": "search for shops",
     "saveFailed": "Failed to save shop",
+    "saveAction": "save the shop",
     "savedToast": "{{name}} saved to address book!"
   },
   "success": "Success",
@@ -83,7 +85,8 @@
     "registerLink": "Register here",
     "oidcSignIn": "Sign in with {{provider}}",
     "continueWithPassword": "Or continue with password",
-    "error": "Invalid username or password"
+    "error": "Invalid username or password",
+    "signInAction": "sign in"
   },
   "oidc": {
     "signingIn": "Signing you in...",
@@ -136,7 +139,9 @@
     "categoryAll": "All",
     "filterByCategory": "Filter by category",
     "editContactNamed": "Edit {{name}}",
-    "saveChanges": "Save Changes"
+    "saveChanges": "Save Changes",
+    "saveAction": "save the contact",
+    "deleteAction": "delete the contact"
   },
   "supplies": {
     "title": "Supplies",
@@ -166,6 +171,7 @@
     "negativeWarning": "Logged usage exceeds recorded purchases",
     "activeToggle": "Active (uncheck to archive)",
     "viewHistory": "View history",
+    "saveAction": "save the supply",
     "history": {
       "title": "History: {{name}}",
       "loading": "Loading history...",
@@ -204,7 +210,15 @@
       "receipt": "Receipt (optional)",
       "purchaseLogged": "Purchase logged",
       "adjustmentLogged": "Adjustment logged",
-      "adjustmentHint": "Records stock removed outside of a service job (e.g. spillage, gifted, discarded)."
+      "adjustmentHint": "Records stock removed outside of a service job (e.g. spillage, gifted, discarded).",
+      "logPurchaseAction": "log the purchase",
+      "logAdjustmentAction": "log the adjustment",
+      "downloadAction": "download the receipt",
+      "purchaseDeleteAction": "delete the purchase",
+      "receiptDeleteAction": "delete the receipt",
+      "receiptUploadAction": "upload the receipt",
+      "adjustmentDeleteAction": "delete the adjustment",
+      "loadAction": "load history"
     },
     "usedTab": {
       "title": "Supplies Used",
@@ -213,8 +227,11 @@
       "loadError": "Failed to load supplies used",
       "empty": "No supplies logged for this vehicle yet.",
       "quantity": "Quantity",
-      "viewVisit": "View service visit"
-    }
+      "viewVisit": "View service visit",
+      "loadAction": "load supplies used"
+    },
+    "deleteAction": "delete the supply",
+    "loadAction": "load supplies"
   },
   "poiFinder": {
     "title": "Find Points of Interest",
@@ -235,6 +252,7 @@
     "addressTooShort": "Enter an address (≥2 characters)",
     "addressNotFound": "No results for that address",
     "geocodeFailed": "Geocoding failed",
+    "geocodeAction": "geocode the address",
     "categoryAutoShops": "Auto Shops",
     "categoryEvCharging": "EV Charging",
     "categoryGasStations": "Gas Stations",
@@ -249,7 +267,9 @@
     "locationUnavailable": "Location information is unavailable.",
     "locationTimeout": "Location request timed out.",
     "searchFailed": "Failed to search for POIs",
+    "searchAction": "search for points of interest",
     "saveFailed": "Failed to save POI",
+    "saveAction": "save the point of interest",
     "savedToAddressBook": "{{name}} saved to address book!"
   },
   "about": {
@@ -377,6 +397,7 @@
     "passwordRequirements": "Must have: 8+ chars, uppercase, lowercase, number, special char (!@#$...)",
     "submitting": "Creating account...",
     "failed": "Registration failed. Please try again.",
+    "createAccountAction": "create your account",
     "strength": {
       "weak": "Weak",
       "medium": "Medium",
@@ -398,7 +419,8 @@
     "returnToLogin": "Return to login",
     "missingToken": "Link token is missing. Please restart the login process.",
     "passwordRequired": "Password is required",
-    "failed": "Failed to link account. Please try again."
+    "failed": "Failed to link account. Please try again.",
+    "linkAction": "link the account"
   },
   "protectedRoute": {
     "loadingAriaLabel": "Loading"
@@ -433,7 +455,8 @@
     "cancel": "Cancel",
     "add": "Add",
     "adding": "Adding...",
-    "addFailed": "Failed to add entry"
+    "addFailed": "Failed to add entry",
+    "addAction": "add the entry"
   },
   "addressBookAutocomplete": {
     "placeholder": "Type to search...",
@@ -512,31 +535,51 @@
     },
     "odometer": {
       "negative": "Odometer cannot be negative",
-      "tooLarge": "Odometer value too large"
+      "tooLarge": "Odometer value too large",
+      "invalid": "Enter a valid number",
+      "required": "Odometer is required"
     },
     "engineHours": {
       "negative": "Engine hours cannot be negative",
-      "tooLarge": "Engine hours value too large"
+      "tooLarge": "Engine hours value too large",
+      "invalid": "Enter a valid number",
+      "required": "Engine hours are required"
     },
     "amount": {
       "negative": "Amount cannot be negative",
-      "tooLarge": "Amount too large"
+      "tooLarge": "Amount too large",
+      "invalid": "Enter a valid number",
+      "required": "Amount is required"
     },
     "volume": {
       "negative": "Volume cannot be negative",
-      "tooLarge": "Volume too large"
+      "tooLarge": "Volume too large",
+      "invalid": "Enter a valid number",
+      "required": "Volume is required"
     },
     "price": {
       "negative": "Price cannot be negative",
-      "tooLarge": "Price too large"
+      "tooLarge": "Price too large",
+      "invalid": "Enter a valid number",
+      "required": "Price is required"
     },
     "kwh": {
       "negative": "kWh cannot be negative",
-      "tooLarge": "kWh too large"
+      "tooLarge": "kWh too large",
+      "invalid": "Enter a valid number"
     },
     "date": {
       "required": "Date is required",
       "invalidFormat": "Invalid date format"
+    },
+    "provider": {
+      "required": "Provider is required"
+    },
+    "policyNumber": {
+      "required": "Policy number is required"
+    },
+    "policyType": {
+      "required": "Policy type is required"
     },
     "description": {
       "required": "Description is required",
@@ -555,10 +598,13 @@
     "spotRental": {
       "nightlyRateNegative": "Nightly rate cannot be negative",
       "nightlyRateTooLarge": "Nightly rate too large (max $9,999.99)",
+      "nightlyRateInvalid": "Enter a valid number",
       "rateNegative": "Rate cannot be negative",
       "rateTooLarge": "Rate too large (max $99,999.99)",
+      "rateInvalid": "Enter a valid number",
       "utilityNegative": "Utility cost cannot be negative",
       "utilityTooLarge": "Utility cost too large (max $9,999.99)",
+      "utilityInvalid": "Enter a valid number",
       "locationNameTooLong": "Location name too long (max 100 characters)"
     },
     "note": {
@@ -568,7 +614,29 @@
     },
     "def": {
       "fillLevelNegative": "Fill level cannot be negative",
-      "fillLevelTooLarge": "Fill level cannot exceed 100%"
+      "fillLevelTooLarge": "Fill level cannot exceed 100%",
+      "fillLevelInvalid": "Enter a valid number"
+    },
+    "tankQuantity": {
+      "negative": "Tank quantity must be greater than 0",
+      "tooLarge": "Tank quantity too large",
+      "invalid": "Enter a valid number",
+      "notWhole": "Tank quantity must be a whole number"
+    },
+    "vehicle": {
+      "yearNotWhole": "Year must be a whole number",
+      "yearTooEarly": "Year must be 1900 or later",
+      "yearTooLate": "Year must be 2100 or earlier",
+      "yearInvalid": "Enter a valid number",
+      "doorsNotWhole": "Doors must be a whole number",
+      "doorsNegative": "Doors cannot be negative",
+      "doorsTooLarge": "Doors value too large",
+      "doorsInvalid": "Enter a valid number",
+      "cylindersNotWhole": "Cylinders must be a whole number",
+      "cylindersNegative": "Cylinders cannot be negative",
+      "cylindersTooLarge": "Cylinders value too large",
+      "cylindersInvalid": "Enter a valid number",
+      "purchasePriceInvalid": "Enter a valid number"
     },
     "recall": {
       "campaignNumberTooLong": "Campaign number too long (max 50 characters)",
@@ -581,7 +649,10 @@
     },
     "fuel": {
       "fuelTypeTooLong": "Fuel type too long",
-      "obcTripDurationFormat": "Use seconds (e.g. 8100), HH:MM (e.g. 2:15), or HH:MM:SS"
+      "obcTripDurationFormat": "Use seconds (e.g. 8100), HH:MM (e.g. 2:15), or HH:MM:SS",
+      "obcNegative": "OBC value cannot be negative",
+      "obcTooLarge": "OBC value too large",
+      "obcInvalid": "Enter a valid number"
     }
   },
   "httpError": {

@@ -25,10 +25,12 @@ import { UnitConverter, UnitFormatter } from '../utils/units'
 import { toCanonicalKm, toCanonicalLiters, priceToDisplay, priceToCanonical } from '../utils/decimalSafe'
 import { getUsageTracking } from '../utils/usageTracking'
 import CurrencyInputPrefix from './common/CurrencyInputPrefix'
-import { Button, Field, Input, Select, Textarea, Checkbox } from './ui'
+import { Button, Field, Input, NumberInput, Select, Textarea, Checkbox, registerDecimal } from './ui'
 import { formatDateForInput } from '../utils/dateUtils'
 import TimeInput24, { normalizeTime, formatTimeForInput } from './common/TimeInput24'
 import { useTimeFormat } from '../hooks/useTimeFormat'
+import { applyServerErrors } from '../hooks/useApiFormErrors'
+import { getActionErrorMessage } from '../utils/httpErrorHandler'
 
 const MORE_DETAILS_KEY = 'fuel_form:more_details_expanded'
 
@@ -137,6 +139,7 @@ export default function FuelRecordForm({ vin, record, onClose, onSuccess }: Fuel
     setValue,
     watch,
     getValues,
+    setError: setFieldError,
   } = useForm<FuelRecordFormData>({
     resolver: zodResolver(schema) as Resolver<FuelRecordFormData>,
     defaultValues: {
@@ -463,7 +466,39 @@ export default function FuelRecordForm({ vin, record, onClose, onSuccess }: Fuel
       onSuccess()
       onClose()
     } catch (err) {
-      setError(err instanceof Error ? err.message : t('common:error'))
+      // attached.length === 0 catches a non-422 failure (network drop, 500):
+      // it carries no field problems at all, so `unhandled` alone would stay
+      // empty and this banner would never show.
+      const { attached, unhandled } = applyServerErrors<FuelRecordFormData>(setFieldError, err, [
+        'date',
+        'odometer_km',
+        'engine_hours',
+        'liters',
+        'kwh',
+        'propane_liters',
+        'price_per_unit',
+        'price_basis',
+        'rebate',
+        'cost',
+        'fuel_type',
+        'is_full_tank',
+        'missed_fillup',
+        'is_hauling',
+        'def_fill_level',
+        'fuel_type_used',
+        'one_time_visit',
+        'driver_name_freetext',
+        'payment_method',
+        'trip_type',
+        'outside_temp_c',
+        'obc_l_per_100km',
+        'obc_avg_speed_kmh',
+        'obc_trip_duration_s',
+        'notes',
+      ])
+      if (attached.length === 0 || unhandled.length > 0) {
+        setError(getActionErrorMessage(err, t('fuel.saveAction')))
+      }
     }
   }
 
@@ -528,12 +563,9 @@ export default function FuelRecordForm({ vin, record, onClose, onSuccess }: Fuel
             </Field>
             {tracksDistance && (
               <Field id="odometer_km" label={t('common:mileage')} unit={UnitFormatter.getDistanceUnit(system)} error={errors.odometer_km}>
-                <Input
-                  type="number"
+                <NumberInput
                   id="odometer_km"
-                  mono
-                  {...register('odometer_km', { valueAsNumber: true })}
-                  min="0"
+                  {...registerDecimal(register, 'odometer_km')}
                   placeholder={system === 'imperial' ? '45000' : '72420'}
                   invalid={!!errors.odometer_km}
                   disabled={isSubmitting}
@@ -546,13 +578,9 @@ export default function FuelRecordForm({ vin, record, onClose, onSuccess }: Fuel
               NO unit conversion regardless of system, unlike odometer_km above. */}
           {tracksHours && (
             <Field id="engine_hours" label={t('common:engineHours')} unit="hr" error={errors.engine_hours}>
-              <Input
-                type="number"
+              <NumberInput
                 id="engine_hours"
-                mono
-                {...register('engine_hours', { valueAsNumber: true })}
-                min="0"
-                step="0.1"
+                {...registerDecimal(register, 'engine_hours')}
                 placeholder="812.4"
                 invalid={!!errors.engine_hours}
                 disabled={isSubmitting}
@@ -563,32 +591,29 @@ export default function FuelRecordForm({ vin, record, onClose, onSuccess }: Fuel
           <div className="grid grid-cols-3 gap-4">
             {showGallons && (
               <Field id="liters" label={t('fuel.volume')} unit={UnitFormatter.getVolumeUnit(system)} error={errors.liters}>
-                <Input type="number" id="liters" mono {...register('liters', { valueAsNumber: true })} min="0" step="0.001" placeholder={system === 'imperial' ? '12.500' : '47.318'} invalid={!!errors.liters} disabled={isSubmitting} />
+                <NumberInput id="liters" {...registerDecimal(register, 'liters')} placeholder={system === 'imperial' ? '12.500' : '47.318'} invalid={!!errors.liters} disabled={isSubmitting} />
               </Field>
             )}
             {showKwh && (
               <Field id="kwh" label={t('fuel.energy')} unit="kWh" error={errors.kwh}>
-                <Input type="number" id="kwh" mono {...register('kwh', { valueAsNumber: true })} min="0" step="0.001" placeholder="45.500" invalid={!!errors.kwh} disabled={isSubmitting} />
+                <NumberInput id="kwh" {...registerDecimal(register, 'kwh')} placeholder="45.500" invalid={!!errors.kwh} disabled={isSubmitting} />
               </Field>
             )}
             {showPropane && (
               <Field id="propane_liters" label={t('fuel.propane')} unit={UnitFormatter.getVolumeUnit(system)} error={errors.propane_liters}>
-                <Input type="number" id="propane_liters" mono {...register('propane_liters', { valueAsNumber: true })} min="0" step="0.001" placeholder="0.000" invalid={!!errors.propane_liters} disabled={isSubmitting} />
+                <NumberInput id="propane_liters" {...registerDecimal(register, 'propane_liters')} placeholder="0.000" invalid={!!errors.propane_liters} disabled={isSubmitting} />
               </Field>
             )}
             <Field id="price_per_unit" label={priceLabel} error={errors.price_per_unit}>
               <div className="relative">
                 <CurrencyInputPrefix />
-                <input
-                  type="number"
+                <NumberInput
                   id="price_per_unit"
-                  {...register('price_per_unit', { valueAsNumber: true })}
-                  min="0"
-                  step="0.001"
+                  {...registerDecimal(register, 'price_per_unit')}
                   placeholder={isElectric ? '0.130' : (system === 'imperial' ? '3.499' : '0.924')}
-                  aria-invalid={errors.price_per_unit ? true : undefined}
-                  className={`ui-focus-input ui-motion w-full rounded-control border bg-surface-2 pl-7 pr-3 py-2 text-sm text-text font-mono tabular-nums ${errors.price_per_unit ? 'border-danger' : 'border-border'}`}
+                  invalid={!!errors.price_per_unit}
                   disabled={isSubmitting}
+                  className="pl-7"
                 />
               </div>
             </Field>
@@ -617,13 +642,13 @@ export default function FuelRecordForm({ vin, record, onClose, onSuccess }: Fuel
             <Field id="rebate" label={t('fuel.rebate')} error={errors.rebate} hint={t('fuel.rebateHint')}>
               <div className="relative">
                 <CurrencyInputPrefix />
-                <input type="number" id="rebate" {...register('rebate', { valueAsNumber: true })} min="0" step="0.01" placeholder="0.00" aria-invalid={errors.rebate ? true : undefined} className={`ui-focus-input ui-motion w-full rounded-control border bg-surface-2 pl-7 pr-3 py-2 text-sm text-text font-mono tabular-nums ${errors.rebate ? 'border-danger' : 'border-border'}`} disabled={isSubmitting} />
+                <NumberInput id="rebate" {...registerDecimal(register, 'rebate')} placeholder="0.00" invalid={!!errors.rebate} disabled={isSubmitting} className="pl-7" />
               </div>
             </Field>
             <Field id="cost" label={t('common:totalCost')} error={errors.cost} hint={t('fuel.autoCalculatedHint')}>
               <div className="relative">
                 <CurrencyInputPrefix />
-                <input type="number" id="cost" {...register('cost', { valueAsNumber: true })} min="0" step="0.01" placeholder="42.99" aria-invalid={errors.cost ? true : undefined} className={`ui-focus-input ui-motion w-full rounded-control border bg-surface-2 pl-7 pr-3 py-2 text-sm text-text font-mono tabular-nums ${errors.cost ? 'border-danger' : 'border-border'}`} disabled={isSubmitting} />
+                <NumberInput id="cost" {...registerDecimal(register, 'cost')} placeholder="42.99" invalid={!!errors.cost} disabled={isSubmitting} className="pl-7" />
               </div>
             </Field>
           </div>
@@ -664,13 +689,8 @@ export default function FuelRecordForm({ vin, record, onClose, onSuccess }: Fuel
               </div>
               <div className="flex items-center gap-2">
                 <div className="w-24 shrink-0">
-                  <Input
-                    type="number"
-                    mono
-                    {...register('def_fill_level', { valueAsNumber: true })}
-                    min="0"
-                    max="100"
-                    step="1"
+                  <NumberInput
+                    {...registerDecimal(register, 'def_fill_level')}
                     placeholder="75"
                     invalid={!!errors.def_fill_level}
                     disabled={isSubmitting}
@@ -877,10 +897,10 @@ export default function FuelRecordForm({ vin, record, onClose, onSuccess }: Fuel
 
                   <div className="grid grid-cols-3 gap-2">
                     <Field id="obc_l_per_100km" label={t('fuel.obcConsumption')} unit="L/100km">
-                      <Input type="number" id="obc_l_per_100km" mono step="0.01" {...register('obc_l_per_100km', { valueAsNumber: true })} disabled={isSubmitting} />
+                      <NumberInput id="obc_l_per_100km" {...registerDecimal(register, 'obc_l_per_100km')} disabled={isSubmitting} />
                     </Field>
                     <Field id="obc_avg_speed_kmh" label={t('fuel.obcAvgSpeed')} unit="km/h">
-                      <Input type="number" id="obc_avg_speed_kmh" mono step="0.1" {...register('obc_avg_speed_kmh', { valueAsNumber: true })} disabled={isSubmitting} />
+                      <NumberInput id="obc_avg_speed_kmh" {...registerDecimal(register, 'obc_avg_speed_kmh')} disabled={isSubmitting} />
                     </Field>
                     <Field id="obc_trip_duration_s" label={t('fuel.obcDuration')}>
                       <Input type="text" id="obc_trip_duration_s" inputMode="text" placeholder={t('fuelRecordForm.obcDurationPlaceholder')} {...register('obc_trip_duration_s')} disabled={isSubmitting} />

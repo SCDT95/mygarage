@@ -1,26 +1,19 @@
 import { useState, useCallback } from 'react'
-import i18next from 'i18next'
-
-/**
- * Translate the generic submit fallback without ever risking a throw.
- *
- * Deliberately reads the i18next singleton rather than useTranslation: `t`
- * changes identity on every language change, and adding it to handleSubmit's
- * dependency array would hand every consumer a new submit callback mid-edit.
- * Same defensive shape as the tSafe helper in components/ErrorBoundary.tsx.
- */
-function tSafe(key: string, fallback: string): string {
-  try {
-    const value = i18next.t(key, { ns: 'common', defaultValue: fallback })
-    return typeof value === 'string' && value.length > 0 ? value : fallback
-  } catch {
-    return fallback
-  }
-}
+import { getActionErrorMessage } from '@/utils/httpErrorHandler'
 
 interface UseFormSubmitOptions {
   onSuccess: () => void
   onClose: () => void
+  /**
+   * Action description fed into the translated "Failed to {{action}}. …"
+   * template — the caller passes the translated string of a `*.saveAction`
+   * key (e.g. warranty.saveAction), not the key itself. Required so every consumer
+   * surfaces a real backend `detail` on 400/401/403/404/422 (via
+   * getActionErrorMessage) instead of the raw axios `err.message` status
+   * line this hook used to fall back to — the same #140 opaque-string class
+   * the rest of this release fixes everywhere else.
+   */
+  action: string
 }
 
 /**
@@ -35,7 +28,7 @@ interface UseFormSubmitOptions {
  */
 export function useFormSubmit<T>(
   submitFn: (data: T) => Promise<void>,
-  { onSuccess, onClose }: UseFormSubmitOptions,
+  { onSuccess, onClose, action }: UseFormSubmitOptions,
 ): {
   error: string | null
   setError: React.Dispatch<React.SetStateAction<string | null>>
@@ -51,16 +44,10 @@ export function useFormSubmit<T>(
         onSuccess()
         onClose()
       } catch (err) {
-        // Backend/thrown error text passes through as-is; only the generic
-        // fallback is translated.
-        setError(
-          err instanceof Error
-            ? err.message
-            : tSafe('httpError.formSubmitFallback', 'An error occurred'),
-        )
+        setError(getActionErrorMessage(err, action))
       }
     },
-    [submitFn, onSuccess, onClose],
+    [submitFn, onSuccess, onClose, action],
   )
 
   return { error, setError, handleSubmit }

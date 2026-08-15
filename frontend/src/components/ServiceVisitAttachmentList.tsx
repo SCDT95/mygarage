@@ -4,6 +4,7 @@ import { Download, Trash2, FileText, Image, AlertCircle } from 'lucide-react'
 import { formatDateForDisplay } from '../utils/dateUtils'
 import { toast } from 'sonner'
 import api from '../services/api'
+import { getActionErrorMessage } from '../utils/httpErrorHandler'
 import { apiRelative } from '../utils/basePath'
 import type { Attachment } from '../types/attachment'
 import { Card, IconButton, EmptyState, Mono } from './ui'
@@ -29,7 +30,7 @@ export default function ServiceVisitAttachmentList({
       setAttachments(response.data.attachments)
       setError(null)
     } catch (err) {
-      setError(err instanceof Error ? err.message : t('serviceVisitAttachments.errorOccurred'))
+      setError(getActionErrorMessage(err, t('serviceVisitAttachments.loadAction')))
     }
   }, [visitId, t])
 
@@ -48,7 +49,7 @@ export default function ServiceVisitAttachmentList({
       await api.delete(`/attachments/${attachmentId}`)
       await fetchAttachments()
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : t('serviceVisitAttachments.deleteFailed'))
+      toast.error(getActionErrorMessage(err, t('serviceVisitAttachments.deleteAction')))
     } finally {
       setDeletingId(null)
     }
@@ -69,7 +70,7 @@ export default function ServiceVisitAttachmentList({
       window.URL.revokeObjectURL(url)
       document.body.removeChild(a)
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : t('serviceVisitAttachments.downloadFailed'))
+      toast.error(getActionErrorMessage(err, t('serviceVisitAttachments.downloadAction')))
     }
   }
 

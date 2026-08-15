@@ -1,6 +1,6 @@
 import { z } from 'zod'
 import type { TFunction } from 'i18next'
-import { makeDateSchema, makeNotesSchema } from './shared'
+import { makeDateSchema, makeNotesSchema, makeNumericField } from './shared'
 
 /**
  * Spot rental schema matching backend Pydantic validators.
@@ -9,45 +9,46 @@ import { makeDateSchema, makeNotesSchema } from './shared'
  * CRITICAL: This schema fixes 8 missing isNaN validation bugs in SpotRentalForm
  *
  * Factory, not a constant — see the header of schemas/auth.ts for why.
+ *
+ * Task 8 moved every rate/utility field here onto NumberInput/registerDecimal,
+ * which can hand this schema the INVALID_NUMBER sentinel for unparseable
+ * text — the old `.min().max().or(z.nan())` shape only recognized
+ * number/NaN, so a sentinel failed the union and zod reported its raw
+ * "expected number, received symbol" instead of a translated message. Routed
+ * through the shared makeNumericField, preserving the file's existing
+ * three-tier bound structure (nightly/large/utility) exactly — these are
+ * deliberately narrower than the generic currency factory's ceiling in two
+ * of the three tiers, so they keep their own bespoke min/max rather than
+ * being swapped onto makeOptionalCurrencySchema.
  */
 
-// Currency validators specific to spot rental limits - forms use valueAsNumber: true
-const makeNightlyRateSchema = (t: TFunction) =>
-  z
-    .number()
-    .min(0, t('common:validation.spotRental.nightlyRateNegative'))
-    .max(9999.99, t('common:validation.spotRental.nightlyRateTooLarge'))
-
-const makeLargeRateSchema = (t: TFunction) =>
-  z
-    .number()
-    .min(0, t('common:validation.spotRental.rateNegative'))
-    .max(99999.99, t('common:validation.spotRental.rateTooLarge'))
-
-const makeUtilitySchema = (t: TFunction) =>
-  z
-    .number()
-    .min(0, t('common:validation.spotRental.utilityNegative'))
-    .max(9999.99, t('common:validation.spotRental.utilityTooLarge'))
-
-// Optional versions - handle NaN from empty inputs
+// Currency validators specific to spot rental limits.
 const makeOptionalNightlyRateSchema = (t: TFunction) =>
-  makeNightlyRateSchema(t)
-    .or(z.nan())
-    .transform(val => isNaN(val) ? undefined : val)
-    .optional()
+  makeNumericField(t, {
+    min: 0,
+    max: 9999.99,
+    negativeKey: 'common:validation.spotRental.nightlyRateNegative',
+    tooLargeKey: 'common:validation.spotRental.nightlyRateTooLarge',
+    invalidKey: 'common:validation.spotRental.nightlyRateInvalid',
+  })
 
 const makeOptionalLargeRateSchema = (t: TFunction) =>
-  makeLargeRateSchema(t)
-    .or(z.nan())
-    .transform(val => isNaN(val) ? undefined : val)
-    .optional()
+  makeNumericField(t, {
+    min: 0,
+    max: 99999.99,
+    negativeKey: 'common:validation.spotRental.rateNegative',
+    tooLargeKey: 'common:validation.spotRental.rateTooLarge',
+    invalidKey: 'common:validation.spotRental.rateInvalid',
+  })
 
 const makeOptionalUtilitySchema = (t: TFunction) =>
-  makeUtilitySchema(t)
-    .or(z.nan())
-    .transform(val => isNaN(val) ? undefined : val)
-    .optional()
+  makeNumericField(t, {
+    min: 0,
+    max: 9999.99,
+    negativeKey: 'common:validation.spotRental.utilityNegative',
+    tooLargeKey: 'common:validation.spotRental.utilityTooLarge',
+    invalidKey: 'common:validation.spotRental.utilityInvalid',
+  })
 
 export const makeSpotRentalSchema = (t: TFunction) =>
   z.object({

@@ -7,7 +7,15 @@
 ARG BUN_VERSION=1.3.14
 
 # Stage 1: Build frontend with Bun
-FROM oven/bun:${BUN_VERSION}-alpine AS frontend-builder
+#
+# glibc, NOT alpine. Vite 8 bundles with Rolldown (native Rust); its chunk
+# render phase is allocation-heavy across every core, and musl's globally
+# locked malloc serialises it. Measured on this tree, same bun 1.3.14 and
+# the same lockfile: alpine ~1090s, slim 0.38s. The musl binding loads fine
+# — it is the allocator, not a missing/WASM fallback, so pinning a binding
+# would not help. Build-stage only: just dist/ is copied into the
+# python:3.14-slim runtime, so this costs the shipped image nothing.
+FROM oven/bun:${BUN_VERSION}-slim AS frontend-builder
 
 # Set working directory
 WORKDIR /app/frontend

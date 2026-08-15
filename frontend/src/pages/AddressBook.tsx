@@ -26,6 +26,8 @@ import { Chip, Button, Field, Input, Textarea, Select, SearchField } from '../co
 import type { IconType } from '../components/ui/types'
 import FormModalWrapper from '../components/FormModalWrapper'
 import api from '../services/api'
+import { applyServerErrors } from '../hooks/useApiFormErrors'
+import { getActionErrorMessage } from '../utils/httpErrorHandler'
 
 // Icon per canonical category, used on both the filter chips and the card badge.
 const CATEGORY_ICONS: Record<string, IconType> = {
@@ -285,6 +287,7 @@ export function AddressBookForm({ entry, onClose, onSuccess }: AddressBookFormPr
     register,
     handleSubmit,
     formState: { errors, isSubmitting },
+    setError: setFieldError,
   } = useForm<AddressBookFormData>({
     resolver: zodResolver(addressBookSchema),
     defaultValues: {
@@ -331,7 +334,25 @@ export function AddressBookForm({ entry, onClose, onSuccess }: AddressBookFormPr
 
       onSuccess()
     } catch (err) {
-      setError(err instanceof Error ? err.message : t('common:error'))
+      // attached.length === 0 catches a non-422 failure (network drop, 500):
+      // it carries no field problems at all, so `unhandled` alone would stay
+      // empty and this banner would never show.
+      const { attached, unhandled } = applyServerErrors<AddressBookFormData>(setFieldError, err, [
+        'name',
+        'business_name',
+        'email',
+        'phone',
+        'website',
+        'address',
+        'city',
+        'state',
+        'zip_code',
+        'category',
+        'notes',
+      ])
+      if (attached.length === 0 || unhandled.length > 0) {
+        setError(getActionErrorMessage(err, t('addressBook.saveAction')))
+      }
     }
   }
 
@@ -342,7 +363,7 @@ export function AddressBookForm({ entry, onClose, onSuccess }: AddressBookFormPr
       await api.delete(`/address-book/${entry.id}`)
       onSuccess()
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : t('addressBook.deleteError'))
+      toast.error(getActionErrorMessage(err, t('addressBook.deleteAction')))
     }
   }
 

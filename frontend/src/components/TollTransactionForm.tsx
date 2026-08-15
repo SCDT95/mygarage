@@ -1,14 +1,16 @@
 import { useTranslation } from 'react-i18next'
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import { useForm, type Resolver } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { Save } from 'lucide-react'
 import FormModalWrapper from './FormModalWrapper'
 import CurrencyInputPrefix from './common/CurrencyInputPrefix'
-import { Button, Field, Input, Select, Textarea } from './ui'
+import { Button, Field, Input, NumberInput, Select, Textarea, registerDecimal } from './ui'
 import type { TollTransaction, TollTransactionCreate, TollTransactionUpdate, TollTag } from '../types/toll'
-import { tollTransactionSchema, type TollTransactionFormData } from '../schemas/tollTransaction'
+import { makeTollTransactionSchema, type TollTransactionFormData } from '../schemas/tollTransaction'
 import { useCreateTollTransaction, useUpdateTollTransaction } from '../hooks/queries/useTollRecords'
+import { applyServerErrors } from '../hooks/useApiFormErrors'
+import { getActionErrorMessage } from '../utils/httpErrorHandler'
 
 interface TollTransactionFormProps {
   vin: string
@@ -25,12 +27,18 @@ export default function TollTransactionForm({ vin, tollTags, transaction, onClos
   const createMutation = useCreateTollTransaction(vin)
   const updateMutation = useUpdateTollTransaction(vin)
 
+  // Zod bakes its messages in at construction, so the schema is rebuilt when
+  // the language changes. Only the resolver depends on it — no fetch, no
+  // reset() — so a rebuild can't discard what the user typed.
+  const schema = useMemo(() => makeTollTransactionSchema(t), [t])
+
   const {
     register,
     handleSubmit,
     formState: { errors, isSubmitting },
+    setError: setFieldError,
   } = useForm<TollTransactionFormData>({
-    resolver: zodResolver(tollTransactionSchema) as Resolver<TollTransactionFormData>,
+    resolver: zodResolver(schema) as Resolver<TollTransactionFormData>,
     defaultValues: {
       transaction_date: transaction?.date || new Date().toISOString().split('T')[0],
       amount: transaction?.amount != null ? Number(transaction.amount) : undefined,
@@ -66,7 +74,19 @@ export default function TollTransactionForm({ vin, tollTags, transaction, onClos
       onSuccess()
       onClose()
     } catch (err) {
-      setError(err instanceof Error ? err.message : t('common:error'))
+      // attached.length === 0 catches a non-422 failure (network drop, 500):
+      // it carries no field problems at all, so `unhandled` alone would stay
+      // empty and this banner would never show.
+      const { attached, unhandled } = applyServerErrors<TollTransactionFormData>(setFieldError, err, [
+        'transaction_date',
+        'amount',
+        'location',
+        'toll_tag_id',
+        'notes',
+      ])
+      if (attached.length === 0 || unhandled.length > 0) {
+        setError(getActionErrorMessage(err, t('toll.saveTransactionAction')))
+      }
     }
   }
 
@@ -103,16 +123,13 @@ export default function TollTransactionForm({ vin, tollTags, transaction, onClos
             <Field id="amount" label={t('common:amount')} required error={errors.amount}>
               <div className="relative">
                 <CurrencyInputPrefix />
-                <input
-                  type="number"
+                <NumberInput
                   id="amount"
-                  min="0"
-                  step="0.01"
-                  {...register('amount', { valueAsNumber: true })}
+                  {...registerDecimal(register, 'amount')}
                   placeholder="0.00"
-                  aria-invalid={errors.amount ? true : undefined}
-                  className={`ui-focus-input ui-motion w-full rounded-control border bg-surface-2 pl-7 pr-3 py-2 text-sm text-text font-mono tabular-nums ${errors.amount ? 'border-danger' : 'border-border'}`}
+                  invalid={!!errors.amount}
                   disabled={isSubmitting}
+                  className="pl-7"
                 />
               </div>
             </Field>

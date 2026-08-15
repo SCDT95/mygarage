@@ -1,12 +1,12 @@
 import { useTranslation } from 'react-i18next'
-import { useCallback } from 'react'
+import { useCallback, useMemo } from 'react'
 import { useForm, type Resolver } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { Save } from 'lucide-react'
 import FormModalWrapper from './FormModalWrapper'
-import { Button, Field, Input, Select, Textarea } from './ui'
+import { Button, Field, Input, NumberInput, Select, Textarea, registerDecimal } from './ui'
 import type { WarrantyRecord, WarrantyRecordCreate, WarrantyRecordUpdate } from '../types/warranty'
-import { warrantySchema, type WarrantyFormData, WARRANTY_TYPES } from '../schemas/warranty'
+import { makeWarrantySchema, type WarrantyFormData, WARRANTY_TYPES } from '../schemas/warranty'
 import { useCreateWarrantyRecord, useUpdateWarrantyRecord } from '../hooks/queries/useWarrantyRecords'
 import { formatDateForInput } from '../utils/dateUtils'
 import { useFormSubmit } from '../hooks/useFormSubmit'
@@ -48,14 +48,23 @@ export default function WarrantyForm({ vin, record, onClose, onSuccess }: Warran
     }
   }, [isEdit, record, system, createMutation, updateMutation])
 
-  const { error, handleSubmit: onSubmit } = useFormSubmit(submitFn, { onSuccess, onClose })
+  const { error, handleSubmit: onSubmit } = useFormSubmit(submitFn, {
+    onSuccess,
+    onClose,
+    action: t('warranty.saveAction'),
+  })
+
+  // Zod bakes its messages in at construction, so the schema is rebuilt when
+  // the language changes. Only the resolver depends on it — no fetch, no
+  // reset() — so a rebuild can't discard what the user typed.
+  const schema = useMemo(() => makeWarrantySchema(t), [t])
 
   const {
     register,
     handleSubmit,
     formState: { errors, isSubmitting },
   } = useForm<WarrantyFormData>({
-    resolver: zodResolver(warrantySchema) as Resolver<WarrantyFormData>,
+    resolver: zodResolver(schema) as Resolver<WarrantyFormData>,
     defaultValues: {
       warranty_type: record?.warranty_type || '',
       provider: record?.provider || '',
@@ -127,7 +136,7 @@ export default function WarrantyForm({ vin, record, onClose, onSuccess }: Warran
 
           <div className="grid grid-cols-2 gap-4">
             <Field id="mileage_limit_km" label={t('warranty.mileageLimit')} unit={UnitFormatter.getDistanceUnit(system)} error={errors.mileage_limit_km}>
-              <Input id="mileage_limit_km" type="number" mono {...register('mileage_limit_km', { valueAsNumber: true })} min="0" placeholder={t('warrantyForm.mileageLimitPlaceholder')} invalid={!!errors.mileage_limit_km} disabled={isSubmitting} />
+              <NumberInput id="mileage_limit_km" {...registerDecimal(register, 'mileage_limit_km')} placeholder={t('warrantyForm.mileageLimitPlaceholder')} invalid={!!errors.mileage_limit_km} disabled={isSubmitting} />
             </Field>
             <Field id="policy_number" label={t('insurance.policyNumber')} error={errors.policy_number}>
               <Input id="policy_number" type="text" {...register('policy_number')} placeholder={t('warrantyForm.policyNumberPlaceholder')} invalid={!!errors.policy_number} disabled={isSubmitting} />

@@ -1,5 +1,9 @@
 import { describe, it, expect } from 'vitest'
-import { propaneRecordSchema } from '../propane'
+import { makePropaneRecordSchema } from '../propane'
+import { INVALID_NUMBER } from '../shared'
+
+const t = ((key: string) => key) as unknown as Parameters<typeof makePropaneRecordSchema>[0]
+const propaneRecordSchema = makePropaneRecordSchema(t)
 
 describe('Propane Record Schema', () => {
   const validPropane = {
@@ -54,19 +58,29 @@ describe('Propane Record Schema', () => {
     expect(result.success).toBe(false)
   })
 
-  it('transforms NaN numeric fields to undefined', () => {
+  // tank_size_kg stays on the old .or(z.nan()) shape (its <Select> stays on
+  // valueAsNumber and never produces INVALID_NUMBER), so NaN still transforms
+  // to undefined there. propane_liters/cost now route through the shared
+  // makeNumericField (post-Task-8b), which rejects NaN as invalid rather
+  // than treating it as empty — see shared.test.ts.
+  it('transforms NaN tank_size_kg to undefined (bespoke Select-backed field, unaffected by Task 8/8b)', () => {
     const result = propaneRecordSchema.safeParse({
       ...validPropane,
-      propane_liters: NaN,
       tank_size_kg: NaN,
-      cost: NaN,
     })
     expect(result.success).toBe(true)
     if (result.success) {
-      expect(result.data.propane_liters).toBeUndefined()
       expect(result.data.tank_size_kg).toBeUndefined()
-      expect(result.data.cost).toBeUndefined()
     }
+  })
+
+  it('rejects NaN propane_liters/cost as invalid rather than silently discarding them', () => {
+    const result = propaneRecordSchema.safeParse({
+      ...validPropane,
+      propane_liters: NaN,
+      cost: NaN,
+    })
+    expect(result.success).toBe(false)
   })
 
   it('rejects vendor over 100 characters', () => {
@@ -75,5 +89,31 @@ describe('Propane Record Schema', () => {
       vendor: 'A'.repeat(101),
     })
     expect(result.success).toBe(false)
+  })
+
+  // Regression for the CRITICAL finding: the pre-refactor `.or(z.nan())`
+  // shape these fields used to have couldn't recognize INVALID_NUMBER (the
+  // sentinel registerDecimal emits for unparseable text) and leaked zod's
+  // raw "Invalid input: expected number, received symbol" instead of a
+  // translated message. Assert each converted field now reports one.
+  it('rejects the INVALID_NUMBER sentinel with translated messages, not a raw zod union error', () => {
+    const result = propaneRecordSchema.safeParse({
+      ...validPropane,
+      propane_liters: INVALID_NUMBER,
+      tank_quantity: INVALID_NUMBER,
+      price_per_unit: INVALID_NUMBER,
+      cost: INVALID_NUMBER,
+    })
+    expect(result.success).toBe(false)
+    if (!result.success) {
+      const messages = result.error.issues.map(i => i.message)
+      expect(messages).toContain('common:validation.volume.invalid')
+      expect(messages).toContain('common:validation.tankQuantity.invalid')
+      expect(messages).toContain('common:validation.price.invalid')
+      expect(messages).toContain('common:validation.amount.invalid')
+      for (const m of messages) {
+        expect(m).not.toMatch(/received symbol|expected number/i)
+      }
+    }
   })
 })

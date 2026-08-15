@@ -2,6 +2,7 @@ import { useTranslation } from 'react-i18next'
 import { useState } from 'react'
 import { Eye, EyeOff } from 'lucide-react'
 import api from '../../services/api'
+import { getActionErrorMessage } from '../../utils/httpErrorHandler'
 import { Drawer } from '../ui'
 
 interface POIProvider {
@@ -42,8 +43,7 @@ function EditProviderModalContent({ provider, onClose, onSave }: Omit<Props, 'is
       onSave()
       onClose()
     } catch (error: unknown) {
-      const err = error as { response?: { data?: { detail?: string } } }
-      setError(err.response?.data?.detail || t('editProviderModal.failedToUpdateProvider'))
+      setError(getActionErrorMessage(error, t('editProviderModal.updateAction')))
     }
   }
 

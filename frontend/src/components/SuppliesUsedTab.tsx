@@ -2,6 +2,7 @@ import { Link } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { AlertTriangle, Package } from 'lucide-react'
 import { Card, Mono, EmptyState } from '@/components/ui'
+import { getActionErrorMessage } from '@/utils/httpErrorHandler'
 import { useVehicleSupplyUsages } from '@/hooks/queries/useSupplies'
 import { useCurrencyPreference } from '@/hooks/useCurrencyPreference'
 import { useUnitPreference } from '@/hooks/useUnitPreference'
@@ -58,7 +59,7 @@ export default function SuppliesUsedTab({ vin }: SuppliesUsedTabProps) {
       <div className="flex items-start gap-2 bg-danger/10 border border-danger rounded-lg p-4">
         <AlertTriangle aria-hidden="true" className="w-4 h-4 text-danger flex-shrink-0 mt-0.5" />
         <p className="text-danger">
-          {error instanceof Error ? error.message : t('supplies.usedTab.loadError')}
+          {getActionErrorMessage(error, t('supplies.usedTab.loadAction'))}
         </p>
       </div>
     )

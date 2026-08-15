@@ -4,6 +4,7 @@ import { Clock, Plus, Edit, Trash2 } from 'lucide-react'
 import { toast } from 'sonner'
 import type { HoursRecord, HoursSource } from '../types/hours'
 import { useHoursRecords, useDeleteHoursRecord } from '../hooks/queries/useHoursRecords'
+import { getActionErrorMessage } from '../utils/httpErrorHandler'
 import { Button, IconButton, Card, Mono, DataTable, EmptyState } from './ui'
 import type { DataTableColumn } from './ui'
 
@@ -38,7 +39,7 @@ export default function HoursRecordList({ vin, onAddClick, onEditClick }: HoursR
 
     deleteMutation.mutate(recordId, {
       onError: (err) => {
-        toast.error(err instanceof Error ? err.message : t('hoursList.deleteError'))
+        toast.error(getActionErrorMessage(err, t('hoursList.deleteAction')))
       },
     })
   }
@@ -105,7 +106,7 @@ export default function HoursRecordList({ vin, onAddClick, onEditClick }: HoursR
   if (error) {
     return (
       <div className="bg-danger/10 border border-danger rounded-lg p-4">
-        <p className="text-danger">{error.message}</p>
+        <p className="text-danger">{getActionErrorMessage(error, t('hoursList.loadAction'))}</p>
       </div>
     )
   }

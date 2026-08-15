@@ -10,6 +10,7 @@ import { useTranslation } from 'react-i18next'
 import { MapPin, Loader2, Navigation, AlertTriangle, Search } from 'lucide-react'
 import { toast } from 'sonner'
 import api from '@/services/api'
+import { getActionErrorMessage } from '@/utils/httpErrorHandler'
 import { Button, Select, Toggle } from '@/components/ui'
 import POICard from '@/components/POICard'
 import MapDisplay from '@/components/MapDisplay'
@@ -163,8 +164,7 @@ export default function POIFinder() {
       setStep('searching')
       await searchNearbyPOIs(top.latitude, top.longitude)
     } catch (err) {
-      const detail = (err as { response?: { data?: { detail?: string } } }).response?.data?.detail
-      const message = detail || t('poiFinder.geocodeFailed')
+      const message = getActionErrorMessage(err, t('poiFinder.geocodeAction'))
       setError(message)
       toast.error(message)
     } finally {
@@ -203,8 +203,7 @@ export default function POIFinder() {
       setSearchSource(response.data.source)
       setStep('results')
     } catch (err) {
-      const detail = (err as { response?: { data?: { detail?: string } } }).response?.data?.detail
-      const errorMessage = typeof detail === 'string' ? detail : t('poiFinder.searchFailed')
+      const errorMessage = getActionErrorMessage(err, t('poiFinder.searchAction'))
       setError(errorMessage)
       toast.error(errorMessage)
       setStep('permission')
@@ -238,8 +237,7 @@ export default function POIFinder() {
 
       loadRecommendations()
     } catch (err) {
-      const detail = (err as { response?: { data?: { detail?: string } } }).response?.data?.detail
-      toast.error(typeof detail === 'string' ? detail : t('poiFinder.saveFailed'))
+      toast.error(getActionErrorMessage(err, t('poiFinder.saveAction')))
     }
   }
 

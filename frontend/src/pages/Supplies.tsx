@@ -21,6 +21,8 @@ import FormModalWrapper from '@/components/FormModalWrapper'
 import SupplyHistoryModal from '@/components/SupplyHistoryModal'
 import type { Supply, SupplyCreate, SupplyUpdate } from '@/types/supplies'
 import { getActiveLocale } from '@/constants/i18n'
+import { applyServerErrors } from '@/hooks/useApiFormErrors'
+import { getActionErrorMessage } from '@/utils/httpErrorHandler'
 
 export default function Supplies() {
   const { t } = useTranslation('common')
@@ -56,7 +58,7 @@ export default function Supplies() {
 
     deleteMutation.mutate(supply.id, {
       onSuccess: () => toast.success(t('supplies.deleted')),
-      onError: (err) => toast.error(err instanceof Error ? err.message : t('supplies.deleteError')),
+      onError: (err) => toast.error(getActionErrorMessage(err, t('supplies.deleteAction'))),
     })
   }
 
@@ -107,7 +109,7 @@ export default function Supplies() {
           <div className="flex items-start gap-2 p-3 bg-danger/10 border border-danger/20 rounded-md mb-4">
             <AlertTriangle className="w-4 h-4 text-danger flex-shrink-0 mt-0.5" />
             <p className="text-sm text-danger">
-              {error instanceof Error ? error.message : t('supplies.loadError')}
+              {getActionErrorMessage(error, t('supplies.loadAction'))}
             </p>
           </div>
         )}
@@ -255,6 +257,7 @@ export function SupplyForm({ supply, onClose, onSuccess }: SupplyFormProps) {
     register,
     handleSubmit,
     formState: { errors, isSubmitting },
+    setError: setFieldError,
   } = useForm<SupplyFormData>({
     resolver: zodResolver(schema),
     defaultValues: {
@@ -296,7 +299,20 @@ export function SupplyForm({ supply, onClose, onSuccess }: SupplyFormProps) {
       onSuccess()
       onClose()
     } catch (err) {
-      setError(err instanceof Error ? err.message : t('common:error'))
+      // attached.length === 0 catches a non-422 failure (network drop, 500):
+      // it carries no field problems at all, so `unhandled` alone would stay
+      // empty and this banner would never show.
+      const { attached, unhandled } = applyServerErrors<SupplyFormData>(setFieldError, err, [
+        'name',
+        'unit_type',
+        'part_number',
+        'category',
+        'notes',
+        'vin',
+      ])
+      if (attached.length === 0 || unhandled.length > 0) {
+        setError(getActionErrorMessage(err, t('supplies.saveAction')))
+      }
     }
   }
 

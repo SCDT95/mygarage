@@ -71,3 +71,100 @@ describe('ReminderForm — create vs update routing (SDQ-C)', () => {
     expect(updateMock).not.toHaveBeenCalled()
   })
 })
+
+// Task 10 addendum — the coordinator flagged that 10a's catch-block rewrite
+// (parseApiError(err).fieldErrors -> fieldErrors map, else setError(...))
+// gained real branching (the problems.length>0 test, the fieldErrors state,
+// the render wiring) with zero test coverage. This is the same class of gap
+// that hid a live bug in Task 7/9 — a non-422 failure showing NOTHING to the
+// user — for two more tasks after a reviewer flagged it as Minor and it was
+// deferred. Both branches are fenced here on the real create-mutation path.
+describe('ReminderForm — server-side error wiring (Task 10 addendum)', () => {
+  const fillMinimal = () => {
+    fireEvent.change(screen.getByLabelText('common:title *'), { target: { value: 'Oil change' } })
+    fireEvent.change(screen.getByLabelText('reminder.dueDate *'), { target: { value: '2026-06-01' } })
+  }
+
+  it('a 422 naming "notes" lands its message on the notes field (fails if the fieldErrors map is not wired to the Field)', async () => {
+    createMock.mockRejectedValueOnce({
+      isAxiosError: true,
+      message: 'Request failed with status code 422',
+      response: {
+        status: 422,
+        data: { detail: [{ type: 'string_too_long', loc: ['body', 'notes'], msg: 'Notes must be 2000 characters or fewer' }] },
+      },
+    })
+    render(<ReminderForm vin="V1" onClose={vi.fn()} onSuccess={vi.fn()} />)
+    fillMinimal()
+    fireEvent.click(screen.getByRole('button', { name: 'common:create' }))
+
+    await vi.waitFor(() => expect(createMock).toHaveBeenCalledTimes(1))
+    const alert = await screen.findByRole('alert')
+    expect(alert).toHaveTextContent('Notes must be 2000 characters or fewer')
+    expect(alert.id).toBe('reminder-notes-error')
+  })
+
+  it('a non-422 failure (network error) still shows the banner instead of staying silent (regression fence for the Task 7/9 silent-failure bug)', async () => {
+    createMock.mockRejectedValueOnce(new Error('Network Error'))
+    render(<ReminderForm vin="V1" onClose={vi.fn()} onSuccess={vi.fn()} />)
+    fillMinimal()
+    fireEvent.click(screen.getByRole('button', { name: 'common:create' }))
+
+    await vi.waitFor(() => expect(createMock).toHaveBeenCalledTimes(1))
+    await vi.waitFor(() => expect(screen.getByText('Failed to {{action}}. {{message}}')).toBeInTheDocument())
+  })
+
+  // Final-review I4 regression fence: a 422 naming a field with NO render
+  // target (reminder_type is a button group, not a Field) used to write to
+  // fieldErrors state, render nothing for it, and — because the old gate was
+  // `problems.length > 0 ? fieldErrors : setError(...)` — suppress the banner
+  // too. The fix (applyControlledFieldErrors's attached/unhandled split) must
+  // surface SOMETHING when a problem is left over even though another
+  // problem DID attach.
+  it('a 422 with one mapped field and one unmapped field still shows the banner for the unmapped one (fails if the silent-failure gate regresses)', async () => {
+    createMock.mockRejectedValueOnce({
+      isAxiosError: true,
+      message: 'Request failed with status code 422',
+      response: {
+        status: 422,
+        data: {
+          detail: [
+            { type: 'string_too_long', loc: ['body', 'notes'], msg: 'Notes must be 2000 characters or fewer' },
+            { type: 'enum', loc: ['body', 'reminder_type'], msg: 'Invalid reminder type' },
+          ],
+        },
+      },
+    })
+    render(<ReminderForm vin="V1" onClose={vi.fn()} onSuccess={vi.fn()} />)
+    fillMinimal()
+    fireEvent.click(screen.getByRole('button', { name: 'common:create' }))
+
+    await vi.waitFor(() => expect(createMock).toHaveBeenCalledTimes(1))
+    // The mapped field still gets its own message...
+    await vi.waitFor(() =>
+      expect(screen.getByText('Notes must be 2000 characters or fewer')).toBeInTheDocument()
+    )
+    // ...AND the unmapped reminder_type problem must not vanish silently —
+    // it has to surface via the generic action-failed banner.
+    expect(screen.getByText('Failed to {{action}}. Please check your input.')).toBeInTheDocument()
+  })
+
+  it('a 422 naming ONLY an unmapped field shows the banner, not silence (fails if attached.length===0 check regresses)', async () => {
+    createMock.mockRejectedValueOnce({
+      isAxiosError: true,
+      message: 'Request failed with status code 422',
+      response: {
+        status: 422,
+        data: {
+          detail: [{ type: 'enum', loc: ['body', 'reminder_type'], msg: 'Invalid reminder type' }],
+        },
+      },
+    })
+    render(<ReminderForm vin="V1" onClose={vi.fn()} onSuccess={vi.fn()} />)
+    fillMinimal()
+    fireEvent.click(screen.getByRole('button', { name: 'common:create' }))
+
+    await vi.waitFor(() => expect(createMock).toHaveBeenCalledTimes(1))
+    expect(await screen.findByText('Failed to {{action}}. Please check your input.')).toBeInTheDocument()
+  })
+})

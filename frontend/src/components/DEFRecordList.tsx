@@ -12,6 +12,7 @@ import { UnitConverter, UnitFormatter } from '../utils/units'
 import { useDEFRecords, useDEFAnalytics, useDeleteDEFRecord } from '../hooks/queries/useDEFRecords'
 import { useQueryClient } from '@tanstack/react-query'
 import { getActiveLocale } from '@/constants/i18n'
+import { getActionErrorMessage } from '../utils/httpErrorHandler'
 import { Button, IconButton, Card, Mono, Chip, DataTable, EmptyState } from './ui'
 import type { DataTableColumn } from './ui'
 
@@ -59,7 +60,7 @@ export default function DEFRecordList({ vin, readOnly = false }: DEFRecordListPr
         toast.success(t('defList.deleted'))
       },
       onError: (err) => {
-        toast.error(err instanceof Error ? err.message : t('defList.deleteError'))
+        toast.error(getActionErrorMessage(err, t('defList.deleteAction')))
       },
     })
   }
@@ -244,7 +245,7 @@ export default function DEFRecordList({ vin, readOnly = false }: DEFRecordListPr
       {error && (
         <div className="flex items-start gap-2 p-3 bg-danger/10 border border-danger/20 rounded-md mb-4">
           <AlertCircle aria-hidden="true" className="w-4 h-4 text-danger flex-shrink-0 mt-0.5" />
-          <p className="text-sm text-danger">{error.message}</p>
+          <p className="text-sm text-danger">{getActionErrorMessage(error, t('defList.loadAction'))}</p>
         </div>
       )}
 
