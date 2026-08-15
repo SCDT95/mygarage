@@ -42,10 +42,10 @@ describe('optional numeric factory', () => {
     if (!r.success) expect(r.error.issues[0].message).toBe('common:validation.amount.invalid')
   })
 
-  it('still maps NaN to undefined for now (Task 8b flips this)', () => {
+  it('rejects NaN as invalid rather than silently discarding it', () => {
     const r = optObj.safeParse({ amount: NaN })
-    expect(r.success).toBe(true)
-    if (r.success) expect(r.data.amount).toBeUndefined()
+    expect(r.success).toBe(false)
+    if (!r.success) expect(r.error.issues[0].message).toBe('common:validation.amount.invalid')
   })
 })
 
@@ -66,16 +66,18 @@ describe('required numeric factory', () => {
     expect(reqObj.safeParse({ amount: 42.5 }).success).toBe(true)
   })
 
-  it('rejects NaN on a REQUIRED field rather than dropping it', () => {
-    // regression: NaN skipped the requiredKey check and submitted silently
+  it('rejects NaN on a REQUIRED field as invalid, not as dropped/empty', () => {
+    // Post-Task-8b: NaN can only arrive from a control that failed to parse
+    // (never an empty one, since registerDecimal emits undefined for empty),
+    // so it now reports invalidKey rather than requiredKey.
     const r = reqObj.safeParse({ amount: NaN })
     expect(r.success).toBe(false)
-    if (!r.success) expect(r.error.issues[0].message).toBe('common:validation.amount.required')
+    if (!r.success) expect(r.error.issues[0].message).toBe('common:validation.amount.invalid')
   })
 
-  it('still treats NaN as empty on an OPTIONAL field (Task 8b flips this)', () => {
+  it('rejects NaN on an OPTIONAL field as invalid too, not as empty', () => {
     const r = optObj.safeParse({ amount: NaN })
-    expect(r.success).toBe(true)
-    if (r.success) expect(r.data.amount).toBeUndefined()
+    expect(r.success).toBe(false)
+    if (!r.success) expect(r.error.issues[0].message).toBe('common:validation.amount.invalid')
   })
 })

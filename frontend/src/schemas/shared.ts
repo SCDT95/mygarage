@@ -51,22 +51,13 @@ const makeNumericField = (t: TFunction, opts: NumericFieldOptions) =>
     .unknown()
     .optional()
     .superRefine((val, ctx) => {
-      // NaN belongs to the EMPTY set, not to its own early return.
-      //
-      // An earlier draft returned on NaN AFTER this branch. That let a REQUIRED
-      // field receiving NaN skip the requiredKey check and pass silently — a
-      // real regression, since the pre-task required factories were bare
-      // `z.number()`, which rejects NaN. Reproduced live on OdometerRecordForm,
-      // HoursRecordForm and TaxRecordForm.
-      //
-      // TASK 8b REMOVES ONLY THE NaN CLAUSE BELOW. Until then NaN reads as
-      // empty, preserving behaviour while 13 components still emit it via
-      // valueAsNumber.
-      const isEmpty =
-        val === undefined ||
-        val === null ||
-        val === '' ||
-        (typeof val === 'number' && Number.isNaN(val))
+      // Task 8 finished migrating every numeric producer off valueAsNumber
+      // onto registerDecimal, which never emits a raw NaN — empty input
+      // becomes undefined and unparseable text becomes INVALID_NUMBER. So a
+      // NaN reaching this point can only mean a control that failed to
+      // parse, never an empty one, and belongs with the invalid guard below,
+      // not the empty one.
+      const isEmpty = val === undefined || val === null || val === ''
 
       if (isEmpty) {
         if (opts.requiredKey) {
@@ -75,7 +66,7 @@ const makeNumericField = (t: TFunction, opts: NumericFieldOptions) =>
         return
       }
 
-      if (val === INVALID_NUMBER || typeof val !== 'number') {
+      if (val === INVALID_NUMBER || typeof val !== 'number' || Number.isNaN(val)) {
         ctx.addIssue({ code: 'custom', message: t(opts.invalidKey) })
         return
       }

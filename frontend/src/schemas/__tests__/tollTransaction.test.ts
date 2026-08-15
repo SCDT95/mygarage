@@ -44,14 +44,20 @@ describe('Toll Transaction Schema', () => {
     expect(result.success).toBe(false)
   })
 
-  it('transforms NaN amount to undefined', () => {
+  // Task 8b: `amount` routes through the shared makeNumericField, which no
+  // longer treats NaN as empty — it can now only arrive from a control that
+  // failed to parse, never an empty one, so it's rejected as invalid instead
+  // of silently discarded. `toll_tag_id` (below) is unaffected: it keeps its
+  // own bespoke NaN-to-undefined transform since its <Select> stays on
+  // valueAsNumber and never produces the INVALID_NUMBER sentinel.
+  it('rejects NaN amount as invalid rather than silently discarding it', () => {
     const result = tollTransactionSchema.safeParse({
       ...validTransaction,
       amount: NaN,
     })
-    expect(result.success).toBe(true)
-    if (result.success) {
-      expect(result.data.amount).toBeUndefined()
+    expect(result.success).toBe(false)
+    if (!result.success) {
+      expect(result.error.issues[0].message).toBe('common:validation.amount.invalid')
     }
   })
 
