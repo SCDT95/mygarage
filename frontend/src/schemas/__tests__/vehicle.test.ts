@@ -1,6 +1,13 @@
 import { describe, it, expect } from 'vitest'
 import { z } from 'zod'
-import { vehicleEditSchema, VEHICLE_TYPES } from '../vehicle'
+import type { TFunction } from 'i18next'
+import { makeVehicleEditSchema, VEHICLE_TYPES } from '../vehicle'
+import { INVALID_NUMBER } from '../shared'
+
+// Same shape as the global react-i18next mock in src/__tests__/setup.ts:
+// messages come back as their i18n key, which is all these tests need.
+const t = ((key: string) => key) as unknown as TFunction
+const vehicleEditSchema = makeVehicleEditSchema(t)
 
 // Mock vehicle schema based on typical structure
 const vehicleSchema = z.object({
@@ -337,16 +344,23 @@ describe('vehicleEditSchema — purchase_price/sold_price stay absent when omitt
   })
 })
 
-// Task 19 extension: the numeric fields (purchase_price, sold_price, year,
-// doors, cylinders) collapsed a blanked input — which react-hook-form's
-// `valueAsNumber` turns into NaN — to `undefined`, same silent no-op against
-// `exclude_unset=True`. Clearing must yield `null`. A legitimate zero (e.g.
-// a free vehicle, or 0 doors on a trailer) must survive as 0, not become
-// null: the backend accepts 0 on all of these (no lower-bound constraints).
+// Task 19 extension, UPDATED for Task 8/8b: year/doors/cylinders/
+// purchase_price moved onto NumberInput/registerDecimal (Task 8), which
+// never emits a raw NaN — empty becomes `undefined`, unparseable text
+// becomes INVALID_NUMBER. Task 8b then widened the shared invalid-number
+// guard (which numericOrNullField mirrors) to treat any NaN that DOES still
+// arrive as invalid input rather than empty — so these four fields now
+// REJECT NaN instead of silently collapsing it to null. `sold_price` is
+// unaffected: it's driven by PricingDrawer's own plain controlled
+// value/onChange inputs, never registerDecimal, so it can still receive a
+// genuine valueAsNumber-style NaN and still collapses it to null exactly as
+// before. A legitimate zero (e.g. a free vehicle, or 0 doors on a trailer)
+// must still survive as 0, not become null: the backend accepts 0 on all of
+// these (no lower-bound constraints).
 describe('vehicleEditSchema — numeric fields null-on-clear (blank vs. zero)', () => {
-  it('transforms a blanked-out purchase_price (NaN) to null', () => {
-    const result = vehicleEditSchema.parse({ ...base, purchase_price: NaN })
-    expect(result.purchase_price).toBeNull()
+  it('rejects a NaN purchase_price as invalid rather than silently nulling it', () => {
+    const result = vehicleEditSchema.safeParse({ ...base, purchase_price: NaN })
+    expect(result.success).toBe(false)
   })
 
   it('transforms a null purchase_price to null', () => {
@@ -364,24 +378,74 @@ describe('vehicleEditSchema — numeric fields null-on-clear (blank vs. zero)', 
     expect(result.purchase_price).toBe(15000)
   })
 
-  it('transforms a blanked-out sold_price (NaN) to null but preserves zero', () => {
+  it('sold_price (unaffected — PricingDrawer, not registerDecimal) still transforms NaN to null and preserves zero', () => {
     expect(vehicleEditSchema.parse({ ...base, sold_price: NaN }).sold_price).toBeNull()
     expect(vehicleEditSchema.parse({ ...base, sold_price: 0 }).sold_price).toBe(0)
   })
 
-  it('transforms a blanked-out year (NaN) to null', () => {
-    const result = vehicleEditSchema.parse({ ...base, year: NaN })
-    expect(result.year).toBeNull()
+  it('rejects a NaN year as invalid rather than silently nulling it', () => {
+    const result = vehicleEditSchema.safeParse({ ...base, year: NaN })
+    expect(result.success).toBe(false)
   })
 
-  it('transforms a blanked-out doors (NaN) to null but preserves zero', () => {
-    expect(vehicleEditSchema.parse({ ...base, doors: NaN }).doors).toBeNull()
+  it('rejects a NaN doors as invalid but still preserves a real zero', () => {
+    expect(vehicleEditSchema.safeParse({ ...base, doors: NaN }).success).toBe(false)
     expect(vehicleEditSchema.parse({ ...base, doors: 0 }).doors).toBe(0)
   })
 
-  it('transforms a blanked-out cylinders (NaN) to null but preserves zero', () => {
-    expect(vehicleEditSchema.parse({ ...base, cylinders: NaN }).cylinders).toBeNull()
+  it('rejects a NaN cylinders as invalid but still preserves a real zero', () => {
+    expect(vehicleEditSchema.safeParse({ ...base, cylinders: NaN }).success).toBe(false)
     expect(vehicleEditSchema.parse({ ...base, cylinders: 0 }).cylinders).toBe(0)
+  })
+})
+
+// Regression for the CRITICAL finding: the pre-refactor `.or(z.nan())` shape
+// these six fields used couldn't recognize INVALID_NUMBER (the sentinel
+// registerDecimal emits for unparseable text) and leaked zod's raw "Invalid
+// input: expected number, received symbol" instead of a translated message.
+// `sold_price` is excluded — it's never wired through registerDecimal (see
+// above) and can't receive the sentinel.
+describe('vehicleEditSchema — INVALID_NUMBER sentinel (Task 8 critical fix)', () => {
+  it('rejects the sentinel on every converted numeric field with a translated message, not a raw zod union error', () => {
+    const result = vehicleEditSchema.safeParse({
+      ...base,
+      year: INVALID_NUMBER,
+      doors: INVALID_NUMBER,
+      cylinders: INVALID_NUMBER,
+      purchase_price: INVALID_NUMBER,
+      current_hours: INVALID_NUMBER,
+      def_tank_capacity_liters: INVALID_NUMBER,
+    })
+    expect(result.success).toBe(false)
+    if (!result.success) {
+      const messages = result.error.issues.map(i => i.message)
+      expect(messages).toContain('common:validation.vehicle.yearInvalid')
+      expect(messages).toContain('common:validation.vehicle.doorsInvalid')
+      expect(messages).toContain('common:validation.vehicle.cylindersInvalid')
+      expect(messages).toContain('common:validation.vehicle.purchasePriceInvalid')
+      expect(messages).toContain('common:validation.engineHours.invalid')
+      expect(messages).toContain('common:validation.volume.invalid')
+      for (const m of messages) {
+        expect(m).not.toMatch(/received symbol|expected number/i)
+      }
+    }
+  })
+
+  it('still rejects a non-integer year/doors/cylinders with its own whole-number message', () => {
+    expect(vehicleEditSchema.safeParse({ ...base, year: 1995.5 }).success).toBe(false)
+    expect(vehicleEditSchema.safeParse({ ...base, doors: 4.5 }).success).toBe(false)
+    expect(vehicleEditSchema.safeParse({ ...base, cylinders: 6.5 }).success).toBe(false)
+  })
+
+  it('still preserves def_tank_capacity_liters\' exact 0-9999.99 bound', () => {
+    expect(vehicleEditSchema.safeParse({ ...base, def_tank_capacity_liters: -1 }).success).toBe(false)
+    expect(vehicleEditSchema.safeParse({ ...base, def_tank_capacity_liters: 10000 }).success).toBe(false)
+    expect(vehicleEditSchema.safeParse({ ...base, def_tank_capacity_liters: 9999.99 }).success).toBe(true)
+  })
+
+  it('still preserves current_hours\' non-negative bound', () => {
+    expect(vehicleEditSchema.safeParse({ ...base, current_hours: -1 }).success).toBe(false)
+    expect(vehicleEditSchema.parse({ ...base, current_hours: 812.4 }).current_hours).toBe(812.4)
   })
 })
 

@@ -1,12 +1,12 @@
 import { useTranslation } from 'react-i18next'
-import { useCallback } from 'react'
+import { useCallback, useMemo } from 'react'
 import { useForm, type Resolver } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { Save } from 'lucide-react'
 import FormModalWrapper from './FormModalWrapper'
 import { Button, Field, Input, NumberInput, Select, Textarea, registerDecimal } from './ui'
 import type { WarrantyRecord, WarrantyRecordCreate, WarrantyRecordUpdate } from '../types/warranty'
-import { warrantySchema, type WarrantyFormData, WARRANTY_TYPES } from '../schemas/warranty'
+import { makeWarrantySchema, type WarrantyFormData, WARRANTY_TYPES } from '../schemas/warranty'
 import { useCreateWarrantyRecord, useUpdateWarrantyRecord } from '../hooks/queries/useWarrantyRecords'
 import { formatDateForInput } from '../utils/dateUtils'
 import { useFormSubmit } from '../hooks/useFormSubmit'
@@ -50,12 +50,17 @@ export default function WarrantyForm({ vin, record, onClose, onSuccess }: Warran
 
   const { error, handleSubmit: onSubmit } = useFormSubmit(submitFn, { onSuccess, onClose })
 
+  // Zod bakes its messages in at construction, so the schema is rebuilt when
+  // the language changes. Only the resolver depends on it — no fetch, no
+  // reset() — so a rebuild can't discard what the user typed.
+  const schema = useMemo(() => makeWarrantySchema(t), [t])
+
   const {
     register,
     handleSubmit,
     formState: { errors, isSubmitting },
   } = useForm<WarrantyFormData>({
-    resolver: zodResolver(warrantySchema) as Resolver<WarrantyFormData>,
+    resolver: zodResolver(schema) as Resolver<WarrantyFormData>,
     defaultValues: {
       warranty_type: record?.warranty_type || '',
       provider: record?.provider || '',

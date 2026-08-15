@@ -1,5 +1,5 @@
 import { useTranslation } from 'react-i18next'
-import { useState, useEffect } from 'react'
+import { useMemo, useState, useEffect } from 'react'
 import { useForm, type Resolver } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { Save } from 'lucide-react'
@@ -12,7 +12,7 @@ import type {
   SpotRentalBillingUpdate
 } from '../types/spotRental'
 import {
-  spotRentalBillingSchema,
+  makeSpotRentalBillingSchema,
   type SpotRentalBillingFormData
 } from '../schemas/spotRentalBilling'
 import { useCreateBillingEntry, useUpdateBillingEntry } from '../hooks/queries/useSpotRentals'
@@ -39,6 +39,11 @@ export default function BillingEntryForm({
   const createMutation = useCreateBillingEntry(vin, rentalId)
   const updateMutation = useUpdateBillingEntry(vin, rentalId)
 
+  // Zod bakes its messages in at construction, so the schema is rebuilt when
+  // the language changes. Only the resolver depends on it — no fetch, no
+  // reset() — so a rebuild can't discard what the user typed.
+  const schema = useMemo(() => makeSpotRentalBillingSchema(t), [t])
+
   const {
     register,
     handleSubmit,
@@ -46,7 +51,7 @@ export default function BillingEntryForm({
     setValue,
     formState: { errors, isSubmitting }
   } = useForm<SpotRentalBillingFormData>({
-    resolver: zodResolver(spotRentalBillingSchema) as Resolver<SpotRentalBillingFormData>,
+    resolver: zodResolver(schema) as Resolver<SpotRentalBillingFormData>,
     defaultValues: {
       billing_date: formatDateForInput(billing?.billing_date),
       monthly_rate: billing?.monthly_rate != null ? Number(billing.monthly_rate) : undefined,

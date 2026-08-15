@@ -9,6 +9,7 @@ import {
   makeOptionalKwhSchema,
   makeOptionalEngineHoursSchema,
   makeNotesSchema,
+  makeNumericField,
 } from './shared'
 import {
   FUEL_TYPE_VALUES,
@@ -52,13 +53,17 @@ export const makeFuelRecordSchema = (t: TFunction) =>
     missed_fillup: z.boolean(),
     is_hauling: z.boolean(),
     notes: makeNotesSchema(t).optional(),
-    def_fill_level: z
-      .number()
-      .min(0)
-      .max(100)
-      .or(z.nan())
-      .transform((val) => (isNaN(val) ? undefined : val))
-      .optional(),
+    // Task 8 moved this onto NumberInput/registerDecimal, which can hand the
+    // schema INVALID_NUMBER for unparseable text — the old `.or(z.nan())`
+    // shape only recognized number/NaN and leaked zod's raw union error.
+    // Same percentage concept (and same keys) as DEFRecordForm's fill_level.
+    def_fill_level: makeNumericField(t, {
+      min: 0,
+      max: 100,
+      negativeKey: 'common:validation.def.fillLevelNegative',
+      tooLargeKey: 'common:validation.def.fillLevelTooLarge',
+      invalidKey: 'common:validation.def.fillLevelInvalid',
+    }),
     // Issue #69 — extended fuel tracking
     station_address_book_id: z
       .number()
@@ -86,18 +91,23 @@ export const makeFuelRecordSchema = (t: TFunction) =>
       .or(z.nan())
       .transform((val) => (isNaN(val) ? undefined : val))
       .optional(),
-    obc_l_per_100km: z
-      .number()
-      .min(0)
-      .or(z.nan())
-      .transform((val) => (isNaN(val) ? undefined : val))
-      .optional(),
-    obc_avg_speed_kmh: z
-      .number()
-      .min(0)
-      .or(z.nan())
-      .transform((val) => (isNaN(val) ? undefined : val))
-      .optional(),
+    // Task 8 moved both onto NumberInput/registerDecimal — same reasoning as
+    // def_fill_level above. Neither had a custom message before (bare
+    // `.min(0)`, zod's default), so both reuse one new "obc" key family.
+    obc_l_per_100km: makeNumericField(t, {
+      min: 0,
+      max: Infinity,
+      negativeKey: 'common:validation.fuel.obcNegative',
+      tooLargeKey: 'common:validation.fuel.obcTooLarge',
+      invalidKey: 'common:validation.fuel.obcInvalid',
+    }),
+    obc_avg_speed_kmh: makeNumericField(t, {
+      min: 0,
+      max: Infinity,
+      negativeKey: 'common:validation.fuel.obcNegative',
+      tooLargeKey: 'common:validation.fuel.obcTooLarge',
+      invalidKey: 'common:validation.fuel.obcInvalid',
+    }),
     // OBC trip duration accepts ``HH:MM``, ``HH:MM:SS``, or an integer
     // string of seconds. Backend pre-validator in app/schemas/fuel.py
     // parses to canonical seconds; we don't coerce on the frontend so

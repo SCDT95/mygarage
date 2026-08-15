@@ -1,4 +1,6 @@
 import { z } from 'zod'
+import type { TFunction } from 'i18next'
+import { makeOptionalOdometerSchema } from './shared'
 
 /**
  * Warranty type options.
@@ -16,23 +18,30 @@ export const WARRANTY_TYPES = [
   { value: 'Other', labelKey: 'forms:warrantyTypes.other' },
 ] as const
 
-const mileageLimitSchema = z
-  .number()
-  .min(0, 'Distance cannot be negative')
-  .or(z.nan())
-  .transform(val => isNaN(val) ? undefined : val)
-  .optional()
+/**
+ * Factory, not a constant — see the header of schemas/auth.ts for why.
+ *
+ * Task 8 moved mileage_limit_km onto NumberInput/registerDecimal, which can
+ * hand this schema the INVALID_NUMBER sentinel for unparseable text — the
+ * old `.or(z.nan())` shape only recognized number/NaN, so a sentinel failed
+ * the union and zod reported its raw "expected number, received symbol"
+ * instead of a translated message. `mileage_limit_km` is a distance value,
+ * same shape as every odometer_km field elsewhere, so it reuses
+ * makeOptionalOdometerSchema directly rather than a bespoke factory — its
+ * min (0) matches exactly; the field had no upper bound before, and
+ * odometer's generous 9,999,999 km ceiling will never realistically bind.
+ */
+export const makeWarrantySchema = (t: TFunction) =>
+  z.object({
+    warranty_type: z.string().min(1, 'Warranty type is required'),
+    provider: z.string().optional(),
+    start_date: z.string().min(1, 'Start date is required'),
+    end_date: z.string().optional(),
+    mileage_limit_km: makeOptionalOdometerSchema(t),
+    coverage_details: z.string().optional(),
+    policy_number: z.string().optional(),
+    notes: z.string().optional(),
+  })
 
-export const warrantySchema = z.object({
-  warranty_type: z.string().min(1, 'Warranty type is required'),
-  provider: z.string().optional(),
-  start_date: z.string().min(1, 'Start date is required'),
-  end_date: z.string().optional(),
-  mileage_limit_km: mileageLimitSchema,
-  coverage_details: z.string().optional(),
-  policy_number: z.string().optional(),
-  notes: z.string().optional(),
-})
-
-export type WarrantyInput = z.input<typeof warrantySchema>
-export type WarrantyFormData = z.output<typeof warrantySchema>
+export type WarrantyInput = z.input<ReturnType<typeof makeWarrantySchema>>
+export type WarrantyFormData = z.output<ReturnType<typeof makeWarrantySchema>>

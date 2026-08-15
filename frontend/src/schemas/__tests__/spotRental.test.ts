@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import type { TFunction } from 'i18next'
 import { makeSpotRentalSchema } from '../spotRental'
+import { INVALID_NUMBER } from '../shared'
 
 // Same shape as the global react-i18next mock in src/__tests__/setup.ts:
 // messages come back as their i18n key, which is all these tests need.
@@ -76,14 +77,38 @@ describe('Spot Rental Schema', () => {
     expect(result.success).toBe(false)
   })
 
-  it('transforms NaN nightly_rate to undefined', () => {
+  // Task 8b: these now route through the shared makeNumericField, which
+  // rejects NaN as invalid rather than treating it as empty — see
+  // shared.test.ts.
+  it('rejects NaN nightly_rate as invalid rather than silently discarding it', () => {
     const result = spotRentalSchema.safeParse({
       ...validRental,
       nightly_rate: NaN,
     })
-    expect(result.success).toBe(true)
-    if (result.success) {
-      expect(result.data.nightly_rate).toBeUndefined()
+    expect(result.success).toBe(false)
+  })
+
+  // Regression for the CRITICAL finding: the pre-refactor `.min().max().or(
+  // z.nan())` shape couldn't recognize INVALID_NUMBER (the sentinel
+  // registerDecimal emits for unparseable text) and leaked zod's raw
+  // "Invalid input: expected number, received symbol" instead of a
+  // translated message. Assert all three rate tiers now report one.
+  it('rejects the INVALID_NUMBER sentinel on every rate tier with a translated message, not a raw zod union error', () => {
+    const result = spotRentalSchema.safeParse({
+      ...validRental,
+      nightly_rate: INVALID_NUMBER,
+      weekly_rate: INVALID_NUMBER,
+      electric: INVALID_NUMBER,
+    })
+    expect(result.success).toBe(false)
+    if (!result.success) {
+      const messages = result.error.issues.map(i => i.message)
+      expect(messages).toContain('common:validation.spotRental.nightlyRateInvalid')
+      expect(messages).toContain('common:validation.spotRental.rateInvalid')
+      expect(messages).toContain('common:validation.spotRental.utilityInvalid')
+      for (const m of messages) {
+        expect(m).not.toMatch(/received symbol|expected number/i)
+      }
     }
   })
 })

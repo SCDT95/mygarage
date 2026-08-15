@@ -575,10 +575,13 @@
     "spotRental": {
       "nightlyRateNegative": "Nightly rate cannot be negative",
       "nightlyRateTooLarge": "Nightly rate too large (max $9,999.99)",
+      "nightlyRateInvalid": "Enter a valid number",
       "rateNegative": "Rate cannot be negative",
       "rateTooLarge": "Rate too large (max $99,999.99)",
+      "rateInvalid": "Enter a valid number",
       "utilityNegative": "Utility cost cannot be negative",
       "utilityTooLarge": "Utility cost too large (max $9,999.99)",
+      "utilityInvalid": "Enter a valid number",
       "locationNameTooLong": "Location name too long (max 100 characters)"
     },
     "note": {
@@ -588,7 +591,29 @@
     },
     "def": {
       "fillLevelNegative": "Fill level cannot be negative",
-      "fillLevelTooLarge": "Fill level cannot exceed 100%"
+      "fillLevelTooLarge": "Fill level cannot exceed 100%",
+      "fillLevelInvalid": "Enter a valid number"
+    },
+    "tankQuantity": {
+      "negative": "Tank quantity must be greater than 0",
+      "tooLarge": "Tank quantity too large",
+      "invalid": "Enter a valid number",
+      "notWhole": "Tank quantity must be a whole number"
+    },
+    "vehicle": {
+      "yearNotWhole": "Year must be a whole number",
+      "yearTooEarly": "Year must be 1900 or later",
+      "yearTooLate": "Year must be 2100 or earlier",
+      "yearInvalid": "Enter a valid number",
+      "doorsNotWhole": "Doors must be a whole number",
+      "doorsNegative": "Doors cannot be negative",
+      "doorsTooLarge": "Doors value too large",
+      "doorsInvalid": "Enter a valid number",
+      "cylindersNotWhole": "Cylinders must be a whole number",
+      "cylindersNegative": "Cylinders cannot be negative",
+      "cylindersTooLarge": "Cylinders value too large",
+      "cylindersInvalid": "Enter a valid number",
+      "purchasePriceInvalid": "Enter a valid number"
     },
     "recall": {
       "campaignNumberTooLong": "Campaign number too long (max 50 characters)",
@@ -601,7 +626,10 @@
     },
     "fuel": {
       "fuelTypeTooLong": "Fuel type too long",
-      "obcTripDurationFormat": "Use seconds (e.g. 8100), HH:MM (e.g. 2:15), or HH:MM:SS"
+      "obcTripDurationFormat": "Use seconds (e.g. 8100), HH:MM (e.g. 2:15), or HH:MM:SS",
+      "obcNegative": "OBC value cannot be negative",
+      "obcTooLarge": "OBC value too large",
+      "obcInvalid": "Enter a valid number"
     }
   },
   "httpError": {

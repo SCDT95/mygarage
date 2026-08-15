@@ -24,14 +24,25 @@ interface NumberInputProps extends Omit<ComponentProps<typeof Input>, 'type' | '
  * layer swallowed as "empty". This routes the field through parseDecimalInput
  * and emits a sentinel the schema rejects.
  *
- * `options` passes through any other RHF rules. SupplyHistoryModal keeps
- * `required` and `min` inside `register`, and dropping them would delete real
- * validation.
+ * `options` passes through any other RHF rules — SupplyHistoryModal keeps
+ * `required` inside `register` (no zod resolver on those two inline forms),
+ * and dropping it would delete real validation.
+ *
+ * `min`/`max` are excluded from `options` on purpose, not just left
+ * undocumented: RHF's native min/max check (`validateField`) coerces the
+ * field value with unary `+` to compare it, which throws a TypeError on the
+ * `INVALID_NUMBER` symbol this function can emit for unparseable text — this
+ * is exactly what happened to SupplyHistoryModal's `quantity`/`total_cost`
+ * fields before they were moved to an equivalent `validate` function instead.
+ * On a resolver-based form `min`/`max` here would be silently inert anyway
+ * (RHF skips `validateField` entirely whenever a `resolver` is configured),
+ * so there's no case where passing them helps — better a compile error than
+ * either dead code or a stack trace.
  */
 export function registerDecimal<T extends FieldValues>(
   register: UseFormRegister<T>,
   name: FieldPath<T>,
-  options?: Omit<RegisterOptions<T, FieldPath<T>>, 'setValueAs' | 'valueAsNumber' | 'valueAsDate'>
+  options?: Omit<RegisterOptions<T, FieldPath<T>>, 'setValueAs' | 'valueAsNumber' | 'valueAsDate' | 'min' | 'max'>
 ): UseFormRegisterReturn {
   return register(name, {
     ...options,

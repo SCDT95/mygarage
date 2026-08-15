@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useMemo, useState, useEffect, useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useForm, type Resolver } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
@@ -9,7 +9,7 @@ import FormModalWrapper from '../FormModalWrapper'
 import { Button, Field, Input, NumberInput, Select, Toggle, registerDecimal } from '../ui'
 import vehicleService from '../../services/vehicleService'
 import type { Vehicle, VehicleUpdate } from '../../types/vehicle'
-import { vehicleEditSchema, type VehicleEditFormData, VEHICLE_TYPES } from '../../schemas/vehicle'
+import { makeVehicleEditSchema, type VehicleEditFormData, VEHICLE_TYPES } from '../../schemas/vehicle'
 import { FUEL_TYPE_VALUES, FUEL_TYPE_LABELS, isDieselFuelType } from '../../constants/fuel'
 import { useUnitPreference } from '../../hooks/useUnitPreference'
 import { UnitConverter, UnitFormatter } from '../../utils/units'
@@ -53,7 +53,7 @@ interface VehicleEditDrawerProps {
  * capacity must be edited together, in the same submit.
  *
  * What's carried over verbatim from the old page: react-hook-form +
- * vehicleEditSchema, the seed effect's `[open]`-only dependency array (below —
+ * makeVehicleEditSchema, the seed effect's `[open]`-only dependency array (below —
  * it must not re-run just because `t` got a new identity, or a language switch
  * mid-edit would discard everything typed), the DEF enable/clear state machine,
  * the canonical-litres conversion, and the motorized gate. What changed is the
@@ -97,6 +97,12 @@ export default function VehicleEditDrawer({
     ? WINDOW_STICKER_TYPES.includes(seedSource.vehicle_type)
     : false
 
+  // Zod bakes its messages in at construction, so the schema is rebuilt when
+  // the language changes. Only the resolver depends on it — no fetch, no
+  // reset() — so a rebuild can't discard what the user typed. (Distinct from
+  // the seed effect below, which deliberately stays [open]-only.)
+  const schema = useMemo(() => makeVehicleEditSchema(t), [t])
+
   const {
     register,
     handleSubmit,
@@ -105,7 +111,7 @@ export default function VehicleEditDrawer({
     setValue,
     watch,
   } = useForm<VehicleEditFormData>({
-    resolver: zodResolver(vehicleEditSchema) as Resolver<VehicleEditFormData>,
+    resolver: zodResolver(schema) as Resolver<VehicleEditFormData>,
     defaultValues: {},
   })
 

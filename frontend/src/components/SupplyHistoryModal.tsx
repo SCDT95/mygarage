@@ -391,6 +391,22 @@ function validateSupplyQuantity(value: unknown, message: string): true | string 
   return typeof value === 'number' && !Number.isNaN(value) && value >= 0.001 ? true : message
 }
 
+/**
+ * `total_cost` is optional (unlike quantity, which is required) — an
+ * `undefined` value must pass here, since `required` isn't set on this field
+ * and there is no other rule to catch the empty case first. Anything typed
+ * — including unparseable text (the INVALID_NUMBER sentinel) — must be a
+ * real, non-negative number. Native `min="0"` used to be the only guard
+ * before this field was migrated off `type="number"`; without an equivalent
+ * `validate` rule a negative total_cost reaches the API with no client-side
+ * error at all (the backend's `ge=0` still rejects it, but as a generic
+ * banner instead of a field message).
+ */
+function validateNonNegativeCost(value: unknown, message: string): true | string {
+  if (value === undefined) return true
+  return typeof value === 'number' && !Number.isNaN(value) && value >= 0 ? true : message
+}
+
 interface PurchaseFormValues {
   date: string
   quantity: number
@@ -512,11 +528,15 @@ function PurchaseForm({
             <CurrencyInputPrefix />
             <NumberInput
               id="purchase-cost"
-              {...registerDecimal(register, 'total_cost')}
+              {...registerDecimal(register, 'total_cost', {
+                validate: (val) => validateNonNegativeCost(val, t('validation.amount.negative')),
+              })}
+              invalid={!!errors.total_cost}
               className="pl-7"
               disabled={isSubmitting}
             />
           </div>
+          <FormError error={errors.total_cost} />
         </div>
         <div>
           <label htmlFor="purchase-supplier" className="block text-xs font-medium text-garage-text mb-1">

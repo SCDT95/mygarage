@@ -212,4 +212,39 @@ describe('SupplyHistoryModal', () => {
       expect(screen.getByText('supplies.history.quantityRequired')).toBeInTheDocument()
     })
   })
+
+  // IMPORTANT (review response): total_cost is optional, so it never had a
+  // `required` rule — but it DID rely on the native `min="0"` HTML attribute
+  // (dropped in Task 8, since it's inert on the migrated type="text" field)
+  // with nothing to replace it, so a negative total_cost silently reached
+  // the API with no client-side error. Now uses the same validate-function
+  // treatment as quantity above (a literal `min` rule would crash the same
+  // way on unparseable text).
+  it('rejects a negative total_cost with a field error instead of letting it reach the API', async () => {
+    const user = userEvent.setup()
+    render(<SupplyHistoryModal supply={mockSupply} onClose={vi.fn()} />)
+
+    await user.click(screen.getByText('supplies.history.logPurchase'))
+    await user.type(screen.getByLabelText(/supplies\.history\.quantity/), '2')
+    await user.type(screen.getByLabelText('totalCost'), '-5')
+    await user.click(screen.getByRole('button', { name: 'save' }))
+
+    await waitFor(() => {
+      expect(screen.getByText('validation.amount.negative')).toBeInTheDocument()
+    })
+  })
+
+  it('rejects unparseable text in the purchase total_cost field without crashing', async () => {
+    const user = userEvent.setup()
+    render(<SupplyHistoryModal supply={mockSupply} onClose={vi.fn()} />)
+
+    await user.click(screen.getByText('supplies.history.logPurchase'))
+    await user.type(screen.getByLabelText(/supplies\.history\.quantity/), '2')
+    await user.type(screen.getByLabelText('totalCost'), 'abc')
+    await user.click(screen.getByRole('button', { name: 'save' }))
+
+    await waitFor(() => {
+      expect(screen.getByText('validation.amount.negative')).toBeInTheDocument()
+    })
+  })
 })

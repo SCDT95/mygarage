@@ -1,11 +1,11 @@
-import { useState, useEffect } from 'react'
+import { useMemo, useState, useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useForm, type Resolver } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { Save } from 'lucide-react'
 import FormModalWrapper from './FormModalWrapper'
 import type { FuelRecord, FuelRecordCreate, FuelRecordUpdate } from '../types/fuel'
-import { propaneRecordSchema, type PropaneRecordFormData } from '../schemas/propane'
+import { makePropaneRecordSchema, type PropaneRecordFormData } from '../schemas/propane'
 import { useCreatePropaneRecord, useUpdatePropaneRecord } from '../hooks/queries/usePropaneRecords'
 import { useUnitPreference } from '../hooks/useUnitPreference'
 import { UnitConverter, UnitFormatter } from '../utils/units'
@@ -55,6 +55,11 @@ export default function PropaneRecordForm({
     return match ? match[1] : ''
   }
 
+  // Zod bakes its messages in at construction, so the schema is rebuilt when
+  // the language changes. Only the resolver depends on it — no fetch, no
+  // reset() — so a rebuild can't discard what the user typed.
+  const schema = useMemo(() => makePropaneRecordSchema(t), [t])
+
   const {
     register,
     handleSubmit,
@@ -62,7 +67,7 @@ export default function PropaneRecordForm({
     setValue,
     watch,
   } = useForm<PropaneRecordFormData>({
-    resolver: zodResolver(propaneRecordSchema) as Resolver<PropaneRecordFormData>,
+    resolver: zodResolver(schema) as Resolver<PropaneRecordFormData>,
     defaultValues: {
       date: formatDateForInput(record?.date),
       propane_liters: (() => {

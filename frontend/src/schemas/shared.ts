@@ -31,10 +31,25 @@ interface NumericFieldOptions {
   invalidKey: string
   /** When set, an absent value is an error rather than a pass. */
   requiredKey?: string
+  /**
+   * Reject `val === min` too, not just `val < min` — for a field whose
+   * constraint is strictly positive (backend `gt=0`), not merely
+   * non-negative (`ge=0`). Uses `negativeKey` for the message either way.
+   */
+  exclusiveMin?: boolean
+  /** When set, a non-integer value is rejected with this message. Checked
+   *  alongside min/max, after the invalid-number guard. */
+  integerKey?: string
 }
 
 /**
  * One builder for every numeric field.
+ *
+ * Exported so schema files whose bounds don't match one of the specific
+ * factories below (odometer/currency/volume/…) can still get correct
+ * INVALID_NUMBER/NaN handling and a translated message while keeping their
+ * OWN exact min/max — pass `min: -Infinity` / `max: Infinity` for a side
+ * that was never bounded, never a stand-in shared factory's numbers.
  *
  * ⚠️ Zod 4 notes, both verified by execution against 4.4.3:
  *
@@ -46,7 +61,7 @@ interface NumericFieldOptions {
  *     `invalid_type: expected nonoptional`, while still accepting an explicitly
  *     `undefined` one — so the bug hides from a direct safeParse(undefined) test.
  */
-const makeNumericField = (t: TFunction, opts: NumericFieldOptions) =>
+export const makeNumericField = (t: TFunction, opts: NumericFieldOptions) =>
   z
     .unknown()
     .optional()
@@ -70,7 +85,11 @@ const makeNumericField = (t: TFunction, opts: NumericFieldOptions) =>
         ctx.addIssue({ code: 'custom', message: t(opts.invalidKey) })
         return
       }
-      if (val < opts.min) ctx.addIssue({ code: 'custom', message: t(opts.negativeKey) })
+      if (opts.integerKey && !Number.isInteger(val)) {
+        ctx.addIssue({ code: 'custom', message: t(opts.integerKey) })
+      }
+      const belowMin = opts.exclusiveMin ? val <= opts.min : val < opts.min
+      if (belowMin) ctx.addIssue({ code: 'custom', message: t(opts.negativeKey) })
       if (val > opts.max) ctx.addIssue({ code: 'custom', message: t(opts.tooLargeKey) })
     })
     .transform(val => (typeof val === 'number' && !Number.isNaN(val) ? val : undefined))

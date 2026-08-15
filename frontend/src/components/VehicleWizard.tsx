@@ -6,7 +6,7 @@
  * Step 4: Review & Create
  */
 
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useNavigate } from 'react-router-dom'
 import { useForm, type Resolver } from 'react-hook-form'
@@ -19,7 +19,7 @@ import type { VINDecodeResponse } from '../types/vin'
 import type { VehicleCreate } from '../types/vehicle'
 import { FUEL_TYPE_VALUES, FUEL_TYPE_LABELS, type FuelType } from '../constants/fuel'
 import vehicleService from '../services/vehicleService'
-import { vehicleEditSchema, VEHICLE_TYPES, type VehicleEditFormData } from '../schemas/vehicle'
+import { makeVehicleEditSchema, VEHICLE_TYPES, type VehicleEditFormData } from '../schemas/vehicle'
 import { useCurrencyPreference } from '../hooks/useCurrencyPreference'
 
 interface VehicleWizardProps {
@@ -35,6 +35,11 @@ export default function VehicleWizard({ onClose, onSuccess }: VehicleWizardProps
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
+  // Zod bakes its messages in at construction, so the schema is rebuilt when
+  // the language changes. Only the resolver depends on it — no fetch, no
+  // reset() — so a rebuild can't discard what the user typed.
+  const schema = useMemo(() => makeVehicleEditSchema(t), [t])
+
   // Form management with react-hook-form + Zod
   const {
     register,
@@ -44,7 +49,7 @@ export default function VehicleWizard({ onClose, onSuccess }: VehicleWizardProps
     getValues,
     formState: { errors },
   } = useForm<VehicleEditFormData>({
-    resolver: zodResolver(vehicleEditSchema) as Resolver<VehicleEditFormData>,
+    resolver: zodResolver(schema) as Resolver<VehicleEditFormData>,
     mode: 'onChange',
     defaultValues: {
       nickname: '',
