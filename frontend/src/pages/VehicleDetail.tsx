@@ -80,33 +80,6 @@ import { useOnlineStatus } from '../hooks/useOnlineStatus'
 import { useAuth } from '../contexts/AuthContext'
 import { getUsageTracking } from '../utils/usageTracking'
 
-type ApiError = {
-  response?: {
-    data?: {
-      detail?: string
-    }
-  }
-  message?: string
-}
-
-const getApiErrorMessage = (error: unknown, fallback: string) => {
-  if (error && typeof error === 'object') {
-    const apiError = error as ApiError
-    if (apiError.response?.data?.detail) {
-      return apiError.response.data.detail
-    }
-    if (apiError.message) {
-      return apiError.message
-    }
-  }
-
-  if (error instanceof Error) {
-    return error.message
-  }
-
-  return fallback
-}
-
 /** Per-record-type tallies returned by the JSON import endpoint. */
 type ImportSectionResult = {
   success_count: number
@@ -181,7 +154,7 @@ export default function VehicleDetail() {
           }
         }
       }
-      setError(getApiErrorMessage(error, tRef.current('detail.misc.loadError')))
+      setError(getActionErrorMessage(error, tRef.current('detail.misc.loadAction')))
     } finally {
       setLoading(false)
     }

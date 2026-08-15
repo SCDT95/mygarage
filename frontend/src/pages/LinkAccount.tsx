@@ -6,6 +6,7 @@ import api, { setCSRFToken } from '../services/api'
 import { useAuth } from '../contexts/AuthContext'
 import { resolvePostLoginRoute } from '../utils/postLoginRedirect'
 import { withBase } from '../utils/basePath'
+import { getActionErrorMessage } from '../utils/httpErrorHandler'
 
 export default function LinkAccount() {
   const { t } = useTranslation('common')
@@ -65,10 +66,7 @@ export default function LinkAccount() {
 
       navigate(resolvePostLoginRoute(user), { replace: true })
     } catch (err) {
-      // Display backend error message directly (contains specific errors)
-      const error = err as { response?: { data?: { detail?: string } } }
-      const errorMessage = error.response?.data?.detail || t('linkAccountPage.failed')
-      setError(errorMessage)
+      setError(getActionErrorMessage(err, t('linkAccountPage.linkAction')))
     } finally {
       setIsLoading(false)
     }

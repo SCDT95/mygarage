@@ -22,6 +22,7 @@ import {
 import api from '../services/api'
 import { Select } from '../components/ui'
 import { formatCurrency } from '../utils/formatUtils'
+import { getActionErrorMessage } from '../utils/httpErrorHandler'
 import { useCurrencyPreference } from '../hooks/useCurrencyPreference'
 import { getActiveLocale } from '@/constants/i18n'
 
@@ -141,8 +142,7 @@ export default function WindowStickerTest() {
         toast.error(response.data.error || t('windowSticker.extractionFailed'))
       }
     } catch (error: unknown) {
-      const err = error as { response?: { data?: { detail?: string } } }
-      toast.error(err.response?.data?.detail || t('windowSticker.test.testFailed'))
+      toast.error(getActionErrorMessage(error, t('windowSticker.test.testAction')))
     } finally {
       setLoading(false)
     }

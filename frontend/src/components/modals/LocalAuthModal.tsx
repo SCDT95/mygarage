@@ -5,6 +5,7 @@ import { useAuth } from '@/contexts/AuthContext'
 import api from '@/services/api'
 import { makePasswordSchema, getPasswordStrength } from '@/schemas/auth'
 import { withBase } from '@/utils/basePath'
+import { getActionErrorMessage } from '@/utils/httpErrorHandler'
 import FormModalWrapper from '../FormModalWrapper'
 
 interface User {
@@ -118,15 +119,10 @@ export default function LocalAuthModal({
       // Clear message after 5 seconds
       setTimeout(() => setPasswordChangeMessage(null), 5000)
     } catch (error) {
-      if (error instanceof Error) {
-        const apiError = error as { response?: { data?: { detail?: string } } }
-        setPasswordChangeMessage({
-          type: 'error',
-          text: apiError.response?.data?.detail || t('modal.localAuth.changePasswordFailed')
-        })
-      } else {
-        setPasswordChangeMessage({ type: 'error', text: t('modal.localAuth.changePasswordFailed') })
-      }
+      setPasswordChangeMessage({
+        type: 'error',
+        text: getActionErrorMessage(error, t('modal.localAuth.changePasswordAction')),
+      })
     } finally {
       setPasswordChangeLoading(false)
     }

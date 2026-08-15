@@ -42,7 +42,9 @@
     "locationUnavailable": "Location information is unavailable.",
     "locationTimeout": "Location request timed out.",
     "searchFailed": "Failed to search for shops",
+    "searchAction": "search for shops",
     "saveFailed": "Failed to save shop",
+    "saveAction": "save the shop",
     "savedToast": "{{name}} saved to address book!"
   },
   "success": "Success",
@@ -247,6 +249,7 @@
     "addressTooShort": "Enter an address (≥2 characters)",
     "addressNotFound": "No results for that address",
     "geocodeFailed": "Geocoding failed",
+    "geocodeAction": "geocode the address",
     "categoryAutoShops": "Auto Shops",
     "categoryEvCharging": "EV Charging",
     "categoryGasStations": "Gas Stations",
@@ -261,7 +264,9 @@
     "locationUnavailable": "Location information is unavailable.",
     "locationTimeout": "Location request timed out.",
     "searchFailed": "Failed to search for POIs",
+    "searchAction": "search for points of interest",
     "saveFailed": "Failed to save POI",
+    "saveAction": "save the point of interest",
     "savedToAddressBook": "{{name}} saved to address book!"
   },
   "about": {
@@ -411,7 +416,8 @@
     "returnToLogin": "Return to login",
     "missingToken": "Link token is missing. Please restart the login process.",
     "passwordRequired": "Password is required",
-    "failed": "Failed to link account. Please try again."
+    "failed": "Failed to link account. Please try again.",
+    "linkAction": "link the account"
   },
   "protectedRoute": {
     "loadingAriaLabel": "Loading"
@@ -446,7 +452,8 @@
     "cancel": "Cancel",
     "add": "Add",
     "adding": "Adding...",
-    "addFailed": "Failed to add entry"
+    "addFailed": "Failed to add entry",
+    "addAction": "add the entry"
   },
   "addressBookAutocomplete": {
     "placeholder": "Type to search...",

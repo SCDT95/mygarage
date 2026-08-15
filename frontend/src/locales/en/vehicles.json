@@ -73,6 +73,7 @@
       "loading": "Loading...",
       "markComplete": "Mark complete",
       "networkError": "Network error",
+      "completeReminderAction": "complete the reminder",
       "noNotes": "No notes available",
       "searchResults": "Found {{count}} event(s) matching \"{{query}}\"",
       "statusDueSoon": "Due Soon",
@@ -270,6 +271,7 @@
       "hours": "Hours",
       "live": "Live",
       "loadError": "Failed to load vehicle",
+      "loadAction": "load the vehicle",
       "moreActions": "More actions",
       "odometer": "Odometer",
       "options": "Options",
@@ -1084,6 +1086,7 @@
     "placeholder": "Enter 17-character VIN",
     "characterCount": "{{current}}/{{max}} characters",
     "decodeFailed": "Failed to decode VIN",
+    "decodeAction": "decode the VIN",
     "decodedTitle": "Decoded Vehicle Information",
     "fieldBody": "Body:",
     "fieldDoors": "Doors:",
@@ -1195,6 +1198,7 @@
       "rawExtractedText": "Raw Extracted Text",
       "smogRating": "Smog Rating",
       "testFailed": "Failed to test extraction",
+      "testAction": "test the extraction",
       "totalMsrp": "Total MSRP",
       "transmission": "Transmission",
       "unknown": "Unknown",
@@ -1251,7 +1255,8 @@
       "cancel": "Cancel",
       "creating": "Creating...",
       "createVehicle": "Create Vehicle",
-      "createFailed": "Failed to create vehicle"
+      "createFailed": "Failed to create vehicle",
+      "createAction": "create the vehicle"
     }
   },
   "serviceVisitAttachments": {

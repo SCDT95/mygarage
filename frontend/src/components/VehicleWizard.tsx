@@ -18,6 +18,7 @@ import { Stepper, Drawer, Button, Select, NumberInput, registerDecimal } from '.
 import type { VINDecodeResponse } from '../types/vin'
 import type { VehicleCreate } from '../types/vehicle'
 import { FUEL_TYPE_VALUES, FUEL_TYPE_LABELS, type FuelType } from '../constants/fuel'
+import { getActionErrorMessage } from '../utils/httpErrorHandler'
 import vehicleService from '../services/vehicleService'
 import { makeVehicleEditSchema, VEHICLE_TYPES, type VehicleEditFormData } from '../schemas/vehicle'
 import { useCurrencyPreference } from '../hooks/useCurrencyPreference'
@@ -196,12 +197,7 @@ export default function VehicleWizard({ onClose, onSuccess }: VehicleWizardProps
       }
       onClose()
     } catch (err: unknown) {
-      if (err && typeof err === 'object' && 'response' in err) {
-        const response = (err as { response?: { data?: { detail?: string } } }).response
-        setError(response?.data?.detail || t('wizard.misc.createFailed'))
-      } else {
-        setError(t('wizard.misc.createFailed'))
-      }
+      setError(getActionErrorMessage(err, t('wizard.misc.createAction')))
       setLoading(false)
     }
   }

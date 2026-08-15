@@ -17,6 +17,7 @@ import {
 } from '../schemas/spotRentalBilling'
 import { useCreateBillingEntry, useUpdateBillingEntry } from '../hooks/queries/useSpotRentals'
 import { formatDateForInput } from '../utils/dateUtils'
+import { getActionErrorMessage, parseApiError } from '../utils/httpErrorHandler'
 
 interface BillingEntryFormProps {
   vin: string
@@ -106,19 +107,10 @@ export default function BillingEntryForm({
       onClose()
     } catch (err: unknown) {
       console.error('Failed to save billing entry:', err)
-      if (err && typeof err === 'object' && 'response' in err) {
-        const axiosError = err as {
-          response?: { data?: { detail?: string }; status?: number }
-        }
-        if (axiosError.response?.data?.detail) {
-          setError(axiosError.response.data.detail)
-        } else if (axiosError.response?.status === 404) {
-          setError(t('billing.spotRentalNotFound'))
-        } else {
-          setError(t('billing.failedToSave'))
-        }
+      if (parseApiError(err).status === 404) {
+        setError(t('billing.spotRentalNotFound'))
       } else {
-        setError(t('billing.failedToSave'))
+        setError(getActionErrorMessage(err, t('billing.saveAction')))
       }
     }
   }

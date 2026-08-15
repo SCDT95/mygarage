@@ -6,6 +6,7 @@ import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Search, Check, X, Loader2 } from 'lucide-react'
 import { vinService } from '@/services/vinService'
+import { getActionErrorMessage } from '@/utils/httpErrorHandler'
 import { Card } from '@/components/ui'
 import type { VINDecodeResponse } from '@/types/vin'
 
@@ -126,14 +127,7 @@ export default function VINInput({
         onDecode(data)
       }
     } catch (err: unknown) {
-      if (err && typeof err === 'object' && 'response' in err) {
-        // `detail` is backend-supplied text — surfaced verbatim, never routed
-        // through t().
-        const response = (err as { response?: { data?: { detail?: string } } }).response
-        setErrorMessage(response?.data?.detail ?? t('vinInput.decodeFailed'))
-      } else {
-        setErrorMessage(t('vinInput.decodeFailed'))
-      }
+      setErrorMessage(getActionErrorMessage(err, t('vinInput.decodeAction')))
     } finally {
       setIsDecoding(false)
     }

@@ -11,6 +11,11 @@ const WIDGET_KEYS_QK = ['widget-keys'] as const
 /**
  * Detects the 400 body the backend returns when auth_mode=none, so the UI
  * can render a dedicated disabled state instead of a generic error.
+ *
+ * `detail` here is a nested sentinel object, not display text — a 422's
+ * `detail` array would make `detail?.detail` undefined rather than throw,
+ * so this comparison is already array-safe; it's deliberately left as a
+ * direct comparison rather than routed through getActionErrorMessage.
  */
 export function isAuthDisabledError(error: unknown): boolean {
   const err = error as { response?: { status?: number; data?: { detail?: { detail?: string } } } }

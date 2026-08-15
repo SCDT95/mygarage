@@ -11,6 +11,7 @@ import { useState, useEffect } from 'react'
 import { UserPlus, Trash2, Loader2, Share2, User } from 'lucide-react'
 import { toast } from 'sonner'
 import { Drawer, Select } from '@/components/ui'
+import { getActionErrorMessage } from '@/utils/httpErrorHandler'
 import { familyService } from '@/services/familyService'
 import type { ShareableUser, VehicleShareResponse, PermissionType } from '@/types/family'
 import { formatRelationship } from '@/types/family'
@@ -100,9 +101,7 @@ export default function VehicleSharingModal({
       toast.success(t('modal.vehicleShared'))
       onSharesUpdated?.()
     } catch (err) {
-      const error = err as { response?: { data?: { detail?: string } } }
-      const detail = error.response?.data?.detail
-      toast.error(typeof detail === 'string' ? detail : t('modal.failedToShareVehicle'))
+      toast.error(getActionErrorMessage(err, t('modal.shareVehicleAction')))
     } finally {
       setAddingShare(false)
     }
@@ -117,9 +116,7 @@ export default function VehicleSharingModal({
       toast.success(t('modal.permissionUpdated'))
       onSharesUpdated?.()
     } catch (err) {
-      const error = err as { response?: { data?: { detail?: string } } }
-      const detail = error.response?.data?.detail
-      toast.error(typeof detail === 'string' ? detail : t('modal.failedToUpdatePermission'))
+      toast.error(getActionErrorMessage(err, t('modal.updatePermissionAction')))
     } finally {
       setUpdatingShareId(null)
     }
@@ -134,9 +131,7 @@ export default function VehicleSharingModal({
       toast.success(t('modal.shareRevoked'))
       onSharesUpdated?.()
     } catch (err) {
-      const error = err as { response?: { data?: { detail?: string } } }
-      const detail = error.response?.data?.detail
-      toast.error(typeof detail === 'string' ? detail : t('modal.failedToRevokeShare'))
+      toast.error(getActionErrorMessage(err, t('modal.revokeShareAction')))
     } finally {
       setRevokingShareId(null)
     }

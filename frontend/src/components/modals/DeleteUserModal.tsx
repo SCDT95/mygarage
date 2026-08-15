@@ -3,6 +3,7 @@ import { useState } from 'react'
 import { AlertTriangle } from 'lucide-react'
 import { toast } from 'sonner'
 import api from '@/services/api'
+import { getActionErrorMessage } from '@/utils/httpErrorHandler'
 
 /** Literal the admin must type to arm the delete button. Not translated on purpose. */
 const CONFIRM_TOKEN = 'DELETE'
@@ -61,14 +62,8 @@ export default function DeleteUserModal({ isOpen, onClose, user, onConfirm }: De
       onConfirm()
       onClose()
       setConfirmText('')
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    } catch (error: any) {
-      const detail = error.response?.data?.detail
-      if (typeof detail === 'string') {
-        toast.error(detail)
-      } else {
-        toast.error(t('modal.failedToDeleteUser'))
-      }
+    } catch (error: unknown) {
+      toast.error(getActionErrorMessage(error, t('modal.deleteUserAction')))
     } finally {
       setLoading(false)
     }

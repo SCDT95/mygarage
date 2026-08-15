@@ -10,6 +10,7 @@ import { useState, useEffect } from 'react'
 import { ChevronLeft, ChevronRight, Check, AlertTriangle, User, Loader2 } from 'lucide-react'
 import { toast } from 'sonner'
 import { Stepper, Drawer, Button } from '@/components/ui'
+import { getActionErrorMessage } from '@/utils/httpErrorHandler'
 import { familyService } from '@/services/familyService'
 import type { EligibleRecipient, VehicleTransferResponse } from '@/types/family'
 import { formatRelationship } from '@/types/family'
@@ -192,15 +193,9 @@ export default function VehicleTransferWizard({
       onTransferComplete(result)
       onClose()
     } catch (err) {
-      const error = err as { response?: { data?: { detail?: string } } }
-      const detail = error.response?.data?.detail
-      if (typeof detail === 'string') {
-        setError(detail)
-        toast.error(detail)
-      } else {
-        setError(t('modal.failedToTransfer'))
-        toast.error(t('modal.failedToTransfer'))
-      }
+      const message = getActionErrorMessage(err, t('modal.transferAction'))
+      setError(message)
+      toast.error(message)
     } finally {
       setLoading(false)
     }
