@@ -120,12 +120,19 @@ export function parseApiError(error: unknown, context?: string): ParsedApiError 
     const rawDetail = (error.response?.data as { detail?: unknown })?.detail
     const fieldErrors = parseValidationErrors(rawDetail)
     // `detail` is human-facing text ONLY. A 422 sends an array, which must never
-    // be stringified into a toast — fieldErrors carries that content.
+    // be stringified into a toast — fieldErrors carries that content. Falling
+    // back to `error.message` here (axios's own "Request failed with status
+    // code NNN") reintroduces the exact opaque string this release exists to
+    // remove, and it's the ONLY body shape axios leaves reachable on the 11
+    // `responseType: 'blob'` download sites (the error body arrives as an
+    // unreadable Blob, so `.detail` never resolves there) plus any non-JSON
+    // error page from a proxy. Leave `detail` undefined instead so
+    // `getActionErrorMessage` falls through to its translated template.
     const detail = isValidationProblemArray(rawDetail)
       ? undefined
       : typeof rawDetail === 'string'
         ? rawDetail
-        : error.message
+        : undefined
 
     // Network error (no response)
     if (!error.response) {
@@ -218,13 +225,22 @@ export function getActionErrorMessage(error: unknown, action: string): string {
     return failed()
   }
 
-  // For validation errors and not-found lookups, show the backend detail
-  // verbatim when there is one. A 404 raised as `HTTPException(404, "X not
-  // found")` is exactly as specific as a 422's message — letting it fall
-  // through to the generic "resource not found" template below (`failed()`)
-  // discards that specificity at every call site that surfaces a 404 (e.g.
-  // "Vehicle not found" vs "Share not found" vs "Backup file not found").
-  if (parsed.status === 400 || parsed.status === 422 || parsed.status === 404) {
+  // For validation errors, not-found lookups, and auth rejections, show the
+  // backend detail verbatim when there is one. A 404 raised as
+  // `HTTPException(404, "X not found")` is exactly as specific as a 422's
+  // message — letting it fall through to the generic "resource not found"
+  // template below (`failed()`) discards that specificity at every call site
+  // that surfaces a 404 (e.g. "Vehicle not found" vs "Share not found" vs
+  // "Backup file not found"). 401/403 need the same treatment: login's
+  // "Incorrect username or password" (401), "User account is inactive" (403),
+  // and "Registration is disabled. Please contact an administrator…" (403)
+  // are all specific, user-actionable backend text — without this branch they
+  // fell through to `failed()`'s generic "Session expired" / "permission"
+  // templates, which is actively FALSE for a login-page typo. Requires C1
+  // (the `error.message` fallback removed from `parsed.detail`) so a
+  // detail-less 401/403 falls through to the translated
+  // `actionFailedCheckInput` template below rather than an axios status line.
+  if ([400, 401, 403, 404, 422].includes(parsed.status)) {
     return (
       parsed.detail ||
       tSafe('httpError.actionFailedCheckInput', 'Failed to {{action}}. Please check your input.', {
