@@ -53,12 +53,26 @@ export function registerDecimal<T extends FieldValues>(
  * is unparseable, so the user's separator never reaches the handler.
  * `inputMode="decimal"` keeps the numeric keypad on mobile.
  */
-export default function NumberInput({ mono = true, ambiguityHint, id, ...rest }: NumberInputProps) {
+export default function NumberInput({
+  mono = true,
+  ambiguityHint,
+  id,
+  'aria-describedby': ariaDescribedBy,
+  ...rest
+}: NumberInputProps) {
+  const hintId = ambiguityHint && id ? `${id}-ambiguity` : undefined
   return (
     <>
-      <Input id={id} type="text" inputMode="decimal" mono={mono} {...rest} />
+      <Input
+        id={id}
+        type="text"
+        inputMode="decimal"
+        mono={mono}
+        aria-describedby={[ariaDescribedBy, hintId].filter(Boolean).join(' ') || undefined}
+        {...rest}
+      />
       {ambiguityHint ? (
-        <p id={id ? `${id}-ambiguity` : undefined} className="mt-1 text-xs text-text-mute">
+        <p id={hintId} className="mt-1 text-xs text-text-mute">
           {ambiguityHint}
         </p>
       ) : null}
