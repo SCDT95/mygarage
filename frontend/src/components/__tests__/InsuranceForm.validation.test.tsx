@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { toast } from 'sonner'
 import { render } from '../../__tests__/test-utils'
 
 const createMutateAsync = vi.fn().mockResolvedValue({})
@@ -57,5 +58,24 @@ describe('InsuranceForm — issue #140', () => {
       expect(screen.getByRole('alert')).toHaveTextContent('common:validation.amount.invalid')
     )
     expect(createMutateAsync).not.toHaveBeenCalled()
+  })
+
+  // Regression fence for the attached.length===0 gate (Task 9 follow-up): a
+  // non-422 failure (network drop, 500, plain throw) carries NO field-level
+  // detail at all, so applyServerErrors returns both `attached` and
+  // `unhandled` empty. Gating the toast on `unhandled.length > 0` alone
+  // silently drops this — the user sees nothing. This test fails under that
+  // literal gate and passes under `attached.length === 0 || unhandled.length
+  // > 0` — verified by temporarily reverting the source (see task-9-report.md
+  // for the captured failure output).
+  it('toasts on a non-422 failure instead of staying silent', async () => {
+    const user = userEvent.setup()
+    createMutateAsync.mockRejectedValueOnce(new Error('Network Error'))
+    render(<InsuranceForm vin="1HGBH41JXMN109186" onClose={vi.fn()} onSuccess={vi.fn()} />)
+    await fillRequired(user)
+    await user.click(save())
+
+    await waitFor(() => expect(createMutateAsync).toHaveBeenCalled())
+    await waitFor(() => expect(toast.error).toHaveBeenCalled())
   })
 })

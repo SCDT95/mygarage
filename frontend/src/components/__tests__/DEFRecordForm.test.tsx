@@ -86,4 +86,21 @@ describe('DEFRecordForm — submit wiring + canonical payload', () => {
     }))
     expect(createMock).not.toHaveBeenCalled()
   })
+
+  // Regression fence for the attached.length===0 gate (Task 9 follow-up): a
+  // non-422 failure (network drop, 500, plain throw) carries NO field-level
+  // detail at all, so applyServerErrors returns both `attached` and
+  // `unhandled` empty. Gating the banner on `unhandled.length > 0` alone
+  // silently drops this — the user sees nothing. Verified this fails under
+  // that literal gate and passes under `attached.length === 0 ||
+  // unhandled.length > 0` by temporarily reverting the source (see
+  // task-9-report.md).
+  it('shows a banner on a non-422 failure instead of staying silent (fails if the gate regresses to unhandled.length>0)', async () => {
+    createMock.mockRejectedValueOnce(new Error('Network Error'))
+    render(<DEFRecordForm {...DEFAULT_PROPS} />)
+    fireEvent.change(document.getElementById('date') as HTMLInputElement, { target: { value: '2026-02-10' } })
+    fireEvent.submit(defForm())
+    await waitFor(() => expect(createMock).toHaveBeenCalled())
+    await waitFor(() => expect(screen.getByText('Failed to {{action}}. {{message}}')).toBeInTheDocument())
+  })
 })

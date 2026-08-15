@@ -114,7 +114,10 @@ export default function InsuranceForm({ vin, record, onClose, onSuccess }: Insur
       onSuccess()
       onClose()
     } catch (err) {
-      const { unhandled } = applyServerErrors<InsuranceFormData>(setFieldError, err, [
+      // attached.length === 0 catches a non-422 failure (network drop, 500):
+      // it carries no field problems at all, so `unhandled` alone would stay
+      // empty and this toast would never show.
+      const { attached, unhandled } = applyServerErrors<InsuranceFormData>(setFieldError, err, [
         'provider',
         'policy_number',
         'policy_type',
@@ -126,7 +129,9 @@ export default function InsuranceForm({ vin, record, onClose, onSuccess }: Insur
         'coverage_limits',
         'notes',
       ])
-      if (unhandled.length > 0) toast.error(getActionErrorMessage(err, t('insurance.saveAction')))
+      if (attached.length === 0 || unhandled.length > 0) {
+        toast.error(getActionErrorMessage(err, t('insurance.saveAction')))
+      }
     }
   }
 
