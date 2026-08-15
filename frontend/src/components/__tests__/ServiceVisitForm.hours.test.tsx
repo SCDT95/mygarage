@@ -182,3 +182,95 @@ describe('ServiceVisitForm — engine-hours usage tracking (Task 14)', () => {
     expect(engineHoursInput()!.value).toBe('640.5')
   })
 })
+
+// Task 10 addendum — the coordinator flagged that 10a's catch-block rewrite
+// (parseApiError(err).fieldErrors -> fieldErrors map, else setError(...))
+// gained real branching with zero test coverage. This is the exact class of
+// gap that hid a live bug in Task 7/9 (a non-422 failure showing NOTHING to
+// the user) for two more tasks after a reviewer flagged it as Minor and it
+// was deferred. Both branches are fenced here, on the REAL mutation path
+// (api.put, via useUpdateServiceVisit — not a mocked mutateAsync), using
+// edit mode so the pre-hydrated visit.line_items already satisfies the
+// "every line item needs a description" guard without touching the (here
+// real, unstubbed) LineItemEditor.
+describe('ServiceVisitForm — server-side error wiring (Task 10 addendum)', () => {
+  const axios422 = (detail: unknown): unknown => ({
+    isAxiosError: true,
+    message: 'Request failed with status code 422',
+    response: { status: 422, data: { detail } },
+  })
+
+  function editableVisit(): ServiceVisit {
+    return {
+      id: 900,
+      vin: DEFAULT_PROPS.vin,
+      date: '2026-07-01',
+      created_at: '2026-07-01T00:00:00',
+      calculated_total_cost: '0.00',
+      has_failed_inspections: false,
+      line_item_count: 1,
+      subtotal: '0.00',
+      vendor_id: null,
+      odometer_km: null,
+      engine_hours: null,
+      notes: null,
+      insurance_claim_number: null,
+      tax_amount: null,
+      shop_supplies: null,
+      misc_fees: null,
+      service_category: null,
+      total_cost: '0.00',
+      updated_at: null,
+      vendor: null,
+      line_items: [
+        {
+          id: 501,
+          visit_id: 900,
+          description: 'Oil change',
+          category: 'Maintenance',
+          cost: null,
+          created_at: '2026-07-01T00:00:00',
+          is_failed_inspection: false,
+          is_inspection: false,
+          needs_followup: false,
+          notes: null,
+          triggered_by_inspection_id: null,
+          supply_usages: [],
+        },
+      ],
+    } as unknown as ServiceVisit
+  }
+
+  beforeEach(() => {
+    vi.clearAllMocks()
+    mockedApiPost.mockResolvedValue({ data: {} })
+    mockedApiPut.mockResolvedValue({ data: {} })
+    mockedApiGet.mockResolvedValue({ data: { usage_unit: 'distance', secondary_usage_enabled: false } })
+  })
+
+  it('a 422 naming "notes" lands its message on the notes field (fails if the fieldErrors map is not wired to the Field)', async () => {
+    mockedApiPut.mockRejectedValueOnce(axios422([
+      { type: 'string_too_long', loc: ['body', 'notes'], msg: 'Notes must be 5000 characters or fewer' },
+    ]))
+    render(<ServiceVisitForm {...DEFAULT_PROPS} visit={editableVisit()} />)
+    await waitFor(() => expect(odometerInput()).toBeInTheDocument())
+
+    fireEvent.submit(drawerForm())
+
+    await waitFor(() => expect(mockedApiPut).toHaveBeenCalled())
+    const alert = await screen.findByRole('alert')
+    expect(alert).toHaveTextContent('Notes must be 5000 characters or fewer')
+    expect(alert.id).toBe('visit-notes-error')
+  })
+
+  it('a non-422 failure (network error) still shows the fallback banner instead of staying silent (regression fence for the Task 7/9 silent-failure bug)', async () => {
+    mockedApiPut.mockRejectedValueOnce(new Error('Network Error'))
+    render(<ServiceVisitForm {...DEFAULT_PROPS} visit={editableVisit()} />)
+    await waitFor(() => expect(odometerInput()).toBeInTheDocument())
+
+    fireEvent.submit(drawerForm())
+
+    await waitFor(() => expect(mockedApiPut).toHaveBeenCalled())
+    await waitFor(() => expect(screen.getByText('Failed to {{action}}. {{message}}')).toBeInTheDocument())
+  })
+})

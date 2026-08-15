@@ -71,3 +71,46 @@ describe('ReminderForm — create vs update routing (SDQ-C)', () => {
     expect(updateMock).not.toHaveBeenCalled()
   })
 })
+
+// Task 10 addendum — the coordinator flagged that 10a's catch-block rewrite
+// (parseApiError(err).fieldErrors -> fieldErrors map, else setError(...))
+// gained real branching (the problems.length>0 test, the fieldErrors state,
+// the render wiring) with zero test coverage. This is the same class of gap
+// that hid a live bug in Task 7/9 — a non-422 failure showing NOTHING to the
+// user — for two more tasks after a reviewer flagged it as Minor and it was
+// deferred. Both branches are fenced here on the real create-mutation path.
+describe('ReminderForm — server-side error wiring (Task 10 addendum)', () => {
+  const fillMinimal = () => {
+    fireEvent.change(screen.getByLabelText('common:title *'), { target: { value: 'Oil change' } })
+    fireEvent.change(screen.getByLabelText('reminder.dueDate *'), { target: { value: '2026-06-01' } })
+  }
+
+  it('a 422 naming "notes" lands its message on the notes field (fails if the fieldErrors map is not wired to the Field)', async () => {
+    createMock.mockRejectedValueOnce({
+      isAxiosError: true,
+      message: 'Request failed with status code 422',
+      response: {
+        status: 422,
+        data: { detail: [{ type: 'string_too_long', loc: ['body', 'notes'], msg: 'Notes must be 2000 characters or fewer' }] },
+      },
+    })
+    render(<ReminderForm vin="V1" onClose={vi.fn()} onSuccess={vi.fn()} />)
+    fillMinimal()
+    fireEvent.click(screen.getByRole('button', { name: 'common:create' }))
+
+    await vi.waitFor(() => expect(createMock).toHaveBeenCalledTimes(1))
+    const alert = await screen.findByRole('alert')
+    expect(alert).toHaveTextContent('Notes must be 2000 characters or fewer')
+    expect(alert.id).toBe('reminder-notes-error')
+  })
+
+  it('a non-422 failure (network error) still shows the banner instead of staying silent (regression fence for the Task 7/9 silent-failure bug)', async () => {
+    createMock.mockRejectedValueOnce(new Error('Network Error'))
+    render(<ReminderForm vin="V1" onClose={vi.fn()} onSuccess={vi.fn()} />)
+    fillMinimal()
+    fireEvent.click(screen.getByRole('button', { name: 'common:create' }))
+
+    await vi.waitFor(() => expect(createMock).toHaveBeenCalledTimes(1))
+    await vi.waitFor(() => expect(screen.getByText('Failed to {{action}}. {{message}}')).toBeInTheDocument())
+  })
+})
