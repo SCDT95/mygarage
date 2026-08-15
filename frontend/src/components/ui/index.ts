@@ -17,6 +17,7 @@ export type { IconType, Size, Tone } from './types'
 
 // Primitives are appended here as each task lands (Tasks 4-23).
 export { default as Mono } from './Mono'
+export { default as NumberInput, registerDecimal } from './NumberInput'
 export { default as Badge } from './Badge'
 export { default as Chip } from './Chip'
 export { default as Avatar } from './Avatar'
