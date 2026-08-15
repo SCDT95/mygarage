@@ -125,7 +125,16 @@ class PDFReportGenerator:
             story.append(Spacer(1, 0.1 * inch))
 
             # Table headers
-            table_data = [["Date", "Odometer (km)", "Type", "Description", "Cost", "Vendor"]]
+            headers = ["Date", "Odometer (km)", "Type", "Description", "Cost", "Vendor"]
+            header_style = ParagraphStyle(
+                "TableHeader",
+                parent=self.styles["Normal"],
+                fontName="Helvetica-Bold",
+                fontSize=10,
+                textColor=colors.whitesmoke,
+                alignment=TA_CENTER,
+            )
+            table_data = [[Paragraph(h, header_style) for h in headers]]
 
             # Table rows
             total_cost = Decimal("0")
@@ -135,16 +144,21 @@ class PDFReportGenerator:
                     total_cost += Decimal(str(cost))
 
                 odometer_km_value = record.get("odometer_km")
+                odom_str = f"{int(odometer_km_value):,}" if odometer_km_value else "N/A"
                 table_data.append(
                     [
                         self._format_date(record.get("date")),
-                        f"{odometer_km_value:,}" if odometer_km_value else "N/A",
-                        record.get("service_type", "N/A"),
-                        Paragraph(record.get("description", "N/A")[:50], self.styles["Normal"]),
+                        odom_str,
+                        Paragraph(
+                            str(record.get("service_category") or "Service"),
+                            self.styles["Normal"],
+                        ),
+                        Paragraph(
+                            str(record.get("service_type") or "N/A")[:50],
+                            self.styles["Normal"],
+                        ),
                         self._format_currency(cost),
-                        record.get("vendor_name", "N/A")[:20]
-                        if record.get("vendor_name")
-                        else "N/A",
+                        Paragraph(str(record.get("vendor_name") or "N/A"), self.styles["Normal"]),
                     ]
                 )
 
@@ -167,12 +181,12 @@ class PDFReportGenerator:
             table = Table(
                 table_data,
                 colWidths=[
-                    0.9 * inch,
                     0.8 * inch,
-                    1 * inch,
-                    2 * inch,
                     0.9 * inch,
-                    1.2 * inch,
+                    1.0 * inch,
+                    1.8 * inch,
+                    0.8 * inch,
+                    1.4 * inch,
                 ],
             )
             table.setStyle(
@@ -188,11 +202,12 @@ class PDFReportGenerator:
                         # Data rows
                         ("BACKGROUND", (0, 1), (-1, -2), colors.white),
                         ("TEXTCOLOR", (0, 1), (-1, -1), colors.black),
-                        ("ALIGN", (1, 1), (1, -1), "RIGHT"),  # Mileage
+                        ("ALIGN", (1, 1), (1, -1), "CENTER"),  # Mileage
                         ("ALIGN", (4, 1), (4, -1), "RIGHT"),  # Cost
                         ("FONTNAME", (0, 1), (-1, -1), "Helvetica"),
                         ("FONTSIZE", (0, 1), (-1, -1), 9),
                         ("GRID", (0, 0), (-1, -2), 0.5, colors.grey),
+                        ("VALIGN", (0, 0), (-1, -1), "TOP"),
                         # Total row
                         ("BACKGROUND", (0, -1), (-1, -1), colors.HexColor("#f3f4f6")),
                         ("LINEABOVE", (0, -1), (-1, -1), 2, colors.HexColor("#3b82f6")),
