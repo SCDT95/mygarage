@@ -142,7 +142,8 @@
     "title": "DEF Records",
     "totalSpent": "Total Spent",
     "type": "Type",
-    "volumeUnit": "Volume ({{unit}})"
+    "volumeUnit": "Volume ({{unit}})",
+    "loadAction": "load DEF records"
   },
   "detail": {
     "actions": "Actions",
@@ -333,7 +334,8 @@
     "typeRegistration": "Registration",
     "deleteAction": "delete the document",
     "downloadAction": "download the document",
-    "updateAction": "update the document"
+    "updateAction": "update the document",
+    "loadAction": "load documents"
   },
   "documentUpload": {
     "title": "Upload Document",
@@ -444,7 +446,8 @@
     "tableCaption": "Fuel fill-up history",
     "exportAction": "export fuel records",
     "importAction": "import fuel records",
-    "deleteAction": "delete the fuel record"
+    "deleteAction": "delete the fuel record",
+    "loadAction": "load fuel history"
   },
   "hoursList": {
     "actions": "Actions",
@@ -465,7 +468,8 @@
     "sourceManual": "Manual",
     "sourceServiceVisit": "Service",
     "tableCaption": "Engine hours reading history",
-    "title": "Engine Hours Readings"
+    "title": "Engine Hours Readings",
+    "loadAction": "load engine hours readings"
   },
   "insuranceList": {
     "addFirstPolicy": "Add Your First Insurance Policy",
@@ -484,7 +488,8 @@
     "policyNumber": "Policy Number",
     "premiumAmount": "Premium Amount",
     "startDate": "Start Date",
-    "title": "Insurance Policies"
+    "title": "Insurance Policies",
+    "loadAction": "load insurance policies"
   },
   "lineItemEditor": {
     "cost": "Cost",
@@ -698,7 +703,8 @@
     "noRecordsDesc": "Keep track of observations, modifications, trips, and other information about your vehicle",
     "noteCount": "{{count}} notes",
     "title": "Notes",
-    "updated": "Updated"
+    "updated": "Updated",
+    "loadAction": "load notes"
   },
   "odometerList": {
     "actions": "Actions",
@@ -725,7 +731,8 @@
     "notes": "Notes",
     "recordCount": "{{count}} record(s)",
     "tableCaption": "Odometer reading history",
-    "title": "Odometer Readings"
+    "title": "Odometer Readings",
+    "loadAction": "load odometer readings"
   },
   "photoGallery": {
     "deletePhoto": "Delete photo",
@@ -801,7 +808,8 @@
     "totalLiters": "Total Liters",
     "totalSpent": "Total Spent",
     "vendor": "Vendor",
-    "volumeUnit": "Volume ({{unit}})"
+    "volumeUnit": "Volume ({{unit}})",
+    "loadAction": "load propane records"
   },
   "quickEntry": {
     "fuelRecord": "Fuel record",
@@ -855,7 +863,8 @@
     "notAvailable": "N/A",
     "nhtsaCheckAction": "check for recalls",
     "deleteAction": "delete the recall",
-    "statusAction": "update the recall status"
+    "statusAction": "update the recall status",
+    "loadAction": "load safety recalls"
   },
   "reminderList": {
     "addReminder": "Add Reminder",
@@ -904,7 +913,8 @@
     "tax": "Tax",
     "title": "Service History",
     "total": "Total",
-    "visitCount": "{{count}} visits"
+    "visitCount": "{{count}} visits",
+    "loadAction": "load service history"
   },
   "serviceVisitAttachmentUpload": {
     "title": "Upload Attachment",
@@ -963,7 +973,8 @@
     "weekly": "Weekly",
     "addBilling": "Add Billing",
     "deleteAction": "delete the spot rental",
-    "billingDeleteAction": "delete the billing entry"
+    "billingDeleteAction": "delete the billing entry",
+    "loadAction": "load spot rentals"
   },
   "taxList": {
     "actions": "Actions",
@@ -983,7 +994,8 @@
     "tableCaption": "Tax and registration record history",
     "title": "Tax & Registration Records",
     "total": "Total",
-    "type": "Type"
+    "type": "Type",
+    "loadAction": "load tax records"
   },
   "tollList": {
     "addFirstTransaction": "Add Your First Transaction",
@@ -1009,7 +1021,8 @@
     "totalAmount": "Total Amount",
     "totalTransactions": "Total Transactions",
     "transactionCount": "{{count}} transactions recorded",
-    "transactions": "Transactions"
+    "transactions": "Transactions",
+    "loadAction": "load toll transactions"
   },
   "tollTagList": {
     "addFirstTollTag": "Add Your First Toll Tag",
@@ -1022,7 +1035,8 @@
     "notes": "Notes",
     "status": "Status",
     "tagCount": "{{count}} tags configured",
-    "title": "Toll Tags"
+    "title": "Toll Tags",
+    "loadAction": "load toll tags"
   },
   "transferHistory": {
     "title": "Transfer History",
@@ -1118,7 +1132,8 @@
     "policyNumber": "Policy Number",
     "startDate": "Start Date",
     "title": "Warranties",
-    "warrantyCount": "{{count}} warranties tracked"
+    "warrantyCount": "{{count}} warranties tracked",
+    "loadAction": "load warranties"
   },
   "windowSticker": {
     "dropOrClick": "Drop file here or click to upload",

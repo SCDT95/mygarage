@@ -44,7 +44,11 @@ export default function OdometerRecordForm({ vin, record, onClose, onSuccess }: 
     }
   }, [isEdit, vin, record, system, createMutation, updateMutation])
 
-  const { error, handleSubmit: onSubmit } = useFormSubmit(submitFn, { onSuccess, onClose })
+  const { error, handleSubmit: onSubmit } = useFormSubmit(submitFn, {
+    onSuccess,
+    onClose,
+    action: t('odometer.saveAction'),
+  })
 
   // Zod bakes its messages in at construction, so the schema is rebuilt when
   // the language changes. Only the resolver depends on it — no fetch, no

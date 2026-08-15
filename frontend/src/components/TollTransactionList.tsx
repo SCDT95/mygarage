@@ -117,7 +117,7 @@ export default function TollTransactionList({ vin, onAddClick, onEditClick }: To
   if (transactionsError) {
     return (
       <div className="bg-danger/10 border border-danger rounded-lg p-4">
-        <p className="text-danger">{transactionsError instanceof Error ? transactionsError.message : t('tollList.error')}</p>
+        <p className="text-danger">{getActionErrorMessage(transactionsError, t('tollList.loadAction'))}</p>
       </div>
     )
   }

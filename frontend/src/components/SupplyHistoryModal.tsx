@@ -101,7 +101,7 @@ export default function SupplyHistoryModal({ supply, onClose }: SupplyHistoryMod
           <div className="flex items-start gap-2 p-3 bg-danger/10 border border-danger/20 rounded-md">
             <AlertTriangle className="w-4 h-4 text-danger flex-shrink-0 mt-0.5" />
             <p className="text-sm text-danger">
-              {error instanceof Error ? error.message : t('supplies.history.loadError')}
+              {getActionErrorMessage(error, t('supplies.history.loadAction'))}
             </p>
           </div>
         )}

@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next'
 import { FileText, Download, Calendar, FileSpreadsheet } from 'lucide-react'
 import { toast } from 'sonner'
 import api from '../services/api'
+import { getActionErrorMessage } from '../utils/httpErrorHandler'
 import { useCurrencyPreference } from '../hooks/useCurrencyPreference'
 import { Button, Field, Input, Select, Card } from './ui'
 
@@ -48,8 +49,7 @@ export default function ReportsPanel({ vin }: ReportsPanelProps) {
       window.URL.revokeObjectURL(downloadUrl)
     } catch (error) {
       console.error('PDF generation error:', error)
-      const message = error instanceof Error ? error.message : t('reports.pdfError')
-      toast.error(message)
+      toast.error(getActionErrorMessage(error, t('reports.pdfAction')))
     } finally {
       setIsGenerating(false)
     }
@@ -80,8 +80,7 @@ export default function ReportsPanel({ vin }: ReportsPanelProps) {
       window.URL.revokeObjectURL(downloadUrl)
     } catch (error) {
       console.error('CSV export error:', error)
-      const message = error instanceof Error ? error.message : t('reports.csvError')
-      toast.error(message)
+      toast.error(getActionErrorMessage(error, t('reports.csvAction')))
     } finally {
       setIsGenerating(false)
     }

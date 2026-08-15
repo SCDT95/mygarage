@@ -122,7 +122,7 @@ export default function TaxRecordList({ vin }: TaxRecordListProps) {
       {error && (
         <div className="flex items-start gap-2 p-3 bg-danger/10 border border-danger/20 rounded-md mb-4">
           <AlertCircle aria-hidden="true" className="w-4 h-4 text-danger flex-shrink-0 mt-0.5" />
-          <p className="text-sm text-danger">{error.message}</p>
+          <p className="text-sm text-danger">{getActionErrorMessage(error, t('taxList.loadAction'))}</p>
         </div>
       )}
 

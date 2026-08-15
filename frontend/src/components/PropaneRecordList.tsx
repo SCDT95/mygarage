@@ -170,7 +170,7 @@ export default function PropaneRecordList({ vin }: PropaneRecordListProps) {
 
       {error && (
         <div className="p-3 bg-danger/10 border border-danger/20 rounded-md mb-4">
-          <p className="text-sm text-danger">{error.message}</p>
+          <p className="text-sm text-danger">{getActionErrorMessage(error, t('propaneList.loadAction'))}</p>
         </div>
       )}
 

@@ -38,7 +38,11 @@ export default function NoteForm({ vin, note, onClose, onSuccess }: NoteFormProp
     }
   }, [isEdit, vin, note, createMutation, updateMutation])
 
-  const { error, handleSubmit: onSubmit } = useFormSubmit(submitFn, { onSuccess, onClose })
+  const { error, handleSubmit: onSubmit } = useFormSubmit(submitFn, {
+    onSuccess,
+    onClose,
+    action: t('note.saveAction'),
+  })
 
   // Zod bakes its messages in at construction, so the schema is rebuilt when
   // the language changes. Only the resolver depends on it — no fetch, no

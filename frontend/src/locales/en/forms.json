@@ -112,7 +112,8 @@
   "hours": {
     "createTitle": "Add Engine Hours Reading",
     "editTitle": "Edit Engine Hours Reading",
-    "notesPlaceholder": "Monthly reading, service reading, etc..."
+    "notesPlaceholder": "Monthly reading, service reading, etc...",
+    "saveAction": "save the hours record"
   },
   "insurance": {
     "coverageLimits": "Coverage Limits",
@@ -561,12 +562,14 @@
     "createTitle": "Add Note",
     "editTitle": "Edit Note",
     "freeFormHint": "Free-form text, no character limit",
-    "titleOptional": "Title (Optional)"
+    "titleOptional": "Title (Optional)",
+    "saveAction": "save the note"
   },
   "odometer": {
     "createTitle": "Add Odometer Reading",
     "editTitle": "Edit Odometer Reading",
-    "notesPlaceholder": "Monthly reading, trip odometer, etc..."
+    "notesPlaceholder": "Monthly reading, trip odometer, etc...",
+    "saveAction": "save the odometer record"
   },
   "propane": {
     "createTitle": "Add Propane Record",
@@ -717,7 +720,8 @@
     "createTitle": "Add Warranty",
     "editTitle": "Edit Warranty",
     "mileageLimit": "Mileage Limit",
-    "warrantyType": "Warranty Type"
+    "warrantyType": "Warranty Type",
+    "saveAction": "save the warranty"
   },
   "localAuthModalExtra": {
     "strength": {

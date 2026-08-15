@@ -109,7 +109,7 @@ export default function Supplies() {
           <div className="flex items-start gap-2 p-3 bg-danger/10 border border-danger/20 rounded-md mb-4">
             <AlertTriangle className="w-4 h-4 text-danger flex-shrink-0 mt-0.5" />
             <p className="text-sm text-danger">
-              {error instanceof Error ? error.message : t('supplies.loadError')}
+              {getActionErrorMessage(error, t('supplies.loadAction'))}
             </p>
           </div>
         )}

@@ -257,7 +257,7 @@ export default function FuelRecordList({ vin, onAddClick, onEditClick }: FuelRec
   if (error) {
     return (
       <div className="bg-danger/10 border border-danger rounded-lg p-4">
-        <p className="text-danger">{error.message}</p>
+        <p className="text-danger">{getActionErrorMessage(error, t('fuelList.loadAction'))}</p>
       </div>
     )
   }

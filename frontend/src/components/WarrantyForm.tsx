@@ -48,7 +48,11 @@ export default function WarrantyForm({ vin, record, onClose, onSuccess }: Warran
     }
   }, [isEdit, record, system, createMutation, updateMutation])
 
-  const { error, handleSubmit: onSubmit } = useFormSubmit(submitFn, { onSuccess, onClose })
+  const { error, handleSubmit: onSubmit } = useFormSubmit(submitFn, {
+    onSuccess,
+    onClose,
+    action: t('warranty.saveAction'),
+  })
 
   // Zod bakes its messages in at construction, so the schema is rebuilt when
   // the language changes. Only the resolver depends on it — no fetch, no

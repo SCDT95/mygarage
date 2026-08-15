@@ -6,6 +6,7 @@ import { useState, useEffect, useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useParams, Link } from 'react-router-dom'
 import api from '../services/api'
+import { getActionErrorMessage } from '../utils/httpErrorHandler'
 import { useUnitPreference } from '../hooks/useUnitPreference'
 import { UnitConverter, UnitFormatter } from '../utils/units'
 import { withBase } from '../utils/basePath'
@@ -141,7 +142,7 @@ export default function Analytics() {
           return
         }
       }
-      setError(error instanceof Error ? error.message : t('vehicle.genericError'))
+      setError(getActionErrorMessage(error, t('vehicle.loadAction')))
     } finally {
       setLoading(false)
     }

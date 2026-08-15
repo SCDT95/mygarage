@@ -217,7 +217,8 @@
       "purchaseDeleteAction": "delete the purchase",
       "receiptDeleteAction": "delete the receipt",
       "receiptUploadAction": "upload the receipt",
-      "adjustmentDeleteAction": "delete the adjustment"
+      "adjustmentDeleteAction": "delete the adjustment",
+      "loadAction": "load history"
     },
     "usedTab": {
       "title": "Supplies Used",
@@ -226,9 +227,11 @@
       "loadError": "Failed to load supplies used",
       "empty": "No supplies logged for this vehicle yet.",
       "quantity": "Quantity",
-      "viewVisit": "View service visit"
+      "viewVisit": "View service visit",
+      "loadAction": "load supplies used"
     },
-    "deleteAction": "delete the supply"
+    "deleteAction": "delete the supply",
+    "loadAction": "load supplies"
   },
   "poiFinder": {
     "title": "Find Points of Interest",
