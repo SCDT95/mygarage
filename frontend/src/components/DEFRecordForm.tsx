@@ -13,7 +13,7 @@ import { UnitConverter, UnitFormatter } from '../utils/units'
 import { toCanonicalKm, toCanonicalLiters, priceToDisplay, priceToCanonical } from '../utils/decimalSafe'
 import { formatDateForInput } from '../utils/dateUtils'
 import CurrencyInputPrefix from './common/CurrencyInputPrefix'
-import { Button, Field, Input, Textarea } from './ui'
+import { Button, Field, Input, NumberInput, Textarea, registerDecimal } from './ui'
 
 // `labelKey` is translated at render time; the fraction labels are numerals and
 // stay as-is (they are not prose).
@@ -184,7 +184,7 @@ export default function DEFRecordForm({
               <Input type="date" id="date" {...register('date')} invalid={!!errors.date} disabled={isSubmitting} />
             </Field>
             <Field id="odometer_km" label={t('common:mileage')} unit={UnitFormatter.getDistanceUnit(system)} error={errors.odometer_km}>
-              <Input type="number" id="odometer_km" mono {...register('odometer_km', { valueAsNumber: true })} min="0" step="0.1" placeholder="55000" invalid={!!errors.odometer_km} disabled={isSubmitting} />
+              <NumberInput id="odometer_km" {...registerDecimal(register, 'odometer_km')} placeholder="55000" invalid={!!errors.odometer_km} disabled={isSubmitting} />
             </Field>
           </div>
 
@@ -205,14 +205,9 @@ export default function DEFRecordForm({
             </div>
             <div className="flex items-center gap-2">
               <div className="w-24 shrink-0">
-                <Input
-                  type="number"
+                <NumberInput
                   id="fill_level"
-                  mono
-                  {...register('fill_level', { valueAsNumber: true })}
-                  min="0"
-                  max="100"
-                  step="1"
+                  {...registerDecimal(register, 'fill_level')}
                   placeholder="75"
                   invalid={!!errors.fill_level}
                   disabled={isSubmitting}
@@ -237,18 +232,18 @@ export default function DEFRecordForm({
           {/* Volume and Pricing */}
           <div className="grid grid-cols-3 gap-4">
             <Field id="liters" label={UnitFormatter.getVolumeUnit(system)} error={errors.liters}>
-              <Input type="number" id="liters" mono {...register('liters', { valueAsNumber: true })} min="0" step="0.001" placeholder="5.500" invalid={!!errors.liters} disabled={isSubmitting} />
+              <NumberInput id="liters" {...registerDecimal(register, 'liters')} placeholder="5.500" invalid={!!errors.liters} disabled={isSubmitting} />
             </Field>
             <Field id="price_per_unit" label={`${t('fuel.pricePer')}/${UnitFormatter.getVolumeUnit(system)}`} error={errors.price_per_unit}>
               <div className="relative">
                 <CurrencyInputPrefix />
-                <input type="number" id="price_per_unit" {...register('price_per_unit', { valueAsNumber: true })} min="0" step="0.001" placeholder="4.500" aria-invalid={errors.price_per_unit ? true : undefined} className={`ui-focus-input ui-motion w-full rounded-control border bg-surface-2 pl-7 pr-3 py-2 text-sm text-text font-mono tabular-nums ${errors.price_per_unit ? 'border-danger' : 'border-border'}`} disabled={isSubmitting} />
+                <NumberInput id="price_per_unit" {...registerDecimal(register, 'price_per_unit')} placeholder="4.500" invalid={!!errors.price_per_unit} disabled={isSubmitting} className="pl-7" />
               </div>
             </Field>
             <Field id="cost" label={t('common:totalCost')} error={errors.cost} hint={t('common:autoCalculated')}>
               <div className="relative">
                 <CurrencyInputPrefix />
-                <input type="number" id="cost" {...register('cost', { valueAsNumber: true })} min="0" step="0.01" placeholder="24.75" aria-invalid={errors.cost ? true : undefined} className={`ui-focus-input ui-motion w-full rounded-control border bg-surface-2 pl-7 pr-3 py-2 text-sm text-text font-mono tabular-nums ${errors.cost ? 'border-danger' : 'border-border'}`} disabled={isSubmitting} />
+                <NumberInput id="cost" {...registerDecimal(register, 'cost')} placeholder="24.75" invalid={!!errors.cost} disabled={isSubmitting} className="pl-7" />
               </div>
             </Field>
           </div>

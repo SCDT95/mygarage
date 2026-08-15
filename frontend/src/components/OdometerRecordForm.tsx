@@ -12,7 +12,7 @@ import { UnitConverter, UnitFormatter } from '../utils/units'
 import { toCanonicalKm } from '../utils/decimalSafe'
 import { formatDateForInput } from '../utils/dateUtils'
 import { useFormSubmit } from '../hooks/useFormSubmit'
-import { Button, Field, Input, Textarea } from './ui'
+import { Button, Field, Input, NumberInput, Textarea, registerDecimal } from './ui'
 
 interface OdometerRecordFormProps {
   vin: string
@@ -95,12 +95,9 @@ export default function OdometerRecordForm({ vin, record, onClose, onSuccess }: 
           </Field>
 
           <Field id="odometer_km" label={t('common:mileage')} unit={UnitFormatter.getDistanceUnit(system)} required error={errors.odometer_km}>
-            <Input
+            <NumberInput
               id="odometer_km"
-              type="number"
-              mono
-              {...register('odometer_km', { valueAsNumber: true })}
-              step="0.1"
+              {...registerDecimal(register, 'odometer_km')}
               placeholder={system === 'imperial' ? '45000' : '72420'}
               invalid={!!errors.odometer_km}
               disabled={isSubmitting}

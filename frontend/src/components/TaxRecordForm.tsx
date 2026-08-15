@@ -5,7 +5,7 @@ import { zodResolver } from '@hookform/resolvers/zod'
 import { Save } from 'lucide-react'
 import FormModalWrapper from './FormModalWrapper'
 import CurrencyInputPrefix from './common/CurrencyInputPrefix'
-import { Button, Field, Input, Select, Textarea } from './ui'
+import { Button, Field, Input, NumberInput, Select, Textarea, registerDecimal } from './ui'
 import type { TaxRecord, TaxRecordCreate, TaxRecordUpdate } from '../types/tax'
 import { makeTaxRecordSchema, type TaxRecordFormData, TAX_TYPES } from '../schemas/tax'
 import { useCreateTaxRecord, useUpdateTaxRecord } from '../hooks/queries/useTaxRecords'
@@ -119,16 +119,13 @@ export default function TaxRecordForm({ vin, record, onClose, onSuccess }: TaxRe
             <Field id="amount" label={t('common:amount')} required error={errors.amount}>
               <div className="relative">
                 <CurrencyInputPrefix />
-                <input
-                  type="number"
+                <NumberInput
                   id="amount"
-                  min="0"
-                  step="0.01"
-                  {...register('amount', { valueAsNumber: true })}
+                  {...registerDecimal(register, 'amount')}
                   placeholder="85.50"
-                  aria-invalid={errors.amount ? true : undefined}
-                  className={`ui-focus-input ui-motion w-full rounded-control border bg-surface-2 pl-7 pr-3 py-2 text-sm text-text font-mono tabular-nums ${errors.amount ? 'border-danger' : 'border-border'}`}
+                  invalid={!!errors.amount}
                   disabled={isSubmitting}
+                  className="pl-7"
                 />
               </div>
             </Field>

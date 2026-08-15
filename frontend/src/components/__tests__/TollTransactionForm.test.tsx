@@ -117,3 +117,45 @@ describe('TollTransactionForm — routing + exact payload (SDQ-C)', () => {
     expect(screen.getByLabelText('toll.location *')).toHaveAttribute('id', 'location')
   })
 })
+
+describe('TollTransactionForm — amount field on NumberInput, toll_tag_id stays a Select (Task 8)', () => {
+  it('amount is a textbox and accepts a comma decimal; toll_tag_id stays a combobox', async () => {
+    const user = userEvent.setup()
+    render(<TollTransactionForm vin="V1" tollTags={[activeTag]} onClose={vi.fn()} onSuccess={vi.fn()} />)
+
+    const amountInput = screen.getByLabelText('common:amount *')
+    expect(amountInput).toHaveAttribute('type', 'text')
+    expect(screen.getByRole('textbox', { name: 'common:amount *' })).toBe(amountInput)
+    expect(screen.getByLabelText('toll.tollTag').tagName).toBe('SELECT')
+
+    await user.clear(screen.getByLabelText('common:date *'))
+    await user.type(screen.getByLabelText('common:date *'), '2026-02-01')
+    await user.type(amountInput, '4,50')
+    await user.clear(screen.getByLabelText('toll.location *'))
+    await user.type(screen.getByLabelText('toll.location *'), 'Main St Toll')
+    await user.selectOptions(screen.getByLabelText('toll.tollTag'), '7')
+    await user.click(screen.getByRole('button', { name: 'toll.addTransaction' }))
+
+    await waitFor(() => expect(createMutateAsync).toHaveBeenCalledTimes(1))
+    const payload = createMutateAsync.mock.calls[0][0]
+    expect(payload.amount).toBe(4.5)
+    expect(payload.toll_tag_id).toBe(7)
+  })
+
+  it('rejects unparseable text in amount without crashing, and never calls create', async () => {
+    const user = userEvent.setup()
+    render(<TollTransactionForm vin="V1" tollTags={[]} onClose={vi.fn()} onSuccess={vi.fn()} />)
+
+    await user.clear(screen.getByLabelText('common:date *'))
+    await user.type(screen.getByLabelText('common:date *'), '2026-02-01')
+    await user.type(screen.getByLabelText('common:amount *'), 'abc')
+    await user.clear(screen.getByLabelText('toll.location *'))
+    await user.type(screen.getByLabelText('toll.location *'), 'Main St Toll')
+    await user.click(screen.getByRole('button', { name: 'toll.addTransaction' }))
+
+    await waitFor(() =>
+      expect(screen.getByText('common:validation.amount.invalid')).toBeInTheDocument()
+    )
+    expect(createMutateAsync).not.toHaveBeenCalled()
+  })
+})

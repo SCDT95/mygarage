@@ -1,5 +1,9 @@
 import { describe, it, expect } from 'vitest'
-import { tollTransactionSchema } from '../tollTransaction'
+import { makeTollTransactionSchema } from '../tollTransaction'
+import { INVALID_NUMBER } from '../shared'
+
+const t = ((key: string) => key) as unknown as Parameters<typeof makeTollTransactionSchema>[0]
+const tollTransactionSchema = makeTollTransactionSchema(t)
 
 describe('Toll Transaction Schema', () => {
   const validTransaction = {
@@ -59,6 +63,22 @@ describe('Toll Transaction Schema', () => {
     expect(result.success).toBe(true)
     if (result.success) {
       expect(result.data.toll_tag_id).toBeUndefined()
+    }
+  })
+
+  // Task 8: `amount` moved onto NumberInput/registerDecimal, which can hand the
+  // schema the INVALID_NUMBER sentinel for unparseable text (typing "abc") — the
+  // old `z.number().or(z.nan())` shape only recognized number/NaN, so a sentinel
+  // failed the whole union and zod reported its generic "expected number,
+  // received symbol", leaking an implementation detail instead of a real message.
+  it('rejects the INVALID_NUMBER sentinel with the translated amount-invalid message, not a raw zod union error', () => {
+    const result = tollTransactionSchema.safeParse({
+      ...validTransaction,
+      amount: INVALID_NUMBER,
+    })
+    expect(result.success).toBe(false)
+    if (!result.success) {
+      expect(result.error.issues[0].message).toBe('common:validation.amount.invalid')
     }
   })
 })

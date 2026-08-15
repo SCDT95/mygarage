@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
-import { fireEvent } from '@testing-library/react'
+import { fireEvent, waitFor } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { render, screen } from '../../__tests__/test-utils'
 import type { Supply } from '../../types/supplies'
 
@@ -175,5 +176,40 @@ describe('SupplyHistoryModal', () => {
 
     fireEvent.click(screen.getByLabelText('common:close'))
     expect(onClose).toHaveBeenCalled()
+  })
+
+  // Task 8: the adjustment/purchase quantity fields keep RHF's native
+  // `required`/`min` rules (no zod resolver on these two inline forms), while
+  // the field itself now runs through `registerDecimal`, whose `setValueAs`
+  // can hand RHF the `INVALID_NUMBER` symbol for unparseable text. RHF's
+  // built-in min/max check coerces the field value with unary `+`, which
+  // throws a TypeError on a Symbol — so unparseable text must never reach
+  // that check. These prove it doesn't crash and surfaces a real message.
+  it('rejects unparseable text in the adjustment quantity field without crashing', async () => {
+    const user = userEvent.setup()
+    render(<SupplyHistoryModal supply={mockSupply} onClose={vi.fn()} />)
+
+    await user.click(screen.getByText('supplies.history.logAdjustment'))
+    const quantityInput = screen.getByLabelText(/supplies\.history\.quantity/)
+    await user.type(quantityInput, 'abc')
+    await user.click(screen.getByRole('button', { name: 'save' }))
+
+    await waitFor(() => {
+      expect(screen.getByText('supplies.history.quantityRequired')).toBeInTheDocument()
+    })
+  })
+
+  it('rejects unparseable text in the purchase quantity field without crashing', async () => {
+    const user = userEvent.setup()
+    render(<SupplyHistoryModal supply={mockSupply} onClose={vi.fn()} />)
+
+    await user.click(screen.getByText('supplies.history.logPurchase'))
+    const quantityInput = screen.getByLabelText(/supplies\.history\.quantity/)
+    await user.type(quantityInput, 'abc')
+    await user.click(screen.getByRole('button', { name: 'save' }))
+
+    await waitFor(() => {
+      expect(screen.getByText('supplies.history.quantityRequired')).toBeInTheDocument()
+    })
   })
 })

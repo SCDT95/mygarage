@@ -21,7 +21,7 @@ import { formatDateForDisplay, formatDateForInput } from '@/utils/dateUtils'
 import { FormError } from '@/components/FormError'
 import FormModalWrapper from '@/components/FormModalWrapper'
 import CurrencyInputPrefix from '@/components/common/CurrencyInputPrefix'
-import { Select } from '@/components/ui'
+import { NumberInput, Select, registerDecimal } from '@/components/ui'
 import type { Supply } from '@/types/supplies'
 import type { AddressBookEntry } from '@/types/addressBook'
 import type { UnitSystem } from '@/utils/units'
@@ -378,6 +378,19 @@ function UsageRow({ entry, supply, system }: LedgerRowProps) {
 // Log purchase / adjustment forms
 // ---------------------------------------------------------------------------
 
+/**
+ * Neither inline form below has a zod resolver, so RHF's own `min` rule is
+ * what normally enforces a positive quantity. But RHF's built-in min/max
+ * check coerces the field value with unary `+` to compare it — which throws
+ * a TypeError when the value is the `INVALID_NUMBER` symbol `registerDecimal`
+ * emits for unparseable text (e.g. typing "abc"). A `validate` function
+ * receives the raw value without that coercion, so it can reject the same
+ * cases (empty, too small, and now also non-numeric) with the same message.
+ */
+function validateSupplyQuantity(value: unknown, message: string): true | string {
+  return typeof value === 'number' && !Number.isNaN(value) && value >= 0.001 ? true : message
+}
+
 interface PurchaseFormValues {
   date: string
   quantity: number
@@ -477,19 +490,13 @@ function PurchaseForm({
           <label htmlFor="purchase-quantity" className="block text-xs font-medium text-garage-text mb-1">
             {t('supplies.history.quantity')} {unitLabel && `(${unitLabel})`} <span className="text-danger">*</span>
           </label>
-          <input
-            type="number"
+          <NumberInput
             id="purchase-quantity"
-            step="0.01"
-            min="0.01"
-            {...register('quantity', {
-              valueAsNumber: true,
+            {...registerDecimal(register, 'quantity', {
               required: t('supplies.history.quantityRequired'),
-              min: { value: 0.001, message: t('supplies.history.quantityRequired') },
+              validate: (val) => validateSupplyQuantity(val, t('supplies.history.quantityRequired')),
             })}
-            className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-primary bg-garage-bg text-garage-text ${
-              errors.quantity ? 'border-red-500' : 'border-garage-border'
-            }`}
+            invalid={!!errors.quantity}
             disabled={isSubmitting}
           />
           <FormError error={errors.quantity} />
@@ -503,13 +510,10 @@ function PurchaseForm({
           </label>
           <div className="relative">
             <CurrencyInputPrefix />
-            <input
-              type="number"
+            <NumberInput
               id="purchase-cost"
-              step="0.01"
-              min="0"
-              {...register('total_cost', { valueAsNumber: true })}
-              className="w-full pl-7 pr-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-primary bg-garage-bg text-garage-text border-garage-border"
+              {...registerDecimal(register, 'total_cost')}
+              className="pl-7"
               disabled={isSubmitting}
             />
           </div>
@@ -621,19 +625,13 @@ function AdjustmentForm({
         <label htmlFor="adjustment-quantity" className="block text-xs font-medium text-garage-text mb-1">
           {t('supplies.history.quantity')} {unitLabel && `(${unitLabel})`} <span className="text-danger">*</span>
         </label>
-        <input
-          type="number"
+        <NumberInput
           id="adjustment-quantity"
-          step="0.01"
-          min="0.01"
-          {...register('quantity', {
-            valueAsNumber: true,
+          {...registerDecimal(register, 'quantity', {
             required: t('supplies.history.quantityRequired'),
-            min: { value: 0.001, message: t('supplies.history.quantityRequired') },
+            validate: (val) => validateSupplyQuantity(val, t('supplies.history.quantityRequired')),
           })}
-          className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-primary bg-garage-bg text-garage-text ${
-            errors.quantity ? 'border-red-500' : 'border-garage-border'
-          }`}
+          invalid={!!errors.quantity}
           disabled={isSubmitting}
         />
         <FormError error={errors.quantity} />

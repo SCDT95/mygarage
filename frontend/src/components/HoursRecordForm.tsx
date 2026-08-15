@@ -9,7 +9,7 @@ import { makeHoursRecordSchema, type HoursRecordFormData } from '../schemas/hour
 import { useCreateHoursRecord, useUpdateHoursRecord } from '../hooks/queries/useHoursRecords'
 import { formatDateForInput } from '../utils/dateUtils'
 import { useFormSubmit } from '../hooks/useFormSubmit'
-import { Button, Field, Input, Textarea } from './ui'
+import { Button, Field, Input, NumberInput, Textarea, registerDecimal } from './ui'
 
 interface HoursRecordFormProps {
   vin: string
@@ -94,12 +94,9 @@ export default function HoursRecordForm({ vin, record, onClose, onSuccess }: Hou
           </Field>
 
           <Field id="engine_hours" label={t('common:engineHours')} unit="hr" required error={errors.engine_hours}>
-            <Input
+            <NumberInput
               id="engine_hours"
-              type="number"
-              mono
-              {...register('engine_hours', { valueAsNumber: true })}
-              step="0.1"
+              {...registerDecimal(register, 'engine_hours')}
               placeholder="812.4"
               invalid={!!errors.engine_hours}
               disabled={isSubmitting}

@@ -4,7 +4,7 @@ import { useForm, type Resolver } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { Save } from 'lucide-react'
 import FormModalWrapper from './FormModalWrapper'
-import { Button, Drawer, Field, Input, Select, Textarea } from './ui'
+import { Button, Drawer, Field, Input, NumberInput, Select, Textarea, registerDecimal } from './ui'
 import CurrencyInputPrefix from './common/CurrencyInputPrefix'
 import type { SpotRental, SpotRentalCreate, SpotRentalUpdate } from '../types/spotRental'
 import type { AddressBookEntry } from '../types/addressBook'
@@ -296,28 +296,19 @@ export default function SpotRentalForm({ vin, rental, onClose, onSuccess }: Spot
             >
               <div className="relative">
                 <CurrencyInputPrefix />
-                <input
-                  type="number"
+                <NumberInput
                   id="rate_amount"
-                  min="0"
-                  step="0.01"
-                  {...register(rateType === 'nightly' ? 'nightly_rate' : rateType === 'weekly' ? 'weekly_rate' : 'monthly_rate', { valueAsNumber: true })}
+                  {...registerDecimal(register, rateType === 'nightly' ? 'nightly_rate' : rateType === 'weekly' ? 'weekly_rate' : 'monthly_rate')}
                   placeholder={rateType === 'nightly' ? '45.00' : rateType === 'weekly' ? '280.00' : '950.00'}
-                  aria-invalid={
-                    (rateType === 'nightly' && errors.nightly_rate) ||
-                    (rateType === 'weekly' && errors.weekly_rate) ||
-                    (rateType === 'monthly' && errors.monthly_rate)
-                      ? true
-                      : undefined
+                  invalid={
+                    !!(
+                      (rateType === 'nightly' && errors.nightly_rate) ||
+                      (rateType === 'weekly' && errors.weekly_rate) ||
+                      (rateType === 'monthly' && errors.monthly_rate)
+                    )
                   }
-                  className={`ui-focus-input ui-motion w-full rounded-control border bg-surface-2 pl-7 pr-3 py-2 text-sm text-text font-mono tabular-nums ${
-                    (rateType === 'nightly' && errors.nightly_rate) ||
-                    (rateType === 'weekly' && errors.weekly_rate) ||
-                    (rateType === 'monthly' && errors.monthly_rate)
-                      ? 'border-danger'
-                      : 'border-border'
-                  }`}
                   disabled={isSubmitting}
+                  className="pl-7"
                 />
               </div>
             </Field>
@@ -327,16 +318,13 @@ export default function SpotRentalForm({ vin, rental, onClose, onSuccess }: Spot
             <Field id="electric" label={t('spotRental.electric')} error={errors.electric}>
               <div className="relative">
                 <CurrencyInputPrefix />
-                <input
-                  type="number"
+                <NumberInput
                   id="electric"
-                  min="0"
-                  step="0.01"
-                  {...register('electric', { valueAsNumber: true })}
+                  {...registerDecimal(register, 'electric')}
                   placeholder="50.00"
-                  aria-invalid={errors.electric ? true : undefined}
-                  className={`ui-focus-input ui-motion w-full rounded-control border bg-surface-2 pl-7 pr-3 py-2 text-sm text-text font-mono tabular-nums ${errors.electric ? 'border-danger' : 'border-border'}`}
+                  invalid={!!errors.electric}
                   disabled={isSubmitting}
+                  className="pl-7"
                 />
               </div>
             </Field>
@@ -344,16 +332,13 @@ export default function SpotRentalForm({ vin, rental, onClose, onSuccess }: Spot
             <Field id="water" label={t('spotRental.water')} error={errors.water}>
               <div className="relative">
                 <CurrencyInputPrefix />
-                <input
-                  type="number"
+                <NumberInput
                   id="water"
-                  min="0"
-                  step="0.01"
-                  {...register('water', { valueAsNumber: true })}
+                  {...registerDecimal(register, 'water')}
                   placeholder="30.00"
-                  aria-invalid={errors.water ? true : undefined}
-                  className={`ui-focus-input ui-motion w-full rounded-control border bg-surface-2 pl-7 pr-3 py-2 text-sm text-text font-mono tabular-nums ${errors.water ? 'border-danger' : 'border-border'}`}
+                  invalid={!!errors.water}
                   disabled={isSubmitting}
+                  className="pl-7"
                 />
               </div>
             </Field>
@@ -361,16 +346,13 @@ export default function SpotRentalForm({ vin, rental, onClose, onSuccess }: Spot
             <Field id="waste" label={t('spotRental.waste')} error={errors.waste}>
               <div className="relative">
                 <CurrencyInputPrefix />
-                <input
-                  type="number"
+                <NumberInput
                   id="waste"
-                  min="0"
-                  step="0.01"
-                  {...register('waste', { valueAsNumber: true })}
+                  {...registerDecimal(register, 'waste')}
                   placeholder="20.00"
-                  aria-invalid={errors.waste ? true : undefined}
-                  className={`ui-focus-input ui-motion w-full rounded-control border bg-surface-2 pl-7 pr-3 py-2 text-sm text-text font-mono tabular-nums ${errors.waste ? 'border-danger' : 'border-border'}`}
+                  invalid={!!errors.waste}
                   disabled={isSubmitting}
+                  className="pl-7"
                 />
               </div>
             </Field>
@@ -379,14 +361,11 @@ export default function SpotRentalForm({ vin, rental, onClose, onSuccess }: Spot
           <Field id="total_cost" label={t('common:totalCost')} hint={t('spotRental.autoCalculatedHint')} error={errors.total_cost}>
             <div className="relative">
               <CurrencyInputPrefix />
-              <input
-                type="number"
+              <NumberInput
                 id="total_cost"
-                min="0"
-                step="0.01"
-                {...register('total_cost', { valueAsNumber: true })}
+                {...registerDecimal(register, 'total_cost')}
                 placeholder={t('spotRentalForm.autoCalculatedPlaceholder')}
-                className="ui-focus-input ui-motion w-full rounded-control border border-border bg-surface-2 pl-7 pr-3 py-2 text-sm text-text font-mono tabular-nums"
+                className="pl-7"
                 readOnly
               />
             </div>

@@ -6,7 +6,7 @@ import { Link } from 'react-router-dom'
 import { Save, Droplets, Pencil, FileText, Radio } from 'lucide-react'
 import { toast } from 'sonner'
 import FormModalWrapper from '../FormModalWrapper'
-import { Button, Field, Input, Select, Toggle } from '../ui'
+import { Button, Field, Input, NumberInput, Select, Toggle, registerDecimal } from '../ui'
 import vehicleService from '../../services/vehicleService'
 import type { Vehicle, VehicleUpdate } from '../../types/vehicle'
 import { vehicleEditSchema, type VehicleEditFormData, VEHICLE_TYPES } from '../../schemas/vehicle'
@@ -339,12 +339,9 @@ export default function VehicleEditDrawer({
 
             {usageTracking.tracksHours && (
               <Field id="current_hours" label={t('edit.currentHours')} error={errors.current_hours}>
-                <Input
+                <NumberInput
                   id="current_hours"
-                  type="number"
-                  step="0.1"
-                  min="0"
-                  {...register('current_hours', { valueAsNumber: true })}
+                  {...registerDecimal(register, 'current_hours')}
                   placeholder={t('vehicleEditPage.currentHoursPlaceholder')}
                   invalid={!!errors.current_hours}
                   disabled={isSubmitting}
@@ -390,13 +387,9 @@ export default function VehicleEditDrawer({
                     error={errors.def_tank_capacity_liters}
                     hint={isDieselSelected ? t('edit.defTankCapacityHint') : undefined}
                   >
-                    <Input
+                    <NumberInput
                       id="def_tank_capacity_liters"
-                      type="number"
-                      step="0.01"
-                      min="0"
-                      max="9999.99"
-                      {...register('def_tank_capacity_liters', { valueAsNumber: true })}
+                      {...registerDecimal(register, 'def_tank_capacity_liters')}
                       disabled={isSubmitting || !isDieselSelected}
                       invalid={!!errors.def_tank_capacity_liters}
                       placeholder={system === 'imperial' ? '5.0' : '19.0'}

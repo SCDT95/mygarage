@@ -12,7 +12,7 @@ import { UnitConverter, UnitFormatter } from '../utils/units'
 import { toCanonicalKg, toCanonicalLiters, priceToDisplay, priceToCanonical } from '../utils/decimalSafe'
 import { formatDateForInput } from '../utils/dateUtils'
 import CurrencyInputPrefix from './common/CurrencyInputPrefix'
-import { Button, Field, Input, Select, Textarea } from './ui'
+import { Button, Field, Input, NumberInput, Select, Textarea, registerDecimal } from './ui'
 
 // Propane density: 1 kg ≈ 1.968 L (1 gal ≈ 1.923 kg, 1 gal = 3.78541 L).
 const KG_TO_LITERS = 1.968
@@ -248,7 +248,7 @@ export default function PropaneRecordForm({
               </Field>
 
               <Field id="tank_quantity" label={t('propane.numberOfTanks')} error={errors.tank_quantity}>
-                <Input type="number" id="tank_quantity" mono {...register('tank_quantity', { valueAsNumber: true })} min="1" step="1" invalid={!!errors.tank_quantity} disabled={isSubmitting} />
+                <NumberInput id="tank_quantity" {...registerDecimal(register, 'tank_quantity')} invalid={!!errors.tank_quantity} disabled={isSubmitting} />
               </Field>
             </div>
 
@@ -266,20 +266,20 @@ export default function PropaneRecordForm({
           </div>
 
           <Field id="propane_liters" label={t('propaneRecordForm.propaneVolume')} unit={UnitFormatter.getVolumeUnit(system)} error={errors.propane_liters}>
-            <Input type="number" id="propane_liters" mono {...register('propane_liters', { valueAsNumber: true })} min="0" step="0.001" placeholder={system === 'imperial' ? '10.500' : '39.750'} invalid={!!errors.propane_liters} disabled={isSubmitting} />
+            <NumberInput id="propane_liters" {...registerDecimal(register, 'propane_liters')} placeholder={system === 'imperial' ? '10.500' : '39.750'} invalid={!!errors.propane_liters} disabled={isSubmitting} />
           </Field>
 
           <div className="grid grid-cols-2 gap-4">
             <Field id="price_per_unit" label={`${t('fuel.pricePer')} ${UnitFormatter.getVolumeUnit(system)}`} error={errors.price_per_unit}>
               <div className="relative">
                 <CurrencyInputPrefix />
-                <input type="number" id="price_per_unit" {...register('price_per_unit', { valueAsNumber: true })} min="0" step="0.001" placeholder={system === 'imperial' ? '2.899' : '0.766'} aria-invalid={errors.price_per_unit ? true : undefined} className={`ui-focus-input ui-motion w-full rounded-control border bg-surface-2 pl-7 pr-3 py-2 text-sm text-text font-mono tabular-nums ${errors.price_per_unit ? 'border-danger' : 'border-border'}`} disabled={isSubmitting} />
+                <NumberInput id="price_per_unit" {...registerDecimal(register, 'price_per_unit')} placeholder={system === 'imperial' ? '2.899' : '0.766'} invalid={!!errors.price_per_unit} disabled={isSubmitting} className="pl-7" />
               </div>
             </Field>
             <Field id="cost" label={t('common:totalCost')} error={errors.cost} hint={t('fuel.autoCalculatedHint')}>
               <div className="relative">
                 <CurrencyInputPrefix />
-                <input type="number" id="cost" {...register('cost', { valueAsNumber: true })} min="0" step="0.01" placeholder="30.44" aria-invalid={errors.cost ? true : undefined} className={`ui-focus-input ui-motion w-full rounded-control border bg-surface-2 pl-7 pr-3 py-2 text-sm text-text font-mono tabular-nums ${errors.cost ? 'border-danger' : 'border-border'}`} disabled={isSubmitting} />
+                <NumberInput id="cost" {...registerDecimal(register, 'cost')} placeholder="30.44" invalid={!!errors.cost} disabled={isSubmitting} className="pl-7" />
               </div>
             </Field>
           </div>

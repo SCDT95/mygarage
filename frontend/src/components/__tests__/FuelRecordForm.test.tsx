@@ -417,6 +417,45 @@ describe('FuelRecordForm — engine-hours usage tracking (Task 13)', () => {
   })
 })
 
+describe('FuelRecordForm — cost field on NumberInput (Task 8)', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    mockedApiGet.mockResolvedValue({ data: mockVehicle({ fuel_type: 'gasoline' }) })
+  })
+
+  it('is a textbox, not a spinbutton, and accepts a comma decimal', async () => {
+    const user = userEvent.setup()
+    render(<FuelRecordForm {...DEFAULT_PROPS} />)
+    await waitFor(() => expect(mockedApiGet).toHaveBeenCalled())
+
+    const costInput = document.getElementById('cost') as HTMLInputElement
+    expect(costInput).toHaveAttribute('type', 'text')
+    expect(screen.getByRole('textbox', { name: /common:totalCost/ })).toBe(costInput)
+
+    fireEvent.change(dateInput('date'), { target: { value: '2026-04-30' } })
+    await user.type(costInput, '42,99')
+    fireEvent.submit(drawerForm())
+
+    await waitFor(() => expect(mockedApiPost).toHaveBeenCalled())
+    const body = mockedApiPost.mock.calls.at(-1)?.[1] as Record<string, unknown>
+    expect(body.cost).toBe(42.99)
+  })
+
+  it('rejects unparseable text with a field error instead of silently dropping it', async () => {
+    const user = userEvent.setup()
+    render(<FuelRecordForm {...DEFAULT_PROPS} />)
+    await waitFor(() => expect(mockedApiGet).toHaveBeenCalled())
+
+    const costInput = document.getElementById('cost') as HTMLInputElement
+    fireEvent.change(dateInput('date'), { target: { value: '2026-04-30' } })
+    await user.type(costInput, 'abc')
+    fireEvent.submit(drawerForm())
+
+    await waitFor(() => expect(screen.getByText('common:checkFields')).toBeInTheDocument())
+    expect(mockedApiPost).not.toHaveBeenCalled()
+  })
+})
+
 describe('FuelRecordForm — OBC fields stay canonical-labeled in imperial (B9)', () => {
   beforeEach(() => {
     vi.clearAllMocks()
