@@ -1,4 +1,4 @@
-import { describe, it, expect, vi } from 'vitest'
+import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { useForm } from 'react-hook-form'
@@ -9,6 +9,12 @@ import NumberInput, { registerDecimal } from '../NumberInput'
 
 interface Values { amount: number | typeof INVALID_NUMBER | undefined }
 const onSubmit = vi.fn()
+
+// `toHaveBeenCalledWith` matches ANY call in the mock's history, not just the
+// most recent one. Without this, a later test's assertion can be satisfied by
+// an earlier test's leftover call — see task-5-report.md addendum for the
+// concrete case this masked.
+beforeEach(() => onSubmit.mockClear())
 
 function Harness(): React.JSX.Element {
   const { register, handleSubmit } = useForm<Values>()
