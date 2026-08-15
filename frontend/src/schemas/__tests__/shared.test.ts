@@ -65,4 +65,17 @@ describe('required numeric factory', () => {
   it('accepts a real number', () => {
     expect(reqObj.safeParse({ amount: 42.5 }).success).toBe(true)
   })
+
+  it('rejects NaN on a REQUIRED field rather than dropping it', () => {
+    // regression: NaN skipped the requiredKey check and submitted silently
+    const r = reqObj.safeParse({ amount: NaN })
+    expect(r.success).toBe(false)
+    if (!r.success) expect(r.error.issues[0].message).toBe('common:validation.amount.required')
+  })
+
+  it('still treats NaN as empty on an OPTIONAL field (Task 8b flips this)', () => {
+    const r = optObj.safeParse({ amount: NaN })
+    expect(r.success).toBe(true)
+    if (r.success) expect(r.data.amount).toBeUndefined()
+  })
 })
