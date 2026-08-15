@@ -17,20 +17,24 @@ export interface ApplyResult {
  * returned as `unhandled`, because react-hook-form silently keeps an error for
  * an unregistered name and the user would never see it.
  *
+ * Matching is exact-string on the field name. Nested react-hook-form paths like
+ * `items.0.qty` will only attach if the caller enumerates that exact expanded
+ * path — otherwise they route to `unhandled` for the caller's toast.
+ *
  * [rev2] Callers must surface `unhandled`. The previous boolean return caused a
  * mixed payload to suppress the toast and lose the unmapped problem entirely.
  */
 export function applyServerErrors<T extends FieldValues>(
   setFieldError: UseFormSetError<T>,
   error: unknown,
-  knownFields: readonly string[]
+  knownFields: ReadonlyArray<Path<T>>
 ): ApplyResult {
   const { fieldErrors } = parseApiError(error)
   const attached: FieldProblem[] = []
   const unhandled: FieldProblem[] = []
 
   for (const problem of fieldErrors) {
-    if (knownFields.includes(problem.field)) {
+    if (knownFields.includes(problem.field as Path<T>)) {
       setFieldError(problem.field as Path<T>, { type: 'server', message: problem.message })
       attached.push(problem)
     } else {
