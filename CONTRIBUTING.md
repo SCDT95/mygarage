@@ -11,7 +11,7 @@ Thanks for your interest in contributing to MyGarage!
 5. Commit using the [conventional commit](#commits) format
 6. Push and open a Pull Request
 
-CI must pass before a PR can merge — tests, linting, type-checks, PostgreSQL
+CI must pass before a PR can merge. Tests, linting, type-checks, PostgreSQL
 migrations, and CodeQL all run automatically on your PR.
 
 ## Development Setup
@@ -21,7 +21,7 @@ backend and frontend locally.
 
 ## Translations
 
-Adding or improving a language is the easiest way to help — see
+Adding or improving a language is the easiest way to help. See
 [TRANSLATING.md](TRANSLATING.md) for the step-by-step guide. Current coverage
 is tracked in [TRANSLATIONS.md](TRANSLATIONS.md).
 
@@ -41,7 +41,7 @@ ruff format . && ruff check . && pytest
 functional components with explicit return types. The UI is built from the
 shared primitives in `src/components/ui/` (`Button`, `Card`, `Input`, `Select`,
 `Field`, …) and semantic theme tokens (`text-text`, `bg-surface-2`,
-`border-border`, …) that drive the accent-based light/dark theme — reuse them
+`border-border`, …) that drive the accent-based light/dark theme. Reuse them
 rather than hardcoding colours or adding new tokens.
 
 ```bash
