@@ -7,6 +7,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- Tires: per-position tread / DOT / pressure tracking with wear projection and automatic low-tread reminders (migration 085).
+- EV / PHEV charge sessions: SOC start/end, charge level (L1/L2/DCFC), home/public location, and battery SOH on fuel records (migration 086).
+- Importers: Fuelio, Drivvo, and Tesla/ABRP charge CSV adapters (`/api/import/vehicles/{vin}/fuel/{fuelio,drivvo,tesla,external}`).
+- Inbound webhooks: `POST /api/v1/webhooks/fuel|odometer|reminders/complete|telegram` authenticated with `webhook_ingest_token` (migration 087). Structured Telegram fuel commands (no OCR): `fuel <vin|nickname> <odo>[km|mi] <vol>[L|gal|kWh] [price] [cost]`.
+
+### Fixed
+- Inbound webhooks no longer return 403 on instances with authentication enabled.
+- Webhook ingest token is accepted only via the `X-Webhook-Token` header, never in the query string, and is rate limited.
+- Webhook and CSV-import fill-ups now sync the odometer log and invalidate cached dashboards.
+- Reminders completed via webhook or a tire threshold use the `done` status, so they stay visible and can be reopened.
+- Telegram inbound bot: replies now reach the user, and a bad command no longer triggers a redelivery loop. (Inbound commands are Telegram-only; the seven outbound notification backends are unaffected.)
+- CSV import takes an explicit odometer unit and decimal separator instead of guessing, so imperial and European exports no longer import corrupted values.
+- CSV import preserves the charge/fill timestamp, so two same-day sessions are no longer collapsed into one, and re-importing a file you corrected in the source app no longer creates duplicates.
+- Saving a tire no longer erases its brand, model, size and DOT code; the tire tab now has separate Add and Edit actions.
+- Backdated tire readings no longer overwrite the current tread depth.
+- Tire tab now respects the imperial and metric unit preference, and its inputs are properly labelled.
+- EV charge level and location can be cleared, and their validation errors now render.
+- Adding a fuel record no longer fails when two odometer readings share a date.
+
 ## [3.0.1] - 2026-08-15
 
 ### Fixed
