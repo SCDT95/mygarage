@@ -47,7 +47,19 @@ rather than hardcoding colours or adding new tokens.
 ```bash
 cd frontend
 bun run lint && bun run type-check && bun run test:run
+bun run validate:translations
 ```
+
+**API contract:** if you changed backend routes or Pydantic schemas, regenerate
+the OpenAPI schema and the TypeScript types. CI's *API Types Freshness* check
+fails when the committed files drift from the backend:
+
+```bash
+cd frontend
+bun run generate:api   # needs uv + backend deps (see DEVELOPMENT.md)
+```
+
+Commit both `src/types/openapi.json` and `src/types/api.generated.ts`.
 
 To run every gate exactly as CI does (needs Docker + Bun): `bin/ci-check`.
 
