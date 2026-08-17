@@ -13,6 +13,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Importers: Fuelio, Drivvo, and Tesla/ABRP charge CSV adapters (`/api/import/vehicles/{vin}/fuel/{fuelio,drivvo,tesla,external}`).
 - Inbound webhooks: `POST /api/v1/webhooks/fuel|odometer|reminders/complete|telegram` authenticated with `webhook_ingest_token` (migration 087). Structured Telegram fuel commands (no OCR): `fuel <vin|nickname> <odo>[km|mi] <vol>[L|gal|kWh] [price] [cost]`.
 
+### Changed
+- Tire add, edit and reading forms open in a side drawer, matching the rest of the app.
+- Tire position is chosen with toggle buttons rather than a dropdown, and positions already tracked stay visible.
+- Deleting a tire moved from the tire card to the edit drawer.
+- Tire positions display as full names (Front Left, Spare) and are translatable.
+
 ### Fixed
 - Inbound webhooks no longer return 403 on instances with authentication enabled.
 - Webhook ingest token is accepted only via the `X-Webhook-Token` header, never in the query string, and is rate limited.
@@ -26,6 +32,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Tire tab now respects the imperial and metric unit preference, and its inputs are properly labelled.
 - EV charge level and location can be cleared, and their validation errors now render.
 - Adding a fuel record no longer fails when two odometer readings share a date.
+- A tire delete that fails now reports the error instead of failing silently.
 
 ## [3.0.1] - 2026-08-15
 
