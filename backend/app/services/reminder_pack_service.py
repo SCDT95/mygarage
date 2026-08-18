@@ -17,6 +17,7 @@ from app.schemas.reminder import ReminderCreate, ReminderResponse
 from app.schemas.reminder_pack import ReminderPackDetail, ReminderPackSummary
 from app.services import reminder_service
 from app.services.reminder_service import get_current_hours, get_current_mileage
+from app.utils.logging_utils import sanitize_for_log
 
 logger = logging.getLogger(__name__)
 
@@ -41,6 +42,25 @@ def _load_pack_file(path: Path) -> ReminderPackDetail:
     return ReminderPackDetail.model_validate(data)
 
 
+def _pack_paths() -> dict[str, Path]:
+    """Map filename stem -> resolved path for every readable pack in PACKS_DIR.
+
+    Every path here comes from directory enumeration, never from caller input,
+    so a caller-supplied id is only ever used as a dict *key*. That keeps user
+    data out of path expressions entirely instead of relying on a
+    validate-then-join round trip to make it safe after the fact.
+    """
+    index: dict[str, Path] = {}
+    if not PACKS_DIR.is_dir():
+        return index
+    for candidate in sorted(PACKS_DIR.glob("*.json")):
+        resolved = _path_within_packs(candidate)
+        if resolved is None or not resolved.is_file():
+            continue
+        index[candidate.stem] = resolved
+    return index
+
+
 def list_packs() -> list[ReminderPackSummary]:
     """List all built-in reminder packs (sorted by name)."""
     packs: list[ReminderPackSummary] = []
@@ -48,14 +68,11 @@ def list_packs() -> list[ReminderPackSummary]:
         logger.warning("Reminder packs directory missing: %s", PACKS_DIR)
         return packs
 
-    for path in sorted(PACKS_DIR.glob("*.json")):
-        resolved = _path_within_packs(path)
-        if resolved is None or not resolved.is_file():
-            continue
+    for path in _pack_paths().values():
         try:
-            detail = _load_pack_file(resolved)
+            detail = _load_pack_file(path)
         except (OSError, json.JSONDecodeError, ValueError) as exc:
-            logger.error("Failed to load reminder pack %s: %s", path.name, exc)
+            logger.error("Failed to load reminder pack %s: %s", path.name, sanitize_for_log(exc))
             continue
         packs.append(
             ReminderPackSummary(
@@ -72,35 +89,38 @@ def list_packs() -> list[ReminderPackSummary]:
 def get_pack(pack_id: str) -> ReminderPackDetail:
     """Load a single pack by id, or raise 404.
 
-    ``pack_id`` is never joined onto the filesystem unless it matches a
-    conservative identifier pattern, so ``../`` and absolute paths 404.
+    ``pack_id`` is checked against a conservative identifier pattern and then
+    used only as a key into the enumerated pack index, so it never becomes a
+    path component. ``../`` and absolute paths 404.
     """
     if not _PACK_ID_RE.fullmatch(pack_id):
         raise HTTPException(status_code=404, detail=f"Reminder pack '{pack_id}' not found")
 
-    path = _path_within_packs(PACKS_DIR / f"{pack_id}.json")
-    if path is not None and path.is_file():
+    index = _pack_paths()
+    path = index.get(pack_id)
+    if path is not None:
         try:
             detail = _load_pack_file(path)
         except (OSError, json.JSONDecodeError, ValueError) as exc:
-            logger.error("Failed to load reminder pack %s: %s", pack_id, exc)
+            logger.error(
+                "Failed to load reminder pack %s: %s",
+                sanitize_for_log(pack_id),
+                sanitize_for_log(exc),
+            )
             raise HTTPException(status_code=500, detail="Failed to load reminder pack") from exc
         if detail.id != pack_id:
             raise HTTPException(status_code=404, detail=f"Reminder pack '{pack_id}' not found")
         return detail
 
-    # Filename may differ from id — scan only *.json directly in PACKS_DIR
-    if PACKS_DIR.is_dir():
-        for candidate in PACKS_DIR.glob("*.json"):
-            resolved = _path_within_packs(candidate)
-            if resolved is None:
-                continue
-            try:
-                detail = _load_pack_file(resolved)
-            except OSError, json.JSONDecodeError, ValueError:
-                continue
-            if detail.id == pack_id:
-                return detail
+    # A pack's filename may differ from the id it declares, so fall back to
+    # reading the declared id out of each enumerated pack.
+    for resolved in index.values():
+        try:
+            detail = _load_pack_file(resolved)
+        except OSError, json.JSONDecodeError, ValueError:
+            continue
+        if detail.id == pack_id:
+            return detail
 
     raise HTTPException(status_code=404, detail=f"Reminder pack '{pack_id}' not found")
 
