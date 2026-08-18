@@ -1,9 +1,10 @@
 import { useCallback, useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Link } from 'react-router-dom'
-import { Link2, Save } from 'lucide-react'
+import { Save } from 'lucide-react'
 import { toast } from 'sonner'
-import { Card, CardHeader, Button, Field, Select, NumberInput } from '../ui'
+import { Card, CardHeader, Button, Drawer, Field, Select, NumberInput, Mono } from '../ui'
+import CardEditOverlay, { EDITABLE_CARD_CLASS } from './CardEditOverlay'
 import vehicleService from '../../services/vehicleService'
 import { NON_MOTORIZED_TYPES } from '../../schemas/vehicle'
 import type { TrailerDetails, Vehicle } from '../../types/vehicle'
@@ -38,6 +39,7 @@ export default function TrailerTowPanel({ vehicle }: TrailerTowPanelProps) {
   const [garageVehicles, setGarageVehicles] = useState<Vehicle[]>([])
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
+  const [editing, setEditing] = useState(false)
   const [form, setForm] = useState({
     hitch_type: '',
     brake_type: '',
@@ -122,6 +124,7 @@ export default function TrailerTowPanel({ vehicle }: TrailerTowPanelProps) {
         })
       }
       toast.success(t('detail.tow.saved'))
+      setEditing(false)
       await load()
     } catch (err) {
       toast.error(t('detail.tow.saveError'))
@@ -144,10 +147,7 @@ export default function TrailerTowPanel({ vehicle }: TrailerTowPanelProps) {
     if (towed.length === 0) return null
     return (
       <Card breakInside>
-        <CardHeader
-          title={t('detail.tow.linkedTrailers')}
-          icon={Link2}
-        />
+        <CardHeader title={t('detail.tow.linkedTrailers')} />
         <ul className="space-y-2">
           {towed.map((tr) => (
             <li key={tr.vin}>
@@ -162,10 +162,85 @@ export default function TrailerTowPanel({ vehicle }: TrailerTowPanelProps) {
     )
   }
 
+  const towVehicle = garageVehicles.find((v) => v.vin === details?.tow_vehicle_vin) ?? null
+  const typeLabel = t(`vehicleTypeLabels.${vehicle.vehicle_type}`, {
+    defaultValue: vehicle.vehicle_type,
+  })
+  const hitchLabel = HITCH_OPTIONS.find((h) => h.value === details?.hitch_type)
+  const brakeLabel = BRAKE_OPTIONS.find((b) => b.value === details?.brake_type)
+  const notSet = t('detail.tow.notSet')
+
   return (
-    <Card breakInside>
-      <CardHeader title={t('detail.tow.title')} icon={Link2} />
-      <div className="space-y-3">
+    <>
+      {/* Summary card matching the other Overview cards. The whole card is the
+          click target via the transparent overlay, so there is no corner
+          control and the form lives in a sidecar rather than inline. The card
+          must therefore hold NO other interactive element, which is why the
+          paired vehicle is plain text rather than a link. */}
+      <Card breakInside className={EDITABLE_CARD_CLASS}>
+        <CardEditOverlay label={t('detail.tow.editTitle')} onClick={() => setEditing(true)} />
+        <CardHeader title={t('detail.tow.title')} />
+        <div className="space-y-4">
+          <div>
+            <p className="text-sm text-text-mute">{t('detail.tow.towVehicle')}</p>
+            {towVehicle ? (
+              // Lifted above the card's edit overlay (z-10) rather than left
+              // under it, which would make the link unreachable. Clicking the
+              // name navigates; clicking anywhere else on the card still opens
+              // the editor. Mirrors the Linked Trailers card: name is the link,
+              // VIN sits beside it as plain text.
+              <p className="relative z-20 mt-1">
+                <Link
+                  className="font-medium text-primary hover:underline"
+                  to={`/vehicles/${towVehicle.vin}`}
+                >
+                  {towVehicle.nickname}
+                </Link>
+                <Mono size="sm" className="ml-2 text-text-mute">{towVehicle.vin}</Mono>
+              </p>
+            ) : (
+              <p className="mt-1 text-sm text-text-mute">
+                {t('detail.tow.notConnected', { type: typeLabel })}
+              </p>
+            )}
+          </div>
+          <div className="grid grid-cols-2 gap-4 sm:grid-cols-3">
+            <div>
+              <p className="text-sm text-text-mute">{t('detail.tow.hitch')}</p>
+              <p className="mt-1 text-sm text-text">{hitchLabel ? t(hitchLabel.labelKey) : notSet}</p>
+            </div>
+            <div>
+              <p className="text-sm text-text-mute">{t('detail.tow.brakes')}</p>
+              <p className="mt-1 text-sm text-text">{brakeLabel ? t(brakeLabel.labelKey) : notSet}</p>
+            </div>
+            <div>
+              <p className="text-sm text-text-mute">{t('detail.tow.axles')}</p>
+              <Mono size="sm" className="mt-1 block">
+                {details?.axle_count != null ? String(details.axle_count) : notSet}
+              </Mono>
+            </div>
+          </div>
+        </div>
+      </Card>
+
+      <Drawer
+        open={editing}
+        onClose={() => setEditing(false)}
+        title={t('detail.tow.editTitle')}
+        width="sm"
+        closeLabel={t('common:close')}
+        footer={
+          <>
+            <Button variant="ghost" onClick={() => setEditing(false)}>
+              {t('common:cancel')}
+            </Button>
+            <Button variant="primary" icon={Save} loading={saving} onClick={() => void save()}>
+              {t('common:save')}
+            </Button>
+          </>
+        }
+      >
+        <div className="space-y-3">
         <Field id="tow_vehicle_vin" label={t('detail.tow.towVehicle')}>
           <Select
             id="tow_vehicle_vin"
@@ -210,10 +285,8 @@ export default function TrailerTowPanel({ vehicle }: TrailerTowPanelProps) {
             placeholder="2"
           />
         </Field>
-        <Button variant="primary" icon={Save} loading={saving} onClick={() => void save()}>
-          {t('common:save')}
-        </Button>
-      </div>
-    </Card>
+        </div>
+      </Drawer>
+    </>
   )
 }

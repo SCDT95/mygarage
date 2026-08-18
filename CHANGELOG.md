@@ -19,18 +19,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Quick Entry / PWA deep links: `/quick-entry?action=add-fuel|add-service|odometer`.
 - Opt-in LLM fuel receipt parse (Ollama/OpenAI-compatible; draft only). See [docs/tier2-features.md](docs/tier2-features.md).
 
-### Fixed
-- Reminder pack loader rejects path-traversal `pack_id` values.
-- LLM receipt parse is rate-limited and rejects oversized uploads/text.
-- Matrix HTML payloads escape title/body and only link http(s) URLs.
-
 ### Changed
 - Tire add, edit and reading forms open in a side drawer, matching the rest of the app.
 - Tire position is chosen with toggle buttons rather than a dropdown, and positions already tracked stay visible.
 - Deleting a tire moved from the tire card to the edit drawer.
 - Tire positions display as full names (Front Left, Spare) and are translatable.
+- Vehicle type lists are ordered alphabetically by the label shown, in every language.
+- Notification service tabs are ordered alphabetically.
+- Trailer tow pairing is a summary card that opens a sidecar on click, matching the other Overview cards, instead of an inline form.
 
 ### Fixed
+- Reminder pack loader rejects path-traversal `pack_id` values.
+- LLM receipt parse is rate-limited and rejects oversized uploads/text.
+- Matrix HTML payloads escape title/body and only link http(s) URLs.
 - Inbound webhooks no longer return 403 on instances with authentication enabled.
 - Webhook ingest token is accepted only via the `X-Webhook-Token` header, never in the query string, and is rate limited.
 - Webhook and CSV-import fill-ups now sync the odometer log and invalidate cached dashboards.

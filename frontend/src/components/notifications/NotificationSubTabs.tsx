@@ -1,5 +1,6 @@
 import { Bell, Radio, Send, Hash, MessageSquare, AtSign, Mail, Network } from 'lucide-react';
 import { useTranslation } from 'react-i18next'
+import { getActiveLocale } from '../../constants/i18n'
 
 export type NotificationSubTab = 'ntfy' | 'gotify' | 'pushover' | 'slack' | 'discord' | 'matrix' | 'telegram' | 'email';
 
@@ -22,7 +23,11 @@ export function NotificationSubTabs({ activeSubTab, onSubTabChange, enabledServi
     { id: 'matrix' as const, label: 'Matrix', icon: Network }, // i18n-exempt
     { id: 'telegram' as const, label: 'Telegram', icon: AtSign }, // i18n-exempt
     { id: 'email' as const, label: t('notificationSubTabs.email'), icon: Mail },
-  ];
+    // Sorted by the rendered label rather than hardcoded in order: seven of
+    // these are untranslated brand names but Email is not, so a fixed English
+    // ordering would misplace it in every other language. localeCompare also
+    // puts lowercase "ntfy" where a reader expects it rather than at an end.
+  ].sort((a, b) => a.label.localeCompare(b.label, getActiveLocale()));
 
   return (
     <div className="flex flex-wrap gap-2 p-1 bg-garage-surface/50 rounded-lg border border-garage-border">

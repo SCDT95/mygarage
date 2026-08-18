@@ -9,7 +9,7 @@ import FormModalWrapper from '../FormModalWrapper'
 import { Button, Field, Input, NumberInput, Select, Toggle, registerDecimal } from '../ui'
 import vehicleService from '../../services/vehicleService'
 import type { Vehicle, VehicleUpdate } from '../../types/vehicle'
-import { makeVehicleEditSchema, type VehicleEditFormData, VEHICLE_TYPES, NON_MOTORIZED_TYPES } from '../../schemas/vehicle'
+import { makeVehicleEditSchema, type VehicleEditFormData, vehicleTypeOptions, NON_MOTORIZED_TYPES } from '../../schemas/vehicle'
 import { FUEL_TYPE_VALUES, FUEL_TYPE_LABELS, isDieselFuelType } from '../../constants/fuel'
 import { useUnitPreference } from '../../hooks/useUnitPreference'
 import { UnitConverter, UnitFormatter } from '../../utils/units'
@@ -314,10 +314,7 @@ export default function VehicleEditDrawer({
                 {...register('vehicle_type')}
                 invalid={!!errors.vehicle_type}
                 disabled={isSubmitting}
-                options={VEHICLE_TYPES.map((type) => ({
-                  value: type,
-                  label: t(`vehicleTypeLabels.${type}`, { defaultValue: type }),
-                }))}
+                options={vehicleTypeOptions(t)}
               />
             </Field>
 
