@@ -22,7 +22,7 @@ router = APIRouter(prefix="/api/vehicles", tags=["spot-rentals"])
 @router.get("/{vin}/spot-rentals", response_model=SpotRentalListResponse)
 async def list_spot_rentals(
     vin: str,
-    db: Annotated[AsyncSession, Depends(get_db)] = None,
+    db: Annotated[AsyncSession, Depends(get_db)],
     current_user: User | None = Depends(require_auth),
 ) -> SpotRentalListResponse:
     """List all spot rentals for a vehicle."""
@@ -34,7 +34,7 @@ async def list_spot_rentals(
 async def create_spot_rental(
     vin: str,
     rental_data: SpotRentalCreate,
-    db: Annotated[AsyncSession, Depends(get_db)] = None,
+    db: Annotated[AsyncSession, Depends(get_db)],
     current_user: User | None = Depends(require_auth),
 ) -> SpotRentalResponse:
     """Create a new spot rental record."""
@@ -46,7 +46,7 @@ async def create_spot_rental(
 async def get_spot_rental(
     vin: str,
     rental_id: int,
-    db: Annotated[AsyncSession, Depends(get_db)] = None,
+    db: Annotated[AsyncSession, Depends(get_db)],
     current_user: User | None = Depends(require_auth),
 ) -> SpotRentalResponse:
     """Get a specific spot rental record."""
@@ -59,7 +59,7 @@ async def update_spot_rental(
     vin: str,
     rental_id: int,
     update_data: SpotRentalUpdate,
-    db: Annotated[AsyncSession, Depends(get_db)] = None,
+    db: Annotated[AsyncSession, Depends(get_db)],
     current_user: User | None = Depends(require_auth),
 ) -> SpotRentalResponse:
     """Update a spot rental record."""
@@ -71,7 +71,7 @@ async def update_spot_rental(
 async def delete_spot_rental(
     vin: str,
     rental_id: int,
-    db: Annotated[AsyncSession, Depends(get_db)] = None,
+    db: Annotated[AsyncSession, Depends(get_db)],
     current_user: User | None = Depends(require_auth),
 ) -> None:
     """Delete a spot rental record."""

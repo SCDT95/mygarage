@@ -17,12 +17,10 @@ const { chromium } = require('playwright')
 
 const OUT = path.resolve(__dirname, '../docs/screenshots/pr/family-friends')
 const BASE = 'http://127.0.0.1:3000'
-const exe =
-  process.env.PW_CHROME ||
-  path.resolve(
-    __dirname,
-    '../.pw-browsers/chromium_headless_shell-1228/chrome-headless-shell-mac-arm64/chrome-headless-shell',
-  )
+// Playwright resolves its own bundled browser when executablePath is
+// undefined, which is what the E2E suite already relies on. Only override
+// via PW_CHROME; do not hardcode a platform-specific path.
+const exe = process.env.PW_CHROME || undefined
 
 async function main() {
   await mkdir(OUT, { recursive: true })
@@ -42,14 +40,18 @@ async function main() {
   })
   console.log('wrote live-dashboard-full.png')
 
+  // Clip to the section. A plain viewport shot here was identical to the
+  // fullPage one above whenever the dashboard fits in 1400px.
   const family = page.getByRole('heading', { name: /Family & Friends/i }).first()
   if (await family.count()) {
     await family.scrollIntoViewIfNeeded()
     await page.waitForTimeout(400)
-    await page.screenshot({ path: path.join(OUT, 'live-family-friends.png') })
-    console.log('wrote live-family-friends.png')
+    const section = family.locator('xpath=ancestor::section[1]')
+    const target = (await section.count()) ? section : family
+    await target.screenshot({ path: path.join(OUT, 'live-family-friends-section.png') })
+    console.log('wrote live-family-friends-section.png')
   } else {
-    console.log('skip live-family-friends.png (section not visible)')
+    console.log('skip live-family-friends-section.png (section not visible)')
   }
 
   await page.goto(`${BASE}/settings`, { waitUntil: 'networkidle' })

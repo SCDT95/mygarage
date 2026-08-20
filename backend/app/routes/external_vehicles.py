@@ -57,10 +57,13 @@ async def _owner_for_create(db: AsyncSession, current_user: User | None) -> User
 
 @router.get("", response_model=ExternalVehicleListResponse)
 async def list_external_vehicles(
-    db: Annotated[AsyncSession, Depends(get_db)] = None,
+    db: Annotated[AsyncSession, Depends(get_db)],
     current_user: User | None = Depends(require_auth),
 ) -> ExternalVehicleListResponse:
     """List external vehicles for the current user (or all when auth is off)."""
+    # Deliberately an empty list rather than the 403 the single-item routes
+    # raise: the dashboard calls this on every load, and a disabled feature is
+    # not an error worth surfacing there. The mutating routes stay explicit.
     if not await _family_friends_enabled(db):
         return ExternalVehicleListResponse(vehicles=[], total=0)
 
@@ -79,7 +82,7 @@ async def list_external_vehicles(
 @router.post("", response_model=ExternalVehicleResponse, status_code=201)
 async def create_external_vehicle(
     payload: ExternalVehicleCreate,
-    db: Annotated[AsyncSession, Depends(get_db)] = None,
+    db: Annotated[AsyncSession, Depends(get_db)],
     current_user: User | None = Depends(require_auth),
 ) -> ExternalVehicleResponse:
     """Create a family/friend reference vehicle."""
@@ -95,7 +98,7 @@ async def create_external_vehicle(
 @router.get("/{vehicle_id}", response_model=ExternalVehicleResponse)
 async def get_external_vehicle(
     vehicle_id: int,
-    db: Annotated[AsyncSession, Depends(get_db)] = None,
+    db: Annotated[AsyncSession, Depends(get_db)],
     current_user: User | None = Depends(require_auth),
 ) -> ExternalVehicleResponse:
     await _require_family_friends_enabled(db)
@@ -107,7 +110,7 @@ async def get_external_vehicle(
 async def update_external_vehicle(
     vehicle_id: int,
     payload: ExternalVehicleUpdate,
-    db: Annotated[AsyncSession, Depends(get_db)] = None,
+    db: Annotated[AsyncSession, Depends(get_db)],
     current_user: User | None = Depends(require_auth),
 ) -> ExternalVehicleResponse:
     await _require_family_friends_enabled(db)
@@ -122,7 +125,7 @@ async def update_external_vehicle(
 @router.delete("/{vehicle_id}", status_code=204)
 async def delete_external_vehicle(
     vehicle_id: int,
-    db: Annotated[AsyncSession, Depends(get_db)] = None,
+    db: Annotated[AsyncSession, Depends(get_db)],
     current_user: User | None = Depends(require_auth),
 ) -> None:
     await _require_family_friends_enabled(db)

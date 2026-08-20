@@ -23,7 +23,7 @@ router = APIRouter(prefix="/api/vehicles", tags=["notes"])
 @router.get("/{vin}/notes", response_model=NoteListResponse)
 async def list_notes(
     vin: str,
-    db: Annotated[AsyncSession, Depends(get_db)] = None,
+    db: Annotated[AsyncSession, Depends(get_db)],
     current_user: User | None = Depends(require_auth),
 ) -> NoteListResponse:
     """List all notes for a vehicle."""
@@ -44,7 +44,7 @@ async def list_notes(
 async def create_note(
     vin: str,
     note_data: NoteCreate,
-    db: Annotated[AsyncSession, Depends(get_db)] = None,
+    db: Annotated[AsyncSession, Depends(get_db)],
     current_user: User | None = Depends(require_auth),
 ) -> NoteResponse:
     """Create a new note for a vehicle."""
@@ -70,7 +70,7 @@ async def create_note(
 async def get_note(
     vin: str,
     note_id: int,
-    db: Annotated[AsyncSession, Depends(get_db)] = None,
+    db: Annotated[AsyncSession, Depends(get_db)],
     current_user: User | None = Depends(require_auth),
 ) -> NoteResponse:
     """Get a specific note."""
@@ -90,7 +90,7 @@ async def update_note(
     vin: str,
     note_id: int,
     update_data: NoteUpdate,
-    db: Annotated[AsyncSession, Depends(get_db)] = None,
+    db: Annotated[AsyncSession, Depends(get_db)],
     current_user: User | None = Depends(require_auth),
 ) -> NoteResponse:
     """Update a note."""
@@ -121,7 +121,7 @@ async def update_note(
 async def delete_note(
     vin: str,
     note_id: int,
-    db: Annotated[AsyncSession, Depends(get_db)] = None,
+    db: Annotated[AsyncSession, Depends(get_db)],
     current_user: User | None = Depends(require_auth),
 ) -> None:
     """Delete a note."""

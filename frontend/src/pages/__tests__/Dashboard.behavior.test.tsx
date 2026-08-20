@@ -160,6 +160,22 @@ describe('Dashboard sectioned layout', () => {
     )
   })
 
+  it('shows a share-only garage instead of the empty state when the setting is off', async () => {
+    // Regression guard: shared vehicles used to be filtered out entirely when
+    // the flag was off, so a user with no vehicles of their own landed on the
+    // "no vehicles yet" empty state with their shared cars invisible. The
+    // setting is global and admin-only, so they could not fix it themselves.
+    mockDashboard(
+      [vehicle({ vin: 'SHR', year: 2021, make: 'Shared', model: 'Y', is_shared_with_me: true })],
+      { familyFriends: false },
+    )
+    render(<Dashboard />)
+
+    await waitFor(() => expect(order()).toEqual(['2021 Shared Y']))
+    expect(screen.getByText('dashboard.sharedWithMeSection')).toBeInTheDocument()
+    expect(screen.queryByText('dashboard.noVehiclesYet')).not.toBeInTheDocument()
+  })
+
   it('hides reference vehicles when Family & Friends is off, but keeps shared vehicles', async () => {
     mockDashboard(
       [
