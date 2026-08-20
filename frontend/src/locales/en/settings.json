@@ -23,6 +23,12 @@
     "enable": "Enable verbose logging and detailed error messages",
     "warning": "⚠️ Requires application restart to take effect. Only enable for troubleshooting."
   },
+  "garageSections": {
+    "title": "Garage sections",
+    "description": "Opt in to lightweight family/friend reference vehicles. Off by default. Shared vehicles always appear in their own section.",
+    "familyFriends": "Show Family & Friends",
+    "familyFriendsDesc": "Lightweight family/friend reference vehicles. Shared household vehicles always appear on the garage, even when this is off."
+  },
   "units": {
     "label": "Unit System",
     "imperial": "Imperial",
