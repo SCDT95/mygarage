@@ -8661,11 +8661,6 @@ export interface components {
              */
             filled_at?: string | null;
             /**
-             * Fuel Type
-             * @description Legacy fuel type column. New clients should use fuel_type_used. Kept for one release as a compatibility alias.
-             */
-            fuel_type?: string | null;
-            /**
              * Fuel Type Used
              * @description Actual fuel dispensed for this fill-up (canonical enum). Only surfaced in UI when the vehicle has a secondary fuel capability.
              */
@@ -8914,11 +8909,6 @@ export interface components {
              */
             filled_at?: string | null;
             /**
-             * Fuel Type
-             * @description Legacy fuel type column. New clients should use fuel_type_used. Kept for one release as a compatibility alias.
-             */
-            fuel_type?: string | null;
-            /**
              * Fuel Type Used
              * @description Actual fuel dispensed for this fill-up (canonical enum). Only surfaced in UI when the vehicle has a secondary fuel capability.
              */
@@ -9105,11 +9095,6 @@ export interface components {
              * @description Optional fill-up timestamp
              */
             filled_at?: string | null;
-            /**
-             * Fuel Type
-             * @description Legacy fuel type (compatibility alias for fuel_type_used)
-             */
-            fuel_type?: string | null;
             /**
              * Fuel Type Used
              * @description Actual fuel dispensed (canonical enum)

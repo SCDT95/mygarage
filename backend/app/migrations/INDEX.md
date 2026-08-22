@@ -99,3 +99,4 @@ migrations must swallow their own operational errors.
 | `086_add_ev_charge_session_fields` | **FATAL** — Add EV/PHEV charge-session fields onto fuel_records. |
 | `087_add_webhook_ingest_settings` | Add webhook_ingest_token setting for inbound fuel/odometer/reminder webhooks. |
 | `088_add_external_vehicles` | **FATAL** — Add external_vehicles table for family/friend reference records. |
+| `089_drop_legacy_fuel_type` | **FATAL** — Retire the legacy `fuel_records.fuel_type` free-text column. |
