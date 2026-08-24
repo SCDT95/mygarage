@@ -15353,7 +15353,7 @@ export interface components {
             data_included?: {
                 [key: string]: boolean;
             } | null;
-            from_user: components["schemas"]["UserMinimal"];
+            from_user?: components["schemas"]["UserMinimal"] | null;
             /** Id */
             id: number;
             to_user: components["schemas"]["UserMinimal"];
