@@ -25,14 +25,17 @@ Self-hosted vehicle maintenance tracking with VIN decoding, service records, fue
 - **VIN Decoding** - Automatic vehicle details via NHTSA API
 - **Service Visits** - Track maintenance with line items, tax/fees, and attachments
 - **Reminders** - Date, mileage, or engine-hours maintenance reminders with due alerts
+- **Tire Tracking** - Per-position tread, DOT and pressure readings with wear projection and low-tread reminders
 - **LiveLink Telemetry** - Real-time OBD2 data, drive sessions, GPS trips, and DTCs via a WiCAN device (HTTPS POST or MQTT) or the Torque Pro app. See [LiveLink (WiCAN) Setup](docs/LIVELINK_SETUP.md).
 - **POI Finder** - Discover nearby auto shops, EV charging, and fuel stations with interactive map
 - **Fuel & DEF Tracking** - Log fill-ups (and DEF for diesels) and analyze fuel economy trends
+- **EV & PHEV Charging** - Charge sessions with start/end SOC, charge level, location, and battery health
 - **Engine Hours Tracking** - Hour meters for ATVs, equipment, and generators, with hours-based reminders
 - **Parts & Supplies** - Track fluids, filters and parts on hand; their cost folds into service visits
 - **Fifth Wheel & Trailer Support** - Propane tracking, spot rental billing, and RV park management
 - **Unit Conversion** - Imperial/Metric units with per-user preferences
 - **Document Management** - Store registration, insurance, manuals with OCR
+- **Imports & Webhooks** - Fuelio, Drivvo and Tesla/ABRP CSV imports, inbound webhooks, and Telegram fuel commands
 - **Family Multi-User System** - Separate accounts with vehicle sharing, ownership transfers, and family dashboard
 - **Languages & Currencies** - English, German, French, Polish, Brazilian Portuguese, Russian, Ukrainian; 16 currencies
 - **Authentication Options** - No auth, local JWT, or OIDC (Authentik, Keycloak, Google, Azure AD)

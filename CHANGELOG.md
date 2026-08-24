@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [3.1.0] - 2026-08-24
+
 ### Added
 - Tires: per-position tread / DOT / pressure tracking with wear projection and automatic low-tread reminders (migration 085).
 - EV / PHEV charge sessions: SOC start/end, charge level (L1/L2/DCFC), home/public location, and battery SOH on fuel records (migration 086).
