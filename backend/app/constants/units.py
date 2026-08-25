@@ -93,6 +93,9 @@ IMPERIAL_PRESET = UnitSet(
     secondary_gallon="us",
 )
 
+# Derived from UnitSet, never hand-written: a literal tuple here could drift
+# from the model, and no test could catch the drift without duplicating the
+# list a third time. Adding a quantity to UnitSet updates this automatically.
 UNIT_FIELD_NAMES: tuple[str, ...] = tuple(UnitSet.model_fields)
 
 _UNPREFIXED_FIELDS = frozenset({"secondary_gallon"})

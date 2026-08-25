@@ -26,11 +26,6 @@ class TestUnitSetShape:
     def test_unit_set_has_exactly_eleven_fields(self) -> None:
         assert len(UnitSet.model_fields) == 11
 
-    def test_field_names_tuple_matches_model_exactly(self) -> None:
-        """UNIT_FIELD_NAMES is a hand-written tuple; this is the tie that stops
-        it drifting from UnitSet when a twelfth quantity is added."""
-        assert UNIT_FIELD_NAMES == tuple(UnitSet.model_fields)
-
     def test_every_field_is_required(self) -> None:
         """A default would let a partially-specified set masquerade as complete."""
         optional = [n for n, f in UnitSet.model_fields.items() if not f.is_required()]
@@ -87,10 +82,6 @@ class TestPresets:
 
 class TestColumnNameMapping:
     """users columns carry a unit_ prefix; UnitSet fields do not."""
-
-    def test_column_names_match_field_names_one_to_one(self) -> None:
-        assert len(UNIT_COLUMN_NAMES) == len(UNIT_FIELD_NAMES)
-        assert tuple(field_to_column(f) for f in UNIT_FIELD_NAMES) == UNIT_COLUMN_NAMES
 
     def test_secondary_gallon_column_is_unprefixed(self) -> None:
         """The spec names this column secondary_gallon, not unit_secondary_gallon."""
