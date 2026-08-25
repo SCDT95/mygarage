@@ -181,7 +181,7 @@ def build_csv(
     headers: list[str],
     rows: list[list[Any]],
     units: str,
-    flavour: GallonFlavour = "us",
+    flavour: GallonFlavour,
 ) -> io.StringIO:
     """Convert to the requested unit system and stream, with ONE gallon flavour.
 
