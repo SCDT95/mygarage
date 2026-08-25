@@ -59,17 +59,38 @@ async def _set_gallon_standard(db_session, value: str) -> None:
 
 @pytest_asyncio.fixture
 async def uk_gallons(db_session):
-    """Seed the instance's `imperial_gallon_standard` setting to UK, then restore US.
+    """Seed the instance's `imperial_gallon_standard` setting to UK, then restore
+    whatever was genuinely there beforehand -- including row absence.
 
     Exercises the same `resolve_gallon_flavour(db)` path the route uses at
     request time, rather than reaching past it into `UnitConverter` class
     internals (deleted in Task 2 — there is no class state left to set).
+
+    This used to hardcode the restore to "us", which left a row behind even
+    when none existed before this fixture ran. That made
+    `test_defaults_to_us_when_row_absent` in test_gallon_flavour.py pass only
+    by accident of which test file happened to run first (see
+    reference_mygarage_test_isolation): correct by luck, not by design.
+    Restoring the actual prior state removes that landmine.
     """
+    existing = (
+        await db_session.execute(select(Setting).where(Setting.key == GALLON_STANDARD_KEY))
+    ).scalar_one_or_none()
+    original_value = existing.value if existing is not None else None
+
     await _set_gallon_standard(db_session, "uk")
     try:
         yield
     finally:
-        await _set_gallon_standard(db_session, "us")
+        if original_value is None:
+            row = (
+                await db_session.execute(select(Setting).where(Setting.key == GALLON_STANDARD_KEY))
+            ).scalar_one_or_none()
+            if row is not None:
+                await db_session.delete(row)
+                await db_session.commit()
+        else:
+            await _set_gallon_standard(db_session, original_value)
 
 
 async def _make_vehicle(db_session, test_user, vin: str) -> None:
