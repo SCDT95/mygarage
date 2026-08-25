@@ -52,6 +52,7 @@ class TestSettingsRoutes:
                 "family_friends_enabled",
                 "imperial_gallon_standard",
                 "llm_receipt_parse_enabled",
+                "default_unit_prefs",
             }
 
     async def test_public_settings_serve_the_frontend_init_keys(

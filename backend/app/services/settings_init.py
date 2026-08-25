@@ -1,11 +1,13 @@
 """Settings initialization service."""
 
+import json
 import logging
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import settings as app_settings
+from app.constants.units import IMPERIAL_PRESET
 from app.models.settings import Setting
 
 logger = logging.getLogger(__name__)
@@ -602,6 +604,14 @@ DEFAULT_SETTINGS = {
         "value": "us",
         "category": "general",
         "description": "Imperial gallon standard: us (3.785 L) or uk (4.546 L)",
+        "encrypted": False,
+    },
+    "default_unit_prefs": {
+        "value": json.dumps(IMPERIAL_PRESET.model_dump(), sort_keys=True),
+        "category": "general",
+        "description": (
+            "Default unit set for anonymous clients and new accounts (JSON, keyed by quantity)"
+        ),
         "encrypted": False,
     },
 }
