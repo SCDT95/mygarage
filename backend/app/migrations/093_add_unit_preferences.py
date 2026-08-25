@@ -28,9 +28,25 @@ as ``us`` explicitly rather than failing or writing NULL. The later
 only fills in absent keys.
 
 Dialect-aware: ``ALTER TABLE ... ADD COLUMN`` for a nullable column works
-identically on SQLite and PostgreSQL, so no table rebuild is needed. The whole
-migration runs in one transaction, so a crash leaves nothing applied; the
-per-statement guards additionally make a resumed partial application safe.
+identically on SQLite and PostgreSQL, so no table rebuild is needed. What a
+crash leaves behind is NOT identical, and the difference decides whether the
+per-statement guards are load-bearing:
+
+  - PostgreSQL: DDL is transactional. A failure anywhere in ``upgrade`` aborts
+    the whole ``engine.begin()`` block, so a crashed run leaves nothing applied.
+  - SQLite: pysqlite does not open a transaction for DDL, so each ``ALTER
+    TABLE`` autocommits outside the enclosing block. A crash part-way through
+    the loop leaves the columns added so far committed. Measured, not assumed:
+    an abort before the 4th statement left three columns in place.
+
+Production runs SQLite, so on the dialect that matters the ``missing`` filter
+and the two ``IS NULL`` backfill predicates are the ONLY thing that makes a
+crashed run recoverable, not an extra belt over a transactional brace. The
+runner compounds this: it stamps ``schema_migrations`` in a separate
+transaction from ``upgrade`` (``app/migrations/runner.py``), so a crash in that
+window re-runs an already-committed migration on the next boot. Do not remove
+the guards; ``TestRestartAfterPartialApplication`` and the two anti-restamp
+tests in ``tests/migrations/test_093_unit_preferences.py`` each fail if you do.
 """
 
 from __future__ import annotations
@@ -154,9 +170,13 @@ def _seed_default_unit_prefs(conn, flavour: str) -> None:
     Replaces the retiring public ``imperial_gallon_standard`` row (D5). An
     existing row is preserved: an admin may already have tuned it.
     """
+    # Row existence, not value truthiness: settings.value is nullable, and
+    # SELECT value would return None for a row that exists with a NULL value.
+    # The INSERT below would then hit the primary key and, this migration being
+    # FATAL, stop the application booting. Migration 042 sets the precedent.
     existing = conn.execute(
-        text("SELECT value FROM settings WHERE key = :k"), {"k": DEFAULT_UNIT_PREFS_KEY}
-    ).scalar_one_or_none()
+        text("SELECT key FROM settings WHERE key = :k"), {"k": DEFAULT_UNIT_PREFS_KEY}
+    ).fetchone()
     if existing is not None:
         print("  → default_unit_prefs already present, preserved")
         return
