@@ -65,12 +65,23 @@ def test_intrinsically_us_conversions_ignore_the_setting() -> None:
     """EPA and window-sticker figures are US-gallon by definition.
 
     They are not a user preference and must not follow the instance flavour.
-    Pinning this stops phase 1 from "fixing" them into the preference path.
-    """
-    from app.utils.units import UnitConverter
 
-    # A window-sticker MPG figure is always a US MPG figure.
-    epa_combined_mpg = 30
-    assert UnitConverter.mpg_to_l100km(epa_combined_mpg, flavour="us") == pytest.approx(
-        7.8, rel=1e-2
-    )
+    This exercises the real class-3 call site -- `WindowStickerOCRService.
+    _sticker_data_to_dict`'s MPG -> L/100km conversion -- rather than
+    `UnitConverter.mpg_to_l100km(..., flavour="us")` directly. That call site
+    never resolves a flavour at all; it multiplies by a fixed US numerator
+    unconditionally. Asserting against `UnitConverter` with `flavour="us"`
+    pinned in the *test* would still pass even if phase 1 rewired the call
+    site itself to resolve a per-user flavour, so it would not catch that
+    regression. Pinning the actual call site is what stops phase 1 from
+    "fixing" it into the preference path.
+    """
+    from decimal import Decimal
+
+    from app.services.window_sticker_ocr import WindowStickerOCRService
+    from app.services.window_sticker_parsers import WindowStickerData
+
+    # A window-sticker combined MPG figure is always a US MPG figure.
+    data = WindowStickerData(fuel_economy_combined=30)
+    result = WindowStickerOCRService()._sticker_data_to_dict(data)
+    assert result["fuel_economy_combined_l_per_100km"] == Decimal("7.84")

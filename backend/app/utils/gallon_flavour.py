@@ -20,7 +20,8 @@ them into one.
 2. FILE OR REQUEST MARKER -- the flavour travels with the data, never from a
    preference:
      - routes/import_data.py `_row_gallons_to_liters`  reads the file's own
-       `unit_system` marker; already explicit, already correct, do not change
+       `unit_system` marker (CSV import path); already explicit, already
+       correct, do not change
      - routes/export.py `?units=` query parameter      caller's explicit request
 
 3. INTRINSICALLY US -- a fixed constant, never a preference:
@@ -28,6 +29,22 @@ them into one.
        MPG by definition regardless of where the user lives
      - webhook `gal` ingress, which documents US gallons in its contract
      - migrations/053, a frozen historical transform with a literal numerator
+     - routes/import_data.py `_maybe_gal_to_l` / `_maybe_per_gal_to_per_l`
+       (legacy-v2 JSON backup import, `import_vehicle_json`): unconditionally
+       US whenever `is_legacy_v2`. Same reasoning as `_row_gallons_to_liters`
+       above -- pre-v3 files predate the UK gallon option entirely -- but
+       unlike the CSV path there is no per-file marker for that era, so it
+       cannot become class 2 the way CSV did.
+     - services/import_adapters/fuel_csv.py `GAL_TO_L` (Fuelio + Drivvo
+       "Gallons" column fallback, used only when the source file has no
+       "Liters" column): unconditionally US, with no code comment establishing
+       whether that is deliberate. OPEN QUESTION for phase 1: the same import
+       routes (routes/import_data.py `import_fuelio_csv` / `import_drivvo_csv`)
+       already let the caller declare `odometer_unit` and `decimal_separator`
+       for other columns these formats leave ambiguous, but there is no
+       equivalent declared parameter for gallons -- so this may belong in
+       class 2 instead, as a caller-declared marker, rather than class 3. Not
+       resolved here; do not guess, ask before changing it.
 """
 
 from sqlalchemy import select
