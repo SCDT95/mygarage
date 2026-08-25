@@ -357,3 +357,92 @@ class TestMigrationRunnerOnPG:
         assert applied[0].startswith("001"), f"First migration should be 001, got {applied[0]}"
         print(f"  -> {len(applied)} migrations tracked: {applied[0]} .. {applied[-1]}")
         runner.engine.dispose()
+
+
+# ===========================================================================
+# Scenario 5: Unit preference columns (migration 093)
+#
+# PostgreSQL enforces VARCHAR length where SQLite does not, and ALTER TABLE
+# semantics differ, so the SQLite migration tests are not sufficient on their
+# own. This asserts the columns land, accept the longest vocabulary value, and
+# reject an over-long one.
+# ===========================================================================
+
+
+class TestUnitPreferenceColumns:
+    """Migration 093 on PostgreSQL."""
+
+    def test_unit_columns_exist_after_full_migration_run(self):
+        _reset_schema()
+
+        async_engine = create_async_engine(PG_ASYNC_URL, poolclass=NullPool)
+        import asyncio
+
+        async def _create():
+            async with async_engine.begin() as conn:
+                await conn.run_sync(Base.metadata.create_all)
+            await async_engine.dispose()
+
+        asyncio.run(_create())
+
+        runner = MigrationRunner(PG_SYNC_URL, MIGRATIONS_DIR)
+        runner.run_pending_migrations()
+
+        engine = create_engine(PG_SYNC_URL)
+        try:
+            from app.constants.units import UNIT_COLUMN_NAMES
+
+            columns = _get_all_columns(engine, "users")
+            assert set(UNIT_COLUMN_NAMES) <= columns
+        finally:
+            engine.dispose()
+
+    def test_columns_accept_the_longest_vocabulary_value(self):
+        """VARCHAR(12) must fit every value in every vocabulary. PostgreSQL
+        raises on overflow; SQLite silently stores it, so this only fails here."""
+        engine = create_engine(PG_SYNC_URL)
+        try:
+            from app.constants.units import MAX_UNIT_VALUE_LENGTH
+
+            assert MAX_UNIT_VALUE_LENGTH <= 12
+            with engine.begin() as conn:
+                # The NOT NULL columns below carry Python-side defaults, not
+                # server defaults, so create_all leaves them without a DEFAULT
+                # and a raw INSERT has to supply every one of them.
+                conn.execute(
+                    text(
+                        "INSERT INTO users (username, email, hashed_password, "
+                        "is_active, is_admin, auth_method, unit_preference, "
+                        "show_both_units, time_format, language, currency_code, "
+                        "mobile_quick_entry_enabled, show_on_family_dashboard, "
+                        "family_dashboard_order, unit_consumption, secondary_gallon) "
+                        "VALUES ('pg_units_probe', 'pg_units_probe@example.test', "
+                        "'x', true, false, 'local', 'custom', false, '12h', 'en', "
+                        "'USD', true, false, 0, 'l_100km', 'uk')"
+                    )
+                )
+                stored = conn.execute(
+                    text("SELECT unit_consumption FROM users WHERE username = 'pg_units_probe'")
+                ).scalar_one()
+                assert stored == "l_100km"
+                conn.execute(text("DELETE FROM users WHERE username = 'pg_units_probe'"))
+        finally:
+            engine.dispose()
+
+    def test_running_093_twice_is_a_no_op(self):
+        """Idempotency on PostgreSQL, where a failed statement aborts the whole
+        transaction rather than being skipped."""
+        import importlib.util
+
+        spec = importlib.util.spec_from_file_location(
+            "m093", MIGRATIONS_DIR / "093_add_unit_preferences.py"
+        )
+        module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(module)
+
+        engine = create_engine(PG_SYNC_URL)
+        try:
+            module.upgrade(engine)
+            module.upgrade(engine)
+        finally:
+            engine.dispose()
