@@ -36,6 +36,7 @@ class UnitConverter:
     MILES_TO_KM = Decimal("1.60934")
     FEET_TO_METERS = Decimal("0.3048")
     PSI_TO_BAR = Decimal("0.0689476")
+    PSI_TO_KPA = Decimal("6.89476")
     LBS_TO_KG = Decimal("0.45359237")
     LBFT_TO_NM = Decimal("1.35582")
     # L/100km = MPG_TO_L100KM_NUMERATOR / MPG (reciprocal — division, not multiplication).
@@ -99,7 +100,7 @@ class UnitConverter:
             - 'C'         → already metric
             - 'F'         → (val - 32) * 5/9
             - 'kPa'       → already metric
-            - 'PSI'       → multiply by PSI_TO_BAR (then * 100 for kPa? — see helper)
+            - 'PSI'       → multiply by PSI_TO_KPA (canonical is kPa, not bar)
             - 'Nm'        → already metric
             - 'lbft'      → multiply by LBFT_TO_NM
             - 'L/100km'   → already metric
@@ -126,7 +127,7 @@ class UnitConverter:
             case "F":
                 return (val - Decimal("32")) * Decimal("5") / Decimal("9")
             case "PSI":
-                return val * cls.PSI_TO_BAR
+                return val * cls.PSI_TO_KPA
             case "lbft":
                 return val * cls.LBFT_TO_NM
             case "MPG":
@@ -271,6 +272,14 @@ class UnitConverter:
         if val is None:
             return None
         return cls.round_result(val / cls.PSI_TO_BAR)
+
+    @classmethod
+    def psi_to_kpa(cls, psi: Numeric) -> float | None:
+        """Convert PSI to kPa (canonical pressure unit)."""
+        val = cls.to_decimal(psi)
+        if val is None:
+            return None
+        return cls.round_result(val * cls.PSI_TO_KPA)
 
     # ========== WEIGHT CONVERSIONS ==========
 

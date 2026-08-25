@@ -318,3 +318,41 @@ class TestDecimalPrecision:
         result = UnitConverter.miles_to_km(100.5)
         assert isinstance(result, float)
         assert result == pytest.approx(161.74, rel=0.01)
+
+
+@pytest.mark.unit
+class TestGoldenConversions:
+    """Absolute conversions pinned to known-correct values.
+
+    Round-trip tests (`to_display(to_canonical(x)) == x`) pass against a wrong
+    factor because both directions share it. These assert the factor itself.
+    """
+
+    def test_psi_canonicalises_to_kpa_not_bar(self) -> None:
+        # 1 PSI == 6.89476 kPa. Returning 0.0689476 means bar was emitted.
+        assert UnitConverter.to_canonical_decimal(1, "PSI") == Decimal("6.89476")
+
+    def test_psi_canonical_matches_the_psi_to_kpa_helper(self) -> None:
+        canonical_result = float(UnitConverter.to_canonical_decimal(31.9, "PSI"))
+        helper_result = UnitConverter.psi_to_kpa(31.9)
+        # Helper rounds to 2 decimals; canonical preserves full precision.
+        assert canonical_result == pytest.approx(helper_result, rel=1e-2)
+
+    @pytest.mark.parametrize(
+        ("value", "from_unit", "expected"),
+        [
+            (1, "mi", Decimal("1.60934")),
+            (1, "ft", Decimal("0.3048")),
+            (1, "lb", Decimal("0.45359237")),
+            (1, "lbft", Decimal("1.35582")),
+            (32, "F", Decimal("0")),
+            (1, "kPa", Decimal("1")),
+        ],
+    )
+    def test_golden_absolute_conversions(
+        self, value: float, from_unit: str, expected: Decimal
+    ) -> None:
+        result = UnitConverter.to_canonical_decimal(value, from_unit)
+        assert result is not None
+        # Convert to float for pytest.approx comparison
+        assert float(result) == pytest.approx(float(expected), rel=1e-9)
