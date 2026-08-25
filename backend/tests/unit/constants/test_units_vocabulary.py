@@ -11,6 +11,7 @@ from pydantic import ValidationError
 
 from app.constants.units import (
     IMPERIAL_PRESET,
+    MAX_UNIT_VALUE_LENGTH,
     METRIC_PRESET,
     UNIT_COLUMN_NAMES,
     UNIT_FIELD_NAMES,
@@ -83,6 +84,16 @@ class TestPresets:
 class TestColumnNameMapping:
     """users columns carry a unit_ prefix; UnitSet fields do not."""
 
+    def test_the_ten_quantity_columns_carry_the_unit_prefix(self) -> None:
+        """Round-trip and the secondary_gallon exception both still pass if the
+        prefix vanishes from every field, because they only check that the two
+        mapping functions are inverses. Task 2's migration adds columns by these
+        exact names, so the prefix is a contract and needs its own guard."""
+        prefixed = [name for name in UNIT_COLUMN_NAMES if name.startswith("unit_")]
+
+        assert len(prefixed) == 10
+        assert set(UNIT_COLUMN_NAMES) - set(prefixed) == {"secondary_gallon"}
+
     def test_secondary_gallon_column_is_unprefixed(self) -> None:
         """The spec names this column secondary_gallon, not unit_secondary_gallon."""
         assert field_to_column("secondary_gallon") == "secondary_gallon"
@@ -103,6 +114,15 @@ class TestColumnNameMapping:
             assert values, f"{field_name} is not a Literal; the width check sees nothing"
             for value in values:
                 assert len(value) <= 12, f"{field_name}={value!r} exceeds VARCHAR(12)"
+
+        # Task 2's PostgreSQL test asserts against this constant rather than
+        # recomputing the bound, so it has to be the real maximum.
+        assert MAX_UNIT_VALUE_LENGTH == max(
+            len(value)
+            for field in UnitSet.model_fields.values()
+            for value in get_args(field.annotation)
+        )
+        assert MAX_UNIT_VALUE_LENGTH <= 12
 
     def test_unit_set_rejects_unknown_keys(self) -> None:
         """A stored set carrying an extra key means writer and reader disagree
