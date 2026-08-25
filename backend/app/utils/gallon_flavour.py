@@ -2,8 +2,15 @@
 
 Phase 0 of the custom-units work replaces `UnitConverter.set_gallon_standard()`,
 which mutated process-global class state. This module is the single explicit
-source of that value for backend callers. Phase 1 replaces the body with a
-per-user lookup; the signature does not change.
+source of that value for backend callers. `resolve_gallon_flavour(db)` carries
+no caller identity, so when phase 1 moves this to a per-user preference, it
+MUST extend this function's signature to accept the caller's identity (e.g.
+the current `User`) as an explicit parameter -- there is no way to resolve a
+per-user value from `db` alone. Resolving the user from ambient request-local
+context instead (a `ContextVar` or similar) would reintroduce, one layer up,
+the exact ambient-mutable-state defect these eight commits exist to eliminate:
+a value that changes depending on when you read it rather than what was
+explicitly passed in. Extend the signature; do not reach for ambient state.
 
 Gallon-consumer classification (phase 0 deliverable)
 ----------------------------------------------------
@@ -26,7 +33,13 @@ them into one.
 
 3. INTRINSICALLY US -- a fixed constant, never a preference:
      - EPA / window-sticker MPG figures (vehicles.fuel_economy_*), which are US
-       MPG by definition regardless of where the user lives
+       MPG by definition regardless of where the user lives. The OCR path
+       (services/window_sticker_ocr.py `_MPG_TO_L100KM = Decimal("235.214583")`)
+       computes this with its OWN literal, not `UnitConverter.
+       US_MPG_TO_L100KM_NUMERATOR` (`Decimal("235.214")`) -- the two constants
+       differ in the fifth significant digit. A phase-1 "unify the constants"
+       pass touches this value and will silently change already-stored figures
+       if it isn't accounted for.
      - webhook `gal` ingress, which documents US gallons in its contract
      - migrations/053, a frozen historical transform with a literal numerator
      - routes/import_data.py `_maybe_gal_to_l` / `_maybe_per_gal_to_per_l`
