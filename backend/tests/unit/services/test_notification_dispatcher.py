@@ -357,13 +357,22 @@ class TestConvenienceMethods:
     @pytest.mark.asyncio
     async def test_notify_def_low(self, dispatcher):
         """Test DEF-low notification formatting: percent, both L and gal, and as-of date."""
-        await dispatcher.notify_def_low(
-            vehicle_name="My Truck",
-            vin="1FTFW1ET5DFC10312",
-            percent=Decimal("25"),
-            remaining_liters=Decimal("2.50"),
-            as_of_date=date(2026, 6, 15),
-        )
+        # dispatcher.db is a bare AsyncMock (see the `dispatcher` fixture above), not a
+        # real AsyncSession — resolve_gallon_flavour's `select(...)` round-trip through
+        # it would fabricate a coroutine instead of a Setting row. Patch the resolver
+        # directly so this stays a pure message-formatting test against the historical
+        # US default, same as before flavour resolution was threaded into this call.
+        with patch(
+            "app.services.notifications.dispatcher.resolve_gallon_flavour",
+            AsyncMock(return_value="us"),
+        ):
+            await dispatcher.notify_def_low(
+                vehicle_name="My Truck",
+                vin="1FTFW1ET5DFC10312",
+                percent=Decimal("25"),
+                remaining_liters=Decimal("2.50"),
+                as_of_date=date(2026, 6, 15),
+            )
 
         call_kwargs = dispatcher.dispatch.call_args
         assert call_kwargs.kwargs["event_type"] == "def_low"
