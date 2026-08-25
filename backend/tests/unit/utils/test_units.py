@@ -4,11 +4,12 @@ Unit tests for unit conversion utilities.
 Tests imperial/metric conversions for volume, distance, fuel economy, etc.
 """
 
+import asyncio
 from decimal import Decimal
 
 import pytest
 
-from app.utils.units import UnitConverter
+from app.utils.units import GallonFlavour, UnitConverter
 
 
 @pytest.mark.unit
@@ -358,6 +359,20 @@ class TestGoldenConversions:
         assert float(result) == pytest.approx(float(expected), rel=1e-9)
 
 
+async def _convert_after_yield(gallons: int, flavour: GallonFlavour) -> float | None:
+    """Perform one gallons-to-liters conversion with real yield points around it.
+
+    Mimics one coroutine's slice of concurrent request handling: yield to the
+    event loop (letting other coroutines' calls interleave), convert, then
+    yield again. `flavour` is a local variable closed over by this coroutine,
+    never shared -- that's exactly the property under test.
+    """
+    await asyncio.sleep(0)
+    result = UnitConverter.gallons_to_liters(gallons, flavour=flavour)
+    await asyncio.sleep(0)
+    return result
+
+
 @pytest.mark.unit
 class TestGallonFlavour:
     """Gallon flavour is an argument, never ambient class state."""
@@ -379,17 +394,28 @@ class TestGallonFlavour:
     def test_canonical_gal_honours_flavour(self) -> None:
         assert UnitConverter.to_canonical_decimal(1, "gal", flavour="uk") == Decimal("4.54609")
 
-    def test_concurrent_flavours_do_not_interfere(self) -> None:
-        """The bug this task removes: one caller's flavour leaking into another's.
+    @pytest.mark.asyncio
+    async def test_interleaved_concurrent_conversions_keep_each_callers_flavour(self) -> None:
+        """Genuinely concurrent conversions never cross-contaminate flavour.
 
-        With class-level state these two interleaved calls returned the same
-        value. With a parameter they cannot.
+        Runs 20 coroutines (alternating us/uk) through `asyncio.gather`, each
+        yielding to the event loop both before and after its own conversion so
+        the others' calls actually interleave around it -- not three
+        sequential synchronous calls. Each coroutine must get the value
+        correct for ITS OWN flavour, not merely a value that differs from its
+        neighbours'. With class-level ambient state, a coroutine resuming
+        after another had set a different flavour would pick up the wrong
+        factor; with flavour as a parameter closed over per-coroutine, it
+        cannot.
         """
-        us_first = UnitConverter.gallons_to_liters(1, flavour="us")
-        uk_between = UnitConverter.gallons_to_liters(1, flavour="uk")
-        us_again = UnitConverter.gallons_to_liters(1, flavour="us")
-        assert us_first == us_again
-        assert uk_between != us_first
+        flavours: list[GallonFlavour] = ["us", "uk"] * 10
+        results = await asyncio.gather(*(_convert_after_yield(1, flavour) for flavour in flavours))
+        expected = {"us": pytest.approx(3.79, rel=1e-3), "uk": pytest.approx(4.55, rel=1e-3)}
+        for flavour, result in zip(flavours, results, strict=True):
+            assert result == expected[flavour], (
+                f"flavour {flavour!r} produced {result}: another coroutine's flavour leaked "
+                "into this concurrent conversion"
+            )
 
     def test_mutable_class_state_is_gone(self) -> None:
         assert not hasattr(UnitConverter, "GALLONS_TO_LITERS")
