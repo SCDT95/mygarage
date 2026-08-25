@@ -266,9 +266,20 @@ class TestIdempotency:
         assert _users(engine) == after_first
         assert _setting(engine, "default_unit_prefs") == default_after_first
 
-    def test_does_not_overwrite_a_user_who_already_has_overrides(self, tmp_path: Path) -> None:
-        """Guards the re-run case where a user has since chosen their own units.
-        The UK backfill must not stamp over a deliberate choice."""
+    def test_does_not_restamp_a_volume_chosen_after_materialisation(self, tmp_path: Path) -> None:
+        """Kills the ``unit_volume IS NULL`` half of the UK backfill's guard.
+
+        The state that matters is ruling P1's accepted mid-branch wart: a UK user
+        materialised to ``custom`` saves the old two-option Units toggle, which
+        writes ``unit_preference='imperial'`` back while the eleven override
+        columns stay populated. That row matches ``unit_preference = 'imperial'``
+        again, so the preset half of the predicate no longer protects it and
+        ``unit_volume IS NULL`` is the only thing standing between the next
+        boot's re-run and stamping over a deliberate choice.
+
+        The obvious version of this test, where the user stays ``custom``, is
+        protected by the preset half instead and passes with this guard deleted.
+        """
         engine = _make_db(
             tmp_path,
             gallon_standard="uk",
@@ -277,11 +288,45 @@ class TestIdempotency:
         migration = _load_migration()
         migration.upgrade(engine)
         with engine.begin() as conn:
-            conn.execute(text("UPDATE users SET unit_volume = 'L' WHERE username = 'imp'"))
+            conn.execute(
+                text(
+                    "UPDATE users SET unit_volume = 'L', unit_preference = 'imperial' "
+                    "WHERE username = 'imp'"
+                )
+            )
 
         migration.upgrade(engine)
 
-        assert _users(engine)["imp"]["unit_volume"] == "L"
+        row = _users(engine)["imp"]
+        assert row["unit_volume"] == "L", "the UK backfill stamped over a chosen volume"
+        assert row["unit_preference"] == "imperial", "the row should be left alone entirely"
+
+    def test_does_not_restamp_a_secondary_gallon_the_user_changed(self, tmp_path: Path) -> None:
+        """Kills the ``WHERE secondary_gallon IS NULL`` half of the flavour backfill.
+
+        A user on a UK instance who picks US gallons for their show-both
+        counterpart must keep that choice across the next boot. Without the
+        predicate the re-run stamps the instance flavour back over it, and the
+        preset predicates cannot help here because this backfill has none: it
+        writes every user, every preset (D4b).
+        """
+        engine = _make_db(
+            tmp_path,
+            gallon_standard="uk",
+            users=[{"username": "met", "unit_preference": "metric"}],
+        )
+        migration = _load_migration()
+        migration.upgrade(engine)
+        assert _users(engine)["met"]["secondary_gallon"] == "uk"
+
+        with engine.begin() as conn:
+            conn.execute(text("UPDATE users SET secondary_gallon = 'us' WHERE username = 'met'"))
+
+        migration.upgrade(engine)
+
+        assert _users(engine)["met"]["secondary_gallon"] == "us", (
+            "the flavour backfill stamped over a chosen secondary_gallon"
+        )
 
     def test_preserves_an_existing_default_unit_prefs_row(self, tmp_path: Path) -> None:
         """An admin who has already tuned the instance default keeps it."""
@@ -294,6 +339,21 @@ class TestIdempotency:
         _load_migration().upgrade(engine)
 
         assert _setting(engine, "default_unit_prefs") == '{"custom": "value"}'
+
+    def test_preserves_a_default_unit_prefs_row_whose_value_is_null(self, tmp_path: Path) -> None:
+        """``settings.value`` is nullable, so "no row" and "row with a NULL value"
+        are different states. Conflating them makes the seed attempt an INSERT
+        against an existing primary key, which aborts the transaction; this
+        migration is FATAL, so that failure stops the application booting."""
+        engine = _make_db(tmp_path, gallon_standard="uk", users=[])
+        with engine.begin() as conn:
+            conn.execute(
+                text("INSERT INTO settings (key, value) VALUES ('default_unit_prefs', NULL)")
+            )
+
+        _load_migration().upgrade(engine)  # must not raise
+
+        assert _setting(engine, "default_unit_prefs") is None
 
 
 class TestRestartAfterPartialApplication:
