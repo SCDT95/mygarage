@@ -33,7 +33,25 @@ def _python_sources() -> list[Path]:
     ]
 
 
-@pytest.mark.parametrize("path", _python_sources(), ids=lambda p: str(p.name))
+# If a future refactor breaks APP_ROOT's path resolution, _python_sources()
+# silently returns [], pytest.mark.parametrize collects zero cases, and this
+# whole module reports a single SKIPPED test -- CI stays green while the guard
+# scans nothing. Assert a plausible lower bound at collection time so that
+# failure is loud instead. 277 files existed under app/ (excluding
+# migrations/) at the time of writing; 100 is comfortably below any real count
+# (which only grows as the app does) and comfortably above zero, so this trips
+# the moment resolution breaks without being pinned to the exact file count.
+_MIN_PLAUSIBLE_SOURCE_COUNT = 100
+_SOURCES = _python_sources()
+assert len(_SOURCES) >= _MIN_PLAUSIBLE_SOURCE_COUNT, (
+    f"_python_sources() found only {len(_SOURCES)} file(s) under {APP_ROOT} "
+    f"(expected at least {_MIN_PLAUSIBLE_SOURCE_COUNT}). APP_ROOT resolution is "
+    "probably broken, which would make this guard silently scan nothing and "
+    "report a single SKIPPED test instead of failing."
+)
+
+
+@pytest.mark.parametrize("path", _SOURCES, ids=lambda p: str(p.name))
 def test_no_ambient_gallon_identifier(path: Path) -> None:
     """No module may reference the deleted ambient accessors or aliases.
 
