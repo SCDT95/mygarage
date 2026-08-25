@@ -355,8 +355,10 @@ class TestGoldenConversions:
     ) -> None:
         result = UnitConverter.to_canonical_decimal(value, from_unit)
         assert result is not None
-        # Convert to float for pytest.approx comparison
-        assert float(result) == pytest.approx(float(expected), rel=1e-9)
+        # These factors are all exactly representable in Decimal, and this
+        # test's whole purpose is pinning factor exactness -- an approx/float
+        # comparison would let a wrong-but-close factor slip through.
+        assert result == expected
 
 
 async def _convert_after_yield(gallons: int, flavour: GallonFlavour) -> float | None:
