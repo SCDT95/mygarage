@@ -16,6 +16,8 @@ from app.constants.units import IMPERIAL_PRESET, METRIC_PRESET, UnitSet
 from app.models.settings import Setting
 from app.utils.default_unit_prefs import (
     DEFAULT_UNIT_PREFS_KEY,
+    UK_IMPERIAL_PRESET,
+    default_unit_prefs_for_instance,
     load_default_unit_prefs,
     parse_default_unit_prefs,
 )
@@ -58,7 +60,29 @@ class TestParsing:
         assert parse_default_unit_prefs(json.dumps(extra)) == IMPERIAL_PRESET
 
     def test_never_raises_on_any_input(self) -> None:
-        for raw in (None, "", "null", "0", '"str"', "{}", "[]", "\x00"):
+        """The docstring's contract: never raises, no matter how hostile the
+        input.
+
+        Includes deeply nested JSON, which blows the interpreter's recursion
+        limit inside json.loads (RecursionError, a RuntimeError subclass, not
+        a ValueError/TypeError) rather than raising anything the original
+        except clause caught. Proven to catch a regression: dropping
+        RecursionError from parse_default_unit_prefs's except clause makes
+        this fail (captured in the task-3 report, Fix round 1)."""
+        deeply_nested_array = "[" * 200_000
+        deeply_nested_object = '{"a":' * 200_000 + "1" + "}" * 200_000
+        for raw in (
+            None,
+            "",
+            "null",
+            "0",
+            '"str"',
+            "{}",
+            "[]",
+            "\x00",
+            deeply_nested_array,
+            deeply_nested_object,
+        ):
             assert isinstance(parse_default_unit_prefs(raw), UnitSet)
 
 
@@ -84,12 +108,28 @@ class TestLoading:
                 await db_session.commit()
 
     async def test_absent_row_falls_back_to_imperial(self, db_session) -> None:
-        row = await db_session.get(Setting, DEFAULT_UNIT_PREFS_KEY)
-        if row is not None:
-            await db_session.delete(row)
+        """Deletes any pre-existing row to exercise the absent-row path, then
+        restores exactly what it deleted: the suite shares one database with
+        no per-test rollback (see reference_mygarage_test_isolation), and this
+        test previously left a pre-existing row destroyed for good."""
+        existing = await db_session.get(Setting, DEFAULT_UNIT_PREFS_KEY)
+        original = None
+        if existing is not None:
+            original = {
+                "value": existing.value,
+                "category": existing.category,
+                "description": existing.description,
+                "encrypted": existing.encrypted,
+            }
+            await db_session.delete(existing)
             await db_session.commit()
 
-        assert await load_default_unit_prefs(db_session) == IMPERIAL_PRESET
+        try:
+            assert await load_default_unit_prefs(db_session) == IMPERIAL_PRESET
+        finally:
+            if original is not None:
+                db_session.add(Setting(key=DEFAULT_UNIT_PREFS_KEY, **original))
+                await db_session.commit()
 
 
 @pytest.mark.asyncio
@@ -150,3 +190,51 @@ class TestPublicExposure:
                 if row is not None:
                     await db_session.delete(row)
                     await db_session.commit()
+
+
+@pytest.mark.asyncio
+class TestDefaultUnitPrefsForInstance:
+    """The per-boot derivation used to reseed a deleted `default_unit_prefs`
+    row from the instance's real gallon flavour (task-3 review, Fix 1):
+    `DELETE /api/settings/{key}` has no per-key protection, and migration 093
+    is a one-shot, stamped migration that never re-runs to repair a deleted
+    row. See `default_unit_prefs_for_instance`'s own docstring for the
+    one-shot caveat: this only runs when the row is (re)created, so it does
+    not live-track later changes to `imperial_gallon_standard`.
+    """
+
+    async def test_us_or_absent_gallon_standard_derives_imperial(self, db_session) -> None:
+        """Absent, empty, or non-uk `imperial_gallon_standard` all derive the
+        plain imperial preset, matching migration 093's own default."""
+        row = await db_session.get(Setting, "imperial_gallon_standard")
+        if row is not None:
+            await db_session.delete(row)
+            await db_session.commit()
+
+        assert await default_unit_prefs_for_instance(db_session) == IMPERIAL_PRESET
+
+    async def test_uk_gallon_standard_derives_uk_imperial(self, db_session) -> None:
+        """A UK instance derives the UK-flavoured preset (gal_uk/mpg_uk/uk),
+        not the plain (US) imperial preset."""
+        existing = await db_session.get(Setting, "imperial_gallon_standard")
+        original = existing.value if existing is not None else None
+        if existing is None:
+            db_session.add(Setting(key="imperial_gallon_standard", value="uk", category="general"))
+        else:
+            existing.value = "uk"
+        await db_session.commit()
+
+        try:
+            result = await default_unit_prefs_for_instance(db_session)
+            assert result == UK_IMPERIAL_PRESET
+            assert result != IMPERIAL_PRESET
+        finally:
+            row = await db_session.get(Setting, "imperial_gallon_standard")
+            if original is None:
+                if row is not None:
+                    await db_session.delete(row)
+            elif row is not None:
+                row.value = original
+            else:
+                db_session.add(Setting(key="imperial_gallon_standard", value=original))
+            await db_session.commit()

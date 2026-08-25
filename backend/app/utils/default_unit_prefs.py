@@ -22,10 +22,22 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.constants.units import IMPERIAL_PRESET, UnitSet
 from app.models.settings import Setting
+from app.utils.gallon_flavour import resolve_gallon_flavour
 
 logger = logging.getLogger(__name__)
 
 DEFAULT_UNIT_PREFS_KEY = "default_unit_prefs"
+
+# Mirrors app/migrations/093_add_unit_preferences.py's UK_IMPERIAL_SET: same
+# three overrides (volume, consumption, secondary_gallon). Duplicated rather
+# than imported, because importing live application code from a one-shot
+# migration script would make this module depend on migration internals that
+# are frozen the moment they've run in production. If migration 093's
+# derivation ever changes, update this constant to match.
+UK_IMPERIAL_PRESET = UnitSet.model_validate(
+    IMPERIAL_PRESET.model_dump()
+    | {"volume": "gal_uk", "consumption": "mpg_uk", "secondary_gallon": "uk"}
+)
 
 
 def parse_default_unit_prefs(raw: str | None) -> UnitSet:
@@ -40,7 +52,12 @@ def parse_default_unit_prefs(raw: str | None) -> UnitSet:
         return IMPERIAL_PRESET
     try:
         payload = json.loads(raw)
-    except ValueError, TypeError:
+    except ValueError, TypeError, RecursionError:
+        # RecursionError (a RuntimeError subclass, not a ValueError/TypeError)
+        # is reachable via deeply nested JSON: json.loads's recursive-descent
+        # parser blows the interpreter's recursion limit before it can report
+        # a decode error. Caught explicitly, not via a bare `except Exception`,
+        # so a genuinely unexpected failure mode still surfaces.
         logger.warning("default_unit_prefs is not valid JSON; using the imperial preset")
         return IMPERIAL_PRESET
     if not isinstance(payload, dict):
@@ -61,3 +78,30 @@ async def load_default_unit_prefs(db: AsyncSession) -> UnitSet:
         await db.execute(select(Setting).where(Setting.key == DEFAULT_UNIT_PREFS_KEY))
     ).scalar_one_or_none()
     return parse_default_unit_prefs(row.value if row is not None else None)
+
+
+async def default_unit_prefs_for_instance(db: AsyncSession) -> UnitSet:
+    """Compute the unit set that should seed `default_unit_prefs` right now.
+
+    Mirrors migration 093's one-shot derivation: read the live
+    `imperial_gallon_standard` row via `resolve_gallon_flavour` and pick
+    `UK_IMPERIAL_PRESET` or `IMPERIAL_PRESET` accordingly.
+
+    Used by `initialize_default_settings` (`app/services/settings_init.py`) so
+    a `default_unit_prefs` row deleted through the generic, admin-only
+    `DELETE /api/settings/{key}` endpoint (which has no per-key protection)
+    reseeds from the instance's real gallon flavour instead of a static US
+    default. Migration 093 is a one-shot, stamped migration: once applied, the
+    runner never reconsiders it, so it will never re-run to repair a deleted
+    row. Without this derivation, a UK instance that lost this row would come
+    back US on the very next boot.
+
+    Note this derivation only runs when the row is (re)created at boot.
+    Changing `imperial_gallon_standard` through the settings API afterward
+    does not live-update an already-seeded `default_unit_prefs` row, because
+    phase 0 deliberately removed write side effects from that route (see
+    `app/utils/gallon_flavour.py`). Phase 3 retires `imperial_gallon_standard`
+    entirely, which makes this moot.
+    """
+    flavour = await resolve_gallon_flavour(db)
+    return UK_IMPERIAL_PRESET if flavour == "uk" else IMPERIAL_PRESET
