@@ -13,7 +13,7 @@ Supported conversions:
 - Fuel Economy: MPG ↔ L/100km
 - Dimensions: feet ↔ meters
 - Temperature: °F ↔ °C
-- Pressure: PSI ↔ bar
+- Pressure: PSI ↔ kPa (canonical target; see `psi_to_kpa`)
 - Weight: pounds ↔ kilograms
 - Torque: lb-ft ↔ Nm
 - Electric: kWh, kW, voltage (no conversion needed, universal)
