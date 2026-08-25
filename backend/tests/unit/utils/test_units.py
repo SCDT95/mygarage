@@ -336,7 +336,7 @@ class TestGoldenConversions:
         canonical_result = float(UnitConverter.to_canonical_decimal(31.9, "PSI"))
         helper_result = UnitConverter.psi_to_kpa(31.9)
         # Helper rounds to 2 decimals; canonical preserves full precision.
-        assert canonical_result == pytest.approx(helper_result, rel=1e-2)
+        assert canonical_result == pytest.approx(helper_result, rel=1e-4)
 
     @pytest.mark.parametrize(
         ("value", "from_unit", "expected"),
@@ -356,3 +356,43 @@ class TestGoldenConversions:
         assert result is not None
         # Convert to float for pytest.approx comparison
         assert float(result) == pytest.approx(float(expected), rel=1e-9)
+
+
+@pytest.mark.unit
+class TestGallonFlavour:
+    """Gallon flavour is an argument, never ambient class state."""
+
+    def test_us_is_the_default(self) -> None:
+        assert UnitConverter.gallons_to_liters(1) == pytest.approx(3.79, rel=1e-3)
+
+    def test_uk_gallon_is_larger(self) -> None:
+        assert UnitConverter.gallons_to_liters(1, flavour="uk") == pytest.approx(4.55, rel=1e-3)
+
+    def test_liters_to_gallons_honours_flavour(self) -> None:
+        assert UnitConverter.liters_to_gallons(10, flavour="us") == pytest.approx(2.64, rel=1e-3)
+        assert UnitConverter.liters_to_gallons(10, flavour="uk") == pytest.approx(2.20, rel=1e-3)
+
+    def test_mpg_numerator_follows_flavour(self) -> None:
+        assert UnitConverter.mpg_to_l100km(30, flavour="us") == pytest.approx(7.8, rel=1e-2)
+        assert UnitConverter.mpg_to_l100km(30, flavour="uk") == pytest.approx(9.4, rel=1e-2)
+
+    def test_canonical_gal_honours_flavour(self) -> None:
+        assert UnitConverter.to_canonical_decimal(1, "gal", flavour="uk") == Decimal("4.54609")
+
+    def test_concurrent_flavours_do_not_interfere(self) -> None:
+        """The bug this task removes: one caller's flavour leaking into another's.
+
+        With class-level state these two interleaved calls returned the same
+        value. With a parameter they cannot.
+        """
+        us_first = UnitConverter.gallons_to_liters(1, flavour="us")
+        uk_between = UnitConverter.gallons_to_liters(1, flavour="uk")
+        us_again = UnitConverter.gallons_to_liters(1, flavour="us")
+        assert us_first == us_again
+        assert uk_between != us_first
+
+    def test_mutable_class_state_is_gone(self) -> None:
+        assert not hasattr(UnitConverter, "GALLONS_TO_LITERS")
+        assert not hasattr(UnitConverter, "MPG_TO_L100KM_NUMERATOR")
+        assert not hasattr(UnitConverter, "set_gallon_standard")
+        assert not hasattr(UnitConverter, "get_gallon_standard")
