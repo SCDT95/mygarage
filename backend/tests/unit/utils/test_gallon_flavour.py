@@ -59,3 +59,18 @@ async def test_unrecognised_value_falls_back_to_us(db_session: AsyncSession) -> 
         assert await resolve_gallon_flavour(db_session) == "us"
     finally:
         await _clear_gallon_standard(db_session)
+
+
+def test_intrinsically_us_conversions_ignore_the_setting() -> None:
+    """EPA and window-sticker figures are US-gallon by definition.
+
+    They are not a user preference and must not follow the instance flavour.
+    Pinning this stops phase 1 from "fixing" them into the preference path.
+    """
+    from app.utils.units import UnitConverter
+
+    # A window-sticker MPG figure is always a US MPG figure.
+    epa_combined_mpg = 30
+    assert UnitConverter.mpg_to_l100km(epa_combined_mpg, flavour="us") == pytest.approx(
+        7.8, rel=1e-2
+    )
