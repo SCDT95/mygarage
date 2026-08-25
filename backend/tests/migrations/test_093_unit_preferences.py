@@ -97,7 +97,7 @@ def _setting(engine, key: str) -> str | None:
 
 
 class TestColumnCreation:
-    def test_adds_exactly_the_eleven_declared_columns(self, tmp_path: Path) -> None:
+    def test_every_declared_unit_column_is_added(self, tmp_path: Path) -> None:
         """Every name in UNIT_COLUMN_NAMES gets an ADD COLUMN.
 
         This catches a migration that stops adding columns (a broken loop, a

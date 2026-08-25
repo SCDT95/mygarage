@@ -2,19 +2,21 @@
 
 Simulates real-world upgrade scenarios against PostgreSQL:
 
-1. Fresh install: create_all → run all 49 migrations → verify schema
-2. Upgrade from v2.21: create baseline schema missing new columns →
-   run migrations → verify missing columns are added (Issue #42)
-3. Idempotency: run migrations twice → no errors
+1. Fresh install: create_all -> run every migration -> verify schema
+2. Upgrade from v2.21: create baseline schema missing new columns ->
+   run migrations -> verify missing columns are added (Issue #42)
+3. Idempotency: run migrations twice -> no errors
 
 The migration runner uses psycopg2 (sync), not asyncpg.
 
-Run with:
-    docker exec mygarage-pg-test psql -U mygarage -d mygarage_test \
-        -c "DROP SCHEMA public CASCADE; CREATE SCHEMA public;"
-    MYGARAGE_SECRET_KEY=test MYGARAGE_TEST_MODE=true \
-    TEST_DATABASE_URL="postgresql+asyncpg://mygarage:testpass@localhost:15432/mygarage_test" \
-    PYTHONPATH=. python3 -m pytest tests/pg_migration_path_test.py -v --override-ini="addopts=" -s
+Run with the PostgreSQL sidecar in docker-compose.test.yml. The previous
+instructions here named a `mygarage-pg-test` container on port 15432, which
+does not exist in this repo and cannot be made to work; the host also lacks
+sqlalchemy and pytest_asyncio, so a host pytest run fails at import.
+
+    MYGARAGE_TEST_UID=$(id -u) MYGARAGE_TEST_GID=$(id -g) \
+      docker compose -f docker-compose.test.yml -p mygarage-test \
+        run --rm mygarage-test pytest tests/pg_migration_path_test.py -v
 """
 
 import os
