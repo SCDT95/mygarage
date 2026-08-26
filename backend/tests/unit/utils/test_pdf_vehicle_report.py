@@ -4,9 +4,18 @@ from decimal import Decimal
 
 import fitz  # PyMuPDF
 
+from app.constants.units import IMPERIAL_PRESET, METRIC_PRESET
 from app.utils.pdf_vehicle_report import generate_vehicle_analytics_pdf
+from app.utils.render_context import RenderContext
 
 PDF_MAGIC = b"%PDF"
+
+# The metric, no-counterpart context. Every pre-existing assertion in this
+# file was written against the report's old hardcoded metric strings, so
+# rendering under this context is what proves the unit-aware rewrite did not
+# change what a metric reader sees. Per-unit-set behaviour is asserted in
+# TestRenderContextDrivesUnits below.
+METRIC_CTX = RenderContext(units=METRIC_PRESET, show_both=False)
 
 
 def _extract_text(pdf_bytes: bytes) -> str:
@@ -191,43 +200,46 @@ class TestGenerateVehicleAnalyticsPdf:
 
     def test_returns_valid_pdf(self) -> None:
         data = _make_analytics_data()
-        buf = generate_vehicle_analytics_pdf(data)
+        buf = generate_vehicle_analytics_pdf(data, render_context=METRIC_CTX)
         content = buf.read()
         assert content[:4] == PDF_MAGIC
         assert len(content) > 5000
 
     def test_contains_vehicle_name(self) -> None:
         data = _make_analytics_data(vehicle_name="2023 Ram 3500")
-        buf = generate_vehicle_analytics_pdf(data)
+        buf = generate_vehicle_analytics_pdf(data, render_context=METRIC_CTX)
         text = _extract_text(buf.read())
         assert "2023 Ram 3500" in text
 
     def test_contains_vin(self) -> None:
         data = _make_analytics_data(vin="3C63RRGL9NG000001")
-        buf = generate_vehicle_analytics_pdf(data)
+        buf = generate_vehicle_analytics_pdf(data, render_context=METRIC_CTX)
         text = _extract_text(buf.read())
         assert "3C63RRGL9NG000001" in text
 
     def test_contains_section_headings(self) -> None:
         data = _make_analytics_data()
-        buf = generate_vehicle_analytics_pdf(data)
+        buf = generate_vehicle_analytics_pdf(data, render_context=METRIC_CTX)
         text = _extract_text(buf.read())
         assert "Monthly Spending" in text
         assert "Service Breakdown" in text
 
     def test_contains_kpi_labels(self) -> None:
         data = _make_analytics_data()
-        buf = generate_vehicle_analytics_pdf(data)
+        buf = generate_vehicle_analytics_pdf(data, render_context=METRIC_CTX)
         text = _extract_text(buf.read())
         assert "TOTAL COST" in text
-        assert "COST PER KM" in text
+        # Renamed from "Cost Per km": the value now names its own
+        # denominator ("$42.00/100 km" / "$675.92/1,000 mi"), so a label
+        # hardcoding km would contradict it for an imperial reader.
+        assert "COST PER DISTANCE" in text
         assert "AVG MONTHLY" in text
         assert "PROJECTED 12-MO" in text
 
     def test_with_vendor_data(self) -> None:
         data = _make_analytics_data()
         vendor = _make_vendor_data()
-        buf = generate_vehicle_analytics_pdf(data, vendor_data=vendor)
+        buf = generate_vehicle_analytics_pdf(data, vendor_data=vendor, render_context=METRIC_CTX)
         text = _extract_text(buf.read())
         assert "Vendor Analysis" in text
         assert "AutoZone" in text
@@ -235,7 +247,9 @@ class TestGenerateVehicleAnalyticsPdf:
     def test_with_seasonal_data(self) -> None:
         data = _make_analytics_data()
         seasonal = _make_seasonal_data()
-        buf = generate_vehicle_analytics_pdf(data, seasonal_data=seasonal)
+        buf = generate_vehicle_analytics_pdf(
+            data, seasonal_data=seasonal, render_context=METRIC_CTX
+        )
         text = _extract_text(buf.read())
         assert "Seasonal Spending" in text
 
@@ -243,13 +257,15 @@ class TestGenerateVehicleAnalyticsPdf:
         data = _make_analytics_data()
         vendor = _make_vendor_data()
         seasonal = _make_seasonal_data()
-        buf = generate_vehicle_analytics_pdf(data, vendor, seasonal)
+        buf = generate_vehicle_analytics_pdf(data, vendor, seasonal, render_context=METRIC_CTX)
         text = _extract_text(buf.read())
         assert "MyGarage" in text
 
     def test_no_vendor_no_seasonal(self) -> None:
         data = _make_analytics_data()
-        buf = generate_vehicle_analytics_pdf(data, vendor_data=None, seasonal_data=None)
+        buf = generate_vehicle_analytics_pdf(
+            data, vendor_data=None, seasonal_data=None, render_context=METRIC_CTX
+        )
         content = buf.read()
         assert content[:4] == PDF_MAGIC
 
@@ -261,13 +277,13 @@ class TestGenerateVehicleAnalyticsPdf:
             include_monthly=False,
             include_service_breakdown=False,
         )
-        buf = generate_vehicle_analytics_pdf(data)
+        buf = generate_vehicle_analytics_pdf(data, render_context=METRIC_CTX)
         content = buf.read()
         assert content[:4] == PDF_MAGIC
 
     def test_contains_branded_footer(self) -> None:
         data = _make_analytics_data()
-        buf = generate_vehicle_analytics_pdf(data)
+        buf = generate_vehicle_analytics_pdf(data, render_context=METRIC_CTX)
         text = _extract_text(buf.read())
         assert "homelabforge.io" in text
 
@@ -325,7 +341,7 @@ class TestUsageEfficiencySection:
             ]
         )
 
-        buf = generate_vehicle_analytics_pdf(data)
+        buf = generate_vehicle_analytics_pdf(data, render_context=METRIC_CTX)
         text = _extract_text(buf.read())
 
         assert "Usage & Efficiency" in text
@@ -352,7 +368,7 @@ class TestUsageEfficiencySection:
             ]
         )
 
-        buf = generate_vehicle_analytics_pdf(data)
+        buf = generate_vehicle_analytics_pdf(data, render_context=METRIC_CTX)
         text = _extract_text(buf.read())
 
         assert "100.0 hr" in text
@@ -373,7 +389,7 @@ class TestUsageEfficiencySection:
             [("2025-01-01", Decimal("100.0")), ("2025-06-01", Decimal("250.0"))]
         )
 
-        buf = generate_vehicle_analytics_pdf(data)
+        buf = generate_vehicle_analytics_pdf(data, render_context=METRIC_CTX)
         text = _extract_text(buf.read())
 
         assert "DISTANCE DRIVEN" in text
@@ -390,7 +406,7 @@ class TestUsageEfficiencySection:
         """Pure-distance vehicle (no hours data at all): report is
         unchanged — no hours section, no hours history table leak in."""
         data = _make_analytics_data()
-        buf = generate_vehicle_analytics_pdf(data)
+        buf = generate_vehicle_analytics_pdf(data, render_context=METRIC_CTX)
         text = _extract_text(buf.read())
 
         assert "Usage & Efficiency" not in text
@@ -406,7 +422,9 @@ class TestUsageEfficiencySection:
             _make_reminder("Oil change (hours)", "hours", due_hours=Decimal("250.0")),
         ]
 
-        buf = generate_vehicle_analytics_pdf(data, reminders_data=reminders)
+        buf = generate_vehicle_analytics_pdf(
+            data, reminders_data=reminders, render_context=METRIC_CTX
+        )
         text = _extract_text(buf.read())
 
         assert "Upcoming Reminders" in text
@@ -421,7 +439,9 @@ class TestUsageEfficiencySection:
             _make_reminder("Tire rotation", "mileage", due_mileage_km=Decimal("50000")),
         ]
 
-        buf = generate_vehicle_analytics_pdf(data, reminders_data=reminders)
+        buf = generate_vehicle_analytics_pdf(
+            data, reminders_data=reminders, render_context=METRIC_CTX
+        )
         text = _extract_text(buf.read())
 
         assert "Tire rotation" in text
@@ -431,7 +451,7 @@ class TestUsageEfficiencySection:
         """Without reminders_data, no reminders section renders (backward
         compatible default)."""
         data = _make_analytics_data()
-        buf = generate_vehicle_analytics_pdf(data)
+        buf = generate_vehicle_analytics_pdf(data, render_context=METRIC_CTX)
         text = _extract_text(buf.read())
         assert "Upcoming Reminders" not in text
 
@@ -459,6 +479,178 @@ class TestUsageEfficiencySection:
         dual["hours_accumulated"] = _make_hours_accumulated([("2025-01-01", Decimal("100.0"))])
 
         for shape in (pure_distance, pure_hours, dual):
-            buf = generate_vehicle_analytics_pdf(shape)
+            buf = generate_vehicle_analytics_pdf(shape, render_context=METRIC_CTX)
             content = buf.read()
             assert content[:4] == PDF_MAGIC
+
+
+IMPERIAL_CTX = RenderContext(units=IMPERIAL_PRESET, show_both=False)
+METRIC_BOTH_CTX = RenderContext(units=METRIC_PRESET, show_both=True)
+
+
+def _make_unit_bearing_data() -> dict:
+    """Analytics data populating every unit-bearing figure this report renders.
+
+    One fixture for the whole matrix so each expectation below differs only
+    in the render context, never in the input: a per-test input would let a
+    wrong figure look like a units difference.
+    """
+    data = _make_analytics_data()
+    data["total_km_driven"] = Decimal("12000")
+    data["average_km_per_month"] = Decimal("1000")
+    data["fuel_economy"] = {"average_l_per_100km": Decimal("9.4")}
+    data["hours_economy"] = {
+        "average_l_per_hr": Decimal("1.85"),
+        "average_cost_per_hr": Decimal("7.40"),
+    }
+    data["hours_accumulated"] = _make_hours_accumulated(
+        [("2025-01-01", Decimal("100.0")), ("2025-06-01", Decimal("250.0"))]
+    )
+    data["cost_analysis"]["cost_per_km"] = Decimal("0.42")
+    return data
+
+
+def _normalized_text(pdf_bytes: bytes) -> str:
+    """Extracted text with every whitespace run collapsed to one space.
+
+    KPI card values render inside ~1.8-inch columns, so a show-both string
+    wraps mid-value and extracts with a newline inside it. Collapsing
+    whitespace asserts on the rendered CONTENT without pinning the layout.
+    """
+    return " ".join(_extract_text(pdf_bytes).split())
+
+
+class TestRenderContextDrivesUnits:
+    """Every unit-bearing figure in this report follows the render context.
+
+    Expected strings are not transcribed from the plan: each was computed
+    from the adapters themselves (`adapter_for` / `counterpart_for` and the
+    D4c flip rules) and is pinned here as an exact string, so a wrong figure
+    fails as a disagreement between two independent derivations.
+
+        distance   12,000 km / 1.609344 km per mi -> 7,456 mi (precision 0)
+        rate       1,000 km/mo -> 621 mi/mo, suffix applied to EACH side
+        consumption 9.4 L/100km -> 235.214583.../9.4 = 25.0 MPG (precision 1)
+        fuel rate  1.85 L/hr / 3.785411784 L per US gal -> 0.49 gal/hr
+        cost/dist  0.42 $/km * 1 * 100 = $42.00/100 km;
+                   0.42 $/km * 1.609344 * 1000 = $675.92/1,000 mi
+        reminder   50,000 km -> 31,069 mi
+    """
+
+    def test_metric_context_renders_metric_figures(self) -> None:
+        data = _make_unit_bearing_data()
+        reminders = [_make_reminder("Tire rotation", "mileage", due_mileage_km=Decimal("50000"))]
+
+        buf = generate_vehicle_analytics_pdf(
+            data, reminders_data=reminders, render_context=METRIC_CTX
+        )
+        text = _normalized_text(buf.read())
+
+        assert "12,000 km" in text
+        assert "Avg 1,000 km/mo" in text
+        assert "9.40 L/100km" in text
+        assert "1.85 L/hr" in text
+        assert "$42.00/100 km" in text
+        assert "50,000 km" in text
+
+    def test_imperial_context_renders_imperial_figures(self) -> None:
+        data = _make_unit_bearing_data()
+        reminders = [_make_reminder("Tire rotation", "mileage", due_mileage_km=Decimal("50000"))]
+
+        buf = generate_vehicle_analytics_pdf(
+            data, reminders_data=reminders, render_context=IMPERIAL_CTX
+        )
+        text = _normalized_text(buf.read())
+
+        assert "7,456 mi" in text
+        assert "Avg 621 mi/mo" in text
+        assert "25.0 MPG" in text
+        assert "0.49 gal/hr" in text
+        assert "$675.92/1,000 mi" in text
+        assert "31,069 mi" in text
+
+    def test_imperial_context_leaks_no_metric_figure(self) -> None:
+        """The metric-canonical values must not survive anywhere in an
+        imperial render: not the raw number, not the unit token."""
+        data = _make_unit_bearing_data()
+        reminders = [_make_reminder("Tire rotation", "mileage", due_mileage_km=Decimal("50000"))]
+
+        buf = generate_vehicle_analytics_pdf(
+            data, reminders_data=reminders, render_context=IMPERIAL_CTX
+        )
+        text = _normalized_text(buf.read())
+
+        assert "km" not in text
+        assert "L/100km" not in text
+        assert "L/hr" not in text
+        assert "12,000" not in text
+        assert "50,000" not in text
+
+    def test_show_both_appends_the_counterpart_to_each_figure(self) -> None:
+        data = _make_unit_bearing_data()
+        reminders = [_make_reminder("Tire rotation", "mileage", due_mileage_km=Decimal("50000"))]
+
+        buf = generate_vehicle_analytics_pdf(
+            data, reminders_data=reminders, render_context=METRIC_BOTH_CTX
+        )
+        text = _normalized_text(buf.read())
+
+        assert "12,000 km (7,456 mi)" in text
+        # The rate suffix is applied to EACH representation. Appending it to
+        # a completed show-both string would give "1,000 km (621 mi)/mo",
+        # which states neither rate.
+        assert "Avg 1,000 km/mo (621 mi/mo)" in text
+        assert "9.40 L/100km (25.0 MPG)" in text
+        assert "1.85 L/hr (0.49 gal/hr)" in text
+        assert "$42.00/100 km ($675.92/1,000 mi)" in text
+        assert "50,000 km (31,069 mi)" in text
+
+    def test_hours_stay_dimensionless_under_an_imperial_context(self) -> None:
+        """R6: hours are not a UnitSet quantity. `adapter_for(..., "hours")`
+        raises, so the hours surfaces keep a fixed "hr" and are identical
+        under every unit set."""
+        data = _make_unit_bearing_data()
+        reminders = [_make_reminder("Oil change (hours)", "hours", due_hours=Decimal("250.0"))]
+
+        metric = _normalized_text(
+            generate_vehicle_analytics_pdf(
+                data, reminders_data=reminders, render_context=METRIC_CTX
+            ).read()
+        )
+        imperial = _normalized_text(
+            generate_vehicle_analytics_pdf(
+                data, reminders_data=reminders, render_context=IMPERIAL_CTX
+            ).read()
+        )
+
+        for text in (metric, imperial):
+            # The Engine Hours card, the hours-history table and the
+            # hours-targeted reminder: all three, both unit sets.
+            assert "250.0 hr" in text
+            assert "100.0 hr" in text
+
+    def test_cost_per_distance_card_label_names_no_unit(self) -> None:
+        """The label must not hardcode a unit: D4c gives a km reader
+        "/100 km" and a mile reader "/1,000 mi", so "Cost Per km" would
+        contradict the value underneath it for every imperial reader."""
+        data = _make_unit_bearing_data()
+
+        text = _normalized_text(
+            generate_vehicle_analytics_pdf(data, render_context=IMPERIAL_CTX).read()
+        )
+
+        assert "COST PER DISTANCE" in text
+        assert "COST PER KM" not in text
+
+    def test_null_figures_render_na_with_no_counterpart(self) -> None:
+        """A null primary short-circuits before the counterpart: "N/A",
+        never "N/A (N/A)", show_both notwithstanding."""
+        data = _make_unit_bearing_data()
+        data["fuel_economy"] = {"average_l_per_100km": None}
+
+        text = _normalized_text(
+            generate_vehicle_analytics_pdf(data, render_context=METRIC_BOTH_CTX).read()
+        )
+
+        assert "N/A (N/A)" not in text
+        assert "FUEL ECONOMY N/A" in text

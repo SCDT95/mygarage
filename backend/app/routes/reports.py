@@ -19,6 +19,7 @@ from app.services.auth import get_vehicle_or_403, require_auth
 from app.services.service_visit_service import service_visit_cost_load_options
 from app.utils.csv_safe import sanitize_csv_row
 from app.utils.pdf_generator import PDFReportGenerator
+from app.utils.render_context import render_context_for_request
 
 router = APIRouter(prefix="/api/vehicles", tags=["Reports"])
 
@@ -106,7 +107,11 @@ async def download_service_history_pdf(
     from app.utils.currency import normalize_pdf_currency_params
 
     safe_code, safe_locale = normalize_pdf_currency_params(currency_code, locale)
-    pdf_gen = PDFReportGenerator(currency_code=safe_code, locale=safe_locale)
+    pdf_gen = PDFReportGenerator(
+        render_context=await render_context_for_request(current_user, db),
+        currency_code=safe_code,
+        locale=safe_locale,
+    )
     pdf_buffer = pdf_gen.generate_service_history_pdf(vehicle_info, records_data, start_dt, end_dt)
 
     # Return as downloadable file
@@ -161,7 +166,9 @@ async def download_sale_history_pdf(
                 }
             )
 
-    pdf_gen = PDFReportGenerator()
+    pdf_gen = PDFReportGenerator(
+        render_context=await render_context_for_request(current_user, db),
+    )
     pdf_buffer = pdf_gen.generate_sale_history_pdf(vehicle_info, records_data)
     filename = f"sale_history_{vin[-6:]}_{datetime.now().strftime('%Y%m%d')}.pdf"
     return StreamingResponse(
@@ -260,7 +267,11 @@ async def download_cost_summary_pdf(
     from app.utils.currency import normalize_pdf_currency_params
 
     safe_code, safe_locale = normalize_pdf_currency_params(currency_code, locale)
-    pdf_gen = PDFReportGenerator(currency_code=safe_code, locale=safe_locale)
+    pdf_gen = PDFReportGenerator(
+        render_context=await render_context_for_request(current_user, db),
+        currency_code=safe_code,
+        locale=safe_locale,
+    )
     pdf_buffer = pdf_gen.generate_cost_summary_pdf(vehicle_info, cost_data, year)
 
     # Return as downloadable file
@@ -318,7 +329,11 @@ async def download_tax_deduction_pdf(
     from app.utils.currency import normalize_pdf_currency_params
 
     safe_code, safe_locale = normalize_pdf_currency_params(currency_code, locale)
-    pdf_gen = PDFReportGenerator(currency_code=safe_code, locale=safe_locale)
+    pdf_gen = PDFReportGenerator(
+        render_context=await render_context_for_request(current_user, db),
+        currency_code=safe_code,
+        locale=safe_locale,
+    )
     pdf_buffer = pdf_gen.generate_tax_deduction_pdf(vehicle_info, deductible_records, year)
 
     # Return as downloadable file

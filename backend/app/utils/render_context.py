@@ -8,9 +8,10 @@ consume it to turn a canonical `Decimal` into a human-readable string.
 
 Three resolution paths exist, and they are deliberately not interchangeable:
 
-- A **request** (`render_context_for_user`) uses the caller's own resolved
-  unit set, never the vehicle owner's. `get_vehicle_or_403` admits admins and
-  shared users whose preferences differ from the owner's, and a shared viewer
+- A **request** (`render_context_for_user`, or `render_context_for_request`
+  when the caller may be `None`) uses the caller's own resolved unit set,
+  never the vehicle owner's. `get_vehicle_or_403` admits admins and shared
+  users whose preferences differ from the owner's, and a shared viewer
   reading a PDF should see their own units, not the owner's.
 - A **scheduled job** (`render_context_for_vehicle`) has no caller, so it
   uses the vehicle owner's render context, falling back to the instance
@@ -82,6 +83,28 @@ async def render_context_default(db: AsyncSession) -> RenderContext:
     """
     units = await load_default_unit_prefs(db)
     return RenderContext(units=units, show_both=False)
+
+
+async def render_context_for_request(
+    user: UserRenderContextSource | None, db: AsyncSession
+) -> RenderContext:
+    """The render context for an HTTP request made by `user`.
+
+    The single entry point every request-driven surface should use, so the
+    "caller's units, instance default when there is no caller" policy lives
+    in one place instead of being re-derived at each route. `user` is `None`
+    only on an ``auth_mode=none`` instance, where `require_auth` returns
+    `None` and there is no user row to resolve from.
+
+    Deliberately the CALLER's units, never the vehicle owner's:
+    `get_vehicle_or_403` admits admins and users a vehicle is shared with,
+    whose preferences differ from the owner's, and a shared viewer reading a
+    report should see their own units. A scheduled job has no caller and
+    uses `render_context_for_vehicle` instead.
+    """
+    if user is None:
+        return await render_context_default(db)
+    return render_context_for_user(user)
 
 
 async def render_context_for_vehicle(db: AsyncSession, vin: str) -> RenderContext:
