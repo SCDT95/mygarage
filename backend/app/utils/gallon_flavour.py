@@ -20,14 +20,19 @@ them into one.
 
 1. USER PREFERENCE -- resolve from the caller's UnitSet (phase 1) or, today,
    from this module:
-     - services/widget_aggregation.py        widget v1/v2 MPG fields
      - routes/export.py                      CSV export values and marker
 
-   MIGRATED (phase 2a): services/notifications/dispatcher.py's DEF-low volume
-   no longer calls this module. It takes a `RenderContext` from its caller
-   (the scheduled job resolves the vehicle owner's) and picks its gallon
+   MIGRATED (phase 2a, task 6): services/notifications/dispatcher.py's DEF-low
+   volume no longer calls this module. It takes a `RenderContext` from its
+   caller (the scheduled job resolves the vehicle owner's) and picks its gallon
    flavour by D4b precedence in `unit_formatting.format_forced_volume_pair`.
-   The remaining two entries above are still instance-wide.
+
+   MIGRATED (phase 2a, task 7): services/widget_aggregation.py's v1/v2 MPG
+   fields no longer call this module either. Both widget route modules resolve
+   the key owner's `UnitSet` and pass it into the aggregation, which picks the
+   MPG flavour by the same D4b precedence via
+   `unit_counterparts.forced_mpg_adapter`. The one remaining entry above is
+   still instance-wide.
 
 2. FILE OR REQUEST MARKER -- the flavour travels with the data, never from a
    preference:

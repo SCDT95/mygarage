@@ -76,6 +76,11 @@ _CONSUMPTION_COUNTERPART_BY_FLAVOUR: Mapping[GallonFlavourPref, str] = {
     "uk": "mpg_uk",
 }
 
+# The flavour-explicit MPG tokens, derived from the table above rather than
+# written out again, so a third gallon flavour cannot be added to one and
+# forgotten in the other.
+_MPG_TOKENS = frozenset(_CONSUMPTION_COUNTERPART_BY_FLAVOUR.values())
+
 
 def counterpart_for(unit_set: UnitSet, quantity: str) -> UnitAdapter | None:
     """Resolve the show-both counterpart adapter for one of `unit_set`'s quantities.
@@ -98,3 +103,26 @@ def counterpart_for(unit_set: UnitSet, quantity: str) -> UnitAdapter | None:
     else:
         counterpart_token = _FIXED_COUNTERPARTS[token]
     return ADAPTERS.get(counterpart_token)
+
+
+def forced_mpg_adapter(unit_set: UnitSet) -> UnitAdapter:
+    """Resolve the MPG adapter for a surface whose field is MPG by contract.
+
+    Some response fields name their unit and cannot change it. Widget v1/v2
+    expose `recent_mpg`/`average_mpg`, frozen by D7, so the quantity stays MPG
+    whatever the owner's `consumption` primary is; only the gallon FLAVOUR is
+    a preference. That makes this a different question from `counterpart_for`,
+    which would hand an `mpg_us` primary its `l_100km` counterpart.
+
+    D4b precedence, the same rule `unit_formatting._forced_gallon_token`
+    applies to a forced volume pair: an `mpg_us`/`mpg_uk` primary states its
+    own flavour and wins outright even when `secondary_gallon` disagrees, and
+    only a flavourless metric primary (`l_100km`, `km_l`) defers to
+    `secondary_gallon`.
+
+    Conversion layer, not formatting (R4): this returns an adapter, so the
+    caller keeps a `Decimal` and its numeric schema.
+    """
+    if unit_set.consumption in _MPG_TOKENS:
+        return ADAPTERS[unit_set.consumption]
+    return ADAPTERS[_CONSUMPTION_COUNTERPART_BY_FLAVOUR[unit_set.secondary_gallon]]
