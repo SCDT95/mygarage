@@ -10,13 +10,14 @@ from __future__ import annotations
 
 import re
 from datetime import datetime
-from typing import Any, Literal
+from typing import Any, Literal, get_args
 
 from pydantic import (
     BaseModel,
     ConfigDict,
     EmailStr,
     Field,
+    ValidationInfo,
     computed_field,
     field_validator,
     model_validator,
@@ -27,6 +28,7 @@ from app.constants.fuel import PAYMENT_METHOD_VALUES, TRIP_TYPE_VALUES
 from app.constants.i18n import SUPPORTED_CURRENCIES, SUPPORTED_LANGUAGES
 from app.constants.theme import SUPPORTED_THEMES
 from app.constants.units import (
+    UNIT_COLUMN_NAMES,
     ConsumptionUnit,
     DistanceUnit,
     GallonFlavourPref,
@@ -40,8 +42,17 @@ from app.constants.units import (
     UnitPreference,
     UnitSet,
     VolumeUnit,
+    field_to_column,
 )
 from app.utils.unit_resolution import resolve_units
+
+# The vocabulary each raw unit column accepts, keyed by column name (which is
+# also the UserResponse field name). Derived from UnitSet so a twelfth quantity
+# is covered without touching this file.
+_UNIT_VOCABULARIES: dict[str, frozenset[str]] = {
+    field_to_column(name): frozenset(get_args(field.annotation))
+    for name, field in UnitSet.model_fields.items()
+}
 
 # Relationship type presets for family system
 RELATIONSHIP_PRESETS: list[dict[str, str]] = [
@@ -354,6 +365,38 @@ class UserResponse(UserBase):
     created_at: datetime
     updated_at: datetime
     last_login: datetime | None
+
+    @field_validator(*UNIT_COLUMN_NAMES, mode="before", check_fields=False)
+    @classmethod
+    def discard_out_of_vocabulary_unit(cls, value: Any, info: ValidationInfo) -> Any:
+        """Read a raw unit column outside its vocabulary as "no override".
+
+        These columns carry no database CHECK, so a hand-edited row can hold
+        anything. Without this, the strict `Literal | None` annotations below
+        would raise before `resolve_units` ever ran, and FastAPI would turn that
+        into a 500 on `/auth/me`, locking the account out of the frontend
+        entirely. `None` already means "no override" (spec D3), so degrading to
+        it is how the rest of the system answers this question: the field
+        reports nothing stored, and `resolved_units` supplies the preset value
+        for that quantity.
+
+        `mode="before"` on purpose: coercing ahead of the Literal keeps the
+        annotations strict, so the generated TypeScript still gets the narrow
+        unions the frontend branches on.
+
+        `check_fields=False` because this list is derived from UNIT_COLUMN_NAMES,
+        so it can only name a field this model lacks when someone adds a twelfth
+        quantity to `UnitSet` and has not yet added the matching column here.
+        Pydantic would otherwise raise at class-definition time, which fails the
+        whole suite at import and hides every guard written for exactly that
+        moment (the arity tripwire in tests/unit/constants/test_units_vocabulary.py
+        and the schema-parity tests). The reconciliation itself stays guarded by
+        `test_response_exposes_all_eleven_raw_columns`.
+        """
+        # field_name is always one of UNIT_COLUMN_NAMES here; the default only
+        # satisfies the type checker, which types it as `str | None`.
+        vocabulary = _UNIT_VOCABULARIES.get(info.field_name or "", frozenset())
+        return value if isinstance(value, str) and value in vocabulary else None
 
     @computed_field  # type: ignore[prop-decorator]
     @property

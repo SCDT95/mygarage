@@ -19,6 +19,7 @@ from app.constants.units import (
     field_to_column,
 )
 from app.models.user import User
+from app.utils.default_unit_prefs import UK_IMPERIAL_PRESET
 from app.utils.unit_resolution import (
     base_preset_for,
     initial_unit_columns,
@@ -31,16 +32,20 @@ def _user(**kwargs) -> User:
     return User(username="u", email="u@example.test", **kwargs)
 
 
-def _uk_imperial_set() -> UnitSet:
-    """The set migration 093 writes on a UK instance.
+def _user_response_payload(**overrides) -> dict:
+    """The minimum required fields for a `UserResponse`, plus overrides."""
+    from datetime import datetime
 
-    Built through model_validate so a typo in this fixture fails here rather
-    than silently asserting the wrong thing.
-    """
-    return UnitSet.model_validate(
-        IMPERIAL_PRESET.model_dump()
-        | {"volume": "gal_uk", "consumption": "mpg_uk", "secondary_gallon": "uk"}
-    )
+    return {
+        "id": 1,
+        "username": "usr",
+        "email": "u@example.com",
+        "is_active": True,
+        "is_admin": False,
+        "created_at": datetime(2026, 1, 1),
+        "updated_at": datetime(2026, 1, 1),
+        "last_login": None,
+    } | overrides
 
 
 class TestBasePreset:
@@ -196,7 +201,7 @@ class TestNewUserSeeding:
         """A UK instance's default matches neither preset, so a new account must
         carry every field explicitly or it silently gets US gallons: the same
         class of bug this whole change exists to fix."""
-        uk = _uk_imperial_set()
+        uk = UK_IMPERIAL_PRESET
 
         columns = initial_unit_columns(uk)
 
@@ -214,7 +219,7 @@ class TestNewUserSeeding:
         assert resolve_units(_user(**columns)) == preset
 
     def test_non_preset_seeding_round_trips_through_resolution(self) -> None:
-        uk = _uk_imperial_set()
+        uk = UK_IMPERIAL_PRESET
 
         assert resolve_units(_user(**initial_unit_columns(uk))) == uk
 
@@ -363,6 +368,62 @@ class TestUserResponseSerialisation:
 
         assert response.unit_preference == "custom"
         assert response.model_dump()["unit_preference"] == "custom"
+
+    def test_every_raw_unit_column_reads_as_no_override_when_out_of_vocabulary(self) -> None:
+        """A hand-edited column degrades instead of 500ing /auth/me.
+
+        `resolve_units` was built to tolerate an out-of-vocabulary column
+        (TestResolution above), but `UserResponse` types the same columns as
+        strict `Literal`s, so without the before-validator the response raises
+        before resolution ever runs and FastAPI turns that into a 500 on
+        /auth/me, the login payload and the admin user list.
+
+        All eleven columns, not a sample: the validator is registered by field
+        name, so a name left out of the list is invisible to any single-field
+        check.
+        """
+        from app.constants.units import UNIT_COLUMN_NAMES
+        from app.schemas.user import UserResponse
+
+        for column in UNIT_COLUMN_NAMES:
+            response = UserResponse.model_validate(
+                _user_response_payload(unit_preference="metric") | {column: "atmospheres"}
+            )
+
+            assert getattr(response, column) is None, column
+            assert response.resolved_units == METRIC_PRESET, column
+
+    def test_a_bad_column_keeps_the_preset_value_and_a_valid_sibling_override(self) -> None:
+        """The API path degrades the way resolve_units does: field by field.
+
+        The loop above sets one bad column at a time, so it cannot tell
+        "discard just the bad field" apart from "discard every override". This
+        pairs a valid override that differs from the preset with an invalid one
+        on the same response.
+        """
+        from app.schemas.user import UserResponse
+
+        response = UserResponse.model_validate(
+            _user_response_payload(unit_preference="imperial")
+            | {"unit_distance": "km", "unit_pressure": "atmospheres"}
+        )
+
+        assert response.unit_distance == "km"
+        assert response.unit_pressure is None
+        assert response.resolved_units.distance == "km"
+        assert response.resolved_units.pressure == "psi"
+
+    def test_a_valid_raw_column_still_survives_the_validator(self) -> None:
+        """The coercion must not swallow legitimate values: a validator that
+        returned None unconditionally would pass both tests above."""
+        from app.schemas.user import UserResponse
+
+        response = UserResponse.model_validate(
+            _user_response_payload(unit_preference="metric") | {"unit_pressure": "psi"}
+        )
+
+        assert response.unit_pressure == "psi"
+        assert response.resolved_units.pressure == "psi"
 
     def test_write_schemas_still_reject_custom(self) -> None:
         """Ruling P1: the dedicated unit mutation arrives in phase 4, and until it
