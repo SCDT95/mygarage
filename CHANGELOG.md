@@ -13,15 +13,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 - Instances set to UK gallons store their imperial users as a custom unit set; displayed values are unchanged (migration 093).
-- PDFs and notifications now follow each user's unit preferences, except low-tread reminder notes, which still use millimetres and kilometres.
+- PDFs and notifications now follow each user's unit preferences. Two surfaces do not: low-tread reminder notes still use millimetres and kilometres, and LiveLink threshold alerts still report the unit the device sent.
 - The Vehicle Analytics PDF's "Cost Per km" card is now "Cost Per Distance", and its value states its own unit (for example, $42.00/100 km).
 - Vehicle Analytics PDF fuel economy now shows two decimal places for metric readers instead of one.
 - Reminder notifications now show due-mileage and due-hours with consistent decimal precision instead of echoing the stored value's raw decimals.
+- Widget `odometer` (v1 and v2) rounds the mile figure once instead of twice, which moves about one reading in 200 by a single mile. The field is still miles for every user.
 
 ### Fixed
 - PSI-to-canonical conversion returned bar instead of kPa.
 - Service-history and sale-history report odometer values now round consistently instead of disagreeing between the two reports.
-- Long values in PDF report KPI cards no longer wrap or split mid-number; they now shrink to fit the card.
+- Long values in PDF report KPI cards shrink to fit instead of splitting mid-number; the longest, such as a cost per distance shown in both units, still wrap onto a second line at the smallest readable size.
 - Odometer-milestone notifications no longer report kilometres as miles.
 
 ## [3.1.0] - 2026-08-24
