@@ -437,3 +437,20 @@ class TestUserResponseSerialisation:
         for schema in (UserSelfUpdate, AdminUserUpdate):
             with _pytest.raises(ValidationError):
                 schema(unit_preference="custom")
+
+    def test_out_of_vocabulary_unit_preference_reads_as_imperial(self) -> None:
+        """The twelfth field needs the same defence-in-depth as the eleven raw
+        unit columns above: `unit_preference` sits over an unconstrained
+        `String(20)` column with no database CHECK, so a hand-edited row can
+        hold anything. Unlike the eleven, it has no `None` "no override" state
+        to fall back to, so the correct degrade target is what
+        `base_preset_for` already does for a half-written row: imperial, not a
+        raise. Without the fix this construction raises `ValidationError`,
+        which is a 500 on `/auth/me` and an account that cannot load the app.
+        """
+        from app.schemas.user import UserResponse
+
+        response = UserResponse.model_validate(_user_response_payload(unit_preference="Imperial"))
+
+        assert response.unit_preference == "imperial"
+        assert response.resolved_units == IMPERIAL_PRESET

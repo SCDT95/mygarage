@@ -54,6 +54,12 @@ _UNIT_VOCABULARIES: dict[str, frozenset[str]] = {
     for name, field in UnitSet.model_fields.items()
 }
 
+# unit_preference's own vocabulary. Not part of _UNIT_VOCABULARIES above: that
+# dict is keyed by UnitSet's quantities (distance, pressure, ...), and
+# unit_preference is not a quantity UnitSet resolves, it is the base preset
+# selector that picks which UnitSet to start from.
+_UNIT_PREFERENCE_VALUES: frozenset[str] = frozenset(get_args(UnitPreference))
+
 # Relationship type presets for family system
 RELATIONSHIP_PRESETS: list[dict[str, str]] = [
     {"value": "spouse", "label": "Spouse/Partner"},
@@ -397,6 +403,39 @@ class UserResponse(UserBase):
         # satisfies the type checker, which types it as `str | None`.
         vocabulary = _UNIT_VOCABULARIES.get(info.field_name or "", frozenset())
         return value if isinstance(value, str) and value in vocabulary else None
+
+    @field_validator("unit_preference", mode="before")
+    @classmethod
+    def discard_out_of_vocabulary_unit_preference(cls, value: Any) -> Any:
+        """Read an unrecognised ``unit_preference`` the way `base_preset_for`
+        already does: fall back to "imperial" instead of raising.
+
+        `unit_preference` is the twelfth field alongside the eleven raw unit
+        columns above, and it sits over the same kind of unconstrained column
+        (`String(20)`, no CHECK). But unlike the eleven, it has no `None`
+        state to degrade to (the field is a bare `Literal`, always required),
+        so it cannot reuse `discard_out_of_vocabulary_unit`'s "coerce to None"
+        behaviour. `base_preset_for` (app.utils.unit_resolution) already
+        answers the equivalent question for the resolver: anything that is not
+        "metric" resolves to the imperial preset, including a half-written or
+        hand-edited row, because imperial keeps behaviour identical to the
+        historical default rather than silently flipping someone to metric.
+        This validator makes the API response agree, so a corrupt column
+        degrades the same way instead of 500ing `/auth/me`.
+
+        A second, separate `field_validator` rather than folding this into
+        `discard_out_of_vocabulary_unit` above: that one is deliberately
+        `check_fields=False` because its field list (`UNIT_COLUMN_NAMES`) is
+        derived and could, in principle, name a field this model has not
+        grown yet. `"unit_preference"` is a literal, always-present field
+        name with no such arity hazard, so a strict validator here is exactly
+        what should catch a real typo instead of silently no-op-ing.
+
+        `mode="before"`, matching the other validator, so the annotation
+        stays the strict `Literal["imperial", "metric", "custom"]` the
+        generated TypeScript needs, rather than widening to `str`.
+        """
+        return value if value in _UNIT_PREFERENCE_VALUES else "imperial"
 
     @computed_field  # type: ignore[prop-decorator]
     @property
