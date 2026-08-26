@@ -218,8 +218,12 @@ class TestAdapterFor:
 
     @pytest.mark.parametrize("quantity", [q for q in UNIT_FIELD_NAMES if q != "secondary_gallon"])
     def test_every_quantity_under_both_presets(self, quantity: str) -> None:
+        """Assert the resolved adapter IS the preset's token, not merely that
+        something came back. `is not None` passes for a wrong-but-valid
+        dispatch, which is the failure mode worth catching: identity is checked
+        elsewhere for only two of the ten quantities."""
         for preset in (METRIC_PRESET, IMPERIAL_PRESET):
-            assert adapter_for(preset, quantity) is not None
+            assert adapter_for(preset, quantity).unit == getattr(preset, quantity)
 
     def test_unknown_quantity_raises(self) -> None:
         with pytest.raises(KeyError):
