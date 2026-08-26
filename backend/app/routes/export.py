@@ -38,22 +38,37 @@ router = APIRouter(prefix="/api/export", tags=["export"])
 # Initialize rate limiter for export endpoints
 limiter = Limiter(key_func=get_remote_address)
 
-# CSV/JSON export schema version.
+# CSV and JSON export schema versions.
+#
+# Before issue #152 Task 1, CSV and JSON shared one EXPORT_SCHEMA_VERSION
+# constant, so this history applies to both surfaces up to v5:
 # - v2: legacy imperial.
 # - v3: SI-metric canonical (issue #67).
 # - v4: v3 + extended fuel-tracking columns (issue #69 / v2.27.0-rc2):
 #       Filled At, Fuel Type Used, Station, Driver, Payment Method,
-#       Trip Type, Outside Temp, OBC values. Purely additive — v3
+#       Trip Type, Outside Temp, OBC values. Purely additive, v3
 #       importers continue to work.
 # - v5: drops the fuel "Fuel Type" column, retired with the legacy
 #       `fuel_records.fuel_type` DB column (migration 089). "Fuel Type Used"
 #       carries the canonical enum. NOT additive, so the version moves; the
 #       importer still reads "Fuel Type" from v4-and-older files.
-# CSV exports prepend a `units_version` column with this value to every row;
-# JSON exports include a top-level `"export_version"` + `"units"` field.
+#
+# From v5 the two diverge. Bumping the CSV schema for the per-quantity unit
+# headers landing later in this phase (#152) must not silently move the JSON
+# backup contract too, so the constant is split:
+# - CSV_SCHEMA_VERSION = "6": reserved for unit-preference-aware headers
+#   landing in later tasks of this phase. Nothing in the CSV row shape
+#   changes yet; only the version cell does (Task 1, #152).
+# - JSON_SCHEMA_VERSION = "5": unchanged. The JSON backup's shape is not part
+#   of this phase.
+#
+# CSV exports prepend a `units_version` column with CSV_SCHEMA_VERSION to
+# every row; JSON exports include a top-level `"export_version"` set to
+# JSON_SCHEMA_VERSION plus a `"units"` field.
 # The importer (`app/routes/import_data.py`) reads the marker and falls back
 # to v2 imperial conversion when it's missing (legacy v2 backups).
-EXPORT_SCHEMA_VERSION = "5"
+CSV_SCHEMA_VERSION = "6"
+JSON_SCHEMA_VERSION = "5"
 EXPORT_UNITS = "metric"
 
 
@@ -172,7 +187,7 @@ def generate_csv_stream(
     writer = csv.writer(output)
     writer.writerow(["units_version", "unit_system", *headers])
     # Neutralise CSV formula-injection in every data cell (header is static).
-    writer.writerows([sanitize_csv_row([EXPORT_SCHEMA_VERSION, unit_system, *row]) for row in rows])
+    writer.writerows([sanitize_csv_row([CSV_SCHEMA_VERSION, unit_system, *row]) for row in rows])
     output.seek(0)
     return output
 
@@ -325,7 +340,7 @@ async def export_fuel_records_csv(
 
     # Generate CSV.
     # NOTE: column set extended for v2.27.0-rc2 (#69 issue follow-up).
-    # The ``EXPORT_SCHEMA_VERSION`` bump from "3" to "4" signalled importers
+    # The ``CSV_SCHEMA_VERSION`` bump from "3" to "4" signalled importers
     # that the new columns may be present; "5" says the redundant legacy
     # "Fuel Type" column is gone and "Fuel Type Used" is the fuel type.
     headers = [
@@ -848,7 +863,7 @@ async def export_vehicle_json(
 
     # Build export data
     export_data = {
-        "export_version": EXPORT_SCHEMA_VERSION,
+        "export_version": JSON_SCHEMA_VERSION,
         "units": EXPORT_UNITS,
         "export_date": datetime.now().isoformat(),
         "vehicle": {
