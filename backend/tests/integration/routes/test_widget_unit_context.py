@@ -85,6 +85,30 @@ EXPECTED_KM_PER_L = 12.5
 EXPECTED_MPG_US = 29.4
 EXPECTED_MPG_UK = 35.3
 
+# --- odometer values that do NOT divide exactly ---------------------------
+# `SEED_ODOMETER_KM` above is exact on purpose, which means it cannot see the
+# rounding path at all: 16093.40 / 1.60934 is 10000 with nothing to round.
+# These two do, in both directions, and they are the values at which this
+# phase's single-rounding path DISAGREES with the pre-phase double-rounding
+# one (`int(round(UnitConverter.km_to_miles(km)))`, where `km_to_miles`
+# already rounded to 2 dp before the outer `round` saw it). Derived by hand
+# and confirmed against the adapter's own factor, `UnitConverter.MILES_TO_KM`
+# = 1.60934:
+#
+#   120001.24 / 1.60934 = 74565.49890...  -> 74565 (rounds DOWN)
+#     old path: round(74565.49890, 2) = 74565.50 -> round() -> 74566
+#   120006.07 / 1.60934 = 74568.50013...  -> 74569 (rounds UP)
+#     old path: round(74568.50013, 2) = 74568.50 -> round() -> 74568 (even)
+#
+# `odometer_km` is unaffected either way (`Decimal / Decimal("1")` is the
+# identity, then rounded to the nearest whole km).
+ROUNDS_DOWN_ODOMETER_KM = Decimal("120001.24")
+EXPECTED_ROUNDS_DOWN_MI = 74565
+EXPECTED_ROUNDS_DOWN_KM = 120001
+ROUNDS_UP_ODOMETER_KM = Decimal("120006.07")
+EXPECTED_ROUNDS_UP_MI = 74569
+EXPECTED_ROUNDS_UP_KM = 120006
+
 # --- frozen response shapes (D7), written out by hand --------------------
 V1_VEHICLE_KEYS = {
     "label",
@@ -238,6 +262,9 @@ async def local_auth_mode(db_session):
 async def widget_owner_factory(db_session, local_auth_mode):
     """Build an owner with the given unit columns, one seeded vehicle, and a key.
 
+    `odometer_km` overrides the (deliberately exact) `SEED_ODOMETER_KM` for
+    the tests that need a reading the mile conversion actually has to round.
+
     Returns `(plaintext_key, vin)`. Every row created is deleted in the
     `finally`: the suite shares one database with no per-test rollback, so a
     leaked `users` row carrying unit overrides is not merely clutter, it is a
@@ -246,7 +273,9 @@ async def widget_owner_factory(db_session, local_auth_mode):
     user_ids: list[int] = []
     vins: list[str] = []
 
-    async def _make(**unit_columns: str) -> tuple[str, str]:
+    async def _make(
+        *, odometer_km: Decimal = SEED_ODOMETER_KM, **unit_columns: str
+    ) -> tuple[str, str]:
         suffix = uuid.uuid4().hex[:12]
         user = User(
             username=f"widget_units_{suffix}",
@@ -276,9 +305,7 @@ async def widget_owner_factory(db_session, local_auth_mode):
         await db_session.commit()
         vins.append(vin)
 
-        db_session.add(
-            OdometerRecord(vin=vin, odometer_km=SEED_ODOMETER_KM, date=SEED_ODOMETER_DATE)
-        )
+        db_session.add(OdometerRecord(vin=vin, odometer_km=odometer_km, date=SEED_ODOMETER_DATE))
         db_session.add_all(
             [
                 FuelRecord(
@@ -656,3 +683,73 @@ class TestWidgetIgnoresTheInstanceGallonSetting:
             else:
                 current.value = original
             await db_session.commit()
+
+
+@pytest.mark.integration
+@pytest.mark.asyncio
+class TestOdometerRoundsOnceNotTwice:
+    """The eighth visible change of this phase, which nothing else can see.
+
+    D7 freezes `odometer` as a whole number of miles, and the pre-phase path
+    reached that number through TWO roundings:
+    `int(round(UnitConverter.km_to_miles(km)))`, where `km_to_miles` had
+    already rounded the quotient to 2 dp. The conversion layer rounds once,
+    `int(round(km / MILES_TO_KM))`, which is strictly more correct and shifts
+    roughly 0.6% of readings by exactly 1 mile.
+
+    Every other test in this file seeds `SEED_ODOMETER_KM = 16093.40`, which
+    divides exactly into 10,000 mi and therefore exercises no rounding at
+    all. These two seed values do, one in each direction, and both are values
+    at which the old and new paths disagree -- so this is a regression pin on
+    a frozen numeric field, not just a smoke test of the arithmetic.
+    """
+
+    async def test_v1_rounds_a_fractional_mile_down(
+        self, client: AsyncClient, widget_owner_factory
+    ):
+        key, vin = await widget_owner_factory(
+            odometer_km=ROUNDS_DOWN_ODOMETER_KM, **US_IMPERIAL_OWNER
+        )
+        body = await _get_v1(client, key, vin)
+        assert body["odometer"] == EXPECTED_ROUNDS_DOWN_MI
+        # The figure the double-rounded path produced, pinned as absent so a
+        # reintroduction fails here rather than passing by one mile.
+        assert body["odometer"] != EXPECTED_ROUNDS_DOWN_MI + 1
+
+    async def test_v1_rounds_a_fractional_mile_up(self, client: AsyncClient, widget_owner_factory):
+        """The other direction. A single-direction test cannot tell "rounds
+        once" from "always truncates"."""
+        key, vin = await widget_owner_factory(
+            odometer_km=ROUNDS_UP_ODOMETER_KM, **US_IMPERIAL_OWNER
+        )
+        body = await _get_v1(client, key, vin)
+        assert body["odometer"] == EXPECTED_ROUNDS_UP_MI
+        assert body["odometer"] != EXPECTED_ROUNDS_UP_MI - 1
+
+    async def test_v2_rounds_the_pair_the_same_way(self, client: AsyncClient, widget_owner_factory):
+        """v2 carries both figures, so it pins the km side too: `odometer_km`
+        rounds to the nearest whole km and is NOT affected by the mile-side
+        change."""
+        key, vin = await widget_owner_factory(
+            odometer_km=ROUNDS_DOWN_ODOMETER_KM, **US_IMPERIAL_OWNER
+        )
+        body = await _get_v2(client, key, vin)
+        assert body["odometer"] == EXPECTED_ROUNDS_DOWN_MI
+        assert body["odometer_km"] == EXPECTED_ROUNDS_DOWN_KM
+
+        up_key, up_vin = await widget_owner_factory(
+            odometer_km=ROUNDS_UP_ODOMETER_KM, **US_IMPERIAL_OWNER
+        )
+        up_body = await _get_v2(client, up_key, up_vin)
+        assert up_body["odometer"] == EXPECTED_ROUNDS_UP_MI
+        assert up_body["odometer_km"] == EXPECTED_ROUNDS_UP_KM
+
+    async def test_a_metric_owner_gets_the_same_rounded_miles(
+        self, client: AsyncClient, widget_owner_factory
+    ):
+        """D7 again: the rounding change is not a units change. A metric owner
+        sees the identical mile figure, not the km one."""
+        key, vin = await widget_owner_factory(odometer_km=ROUNDS_DOWN_ODOMETER_KM, **METRIC_OWNER)
+        body = await _get_v2(client, key, vin)
+        assert body["odometer"] == EXPECTED_ROUNDS_DOWN_MI
+        assert body["odometer_km"] == EXPECTED_ROUNDS_DOWN_KM
