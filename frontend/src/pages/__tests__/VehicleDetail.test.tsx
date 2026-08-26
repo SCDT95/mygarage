@@ -114,6 +114,7 @@ import { useAuth } from '../../contexts/AuthContext'
 import type { Vehicle, VehicleDetailStats, VehicleType } from '../../types/vehicle'
 import { UnitFormatter } from '../../utils/units'
 import VehicleDetail from '../VehicleDetail'
+import { makeUser } from '../../__tests__/factories'
 
 const mockedVehicleService = vi.mocked(vehicleService)
 const mockedLivelinkService = vi.mocked(livelinkService)
@@ -452,7 +453,7 @@ describe('VehicleDetail', () => {
 
   it('shows Transfer button only for admin users', async () => {
     mockedUseAuth.mockReturnValue({
-      user: { id: 1, username: 'admin', email: 'admin@test.com', is_admin: true },
+      user: makeUser({ id: 1, username: 'admin', email: 'admin@test.com', is_admin: true }),
       token: null,
       isAuthenticated: true,
       isAdmin: true,
