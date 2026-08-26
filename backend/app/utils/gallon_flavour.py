@@ -36,9 +36,14 @@ them into one.
 
 2. FILE OR REQUEST MARKER -- the flavour travels with the data, never from a
    preference:
-     - routes/import_data.py `_row_gallons_to_liters`  reads the file's own
-       `unit_system` marker (CSV import path); already explicit, already
-       correct, do not change
+     - utils/csv_units.py `build_csv_unit_context`     reads the file's own
+       header tokens and `unit_system` marker (CSV import path); already
+       explicit, already correct, do not change. MOVED here in phase 2b
+       (task 2) from `routes/import_data.py`'s `_row_gallons_to_liters`,
+       which schema v6 replaced with a per-column, per-file resolution; the
+       property that made it correct -- the unit travels with the data, never
+       from a preference -- is unchanged and is now asserted behaviourally by
+       a cross-user import test.
      - routes/export.py `?units=` query parameter      caller's explicit request
      - services/notifications/dispatcher.py `notify_livelink_threshold_alert`
        (CLASSIFIED phase 2a, after the whole-branch review found it
@@ -75,8 +80,8 @@ them into one.
      - migrations/053, a frozen historical transform with a literal numerator
      - routes/import_data.py `_maybe_gal_to_l` / `_maybe_per_gal_to_per_l`
        (legacy-v2 JSON backup import, `import_vehicle_json`): unconditionally
-       US whenever `is_legacy_v2`. Same reasoning as `_row_gallons_to_liters`
-       above -- pre-v3 files predate the UK gallon option entirely -- but
+       US whenever `is_legacy_v2`. Same reasoning as `csv_units` above --
+       pre-v3 files predate the UK gallon option entirely -- but
        unlike the CSV path there is no per-file marker for that era, so it
        cannot become class 2 the way CSV did.
      - services/import_adapters/fuel_csv.py `GAL_TO_L` (Fuelio + Drivvo
