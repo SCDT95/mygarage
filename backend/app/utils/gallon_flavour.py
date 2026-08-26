@@ -40,6 +40,27 @@ them into one.
        `unit_system` marker (CSV import path); already explicit, already
        correct, do not change
      - routes/export.py `?units=` query parameter      caller's explicit request
+     - services/notifications/dispatcher.py `notify_livelink_threshold_alert`
+       (CLASSIFIED phase 2a, after the whole-branch review found it
+       unclassified). It renders `f"{value:.1f}{unit_str} vs threshold
+       {threshold_value:.1f}{unit_str}"` where `unit` is the DEVICE's own
+       `LiveLinkParameter.unit` (`# From config.{key}.unit`), so the unit
+       travels with the datum: class 2, not a preference consumer, and it
+       takes no `RenderContext`.
+
+       BUT it is not unit-free, and a later phase does have work here: a
+       COOLANT_TMP alert reaches a Fahrenheit-preferring user in whatever
+       the WiCAN reported. Converting it is a data-model change rather than
+       a rendering change, for three reasons. `VehicleTelemetry.value` is a
+       bare `Float` stored exactly as received, with no canonicalization
+       (`utils/autopid_normalizer.py` canonicalizes the KEY only, never the
+       unit). `LiveLinkParameter.warning_min`/`warning_max` are user-entered
+       in that same device unit, so converting the message without
+       converting the threshold entry would state a breach against a
+       threshold the user never set. And `LiveLinkParameter.unit` is free
+       text (`String(20)`) with no mapping into `UnitSet`'s 24-token
+       vocabulary. Whoever picks this up must land that mapping and decide
+       the storage question first.
 
 3. INTRINSICALLY US -- a fixed constant, never a preference:
      - EPA / window-sticker MPG figures (vehicles.fuel_economy_*), which are US

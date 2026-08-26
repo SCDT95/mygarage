@@ -8,10 +8,9 @@ consume it to turn a canonical `Decimal` into a human-readable string.
 
 Three resolution paths exist, and they are deliberately not interchangeable:
 
-- A **request** (`render_context_for_user`, or `render_context_for_request`
-  when the caller may be `None`) uses the caller's own resolved unit set,
-  never the vehicle owner's. `get_vehicle_or_403` admits admins and shared
-  users whose preferences differ from the owner's, and a shared viewer
+- A **request** (`render_context_for_request`) uses the caller's own resolved
+  unit set, never the vehicle owner's. `get_vehicle_or_403` admits admins and
+  shared users whose preferences differ from the owner's, and a shared viewer
   reading a PDF should see their own units, not the owner's.
 - A **scheduled job** (`render_context_for_vehicle`) has no caller, so it
   uses the vehicle owner's render context, falling back to the instance
@@ -21,6 +20,13 @@ Three resolution paths exist, and they are deliberately not interchangeable:
 - **`auth_mode=none`** (`render_context_default`) uses the instance default:
   there is no user row to resolve from, and `show_both` is always `False`
   for it, since there is no user who could have opted in.
+
+`render_context_for_user` is NOT a fourth path and is not a call site's entry
+point: it is the shared, synchronous body the two user-bearing paths above
+delegate to once they have a `User` in hand, and it has no caller in `app/`
+outside this module. It stays public because both those paths are one line
+of it and the split is what keeps them from re-deriving `show_both`
+independently.
 
 No new query, header, or body parameter is introduced anywhere in this
 module: every path resolves from data callers already have (the current
@@ -66,7 +72,13 @@ class UserRenderContextSource(UnitPreferenceSource, Protocol):
 
 
 def render_context_for_user(user: UserRenderContextSource) -> RenderContext:
-    """The render context for a request made as `user`.
+    """The render context for a known `User`, whoever resolved them.
+
+    The shared body of `render_context_for_request` (the caller) and
+    `render_context_for_vehicle` (the owner), not an entry point of its own:
+    nothing in `app/` outside this module calls it, and a new request-driven
+    surface wants `render_context_for_request`, which owns the "instance
+    default when there is no caller" half of the policy.
 
     Synchronous and pure, like `resolve_units`: it reads only what `user`
     already carries.

@@ -1,7 +1,8 @@
 """RenderContext resolution: the three paths are not interchangeable.
 
-A request uses the caller's own resolved units (`render_context_for_user`),
-never the vehicle owner's -- a shared viewer must see their own preferences.
+A request uses the caller's own resolved units (`render_context_for_request`,
+whose user-bearing half is `render_context_for_user`), never the vehicle
+owner's -- a shared viewer must see their own preferences.
 A scheduled job (`render_context_for_vehicle`) has no caller, so it uses the
 vehicle owner's, falling back to the instance default
 (`render_context_default`) when the vehicle is ownerless or does not exist.

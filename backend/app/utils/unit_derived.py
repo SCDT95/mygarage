@@ -127,6 +127,11 @@ def format_cost_per_volume(
     `locale` are resolved through `get_currency_symbol` -- never pass a
     pre-resolved symbol, which would drop the locale-aware contract.
     Returns `"N/A"` for a `None` input, with no counterpart.
+
+    NOT DEAD CODE: no `app/` caller yet. D4c enumerates all four derived
+    quantities and part B (CSV v6 plus the two report CSV endpoints, deferred
+    out of phase 2a) is the first consumer. The backend has no reachability
+    gate, so nothing else will tell you that.
     """
     if cost_per_l is None:
         return "N/A"
@@ -230,6 +235,12 @@ def format_volume_per_1000_distance(l_per_1000_km: Decimal | None, ctx: RenderCo
     1,000x error. D4c: flips BOTH numerator and denominator, composing each
     counterpart's adapter independently -- not "flip one side, hold the
     other". Returns `"N/A"` for a `None` input, with no counterpart.
+
+    NOT DEAD CODE: no `app/` caller yet. R5's per-1,000 presentation lives in
+    the frontend today (`frontend/src/utils/units.ts`); part B and the phase-3
+    frontend work, both deferred out of phase 2a, are what move it onto this
+    API. The backend has no reachability gate, so nothing else will tell you
+    that.
     """
     if l_per_1000_km is None:
         return "N/A"

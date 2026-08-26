@@ -11,7 +11,7 @@ that composition lives here instead.
 
 Every function below takes a `RenderContext` rather than a bare `UnitSet`,
 because `show_both` is a per-render decision (whose it is depends on which of
-`render_context_for_user` / `render_context_for_vehicle` /
+`render_context_for_request` / `render_context_for_vehicle` /
 `render_context_default` produced the context), not a property of the unit
 set itself.
 
