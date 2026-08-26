@@ -528,13 +528,22 @@ class TestRenderContextDrivesUnits:
     D4c flip rules) and is pinned here as an exact string, so a wrong figure
     fails as a disagreement between two independent derivations.
 
-        distance   12,000 km / 1.609344 km per mi -> 7,456 mi (precision 0)
-        rate       1,000 km/mo -> 621 mi/mo, suffix applied to EACH side
-        consumption 9.4 L/100km -> 235.214583.../9.4 = 25.0 MPG (precision 1)
-        fuel rate  1.85 L/hr / 3.785411784 L per US gal -> 0.49 gal/hr
-        cost/dist  0.42 $/km * 1 * 100 = $42.00/100 km;
-                   0.42 $/km * 1.609344 * 1000 = $675.92/1,000 mi
-        reminder   50,000 km -> 31,069 mi
+    The derivations below use `UnitConverter`'s OWN constants
+    (`app/utils/units.py`), which are rounded, not the ISO-exact values:
+    `MILES_TO_KM = 1.60934`, `US_GALLONS_TO_LITERS = 3.78541`,
+    `US_MPG_TO_L100KM_NUMERATOR = 235.214`. Recomputing from an exact
+    factor instead gives intermediates this code never produces. (The
+    `235.214583` in `services/window_sticker_ocr.py` is a deliberately
+    separate constant on a different path, not this one.)
+
+        distance    12,000 / 1.60934 = 7,456.4728 -> "7,456 mi" (precision 0)
+        rate        1,000 / 1.60934 = 621.3727 -> "621 mi/mo"; the suffix is
+                    applied to EACH side, never to a composed string
+        consumption 235.214 / 9.4 = 25.0228 -> "25.0 MPG" (precision 1)
+        fuel rate   1.85 / 3.78541 = 0.4887 -> "0.49 gal/hr" (precision 2)
+        cost/dist   0.42 * 1 * 100 = 42.00 -> "$42.00/100 km";
+                    0.42 * 1.60934 * 1000 = 675.9228 -> "$675.92/1,000 mi"
+        reminder    50,000 / 1.60934 = 31,068.6368 -> "31,069 mi"
     """
 
     def test_metric_context_renders_metric_figures(self) -> None:

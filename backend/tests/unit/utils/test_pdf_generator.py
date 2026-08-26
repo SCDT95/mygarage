@@ -106,9 +106,13 @@ class TestOdometerColumnFollowsTheRenderContext:
     """Both odometer columns name their unit once in the header and print a
     bare number in each cell.
 
-    Expected values computed from the distance adapters, not transcribed:
-    19,312 km / 1.609344 km per mi = 11,999.92 mi, at the mi adapter's
-    precision of 0 -> "12,000".
+    Expected values computed from the distance adapters, not transcribed.
+    The factor is `UnitConverter.MILES_TO_KM`, which is the rounded
+    `1.60934`, not the ISO-exact `1.609344`; recomputing from the exact
+    value gives an intermediate this code never produces.
+
+        19,312 / 1.60934 = 11,999.9503 -> "12,000" at precision 0
+        123.90 / 1.60934 = 76.9881     -> "77"     at precision 0
     """
 
     def test_service_history_header_and_cell_are_metric_under_a_metric_context(self) -> None:
@@ -188,14 +192,45 @@ class TestOdometerColumnFollowsTheRenderContext:
         assert "123.90" not in service
         assert "123.90" not in sale
 
-    def test_a_missing_odometer_still_renders_na(self) -> None:
-        """Unchanged by the unit rewrite: a null or zero reading is a
-        missing reading, not a real one at the origin."""
+    def test_a_null_odometer_renders_na(self) -> None:
+        """Unchanged by the unit rewrite: a null reading is a missing one.
+
+        One record, so the "N/A" asserted below can only have come from the
+        odometer cell. The zero case is a SEPARATE branch of
+        `_format_odometer`'s falsy guard and gets its own test below;
+        asserting one "N/A" over a two-record render would let either input
+        alone satisfy the whole claim.
+        """
+        generator = PDFReportGenerator(render_context=IMPERIAL_CTX)
+        buf = generator.generate_service_history_pdf(_VEHICLE_INFO, [_service_record(None)])
+        text = _normalized_text(buf.read())
+
+        assert "Odometer (mi)" in text
+        assert "N/A" in text
+
+    def test_a_zero_odometer_renders_na_and_not_a_real_reading(self) -> None:
+        """The branch `_format_odometer`'s docstring goes out of its way to
+        claim: a zero odometer is a missing reading, not a real one at the
+        origin, and that predates this becoming unit-aware.
+
+        Independently killable from the null case: flipping the guard from
+        `if not odometer_km` to `if odometer_km is None` renders "0" here
+        and leaves the null test above green.
+        """
+        generator = PDFReportGenerator(render_context=IMPERIAL_CTX)
+        buf = generator.generate_service_history_pdf(_VEHICLE_INFO, [_service_record(Decimal("0"))])
+        text = _normalized_text(buf.read())
+
+        assert "Odometer (mi)" in text
+        assert "N/A" in text
+
+    def test_both_missing_odometer_forms_render_na_in_one_table(self) -> None:
+        """Both rows of a mixed table, counted rather than sampled: a single
+        existential "N/A" over two records is satisfied by either one."""
         generator = PDFReportGenerator(render_context=IMPERIAL_CTX)
         buf = generator.generate_service_history_pdf(
             _VEHICLE_INFO, [_service_record(None), _service_record(Decimal("0"))]
         )
         text = _normalized_text(buf.read())
 
-        assert "N/A" in text
-        assert "Odometer (mi)" in text
+        assert text.count("N/A") == 2
