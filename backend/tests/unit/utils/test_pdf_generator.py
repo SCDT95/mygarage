@@ -234,3 +234,93 @@ class TestOdometerColumnFollowsTheRenderContext:
         text = _normalized_text(buf.read())
 
         assert text.count("N/A") == 2
+
+
+SHOW_BOTH_METRIC_CTX = RenderContext(units=METRIC_PRESET, show_both=True)
+SHOW_BOTH_IMPERIAL_CTX = RenderContext(units=IMPERIAL_PRESET, show_both=True)
+
+
+class TestOdometerCellsStaySingleRepresentationUnderShowBoth:
+    """The recorded exception to the show-both grammar (phase exit criterion 8).
+
+    Every other distance figure in this phase gains a ` (counterpart)` when the
+    reader has `show_both_units` on. These two table columns deliberately do
+    not, because a table cell is a fixed-width surface: the service-history
+    odometer column is 0.9 inch (64.80 pt) and `"123,457 km (76,713 mi)"` is
+    95.04 pt in the 9 pt Helvetica these cells use, so the counterpart cannot
+    be rendered, only spilled into the neighbouring column. The cell is a bare
+    `str`, not a `Paragraph`, so ReportLab does not even wrap it.
+
+    Pinned rather than left incidental: without these assertions, "route the
+    odometer values through `format_quantity` like everything else" looks like
+    a tidy-up rather than the layout regression it is. 19,312 km is 12,000 mi
+    (19,312 / 1.60934 = 11,999.9503 -> "12,000" at precision 0), so each
+    reader's counterpart figure is a distinct string that either appears or
+    does not.
+    """
+
+    def test_service_history_metric_cell_omits_the_mile_counterpart(self) -> None:
+        generator = PDFReportGenerator(render_context=SHOW_BOTH_METRIC_CTX)
+        buf = generator.generate_service_history_pdf(
+            _VEHICLE_INFO, [_service_record(Decimal("19312"))]
+        )
+        text = _normalized_text(buf.read())
+
+        assert "Odometer (km)" in text
+        assert "19,312" in text
+        assert "12,000" not in text
+
+    def test_service_history_imperial_cell_omits_the_kilometre_counterpart(self) -> None:
+        """The other direction, so an "always show the metric side" bug cannot
+        hide behind the metric reader's test above."""
+        generator = PDFReportGenerator(render_context=SHOW_BOTH_IMPERIAL_CTX)
+        buf = generator.generate_service_history_pdf(
+            _VEHICLE_INFO, [_service_record(Decimal("19312"))]
+        )
+        text = _normalized_text(buf.read())
+
+        assert "Odometer (mi)" in text
+        assert "12,000" in text
+        assert "19,312" not in text
+
+    def test_sale_history_cell_omits_the_counterpart_too(self) -> None:
+        """The sale report is a separate generator method with its own table,
+        and a wider (1.4 inch) odometer column -- wide enough for today's
+        six-figure show-both string and not for a seven-figure one. It follows
+        the same rule as the narrow one rather than diverging by column width."""
+        generator = PDFReportGenerator(render_context=SHOW_BOTH_METRIC_CTX)
+        buf = generator.generate_sale_history_pdf(
+            _VEHICLE_INFO, [_service_record(Decimal("19312"))]
+        )
+        text = _normalized_text(buf.read())
+
+        assert "Odometer (km)" in text
+        assert "19,312" in text
+        assert "12,000" not in text
+
+    def test_the_cell_is_byte_identical_whatever_show_both_says(self) -> None:
+        """Directly on the formatter, so the claim is "`show_both` is not read
+        here", not "the counterpart happened not to be extracted from the PDF".
+        Both presets, because a rule that held for one would say nothing about
+        the other."""
+        for units in (METRIC_PRESET, IMPERIAL_PRESET):
+            off = PDFReportGenerator(
+                render_context=RenderContext(units=units, show_both=False)
+            )._format_odometer(Decimal("19312"))
+            on = PDFReportGenerator(
+                render_context=RenderContext(units=units, show_both=True)
+            )._format_odometer(Decimal("19312"))
+            assert off == on
+            assert "(" not in on
+        assert (
+            PDFReportGenerator(render_context=SHOW_BOTH_METRIC_CTX)._format_odometer(
+                Decimal("19312")
+            )
+            == "19,312"
+        )
+        assert (
+            PDFReportGenerator(render_context=SHOW_BOTH_IMPERIAL_CTX)._format_odometer(
+                Decimal("19312")
+            )
+            == "12,000"
+        )

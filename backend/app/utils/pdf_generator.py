@@ -67,6 +67,12 @@ class PDFReportGenerator:
         column's unit once, so repeating it on every row (or appending a
         show-both counterpart inside a 0.9-inch column) would be noise.
 
+        RECORDED EXCEPTION to the "every human-readable `UnitSet` quantity
+        goes through the composition layer" rule (phase exit criterion 8,
+        custom-units phase 2a). These two table cells are the one distance
+        site in the phase that never gains a ` (counterpart)`, whatever the
+        reader's `show_both_units` says -- see the call site below.
+
         Falsy input stays `"N/A"`, exactly as before: a zero odometer is a
         missing reading rather than a real one, and that predates this
         becoming unit-aware.
@@ -80,6 +86,21 @@ class PDFReportGenerator:
         """
         if not odometer_km:
             return "N/A"
+        # DELIBERATE conversion-layer call from a human-readable surface, and
+        # the only one in the phase (exit criterion 8 names it explicitly).
+        # `format_quantity` cannot serve this site twice over: it always emits
+        # the unit label the header already carries, and under `show_both` it
+        # appends a counterpart a fixed-width table cell cannot hold. Measured
+        # in the 9 pt Helvetica these cells use: the service-history odometer
+        # column is 0.9 inch = 64.80 pt, while `"123,457 km (76,713 mi)"` is
+        # 95.04 pt. The cell is a bare `str`, not a `Paragraph`, so ReportLab
+        # does not wrap it -- it spills into the Date and Type columns either
+        # side. The sale report's 1.4 inch = 100.80 pt column holds today's
+        # six-figure pairing and not a seven-figure one, so it follows the same
+        # rule rather than diverging by column width. The unit is stated once,
+        # in `_odometer_header`, which is `format_label` from the composition
+        # layer. Pinned by
+        # `test_pdf_generator.py::TestOdometerCellsStaySingleRepresentationUnderShowBoth`.
         adapter = adapter_for(self.render_context.units, "distance")
         return adapter.format(Decimal(str(odometer_km)), with_label=False)
 
