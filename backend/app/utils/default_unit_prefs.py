@@ -32,8 +32,9 @@ DEFAULT_UNIT_PREFS_KEY = "default_unit_prefs"
 # three overrides (volume, consumption, secondary_gallon). Duplicated rather
 # than imported, because importing live application code from a one-shot
 # migration script would make this module depend on migration internals that
-# are frozen the moment they've run in production. If migration 093's
-# derivation ever changes, update this constant to match.
+# are frozen the moment they've run in production. The two are tied by
+# tests/unit/utils/test_default_unit_prefs.py::TestUkImperialSetMatchesMigration093,
+# which fails if either side moves without the other.
 UK_IMPERIAL_PRESET = UnitSet.model_validate(
     IMPERIAL_PRESET.model_dump()
     | {"volume": "gal_uk", "consumption": "mpg_uk", "secondary_gallon": "uk"}
@@ -47,6 +48,16 @@ def parse_default_unit_prefs(raw: str | None) -> UnitSet:
     patched field by field: filling the gaps from the imperial preset would hand
     a metric instance imperial pressure, which is a worse outcome than an honest
     default.
+
+    That makes the stored row's ARITY a compatibility contract, and nothing
+    migrates it. A row written before a quantity was added or removed no longer
+    validates, so it degrades here to IMPERIAL_PRESET whole: on a UK instance
+    that is US gallons for anonymous clients and for every new account, behind
+    one WARNING. `default_unit_prefs_for_instance` cannot repair it, because it
+    only runs when the row is ABSENT. So any change to `UnitSet`'s shape must
+    ship a migration that rewrites existing `default_unit_prefs` rows. See
+    `UnitSet`'s docstring and
+    `test_unit_set_shape_matches_what_stored_default_unit_prefs_rows_carry`.
     """
     if not raw:
         return IMPERIAL_PRESET

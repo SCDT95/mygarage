@@ -75,6 +75,10 @@ DEFAULT_UNIT_PREFS_KEY = "default_unit_prefs"
 # Built through model_validate rather than model_copy(update=...) so the three
 # overridden values are validated against their vocabularies at import time. A
 # typo here would otherwise be written to every UK user's row unchecked.
+#
+# app/utils/default_unit_prefs.py carries the same set as UK_IMPERIAL_PRESET for
+# the live reseed path (a migration must stay standalone, so neither imports the
+# other). TestUkImperialSetMatchesMigration093 fails if the two diverge.
 UK_IMPERIAL_SET = UnitSet.model_validate(
     IMPERIAL_PRESET.model_dump()
     | {"volume": "gal_uk", "consumption": "mpg_uk", "secondary_gallon": "uk"}

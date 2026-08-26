@@ -17917,7 +17917,7 @@
       },
       "UnitSet": {
         "additionalProperties": false,
-        "description": "A fully resolved set of unit choices. Every field is required.\n\nFrozen: a module-level preset that could be mutated in place would be\nprocess-global state, which is what phase 0 removed from the converter.\n\nextra=\"forbid\": a stored default unit set carrying an unknown key means the\nwriter and the reader disagree about the shape, and Pydantic's default of\nsilently ignoring extras would hide that until something formatted a number\nwrongly. `default_unit_prefs` parsing depends on this.",
+        "description": "A fully resolved set of unit choices. Every field is required.\n\nFrozen: a module-level preset that could be mutated in place would be\nprocess-global state, which is what phase 0 removed from the converter.\n\nextra=\"forbid\": a stored default unit set carrying an unknown key means the\nwriter and the reader disagree about the shape, and Pydantic's default of\nsilently ignoring extras would hide that until something formatted a number\nwrongly. `default_unit_prefs` parsing depends on this.\n\nOBLIGATION: adding or removing a field must ship alongside a migration that\nrewrites every stored `default_unit_prefs` row, which holds a full dump of\nthis model and stops validating the moment the arity changes. See\n`app.utils.default_unit_prefs.parse_default_unit_prefs` for what that\nsilently costs a UK instance, and\n`test_unit_set_shape_matches_what_stored_default_unit_prefs_rows_carry`,\nwhich fails until the migration lands.",
         "properties": {
           "consumption": {
             "enum": [

@@ -14096,6 +14096,14 @@ export interface components {
          *     writer and the reader disagree about the shape, and Pydantic's default of
          *     silently ignoring extras would hide that until something formatted a number
          *     wrongly. `default_unit_prefs` parsing depends on this.
+         *
+         *     OBLIGATION: adding or removing a field must ship alongside a migration that
+         *     rewrites every stored `default_unit_prefs` row, which holds a full dump of
+         *     this model and stops validating the moment the arity changes. See
+         *     `app.utils.default_unit_prefs.parse_default_unit_prefs` for what that
+         *     silently costs a UK instance, and
+         *     `test_unit_set_shape_matches_what_stored_default_unit_prefs_rows_carry`,
+         *     which fails until the migration lands.
          */
         UnitSet: {
             /**

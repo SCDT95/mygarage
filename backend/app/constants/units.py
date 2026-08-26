@@ -48,6 +48,14 @@ class UnitSet(BaseModel):
     writer and the reader disagree about the shape, and Pydantic's default of
     silently ignoring extras would hide that until something formatted a number
     wrongly. `default_unit_prefs` parsing depends on this.
+
+    OBLIGATION: adding or removing a field must ship alongside a migration that
+    rewrites every stored `default_unit_prefs` row, which holds a full dump of
+    this model and stops validating the moment the arity changes. See
+    `app.utils.default_unit_prefs.parse_default_unit_prefs` for what that
+    silently costs a UK instance, and
+    `test_unit_set_shape_matches_what_stored_default_unit_prefs_rows_carry`,
+    which fails until the migration lands.
     """
 
     model_config = ConfigDict(frozen=True, extra="forbid")
@@ -106,13 +114,6 @@ def field_to_column(field: str) -> str:
     if field in _UNPREFIXED_FIELDS:
         return field
     return f"unit_{field}"
-
-
-def column_to_field(column: str) -> str:
-    """Map a `users` column name back to its UnitSet field name."""
-    if column in _UNPREFIXED_FIELDS:
-        return column
-    return column.removeprefix("unit_")
 
 
 UNIT_COLUMN_NAMES: tuple[str, ...] = tuple(field_to_column(f) for f in UNIT_FIELD_NAMES)
