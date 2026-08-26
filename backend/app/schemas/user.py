@@ -6,12 +6,36 @@ import re
 from datetime import datetime
 from typing import Any, Literal
 
-from pydantic import BaseModel, ConfigDict, EmailStr, Field, field_validator, model_validator
+from pydantic import (
+    BaseModel,
+    ConfigDict,
+    EmailStr,
+    Field,
+    computed_field,
+    field_validator,
+    model_validator,
+)
 
 from app.constants.accents import SUPPORTED_ACCENTS
 from app.constants.fuel import PAYMENT_METHOD_VALUES, TRIP_TYPE_VALUES
 from app.constants.i18n import SUPPORTED_CURRENCIES, SUPPORTED_LANGUAGES
 from app.constants.theme import SUPPORTED_THEMES
+from app.constants.units import (
+    ConsumptionUnit,
+    DistanceUnit,
+    GallonFlavourPref,
+    LengthUnit,
+    MassUnit,
+    PressureUnit,
+    SpeedUnit,
+    TemperatureUnit,
+    TorqueUnit,
+    TreadUnit,
+    UnitPreference,
+    UnitSet,
+    VolumeUnit,
+)
+from app.utils.unit_resolution import resolve_units
 
 # Relationship type presets for family system
 RELATIONSHIP_PRESETS: list[dict[str, str]] = [
@@ -288,8 +312,21 @@ class UserResponse(UserBase):
     id: int
     is_active: bool
     is_admin: bool
-    unit_preference: str = "imperial"
+    unit_preference: UnitPreference = "imperial"
     show_both_units: bool = False
+    # Raw per-quantity overrides. NULL means "no override" (spec D3); the
+    # resolved set below is what callers should format with.
+    unit_distance: DistanceUnit | None = None
+    unit_speed: SpeedUnit | None = None
+    unit_length: LengthUnit | None = None
+    unit_volume: VolumeUnit | None = None
+    unit_consumption: ConsumptionUnit | None = None
+    unit_pressure: PressureUnit | None = None
+    unit_temperature: TemperatureUnit | None = None
+    unit_mass: MassUnit | None = None
+    unit_torque: TorqueUnit | None = None
+    unit_tread: TreadUnit | None = None
+    secondary_gallon: GallonFlavourPref | None = None
     time_format: str = "12h"
     mobile_quick_entry_enabled: bool = True
     # i18n preferences
@@ -311,6 +348,17 @@ class UserResponse(UserBase):
     created_at: datetime
     updated_at: datetime
     last_login: datetime | None
+
+    @computed_field  # type: ignore[prop-decorator]
+    @property
+    def resolved_units(self) -> UnitSet:
+        """The unit set that actually applies: preset base with overrides on top.
+
+        Derived rather than stored so it cannot drift from the raw columns above.
+        `resolve_units` is pure and synchronous for exactly this reason; if it
+        ever needs the database, this field has to move to the route.
+        """
+        return resolve_units(self)
 
     class Config:
         from_attributes = True

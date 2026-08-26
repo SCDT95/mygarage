@@ -276,3 +276,82 @@ class TestEveryCreationPathSeeds:
                 and node.func.id == "User"
             )
         assert found == 3, f"expected 3 User(...) construction sites, found {found}"
+
+
+class TestUserResponseSerialisation:
+    """UserResponse carries both the raw columns and the resolved set, so the
+    settings UI can show what is stored and the app can format with what applies."""
+
+    def test_response_exposes_all_eleven_raw_columns(self) -> None:
+        from app.constants.units import UNIT_COLUMN_NAMES
+        from app.schemas.user import UserResponse
+
+        assert set(UNIT_COLUMN_NAMES) <= set(UserResponse.model_fields) | set(
+            UserResponse.model_computed_fields
+        )
+
+    def test_resolved_units_is_computed_from_the_raw_columns(self) -> None:
+        from datetime import datetime
+
+        from app.schemas.user import UserResponse
+
+        response = UserResponse(
+            id=1,
+            username="usr",
+            email="u@example.com",
+            is_active=True,
+            is_admin=False,
+            unit_preference="metric",
+            unit_pressure="psi",
+            created_at=datetime(2026, 1, 1),
+            updated_at=datetime(2026, 1, 1),
+            last_login=None,
+        )
+
+        assert response.resolved_units.pressure == "psi"
+        assert response.resolved_units.distance == "km"
+
+    def test_resolved_units_appears_in_the_serialised_payload(self) -> None:
+        """A computed field that is not serialised is invisible to the frontend,
+        which is the only consumer that matters here."""
+        from datetime import datetime
+
+        from app.schemas.user import UserResponse
+
+        payload = UserResponse(
+            id=1,
+            username="usr",
+            email="u@example.com",
+            is_active=True,
+            is_admin=False,
+            unit_preference="custom",
+            unit_volume="gal_uk",
+            secondary_gallon="uk",
+            created_at=datetime(2026, 1, 1),
+            updated_at=datetime(2026, 1, 1),
+            last_login=None,
+        ).model_dump()
+
+        assert payload["resolved_units"]["volume"] == "gal_uk"
+        assert payload["resolved_units"]["secondary_gallon"] == "uk"
+        assert payload["unit_volume"] == "gal_uk"
+
+    def test_unit_preference_accepts_custom(self) -> None:
+        """Migration 093 writes 'custom'; a response schema that rejects it would
+        500 every UK user's /auth/me."""
+        from app.schemas.user import UserResponse
+
+        assert "custom" in UserResponse.model_fields["unit_preference"].annotation.__args__
+
+    def test_write_schemas_still_reject_custom(self) -> None:
+        """Ruling P1: the dedicated unit mutation arrives in phase 4, and until it
+        does, a generic setter that can write 'custom' without materialising the
+        eleven columns is the back door D9b exists to close."""
+        import pytest as _pytest
+        from pydantic import ValidationError
+
+        from app.schemas.user import AdminUserUpdate, UserSelfUpdate
+
+        for schema in (UserSelfUpdate, AdminUserUpdate):
+            with _pytest.raises(ValidationError):
+                schema(unit_preference="custom")
