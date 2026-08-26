@@ -24,6 +24,7 @@ from reportlab.platypus import (
     TableStyle,
 )
 
+from app.utils.hours_formatting import format_hours
 from app.utils.pdf_charts import (
     render_donut_chart,
     render_monthly_spending_chart,
@@ -116,25 +117,6 @@ def _format_date(val: date_type | None) -> str:
     return val.strftime("%b %d, %Y")
 
 
-def _format_hours(hours: Decimal | None) -> str:
-    """Render an hours figure, the one quantity outside the unit system.
-
-    R6: hours are dimensionless. ``"hours"`` is not a ``UnitSet`` field, so
-    ``adapter_for(..., "hours")`` raises ``KeyError`` by design and there is
-    no counterpart to show. This fixed ``"hr"`` formatter is therefore
-    deliberately NOT routed through ``unit_formatting``; the "every
-    rendering site uses the formatting layer" rule does not reach it.
-
-    Central rather than inlined so all three hours surfaces (the Engine
-    Hours KPI card, the hours-history table, an hours-targeted reminder)
-    keep one precision, and so this exception to the rule is one auditable
-    place instead of three f-strings.
-    """
-    if hours is None:
-        return "N/A"
-    return f"{hours:,.1f} hr"
-
-
 def _latest_hours_point(
     hours_accumulated: list[dict[str, Any]],
 ) -> tuple[Decimal | None, date_type | None]:
@@ -187,7 +169,7 @@ def _build_usage_efficiency_cards(
 
     Distance, consumption and fuel-rate cards render in ``render_context``'s
     units; the engine-hours card does not, because hours are dimensionless
-    (R6, see ``_format_hours``). Storage stays metric-canonical either way:
+    (R6, see ``format_hours``). Storage stays metric-canonical either way:
     conversion happens here, at the render boundary, and nowhere else.
     """
     cards: list[dict[str, Any]] = []
@@ -226,7 +208,7 @@ def _build_usage_efficiency_cards(
         cards.append(
             {
                 "label": "Engine Hours",
-                "value": _format_hours(latest_hours),
+                "value": format_hours(latest_hours),
                 "sub": f"As of {_format_date(latest_date)}" if latest_date is not None else "",
                 "color": "amber",
             }
@@ -282,7 +264,7 @@ def _build_hours_history_table(
         rows.append(
             [
                 Paragraph(_format_date(_parse_date(point.get("date"))), cell_style),
-                Paragraph(_format_hours(engine_hours), amt_style),
+                Paragraph(format_hours(engine_hours), amt_style),
                 Paragraph(str(source), cell_style),
             ]
         )
@@ -313,7 +295,7 @@ def _reminder_due_text(reminder: dict[str, Any], render_context: RenderContext) 
     due_hours = _safe_decimal(reminder.get("due_hours"))
     due_mileage_km = _safe_decimal(reminder.get("due_mileage_km"))
     if due_hours is not None:
-        parts.append(_format_hours(due_hours))
+        parts.append(format_hours(due_hours))
     elif due_mileage_km is not None:
         parts.append(format_quantity(due_mileage_km, render_context, "distance"))
 
@@ -393,7 +375,7 @@ def generate_vehicle_analytics_pdf(
             required, with no default: every distance, consumption and
             fuel-rate figure below depends on it, and a defaulted context
             would let a new call site silently render one instance-wide unit
-            for every reader. Hours are exempt (R6, ``_format_hours``).
+            for every reader. Hours are exempt (R6, ``format_hours``).
 
     Returns:
         BytesIO containing the PDF document.
