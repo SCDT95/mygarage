@@ -6,6 +6,7 @@ import { useSettings } from '@/contexts/SettingsContext'
 import type { DashboardResponse } from '@/types/dashboard'
 import type { UnitPreference } from '@/types/units'
 import { asTimeFormat } from '@/hooks/useTimeFormat'
+import { useUnitPreference } from '@/hooks/useUnitPreference'
 import api from '@/services/api'
 import { toast } from 'sonner'
 import {
@@ -67,6 +68,18 @@ export default function SettingsSystemTab() {
   const [unitPreferenceSaving, setUnitPreferenceSaving] = useState(false)
   const [gallonStandard, setGallonStandard] = useState<'us' | 'uk'>('us')
   const [gallonStandardSaving, setGallonStandardSaving] = useState(false)
+
+  // The binary system this account actually renders in. `unitPreference` can be
+  // 'custom' (migration 093 materialises a UK instance's imperial users that
+  // way), which is neither 'imperial' nor 'metric', so branching on it directly
+  // showed those users the metric description and hid the US/UK gallon panel
+  // entirely — removing the only UI that changes their gallon flavour, on
+  // exactly the instances this feature exists for. `useUnitPreference` already
+  // owns the custom -> binary mapping; the local state still wins for the two
+  // preset values so the copy switches with the optimistic toggle instead of
+  // lagging a refreshUser() round trip.
+  const { system: resolvedSystem } = useUnitPreference()
+  const displaySystem = unitPreference === 'custom' ? resolvedSystem : unitPreference
   const [autoArchiveDays, setAutoArchiveDays] = useState('0')
   const [autoArchiveSaving, setAutoArchiveSaving] = useState(false)
 
@@ -699,7 +712,7 @@ export default function SettingsSystemTab() {
             </button>
           </div>
           <p className="mt-2 text-sm text-garage-text-muted">
-            {unitPreference === 'imperial'
+            {displaySystem === 'imperial'
               ? t('units.imperialDescription')
               : t('units.metricDescription')
             }
@@ -718,7 +731,7 @@ export default function SettingsSystemTab() {
             </p>
           </div>
 
-          {unitPreference === 'imperial' && (
+          {displaySystem === 'imperial' && (
             <div className="mt-4">
               <label className="block text-sm font-medium text-garage-text mb-2">
                 {t('units.gallonStandard')}
