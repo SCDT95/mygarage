@@ -8,8 +8,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
-- Per-quantity unit preferences: distance, speed, length, volume, consumption, pressure, temperature, mass, torque, and tread each carry their own unit (#152).
+- Groundwork for per-quantity unit preferences: per-user unit columns and a resolved unit set on the user API, with no settings UI yet (migration 093, #152).
 - Instance-wide default unit set for anonymous clients and new accounts.
+
+### Changed
+- Instances set to UK gallons store their imperial users as a custom unit set; displayed values are unchanged (migration 093).
 
 ### Fixed
 - PSI-to-canonical conversion returned bar instead of kPa.
