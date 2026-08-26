@@ -8,7 +8,9 @@ imperial preset rather than raising: it is read during frontend bootstrap, and a
 
 from __future__ import annotations
 
+import importlib.util
 import json
+from pathlib import Path
 
 import pytest
 
@@ -21,6 +23,22 @@ from app.utils.default_unit_prefs import (
     load_default_unit_prefs,
     parse_default_unit_prefs,
 )
+
+_MIGRATION_093 = (
+    Path(__file__).resolve().parents[3] / "app" / "migrations" / "093_add_unit_preferences.py"
+)
+
+
+def _load_migration_093():
+    """Load migration 093 by file location, as the migration tests do.
+
+    Its module name starts with a digit, so it is not importable by name.
+    """
+    spec = importlib.util.spec_from_file_location("m093_tie", _MIGRATION_093)
+    assert spec is not None and spec.loader is not None
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
 
 
 class TestParsing:
@@ -84,6 +102,39 @@ class TestParsing:
             deeply_nested_object,
         ):
             assert isinstance(parse_default_unit_prefs(raw), UnitSet)
+
+
+class TestUkImperialSetMatchesMigration093:
+    """The UK imperial set exists twice: `UK_IMPERIAL_PRESET` here and
+    `UK_IMPERIAL_SET` in migration 093.
+
+    The duplication is deliberate. A migration is frozen the moment it has run
+    in production, so a live module must not import one, and the migration must
+    not import `app.utils` (it would then track head instead of the schema it
+    was written against). What was missing is the tie: the two files carried a
+    "keep in sync" comment and nothing enforced it. A divergence would show up
+    as a UK instance whose deleted `default_unit_prefs` row reseeds a different
+    set from the one materialised into its user rows, and nothing would notice.
+
+    (A third copy used to live in `tests/unit/utils/test_unit_resolution.py`;
+    that one now imports `UK_IMPERIAL_PRESET` directly, since a test may depend
+    on live application code.)
+    """
+
+    def test_the_migration_writes_the_set_this_module_reseeds(self) -> None:
+        module = _load_migration_093()
+
+        assert module.UK_IMPERIAL_SET == UK_IMPERIAL_PRESET
+
+    def test_the_tie_compares_a_genuinely_uk_set(self) -> None:
+        """If both constants drifted to the plain imperial preset together, the
+        assertion above would still pass while every UK user got US gallons."""
+        module = _load_migration_093()
+
+        assert module.UK_IMPERIAL_SET != IMPERIAL_PRESET
+        assert module.UK_IMPERIAL_SET.volume == "gal_uk"
+        assert module.UK_IMPERIAL_SET.consumption == "mpg_uk"
+        assert module.UK_IMPERIAL_SET.secondary_gallon == "uk"
 
 
 @pytest.mark.asyncio
@@ -205,13 +256,56 @@ class TestDefaultUnitPrefsForInstance:
 
     async def test_us_or_absent_gallon_standard_derives_imperial(self, db_session) -> None:
         """Absent, empty, or non-uk `imperial_gallon_standard` all derive the
-        plain imperial preset, matching migration 093's own default."""
-        row = await db_session.get(Setting, "imperial_gallon_standard")
-        if row is not None:
-            await db_session.delete(row)
+        plain imperial preset, matching migration 093's own default.
+
+        All four states the name covers, not just the absent one:
+        `resolve_gallon_flavour` treats everything that is not a
+        case-insensitive "uk" as US, and a name that generalises over a space
+        its body samples once is the defect this phase keeps catching.
+
+        Restores whatever it found in `try/finally`. The suite shares one
+        database with no per-test rollback (see reference_mygarage_test_isolation)
+        and this test used to leave `imperial_gallon_standard` deleted for the
+        rest of the session.
+        """
+        existing = await db_session.get(Setting, "imperial_gallon_standard")
+        existed = existing is not None
+        original = existing.value if existing is not None else None
+
+        async def write(value: str | None) -> None:
+            """Set the row's value, or remove the row entirely when None."""
+            row = await db_session.get(Setting, "imperial_gallon_standard")
+            if value is None:
+                if row is not None:
+                    await db_session.delete(row)
+            elif row is not None:
+                row.value = value
+            else:
+                db_session.add(
+                    Setting(key="imperial_gallon_standard", value=value, category="general")
+                )
             await db_session.commit()
 
-        assert await default_unit_prefs_for_instance(db_session) == IMPERIAL_PRESET
+        try:
+            for value in (None, "", "us", "not-a-flavour"):
+                await write(value)
+
+                result = await default_unit_prefs_for_instance(db_session)
+
+                assert result == IMPERIAL_PRESET, repr(value)
+                assert result != UK_IMPERIAL_PRESET, repr(value)
+        finally:
+            row = await db_session.get(Setting, "imperial_gallon_standard")
+            if not existed:
+                if row is not None:
+                    await db_session.delete(row)
+            elif row is not None:
+                row.value = original
+            else:
+                db_session.add(
+                    Setting(key="imperial_gallon_standard", value=original, category="general")
+                )
+            await db_session.commit()
 
     async def test_uk_gallon_standard_derives_uk_imperial(self, db_session) -> None:
         """A UK instance derives the UK-flavoured preset (gal_uk/mpg_uk/uk),
@@ -227,7 +321,12 @@ class TestDefaultUnitPrefsForInstance:
         try:
             result = await default_unit_prefs_for_instance(db_session)
             assert result == UK_IMPERIAL_PRESET
+            # Both sides of that equality are the same constant, so it only
+            # proves the uk branch was taken if the constant really is UK.
             assert result != IMPERIAL_PRESET
+            assert result.volume == "gal_uk"
+            assert result.consumption == "mpg_uk"
+            assert result.secondary_gallon == "uk"
         finally:
             row = await db_session.get(Setting, "imperial_gallon_standard")
             if original is None:
