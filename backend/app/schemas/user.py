@@ -1,5 +1,11 @@
 """User schemas for authentication."""
 
+# pyright: reportArgumentType=error
+# Project-wide reportArgumentType is "none" (184 FastAPI Depends() hits,
+# see pyproject.toml). That suppression would also hide a broken
+# UnitPreferenceSource conformance at the resolve_units(self) call below,
+# so it is re-enabled for this one file, where that call site lives.
+
 from __future__ import annotations
 
 import re
@@ -357,6 +363,13 @@ class UserResponse(UserBase):
         Derived rather than stored so it cannot drift from the raw columns above.
         `resolve_units` is pure and synchronous for exactly this reason; if it
         ever needs the database, this field has to move to the route.
+
+        This call is the only place a `UserResponse` is checked against the
+        `UnitPreferenceSource` Protocol. That check only runs because of this
+        file's `reportArgumentType=error` pragma: the project-wide setting is
+        "none" (FastAPI `Depends()` noise), which would silently accept a
+        broken Protocol conformance here too. Do not remove the pragma without
+        another way to catch that.
         """
         return resolve_units(self)
 

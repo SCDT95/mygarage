@@ -14256,6 +14256,13 @@ export interface components {
              *     Derived rather than stored so it cannot drift from the raw columns above.
              *     `resolve_units` is pure and synchronous for exactly this reason; if it
              *     ever needs the database, this field has to move to the route.
+             *
+             *     This call is the only place a `UserResponse` is checked against the
+             *     `UnitPreferenceSource` Protocol. That check only runs because of this
+             *     file's `reportArgumentType=error` pragma: the project-wide setting is
+             *     "none" (FastAPI `Depends()` noise), which would silently accept a
+             *     broken Protocol conformance here too. Do not remove the pragma without
+             *     another way to catch that.
              */
             readonly resolved_units: components["schemas"]["UnitSet"];
             /** Secondary Gallon */

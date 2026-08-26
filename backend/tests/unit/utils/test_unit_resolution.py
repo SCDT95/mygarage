@@ -338,10 +338,31 @@ class TestUserResponseSerialisation:
 
     def test_unit_preference_accepts_custom(self) -> None:
         """Migration 093 writes 'custom'; a response schema that rejects it would
-        500 every UK user's /auth/me."""
+        500 every UK user's /auth/me.
+
+        Constructs and serialises, not just introspects the Literal: a
+        field_validator rejecting 'custom' at runtime while leaving it in the
+        Literal would pass a type-only check but 500 the real response."""
+        from datetime import datetime
+
         from app.schemas.user import UserResponse
 
         assert "custom" in UserResponse.model_fields["unit_preference"].annotation.__args__
+
+        response = UserResponse(
+            id=1,
+            username="usr",
+            email="u@example.com",
+            is_active=True,
+            is_admin=False,
+            unit_preference="custom",
+            created_at=datetime(2026, 1, 1),
+            updated_at=datetime(2026, 1, 1),
+            last_login=None,
+        )
+
+        assert response.unit_preference == "custom"
+        assert response.model_dump()["unit_preference"] == "custom"
 
     def test_write_schemas_still_reject_custom(self) -> None:
         """Ruling P1: the dedicated unit mutation arrives in phase 4, and until it
