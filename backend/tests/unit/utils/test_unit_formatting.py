@@ -8,11 +8,14 @@ cost per distance, fuel rate, volume per distance) belong to Task 4, which
 creates those formatters; testing them here would be testing code that does
 not exist yet.
 
-Every expected string below is computed directly from the adapters'
-constants (`app.utils.units.UnitConverter`), not transcribed from the
-brief's illustrative grammar table -- see the module-level comments next to
-each computation. The brief itself warns two consecutive revisions of that
-table shipped arithmetic errors.
+Every expected string below is a hand-typed LITERAL, with the arithmetic
+that produces it written out in the comment or docstring beside it, worked
+from `UnitConverter`'s own constants (mile 1.60934 km, US gallon 3.78541 L,
+UK gallon 4.54609 L). Deliberately literals rather than a re-derivation in
+this file: an expectation computed from the same constant the code under
+test uses moves with that constant instead of pinning it. They are equally
+deliberately not transcribed from the brief's illustrative grammar table,
+which shipped arithmetic errors in two consecutive revisions.
 """
 
 from __future__ import annotations
@@ -29,13 +32,6 @@ from app.utils.unit_formatting import (
     format_quantity,
     format_rate,
 )
-
-# UnitConverter's own constants (app/utils/units.py), reproduced here so the
-# expected strings below are computed independently of unit_adapters.py's
-# ADAPTERS table, not copy-pasted from it.
-_MILES_TO_KM = Decimal("1.60934")
-_US_GAL = Decimal("3.78541")
-_UK_GAL = Decimal("4.54609")
 
 # 1000 / 1.60934 = 621.3727... -> "621" at precision 0. Verified independently
 # by hand: 621 * 1.60934 = 999.60 and 622 * 1.60934 = 1001.21, so 621 is the

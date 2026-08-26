@@ -51,6 +51,14 @@ _METRIC = METRIC_PRESET
 _US_IMPERIAL = IMPERIAL_PRESET
 _MIXED = UnitSet.model_validate(METRIC_PRESET.model_dump() | {"volume": "gal_us"})
 _UK_GALLONS = UnitSet.model_validate(IMPERIAL_PRESET.model_dump() | {"volume": "gal_uk"})
+# A metric primary whose show-both counterpart gallon is the UK one (D4b:
+# `L` states no flavour, so `secondary_gallon` supplies it). Deliberately
+# NOT in `_ALL_FIXTURES` below: it exists to give the hand-computed goldens
+# a case where a UK factor is applied on the COUNTERPART side, which none of
+# the four fixtures above reaches.
+_METRIC_UK_SECONDARY = UnitSet.model_validate(
+    METRIC_PRESET.model_dump() | {"secondary_gallon": "uk"}
+)
 
 _ALL_FIXTURES: dict[str, UnitSet] = {
     "metric": _METRIC,
@@ -432,3 +440,129 @@ class TestVolumePerDistanceMixedFlip:
         result = format_volume_per_1000_distance(Decimal("8.5"), _ctx(_MIXED, True))
         assert result == "2.25 gal/1,000 km (13.68 L/1,000 mi)"
         assert "(8.50 L/1,000 km)" not in result
+
+
+class TestHandComputedGoldens:
+    """Exact strings computed by hand, where a conversion factor is actually
+    applied.
+
+    Everything above this class compares `unit_derived.py` against an
+    independent re-derivation. That catches a composition bug (wrong adapter
+    for a side, wrong side scaled, scale applied twice) but not a wrong
+    FACTOR: both sides recover the factor with the same
+    `adapter.to_canonical(Decimal("1"))` call, so they move together. The
+    only exact strings the file had were `"N/A"`, zeros, metric identities
+    (factor 1) and one volume-per-distance row, which left
+    `format_cost_per_volume` and `format_cost_per_distance` with no golden in
+    which a factor is exercised at all, and left every gallon-flavoured
+    volume-per-distance figure unpinned.
+
+    These are hand-typed literals, derived below from the three constants and
+    nothing else. `UnitConverter`'s values, not the ISO-exact ones:
+    US gallon 3.78541 L, UK gallon 4.54609 L, mile 1.60934 km.
+
+        cost per volume, canonical 0.32 per litre
+          gal_us  0.32 * 3.78541 = 1.2113312  -> "$1.21/gal"
+          gal_uk  0.32 * 4.54609 = 1.4547488  -> "$1.45/gal"
+          L       0.32 * 1       = 0.32       -> "$0.32/L"
+
+        cost per distance, canonical 0.012 per km
+          mi      0.012 * 1.60934 * 1000 = 19.31208 -> "$19.31/1,000 mi"
+          km      0.012 * 1       *  100 =  1.2     -> "$1.20/100 km"
+
+        volume per distance, canonical 8.5 L per 1,000 km
+          (8.5 / 1000 = 0.0085 L per canonical km)
+          L      /1,000 km  0.0085 / 1       * 1       * 1000 =  8.500  -> "8.50"
+          gal_us /1,000 mi  0.0085 / 3.78541 * 1.60934 * 1000 =  3.6137 -> "3.61"
+          gal_uk /1,000 mi  0.0085 / 4.54609 * 1.60934 * 1000 =  3.0090 -> "3.01"
+
+    The first three of these ($1.21/gal, $19.31/1,000 mi, and the fuel-rate
+    pair 0.66/0.55 gal/hr that `test_unit_formatting.py` already carries) are
+    the illustrative rows the plan asked to be spot-checked by hand; none of
+    them appeared anywhere in this file before.
+    """
+
+    def test_cost_per_volume_us_gallon(self) -> None:
+        actual = format_cost_per_volume(Decimal("0.32"), _ctx(_US_IMPERIAL, False), "USD", "en-US")
+        assert actual == "$1.21/gal"
+
+    def test_cost_per_volume_uk_gallon(self) -> None:
+        """The same canonical value under a UK reader. The two gallon
+        flavours share a label ("gal"), so only the NUMBER distinguishes
+        them -- which is exactly why a golden is needed here and a
+        label-shaped assertion would not do."""
+        actual = format_cost_per_volume(Decimal("0.32"), _ctx(_UK_GALLONS, False), "USD", "en-US")
+        assert actual == "$1.45/gal"
+
+    def test_cost_per_volume_show_both_us(self) -> None:
+        actual = format_cost_per_volume(Decimal("0.32"), _ctx(_US_IMPERIAL, True), "USD", "en-US")
+        assert actual == "$1.21/gal ($0.32/L)"
+
+    def test_cost_per_volume_show_both_uk(self) -> None:
+        actual = format_cost_per_volume(Decimal("0.32"), _ctx(_UK_GALLONS, True), "USD", "en-US")
+        assert actual == "$1.45/gal ($0.32/L)"
+
+    def test_cost_per_volume_counterpart_takes_us_from_secondary_gallon(self) -> None:
+        """D4b on the COUNTERPART side: a litre primary states no flavour, so
+        `secondary_gallon` picks it. The factor is applied inside the
+        parentheses here, where the primary is the identity."""
+        actual = format_cost_per_volume(Decimal("0.32"), _ctx(_METRIC, True), "USD", "en-US")
+        assert actual == "$0.32/L ($1.21/gal)"
+
+    def test_cost_per_volume_counterpart_takes_uk_from_secondary_gallon(self) -> None:
+        """The other flavour, same primary. Without this pair the counterpart
+        gallon could be hardwired to US and every other assertion in the file
+        would still pass."""
+        actual = format_cost_per_volume(
+            Decimal("0.32"), _ctx(_METRIC_UK_SECONDARY, True), "USD", "en-US"
+        )
+        assert actual == "$0.32/L ($1.45/gal)"
+
+    def test_cost_per_distance_imperial(self) -> None:
+        actual = format_cost_per_distance(
+            Decimal("0.012"), _ctx(_US_IMPERIAL, False), "USD", "en-US"
+        )
+        assert actual == "$19.31/1,000 mi"
+
+    def test_cost_per_distance_metric(self) -> None:
+        """The identity side, pinned as a literal so the imperial golden
+        above has a partner that fixes the scale convention too (100 km, not
+        1,000 km)."""
+        actual = format_cost_per_distance(Decimal("0.012"), _ctx(_METRIC, False), "USD", "en-US")
+        assert actual == "$1.20/100 km"
+
+    def test_cost_per_distance_show_both_imperial(self) -> None:
+        """D4c: distance and scale flip together, so the counterpart is
+        per 100 km, never per 1,000 km."""
+        actual = format_cost_per_distance(
+            Decimal("0.012"), _ctx(_US_IMPERIAL, True), "USD", "en-US"
+        )
+        assert actual == "$19.31/1,000 mi ($1.20/100 km)"
+
+    def test_cost_per_distance_show_both_metric(self) -> None:
+        actual = format_cost_per_distance(Decimal("0.012"), _ctx(_METRIC, True), "USD", "en-US")
+        assert actual == "$1.20/100 km ($19.31/1,000 mi)"
+
+    def test_volume_per_distance_us_gallons_per_1000_miles(self) -> None:
+        """Both sides non-identity at once: the US gallon divides the
+        numerator while the mile scales the denominator."""
+        actual = format_volume_per_1000_distance(Decimal("8.5"), _ctx(_US_IMPERIAL, False))
+        assert actual == "3.61 gal/1,000 mi"
+
+    def test_volume_per_distance_uk_gallons_per_1000_miles(self) -> None:
+        actual = format_volume_per_1000_distance(Decimal("8.5"), _ctx(_UK_GALLONS, False))
+        assert actual == "3.01 gal/1,000 mi"
+
+    def test_volume_per_distance_show_both_uk(self) -> None:
+        actual = format_volume_per_1000_distance(Decimal("8.5"), _ctx(_UK_GALLONS, True))
+        assert actual == "3.01 gal/1,000 mi (8.50 L/1,000 km)"
+
+    def test_volume_per_distance_counterpart_takes_us_from_secondary_gallon(self) -> None:
+        """Metric primary, so the whole conversion happens in the
+        parentheses: gal_us AND mi together, per D4c's "flips BOTH"."""
+        actual = format_volume_per_1000_distance(Decimal("8.5"), _ctx(_METRIC, True))
+        assert actual == "8.50 L/1,000 km (3.61 gal/1,000 mi)"
+
+    def test_volume_per_distance_counterpart_takes_uk_from_secondary_gallon(self) -> None:
+        actual = format_volume_per_1000_distance(Decimal("8.5"), _ctx(_METRIC_UK_SECONDARY, True))
+        assert actual == "8.50 L/1,000 km (3.01 gal/1,000 mi)"
