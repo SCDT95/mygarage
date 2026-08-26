@@ -48,6 +48,14 @@ class TestBasePreset:
         assert base_preset_for("metric") == METRIC_PRESET
 
     def test_imperial_preference_uses_the_imperial_preset(self) -> None:
+        """This alone cannot prove `"imperial"` is a real `_PRESETS` key rather
+        than just falling through to the same-valued fallback default: removing
+        the key from `_PRESETS` leaves this assertion passing, because
+        `base_preset_for`'s output is unchanged either way. What does catch that
+        regression is `TestNewUserSeeding.
+        test_a_default_matching_a_preset_stores_the_preset_with_null_overrides`,
+        which asserts `initial_unit_columns(IMPERIAL_PRESET)` reports the name
+        `"imperial"` and needs a genuine `_PRESETS` entry to find it."""
         assert base_preset_for("imperial") == IMPERIAL_PRESET
 
     def test_custom_falls_back_to_imperial_when_nothing_is_materialised(self) -> None:
@@ -118,6 +126,42 @@ class TestResolution:
         user = _user(unit_preference="metric", unit_pressure="atmospheres")
 
         assert resolve_units(user).pressure == "kpa"
+
+    def test_an_invalid_override_does_not_discard_a_valid_override(self) -> None:
+        """The test above sets only the bad field, so it cannot tell "discard
+        just the bad field" apart from "discard every override the moment any
+        field is invalid": with nothing else overridden, both behaviors produce
+        the same output. This test combines a VALID override (one that differs
+        from the preset, so a silent discard is visible) with an invalid one on
+        the same user."""
+        user = _user(
+            unit_preference="imperial",
+            unit_distance="km",  # valid, and differs from the imperial preset ("mi")
+            unit_pressure="atmospheres",  # invalid: not in PressureUnit's vocabulary
+        )
+
+        resolved = resolve_units(user)
+
+        assert resolved.distance == "km"  # the valid override must survive
+        assert resolved.pressure == "psi"  # only the invalid one falls back
+
+    def test_two_valid_overrides_survive_one_invalid_override(self) -> None:
+        """Complements the test above: with only one surviving override, a
+        fallback loop that happens to apply the valid field before the invalid
+        one could look correct by accident. Two surviving fields make that
+        coincidence far less likely regardless of UNIT_FIELD_NAMES's order."""
+        user = _user(
+            unit_preference="imperial",
+            unit_distance="km",
+            unit_speed="kmh",
+            unit_pressure="atmospheres",
+        )
+
+        resolved = resolve_units(user)
+
+        assert resolved.distance == "km"
+        assert resolved.speed == "kmh"
+        assert resolved.pressure == "psi"
 
 
 class TestPurity:
