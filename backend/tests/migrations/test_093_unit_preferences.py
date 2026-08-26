@@ -14,6 +14,7 @@ from pathlib import Path
 from sqlalchemy import create_engine, inspect, text
 
 from app.constants.units import UNIT_COLUMN_NAMES
+from app.services.settings_init import DEFAULT_SETTINGS
 
 _MIGRATION = (
     Path(__file__).parent.parent.parent / "app" / "migrations" / "093_add_unit_preferences.py"
@@ -94,6 +95,20 @@ def _setting(engine, key: str) -> str | None:
             text("SELECT value FROM settings WHERE key = :k"), {"k": key}
         ).scalar_one_or_none()
     return row
+
+
+def _setting_metadata(engine, key: str) -> dict:
+    """category and description, the two columns settings_init.py's update
+    branch rewrites whenever they differ from DEFAULT_SETTINGS."""
+    with engine.begin() as conn:
+        row = (
+            conn.execute(
+                text("SELECT category, description FROM settings WHERE key = :k"), {"k": key}
+            )
+            .mappings()
+            .one()
+        )
+    return dict(row)
 
 
 class TestColumnCreation:
@@ -388,3 +403,29 @@ class TestMissingTables:
         """The ORM selects these columns on every user query, so a silent failure
         would break every authenticated request. See the migration-FATAL note."""
         assert _load_migration().FATAL is True
+
+
+class TestSettingsMetadataParity:
+    def test_seeded_row_matches_the_default_settings_declaration(self, tmp_path: Path) -> None:
+        """initialize_default_settings (app/services/settings_init.py) preserves
+        an existing setting's *value* but rewrites its category and description
+        whenever they differ from its DEFAULT_SETTINGS entry. This migration
+        seeds default_unit_prefs with its own hardcoded category and
+        description, written independently of that dict. If the two ever
+        drift, every application boot after this migration runs issues a
+        pointless UPDATE, forever, with nothing failing.
+
+        This reads back what the migration actually wrote to a real database
+        and compares it against what DEFAULT_SETTINGS actually declares: two
+        independently-authored literals (one in this migration file, one in
+        settings_init.py), not one constant compared against itself. Change
+        either literal and this test must fail.
+        """
+        engine = _make_db(tmp_path, gallon_standard="us", users=[])
+        _load_migration().upgrade(engine)
+
+        seeded = _setting_metadata(engine, "default_unit_prefs")
+        declared = DEFAULT_SETTINGS["default_unit_prefs"]
+
+        assert seeded["category"] == declared["category"]
+        assert seeded["description"] == declared["description"]
