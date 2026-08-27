@@ -11,11 +11,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Groundwork for per-quantity unit preferences: per-user unit columns and a resolved unit set on the user API, with no settings UI yet (migration 093, #152).
 - Instance-wide default unit set for anonymous clients and new accounts.
 - CSV import reads schema v6 per-column unit headers (`Odometer (mi)`, `Volume (gal_uk)`, `Price Per Unit (gal_us)`), taking each column's unit from the file rather than from any account preference (#152).
+- All-records report CSV gains a `Volume (<unit>)` column, so a fill-up's quantity is a number a spreadsheet can sum (#152).
 
 ### Changed
 - Instances set to UK gallons store their imperial users as a custom unit set; displayed values are unchanged (migration 093).
 - CSV import now refuses an ambiguous or self-contradictory file with HTTP 400 naming the cause, instead of guessing: an unknown unit token, a unit token for the wrong quantity, an unrecognised `unit_system` marker, two columns for the same quantity, and rows that disagree about `unit_system` or `units_version`.
 - Importing the unversioned service-history report CSV is refused with HTTP 400, because its `Mileage` column is miles in older files and kilometres in newer ones with nothing to tell them apart. Service records exported from Export > Service records still import, including v2-era backups.
+- Service-history and all-records report CSVs are now written in the reader's own units, with the unit named in the column header (`Odometer (mi)`, `Volume (gal_us)`). Both were kilometres and litres for everyone.
+- The service-history report CSV's `Mileage` column is now `Odometer (<unit>)`, matching every other CSV the app writes. `Mileage` still imports from older files.
+- All-records report CSV fuel rows describe the fuel grade instead of repeating the quantity as text (`40.000L`); the quantity moved to the new `Volume` column.
+- Importing either report CSV is refused with HTTP 400 naming the file. A report is a printable summary, not a backup: importing one created service visits from fuel rows. Report CSVs written before this release still import as before.
 - A standalone odometer CSV whose only distance column is a bare `Reading`, with no units marker and no schema version, is now read as miles (the v2 export shape) rather than kilometres.
 - PDFs and notifications now follow each user's unit preferences. Two surfaces do not: low-tread reminder notes still use millimetres and kilometres, and LiveLink threshold alerts still report the unit the device sent.
 - The Vehicle Analytics PDF's "Cost Per km" card is now "Cost Per Distance", and its value states its own unit (for example, $42.00/100 km).

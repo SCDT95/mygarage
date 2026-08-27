@@ -38215,7 +38215,7 @@
     },
     "/api/vehicles/{vin}/reports/all-records-csv": {
       "get": {
-        "description": "Export all maintenance records to CSV.",
+        "description": "Export all maintenance records to CSV, in the caller's own units.",
         "operationId": "download_all_records_csv_api_vehicles__vin__reports_all_records_csv_get",
         "parameters": [
           {
@@ -38406,7 +38406,7 @@
     },
     "/api/vehicles/{vin}/reports/service-history-csv": {
       "get": {
-        "description": "Export service history to CSV.",
+        "description": "Export service history to CSV, in the caller's own units.",
         "operationId": "download_service_history_csv_api_vehicles__vin__reports_service_history_csv_get",
         "parameters": [
           {

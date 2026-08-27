@@ -5399,7 +5399,7 @@ export interface paths {
         };
         /**
          * Download All Records Csv
-         * @description Export all maintenance records to CSV.
+         * @description Export all maintenance records to CSV, in the caller's own units.
          */
         get: operations["download_all_records_csv_api_vehicles__vin__reports_all_records_csv_get"];
         put?: never;
@@ -5459,7 +5459,7 @@ export interface paths {
         };
         /**
          * Download Service History Csv
-         * @description Export service history to CSV.
+         * @description Export service history to CSV, in the caller's own units.
          */
         get: operations["download_service_history_csv_api_vehicles__vin__reports_service_history_csv_get"];
         put?: never;

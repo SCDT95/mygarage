@@ -17,7 +17,15 @@ from app.models.service_visit import ServiceVisit
 from app.models.user import User
 from app.services.auth import get_vehicle_or_403, require_auth
 from app.services.service_visit_service import service_visit_cost_load_options
+from app.utils.csv_emission import ODOMETER_COLUMN, VOLUME_COLUMN, cell_for, token_for
 from app.utils.csv_safe import sanitize_csv_row
+from app.utils.csv_units import (
+    ALL_RECORDS_REPORT_HEADERS,
+    DISTANCE,
+    SERVICE_HISTORY_REPORT_HEADERS,
+    VOLUME,
+    report_header_row,
+)
 from app.utils.pdf_generator import PDFReportGenerator
 from app.utils.render_context import render_context_for_request
 
@@ -353,8 +361,23 @@ async def download_service_history_csv(
     db: AsyncSession = Depends(get_db),
     current_user: User | None = Depends(require_auth),
 ):
-    """Export service history to CSV."""
+    """Export service history to CSV, in the caller's own units."""
+    # This docstring is the endpoint's public OpenAPI description, so the
+    # reasoning lives here instead.
+    #
+    # A report is a render, so it follows the render policy: the CALLER's
+    # units, never the vehicle owner's. There is deliberately no `?units=`
+    # parameter. The backup export has one because a user chooses a backup's
+    # format; a shared viewer reading a report should simply see their own
+    # units, and `get_vehicle_or_403` admits admins and shared users whose
+    # preferences differ from the owner's.
+    #
+    # `show_both` is ignored: a CSV cell is numeric, so it carries one number
+    # in one unit, named by its header token. Rendering a counterpart into the
+    # cell would make the column text a spreadsheet cannot sum.
     await get_vehicle_or_403(vin, current_user, db)
+    context = await render_context_for_request(current_user, db)
+    distance_token = token_for(ODOMETER_COLUMN, context.units)
 
     # Parse dates
     start_dt = datetime.strptime(start_date, "%Y-%m-%d").date() if start_date else None
@@ -375,18 +398,9 @@ async def download_service_history_csv(
     output = StringIO()
     writer = csv.writer(output)
 
-    # Write header
-    writer.writerow(
-        [
-            "Date",
-            "Mileage",
-            "Category",
-            "Description",
-            "Cost",
-            "Vendor",
-            "Notes",
-        ]
-    )
+    # Header row and rejection guard share one source: see
+    # `csv_units.SERVICE_HISTORY_REPORT_HEADERS`.
+    writer.writerow(report_header_row(SERVICE_HISTORY_REPORT_HEADERS, {DISTANCE: distance_token}))
 
     # Write data — one row per line item
     for visit in visits:
@@ -396,10 +410,10 @@ async def download_service_history_csv(
                 sanitize_csv_row(
                     [
                         visit.date.strftime("%Y-%m-%d") if visit.date else "",
-                        visit.odometer_km or "",
+                        cell_for(ODOMETER_COLUMN, distance_token, visit.odometer_km),
                         visit.service_category or "",
                         item.description or "",
-                        f"{float(item.cost):.2f}" if item.cost else "",
+                        f"{item.cost:.2f}" if item.cost else "",
                         vendor_name,
                         visit.notes or "",
                     ]
@@ -423,15 +437,28 @@ async def download_all_records_csv(
     db: AsyncSession = Depends(get_db),
     current_user: User | None = Depends(require_auth),
 ):
-    """Export all maintenance records to CSV."""
+    """Export all maintenance records to CSV, in the caller's own units."""
+    # Same render policy as `download_service_history_csv`, and for the same
+    # reasons: the caller's units, no `?units=` parameter, `show_both` ignored.
+    #
+    # Distance and volume resolve independently, so a metric account that
+    # prefers US gallons gets `Odometer (km)` alongside `Volume (gal_us)`.
     await get_vehicle_or_403(vin, current_user, db)
+    context = await render_context_for_request(current_user, db)
+    distance_token = token_for(ODOMETER_COLUMN, context.units)
+    volume_token = token_for(VOLUME_COLUMN, context.units)
 
     # Create CSV
     output = StringIO()
     writer = csv.writer(output)
 
-    # Write header
-    writer.writerow(["Date", "Type", "Category", "Description", "Cost", "Odometer (km)", "Vendor"])
+    # Header row and rejection guard share one source: see
+    # `csv_units.ALL_RECORDS_REPORT_HEADERS`.
+    writer.writerow(
+        report_header_row(
+            ALL_RECORDS_REPORT_HEADERS, {DISTANCE: distance_token, VOLUME: volume_token}
+        )
+    )
 
     # Query and write service visits with line items
     visit_query = _service_visits_query(vin)
@@ -457,9 +484,13 @@ async def download_all_records_csv(
                         type_label,
                         category,
                         item.description or "",
-                        f"{float(item.cost):.2f}" if item.cost else "",
-                        visit.odometer_km or "",
+                        f"{item.cost:.2f}" if item.cost else "",
+                        cell_for(ODOMETER_COLUMN, distance_token, visit.odometer_km),
                         vendor_name,
+                        # A service visit has no fuel volume. The quantity is
+                        # ABSENT, not zero: `0` would claim the visit consumed
+                        # nothing and would drag an average over the column.
+                        "",
                     ]
                 )
             )
@@ -476,10 +507,17 @@ async def download_all_records_csv(
                     record.date.strftime("%Y-%m-%d") if record.date else "",
                     "Fuel",
                     "Fuel",
-                    f"{record.liters}L" if record.liters else "",
-                    f"{float(record.cost):.2f}" if record.cost else "",
-                    record.odometer_km or "",
-                    "",  # No station field in FuelRecord model
+                    # T5-R6. This used to be `f"{record.liters}L"`: a raw
+                    # canonical litre value with a hardcoded `L`, inside a
+                    # free-text column, which is simply wrong for an imperial
+                    # reader. The quantity now has its own numeric cell, and
+                    # the description says what was bought -- the fuel-row
+                    # analogue of a service row's line-item description.
+                    record.fuel_type_used or "Fuel",
+                    f"{record.cost:.2f}" if record.cost else "",
+                    cell_for(ODOMETER_COLUMN, distance_token, record.odometer_km),
+                    "",  # No vendor: a fuel record has no service vendor.
+                    cell_for(VOLUME_COLUMN, volume_token, record.liters),
                 ]
             )
         )
