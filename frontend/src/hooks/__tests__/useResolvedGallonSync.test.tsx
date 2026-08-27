@@ -82,7 +82,13 @@ describe('useResolvedGallonSync', () => {
     // The admin's gallon toggle writes the store, and the store writes the same
     // static. Without a re-assert the converter would stay on the instance
     // answer for the rest of the session.
-    seedStore('us')
+    //
+    // ★ The store must actually CHANGE here. Its setter no-ops on an unchanged
+    // value, so seeding it to 'us' and then writing 'us' again writes nothing
+    // at all and this test asserts a property it never exercised. It did
+    // exactly that until mutation R2 survived: start on the client's own
+    // flavour, and let the toggle move the store AWAY from it.
+    seedStore('uk')
     h.gallonStandard = 'uk'
     renderHook(() => useResolvedGallonSync())
     expect(UnitConverter.getGallonStandard()).toBe('uk')
@@ -91,6 +97,8 @@ describe('useResolvedGallonSync', () => {
       storeSet('us')
     })
 
+    // The store took the instance answer, as it should; the converter did not.
+    expect(storeGet()).toBe('us')
     expect(UnitConverter.getGallonStandard()).toBe('uk')
   })
 
