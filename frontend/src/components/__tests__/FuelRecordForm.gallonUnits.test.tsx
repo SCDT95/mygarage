@@ -75,9 +75,18 @@ const vehicle = { vin: VIN, nickname: 'Test Car', vehicle_type: 'Car', year: 202
 
 const field = (id: string): HTMLInputElement => document.getElementById(id) as HTMLInputElement
 
-/** The body of the create call the form made. */
+/**
+ * The body of the CREATE call, found by URL.
+ *
+ * Not `calls[0]`: the receipt flow posts to `parse-receipt` first, and indexing
+ * blindly would assert against the wrong request.
+ */
 function postedPayload(): Record<string, unknown> {
-  return mockedApiPost.mock.calls[0][1] as Record<string, unknown>
+  const call = mockedApiPost.mock.calls.find(
+    (c) => typeof c[0] === 'string' && c[0].endsWith('/fuel')
+  )
+  expect(call, 'no create POST was made').toBeDefined()
+  return call![1] as Record<string, unknown>
 }
 
 /** Enter a full-tank fill of `volume` at `price`, in the client's own units. */
@@ -88,10 +97,30 @@ function enterFill(volume: string, price: string): void {
   fireEvent.change(field('price_per_unit'), { target: { value: price } })
 }
 
+/** The receipt draft the backend hands back, or null to disable the panel. */
+const receipt = { draft: null as Record<string, unknown> | null }
+
 beforeEach(() => {
   vi.clearAllMocks()
-  mockedApiGet.mockResolvedValue({ data: vehicle })
-  mockedApiPost.mockResolvedValue({ data: {} })
+  // Discriminated by URL: the form fetches the vehicle AND /settings/public
+  // (which is what gates the receipt panel), and posts to two endpoints.
+  mockedApiGet.mockImplementation((url: string) =>
+    url.includes('/settings/public')
+      ? Promise.resolve({
+          data: {
+            settings: [
+              { key: 'llm_receipt_parse_enabled', value: receipt.draft ? 'true' : 'false' },
+            ],
+          },
+        })
+      : Promise.resolve({ data: vehicle })
+  )
+  mockedApiPost.mockImplementation((url: string) =>
+    url.includes('parse-receipt')
+      ? Promise.resolve({ data: { draft: receipt.draft, source: 'llm' } })
+      : Promise.resolve({ data: {} })
+  )
+  receipt.draft = null
   mockedApiPut.mockResolvedValue({ data: {} })
   unitPrefMock.system = 'imperial'
   unitPrefMock.units = null
@@ -227,5 +256,45 @@ describe('FuelRecordForm — the gallon comes from the user, not the instance', 
     await waitFor(() => expect(label()).toBe('fuel.pricePer L'))
     fireEvent.change(field('price_basis'), { target: { value: 'per_weight' } })
     await waitFor(() => expect(label()).toBe('fuel.pricePer lb'))
+  })
+
+  it('★ the RECEIPT path lands both halves in the client\'s gallon, and its payload reconciles', async () => {
+    // ★ MEDIUM 2. `acceptReceiptDraft` seeds volume and price through its OWN
+    // calls rather than the form's shared seed, which is the tell the ledger
+    // names: the two mutations that revert one half of THIS path were the only
+    // survivors of the reviewer's twenty. The code was right and the guard was
+    // missing, so this drives the flow instead of unit-testing the helpers.
+    //
+    // The draft is canonical by contract: `receipt_parse_service.py:127` tells
+    // the model to "Prefer metric: liters, odometer_km, price per liter".
+    UnitConverter.setGallonStandard('us')
+    unitPrefMock.units = UK_IMPERIAL_UNITS
+    receipt.draft = { liters: 45.4609, price_per_unit: 1.31981548979, cost: 60 }
+
+    render(<FuelRecordForm {...DEFAULT_PROPS} />)
+    await waitFor(() => expect(field('receipt_text')).not.toBeNull())
+
+    fireEvent.change(field('receipt_text'), { target: { value: '10.00 gal at 6.00' } })
+    fireEvent.click(screen.getByRole('button', { name: 'fuel.parseReceipt' }))
+    const accept = await screen.findByRole('button', { name: 'fuel.receiptDraftAccept' })
+    fireEvent.click(accept)
+
+    // 45.4609 L is 10.00 imperial gallons and 12.01 US ones; $1.31981548979/L
+    // is $6.000 per imperial gallon and $4.996 per US one.
+    await waitFor(() => expect(field('liters').value).toBe('10'))
+    expect(field('price_per_unit').value).toBe('6')
+
+    fireEvent.change(field('date'), { target: { value: '2026-02-10' } })
+    fireEvent.change(field('price_basis'), { target: { value: 'per_volume' } })
+    fireEvent.submit(drawerForm())
+
+    await waitFor(() => expect(postedPayload().liters).toBeDefined())
+    const payload = postedPayload()
+    expect(payload.liters).toBe(45.461)
+    expect(payload.price_per_unit).toBe(1.31981548979)
+    const ratio =
+      ((payload.price_per_unit as number) * (payload.liters as number)) / (payload.cost as number)
+    expect(ratio).toBeCloseTo(1, 4)
+    expect(UnitConverter.getGallonStandard()).toBe('us')
   })
 })
