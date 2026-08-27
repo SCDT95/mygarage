@@ -11,10 +11,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Groundwork for per-quantity unit preferences: per-user unit columns and a resolved unit set on the user API, with no settings UI yet (migration 093, #152).
 - Instance-wide default unit set for anonymous clients and new accounts.
 - CSV import reads schema v6 per-column unit headers (`Odometer (mi)`, `Volume (gal_uk)`, `Price Per Unit (gal_us)`), taking each column's unit from the file rather than from any account preference (#152).
+- CSV export writes schema v6 per-column unit headers in the reader's own units, so a file exported by a user with custom units round-trips back to the same values (#152).
 - All-records report CSV gains a `Volume (<unit>)` column, so a fill-up's quantity is a number a spreadsheet can sum (#152).
 
 ### Changed
 - Instances set to UK gallons store their imperial users as a custom unit set; displayed values are unchanged (migration 093).
+- Fuel and DEF CSV column headers change spelling for everyone, metric readers included: `Liters` is now `Volume (L)`, `Price Per Liter` is `Price Per Unit (L)`, `Outside Temp (C)` is `Outside Temp (c)`, `OBC L/100km` is `OBC Economy (l_100km)`, and `OBC Avg Speed (km/h)` is `OBC Avg Speed (kmh)`. A spreadsheet or script that reads these files by column name needs updating. Every older file still imports unchanged.
+- Exporting with `?units=imperial` now writes US gallons and marks the file `imperial`, even on an instance set to the UK gallon standard. Files already marked `imperial_uk` still import correctly and always will.
 - CSV import now refuses an ambiguous or self-contradictory file with HTTP 400 naming the cause, instead of guessing: an unknown unit token, a unit token for the wrong quantity, an unrecognised `unit_system` marker, two columns for the same quantity, and rows that disagree about `unit_system` or `units_version`.
 - Service-history and all-records report CSVs are now written in the reader's own units, with the unit named in the column header (`Odometer (mi)`, `Volume (gal_us)`). Both were kilometres and litres for everyone.
 - The service-history report CSV's `Mileage` column is now `Odometer (<unit>)`, matching every other CSV the app writes. `Mileage` is still read on import from older backup files.
@@ -30,6 +33,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 - PSI-to-canonical conversion returned bar instead of kPa.
+- Exporting an imperial CSV backup and importing it again silently changed the data. Miles and gallons were written with two decimals, so 500.00 km came back as 500.01 and 40.000 L came back as 40.012, drifting further on every round trip. v6 writes enough decimals to be exact.
 - Fuel CSV import reads back the outside temperature, on-board economy and average speed columns the exporter has always written; they were silently dropped, so those three values were lost on every export-and-reimport.
 - Service-history and sale-history report odometer values now round consistently instead of disagreeing between the two reports.
 - Long values in PDF report KPI cards shrink to fit instead of splitting mid-number; the longest, such as a cost per distance shown in both units, still wrap onto a second line at the smallest readable size.
