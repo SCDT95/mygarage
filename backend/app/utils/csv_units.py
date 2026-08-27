@@ -1,10 +1,20 @@
-"""Which unit a CSV column's numbers are in, decided from the FILE alone.
+"""What a CSV column's unit is called, and which unit its numbers are in.
 
 Issue #152 phase 2b. CSV schema v6 lets a column name its own unit with a
 phase-1 vocabulary token (`Odometer (mi)`, `Volume (gal_uk)`), so a file
 written by a user whose distance is miles but whose volume is litres still
-says exactly what it holds. This module owns that decision for the CSV
-import path.
+says exactly what it holds. This module owns that vocabulary for BOTH
+directions:
+
+- **Reading** (most of this file): deciding a column's unit from the file
+  alone, never from a preference. That is the import path.
+- **Spelling** (`spell_header`, and the report header templates at the
+  bottom): turning a base name and a token into the header text. Every
+  emitter in the app goes through `spell_header` -- the four backup exports
+  via `csv_emission.header_for`, the two report CSVs via
+  `report_header_row` -- so the writing half and the reading half cannot
+  hold two different format strings. `spell_header` is the exact inverse of
+  `_split_token` and sits next to it for that reason.
 
 Never a preference (R1)
 -----------------------
@@ -60,6 +70,7 @@ from __future__ import annotations
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from decimal import Decimal
+from types import MappingProxyType
 from typing import Any, NoReturn, get_args
 
 from fastapi import HTTPException
@@ -662,22 +673,41 @@ def _report_header_variants(template: ReportHeaderTemplate) -> set[tuple[str, ..
     return set(rows)
 
 
-# R9. The unversioned service-history REPORT export kept the header `Mileage`
-# when its values changed from miles to canonical km, so a pre-migration file
-# and a post-migration one are byte-indistinguishable.
+# --- Which report shapes are refused on import, and why ---------------------
 #
-# ★ This literal is NOT redundant with the derived tuples below and must not
-# be deleted as such. The emitter that wrote it no longer exists, so nothing
-# can derive it; deleting it silently un-rejects every v2.21-era report.
+# A report CSV is never importable, in ANY era. `routes/reports.py` writes
+# printable summaries, not backups: both endpoints flatten each service visit
+# into one row per line item and carry columns the service importer does not
+# consume, and `download_all_records_csv` additionally interleaves fuel rows
+# into what that importer reads as a service file.
 #
-# Its EIGHT-column predecessor (`Date,Mileage,Service Type,Description,Cost,
-# Vendor Name,Vendor Phone,Notes`, retired 2026-02-12) is deliberately absent:
-# it was retired before canonical storage went metric on 2026-04-25, so every
-# file in that shape is necessarily miles and is not ambiguous. Likewise the
-# two historical `download_all_records_csv` shapes, whose distance column was
-# renamed from `Mileage` to `Odometer (km)` in the same commit that made its
-# values canonical, so neither era is ambiguous. All three still import, and
-# `tests/integration/routes/test_import_compatibility_corpus.py` pins that.
+# That flat rule REPLACES a narrower one that refused only the shapes whose
+# UNITS were ambiguous. The narrower rule left the worst case wide open:
+# importing a pre-v6 all-records report returned HTTP 200 and created one
+# service visit per fuel fill-up, each stamped `service_category='Maintenance'`
+# because the importer ignores the report's `Type` column and coerces the
+# unknown category. Those rows are indistinguishable from real maintenance in
+# the UI and in every cost aggregate. Ambiguity was the wrong criterion; a
+# report is simply not a backup, and the shape a user is most likely to
+# re-import is one they exported before the guard existed.
+#
+# ★ The historical literals below are NOT redundant with the derived tuples
+# and must NOT be deleted as such. The emitters that wrote them no longer
+# exist, so nothing can derive them; deleting one silently un-rejects every
+# file that era produced.
+#
+# Matching is by exact ORDERED header tuple, never by column membership. The
+# v2 PRIMARY service export carries the same seven names as the seven-column
+# report in a different order (`3fc799c`, one day after `2d46bae`), and the v2
+# INITIAL service export carries eight names overlapping the eight-column
+# report's, again in a different order and with `Vendor Location` where the
+# report has `Vendor Phone`. Membership matching would break the first of
+# those backup restores outright.
+
+# `download_service_history_csv`, `2d46bae`..v6. Seven columns. This is the
+# one shape that is ALSO unit-ambiguous: its `Mileage` header survived the
+# 2026-04-25 metric migration unchanged, so a miles file and a kilometres file
+# are byte-identical. It keeps its own message for that reason.
 _HISTORICAL_SERVICE_HISTORY_REPORT = (
     "Date",
     "Mileage",
@@ -688,49 +718,86 @@ _HISTORICAL_SERVICE_HISTORY_REPORT = (
     "Notes",
 )
 
-REJECTED_REPORT_DETAIL = (
-    "This file is the unversioned service-history report export. Its 'Mileage' "
-    "column is miles in older files and kilometres in newer ones, with nothing "
-    "in the file to tell them apart, so importing it could silently store the "
-    "wrong distance. Re-export the vehicle from Export > Service records "
-    "instead, which carries a units marker."
+# `download_service_history_csv`, `ad13de6`..`2d46bae` (23 tagged releases).
+# Eight columns. Retired before the metric migration, so its values can only
+# be miles and it is NOT ambiguous -- it is refused for being a report.
+_HISTORICAL_SERVICE_HISTORY_REPORT_V2 = (
+    "Date",
+    "Mileage",
+    "Service Type",
+    "Description",
+    "Cost",
+    "Vendor Name",
+    "Vendor Phone",
+    "Notes",
 )
 
-# T5-R3. Tokening a report header removes the UNIT ambiguity but not the
-# reason for the guard: a report flattens each service visit into one row per
-# line item and carries columns (`Vendor`, `Notes`, `Type`) the service
-# importer does not consume, and the all-records report additionally
-# interleaves fuel rows into what would be read as a service file. Importing
-# either would create malformed records however cleanly the units parsed, so
-# the guard's purpose does not expire when the header gains a token.
+# `download_all_records_csv`, `ad13de6`..`6f04e53`, and `6f04e53`..v6. The
+# distance column was renamed in the same commit that made its values
+# canonical, so neither era is ambiguous. Both are refused for being reports,
+# and this pair is where the fuel-row corruption actually happened.
+_HISTORICAL_ALL_RECORDS_REPORT_V2 = (
+    "Date",
+    "Type",
+    "Category",
+    "Description",
+    "Cost",
+    "Mileage",
+    "Vendor",
+)
+_HISTORICAL_ALL_RECORDS_REPORT_V3 = (
+    "Date",
+    "Type",
+    "Category",
+    "Description",
+    "Cost",
+    "Odometer (km)",
+    "Vendor",
+)
+
+# Each message claims only what the header tuple establishes. A header row is
+# evidence that a file MATCHES a report export, not proof of where it came
+# from: these seven or eight names in this order are also a plausible
+# hand-authored sheet, and telling such a user their file "is" a report export
+# would assert a provenance nothing in the file supports.
+REJECTED_REPORT_DETAIL = (
+    "This header row matches the unversioned service-history report export. "
+    "Its 'Mileage' column is miles in older files and kilometres in newer ones, "
+    "with nothing in the file to tell them apart, so importing it could "
+    "silently store the wrong distance. Re-export the vehicle from "
+    "Export > Service records instead, which carries a units marker."
+)
 _SERVICE_HISTORY_REPORT_DETAIL = (
-    "This file is the service-history report export, which is a printable "
-    "summary rather than a backup: it flattens each service visit into one row "
-    "per line item and carries columns the importer does not consume, so "
-    "importing it would create malformed records. Re-export the vehicle from "
-    "Export > Service records instead."
+    "This header row matches the service-history report export, which is a "
+    "printable summary rather than a backup: it flattens each service visit "
+    "into one row per line item and carries columns the importer does not "
+    "consume, so importing it would create malformed records. Re-export the "
+    "vehicle from Export > Service records instead."
 )
 _ALL_RECORDS_REPORT_DETAIL = (
-    "This file is the all-records report export, which is a printable summary "
-    "rather than a backup: it interleaves fuel rows with service rows in one "
-    "file and carries columns the importer does not consume, so importing it "
-    "would create malformed records. Re-export the vehicle from Export "
-    "instead, one record type at a time."
+    "This header row matches the all-records report export, which is a "
+    "printable summary rather than a backup: it interleaves fuel rows with "
+    "service rows in one file, so importing it would create a service visit "
+    "out of every fill-up. Re-export the vehicle from Export instead, one "
+    "record type at a time."
 )
 
-# Rejected by exact ORDERED header tuple, never by column membership: the v2
-# PRIMARY service export carried the same seven names as the historical report
-# in a different order, and matching on membership would break every v2 backup
-# restore. Mapped to the detail each shape is refused with, so the message
-# names the actual file the user picked.
-REJECTED_HEADER_TUPLES: Mapping[tuple[str, ...], str] = {
-    _HISTORICAL_SERVICE_HISTORY_REPORT: REJECTED_REPORT_DETAIL,
-    **{
-        headers: _SERVICE_HISTORY_REPORT_DETAIL
-        for headers in _report_header_variants(SERVICE_HISTORY_REPORT_HEADERS)
-    },
-    **{
-        headers: _ALL_RECORDS_REPORT_DETAIL
-        for headers in _report_header_variants(ALL_RECORDS_REPORT_HEADERS)
-    },
-}
+# A read-only view rather than a bare dict: an annotation is documentation,
+# not enforcement, and the object this replaced was a frozenset that an
+# importer could not mutate at all.
+REJECTED_HEADER_TUPLES: Mapping[tuple[str, ...], str] = MappingProxyType(
+    {
+        _HISTORICAL_SERVICE_HISTORY_REPORT: REJECTED_REPORT_DETAIL,
+        _HISTORICAL_SERVICE_HISTORY_REPORT_V2: _SERVICE_HISTORY_REPORT_DETAIL,
+        _HISTORICAL_ALL_RECORDS_REPORT_V2: _ALL_RECORDS_REPORT_DETAIL,
+        _HISTORICAL_ALL_RECORDS_REPORT_V3: _ALL_RECORDS_REPORT_DETAIL,
+        **{
+            headers: _SERVICE_HISTORY_REPORT_DETAIL
+            for headers in _report_header_variants(SERVICE_HISTORY_REPORT_HEADERS)
+        },
+        **{
+            headers: _ALL_RECORDS_REPORT_DETAIL
+            for headers in _report_header_variants(ALL_RECORDS_REPORT_HEADERS)
+        },
+    }
+)

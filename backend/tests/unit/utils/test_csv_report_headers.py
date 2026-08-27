@@ -13,10 +13,21 @@ adds it to the list, and the guard silently stops matching. So
 the one source, `reports.py` emits from them, and `REJECTED_HEADER_TUPLES`
 expands them over every unit set the app can resolve.
 
-The historical half cannot be derived, because the emitters that wrote it no
-longer exist. `test_the_pre_v6_mileage_report_is_still_rejected` and
-`test_the_shapes_task_4_pinned_as_importable_are_not_rejected` are what stop
-the next reader deleting those literals as redundant, in either direction.
+The historical half cannot be derived, because the emitters that wrote those
+four shapes no longer exist. `test_the_pre_v6_mileage_report_is_still_rejected`
+is what stops the next reader deleting those literals as redundant, and
+`test_the_v2_backups_whose_names_overlap_a_report_still_import` is what stops
+the guard being widened into the backups sitting next to them.
+
+Every era, not only the ambiguous ones
+--------------------------------------
+The guard covered only unit-AMBIGUOUS shapes until 2026-08-26, which left the
+all-records report importable in both its pre-v6 forms. That is the shape that
+actually corrupts: importing one writes a service visit per fuel fill-up,
+stamped `service_category='Maintenance'` and indistinguishable from real
+maintenance. The rule is now flat, a report CSV is never importable in any
+era, so the guard holds twelve tuples: four historical literals and eight
+derived.
 
 Every expected header row below is a HAND-WRITTEN literal. Deriving the
 expectation from `report_header_row` would make the exhaustiveness assertions
@@ -96,8 +107,9 @@ PRE_V6_SERVICE_HISTORY = (
     "Notes",
 )
 
-# Shapes `test_import_compatibility_corpus.py` pins as importable. None of
-# them may appear in the guard.
+# The two BACKUP shapes whose names overlap a report's. Both must stay OUT of
+# the guard: they are the reason the signature is an ordered tuple rather than
+# a column set, and each is a real v2-era backup restore.
 V2_PRIMARY_SERVICE_BACKUP = (
     "Date",
     "Category",
@@ -107,6 +119,19 @@ V2_PRIMARY_SERVICE_BACKUP = (
     "Vendor",
     "Notes",
 )
+V2_INITIAL_SERVICE_BACKUP = (
+    "Date",
+    "Service Type",
+    "Description",
+    "Mileage",
+    "Cost",
+    "Vendor Name",
+    "Vendor Location",
+    "Notes",
+)
+
+# The other three report eras. Every one of them imported until 2026-08-26 and
+# every one is now refused: a report CSV is not a backup, in any era.
 PRE_V6_SERVICE_HISTORY_EIGHT_COLUMN = (
     "Date",
     "Mileage",
@@ -136,11 +161,14 @@ PRE_V6_ALL_RECORDS_V3 = (
     "Vendor",
 )
 
-# All nine, spelled out. Two distance tokens for the service-history report,
-# two distance x three volume for all-records, plus the one historical shape
-# nothing can derive.
+# All twelve, spelled out: four historical literals nothing can derive, plus
+# two distance tokens for the v6 service-history report and two distance x
+# three volume for the v6 all-records report.
 EVERY_REJECTED_TUPLE = {
     PRE_V6_SERVICE_HISTORY,
+    PRE_V6_SERVICE_HISTORY_EIGHT_COLUMN,
+    PRE_V6_ALL_RECORDS_V2,
+    PRE_V6_ALL_RECORDS_V3,
     SERVICE_HISTORY_METRIC,
     SERVICE_HISTORY_IMPERIAL,
     ALL_RECORDS_METRIC,
@@ -187,6 +215,33 @@ EVERY_REJECTED_TUPLE = {
     ),
 }
 
+# The exact 400 detail each family is refused with, hand-written. Compared in
+# FULL, never by substring: the pre-v6 message CONTAINS the v6 one's
+# distinguishing phrase ("...unversioned service-history report export..."),
+# so a substring assertion cannot tell the two apart and passes when the
+# property it names is false.
+PRE_V6_REFUSAL = (
+    "This header row matches the unversioned service-history report export. "
+    "Its 'Mileage' column is miles in older files and kilometres in newer ones, "
+    "with nothing in the file to tell them apart, so importing it could "
+    "silently store the wrong distance. Re-export the vehicle from "
+    "Export > Service records instead, which carries a units marker."
+)
+SERVICE_HISTORY_REFUSAL = (
+    "This header row matches the service-history report export, which is a "
+    "printable summary rather than a backup: it flattens each service visit "
+    "into one row per line item and carries columns the importer does not "
+    "consume, so importing it would create malformed records. Re-export the "
+    "vehicle from Export > Service records instead."
+)
+ALL_RECORDS_REFUSAL = (
+    "This header row matches the all-records report export, which is a "
+    "printable summary rather than a backup: it interleaves fuel rows with "
+    "service rows in one file, so importing it would create a service visit "
+    "out of every fill-up. Re-export the vehicle from Export instead, one "
+    "record type at a time."
+)
+
 
 class TestTheEmittedHeaderRows:
     """What each endpoint puts on the wire, under each unit system."""
@@ -228,7 +283,7 @@ class TestTheEmittedHeaderRows:
 class TestTheDerivedGuard:
     """`REJECTED_HEADER_TUPLES`, and what must and must not be in it."""
 
-    def test_the_guard_is_exactly_these_nine_tuples(self) -> None:
+    def test_the_guard_is_exactly_these_twelve_tuples(self) -> None:
         assert set(REJECTED_HEADER_TUPLES) == EVERY_REJECTED_TUPLE
 
     @pytest.mark.parametrize("distance", sorted(QUANTITY_TOKENS[DISTANCE]))
@@ -251,32 +306,51 @@ class TestTheDerivedGuard:
         assert PRE_V6_SERVICE_HISTORY in REJECTED_HEADER_TUPLES
 
     def test_the_pre_v6_report_keeps_its_own_ambiguity_message(self) -> None:
-        detail = REJECTED_HEADER_TUPLES[PRE_V6_SERVICE_HISTORY]
-        assert "unversioned service-history report" in detail
-        assert "Mileage" in detail
-
-    def test_each_v6_report_is_refused_by_name(self) -> None:
-        """The message must name the file the user actually picked, not the
-        pre-v6 ambiguity, which no longer applies to a tokened header."""
-        assert "service-history report export" in REJECTED_HEADER_TUPLES[SERVICE_HISTORY_METRIC]
-        assert "all-records report export" in REJECTED_HEADER_TUPLES[ALL_RECORDS_METRIC]
+        """It is the one shape that is ALSO unit-ambiguous, and its message is
+        the only one that can say so."""
+        assert REJECTED_HEADER_TUPLES[PRE_V6_SERVICE_HISTORY] == PRE_V6_REFUSAL
 
     @pytest.mark.parametrize(
-        "headers",
+        ("headers", "expected"),
         [
-            V2_PRIMARY_SERVICE_BACKUP,
-            PRE_V6_SERVICE_HISTORY_EIGHT_COLUMN,
-            PRE_V6_ALL_RECORDS_V2,
-            PRE_V6_ALL_RECORDS_V3,
+            (PRE_V6_SERVICE_HISTORY, PRE_V6_REFUSAL),
+            (PRE_V6_SERVICE_HISTORY_EIGHT_COLUMN, SERVICE_HISTORY_REFUSAL),
+            (SERVICE_HISTORY_METRIC, SERVICE_HISTORY_REFUSAL),
+            (SERVICE_HISTORY_IMPERIAL, SERVICE_HISTORY_REFUSAL),
+            (PRE_V6_ALL_RECORDS_V2, ALL_RECORDS_REFUSAL),
+            (PRE_V6_ALL_RECORDS_V3, ALL_RECORDS_REFUSAL),
+            (ALL_RECORDS_METRIC, ALL_RECORDS_REFUSAL),
+            (ALL_RECORDS_IMPERIAL, ALL_RECORDS_REFUSAL),
         ],
     )
-    def test_the_shapes_task_4_pinned_as_importable_are_not_rejected(
+    def test_each_shape_carries_its_whole_expected_message(
+        self, headers: tuple[str, ...], expected: str
+    ) -> None:
+        """Whole message, never a substring.
+
+        The previous version of this test asserted
+        `"service-history report export" in <detail>`, which the PRE-V6
+        message also contains ("...unversioned service-history report
+        export..."). It therefore survived a mutation mapping the v6
+        service-history tuples to the pre-v6 message: the exact substring trap
+        this task caught and fixed one file over, repeated here. Equality
+        cannot be satisfied by the wrong message.
+        """
+        assert REJECTED_HEADER_TUPLES[headers] == expected
+
+    @pytest.mark.parametrize("headers", [V2_PRIMARY_SERVICE_BACKUP, V2_INITIAL_SERVICE_BACKUP])
+    def test_the_v2_backups_whose_names_overlap_a_report_still_import(
         self, headers: tuple[str, ...]
     ) -> None:
-        """`test_import_compatibility_corpus.py` asserts each of these imports
-        to a specific canonical value. Widening the guard to cover a report by
-        column MEMBERSHIP, or adding an unambiguous historical report shape,
-        breaks those and every backup restore behind them.
+        """The reason the signature is an ORDERED tuple and not a column set.
+
+        `V2_PRIMARY_SERVICE_BACKUP` carries the seven-column report's exact
+        names in a different order; `V2_INITIAL_SERVICE_BACKUP` overlaps the
+        eight-column report's, again reordered and with `Vendor Location`
+        where the report has `Vendor Phone`. Matching on membership would
+        refuse every v2-era backup restore along with the reports.
+        `test_import_compatibility_corpus.py` asserts both import to a
+        specific canonical value.
         """
         assert headers not in REJECTED_HEADER_TUPLES
 

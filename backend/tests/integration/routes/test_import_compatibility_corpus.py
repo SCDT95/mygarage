@@ -63,18 +63,33 @@ Timeline, with the commit that first emitted each tuple:
   49a4166  2026-08-26  v6: per-column vocabulary tokens, marker `metric` |
                        `imperial` | `custom`.
 
-The `reports.py` CSVs, because R9 turns on which of them is ambiguous
----------------------------------------------------------------------
-All four report tuples are covered. `download_all_records_csv` renamed
-`Mileage` to `Odometer (km)` in the same commit that made its values
-canonical (`6f04e53`), so both of its eras are self-describing.
-`download_service_history_csv` is the ambiguous one, but ONLY in its
-seven-column form (`2d46bae` onward), which spans the metric migration with
-its `Mileage` header unchanged. Its earlier eight-column form
-(`ad13de6`..`2d46bae`, 23 tagged releases) is NOT ambiguous: it was retired
-2026-02-12, before the metric migration on 2026-04-25, so every file in that
-shape is necessarily pre-metric and therefore miles. It must keep importing,
-and `service-v2-report-service-history` pins that.
+The `reports.py` CSVs: all four tuples covered, none importable
+---------------------------------------------------------------
+All four report tuples are covered, and since 2026-08-26 all four are
+REFUSED rather than imported. They live in `REPORT_SHAPES` (plus the
+seven-column service-history form, which keeps its own entry in `REJECTIONS`
+because it is additionally unit-ambiguous), not in `CORPUS`.
+
+The rule used to turn on ambiguity, and three of the four were unambiguous:
+`download_all_records_csv` renamed `Mileage` to `Odometer (km)` in the same
+commit that made its values canonical (`6f04e53`), so neither of its eras is
+ambiguous, and the eight-column `download_service_history_csv` form
+(`ad13de6`..`2d46bae`, 23 tagged releases) was retired 2026-02-12, before the
+metric migration on 2026-04-25, so it can only hold miles. All three
+therefore imported.
+
+Ambiguity was the wrong criterion. What those files import AS is garbage:
+the all-records report interleaves fuel rows with service rows, so importing
+one writes a service visit per fill-up, stamped `service_category=
+'Maintenance'`. The rule is now flat -- a report CSV is never importable, in
+any era -- and the compatibility guarantee below covers backups, which is
+what it was always about.
+
+What the tuple signature still protects, and what pins it: `service-v2` (the
+seven-column PRIMARY export, same names as the seven-column report in a
+different order) and `service-v2-initial` (eight names overlapping the
+eight-column report's, different order, `Vendor Location` not `Vendor
+Phone`). Both import, and would not if the signature were column membership.
 
 Factors, from `UnitConverter` (the app's rounded constants, not the exact SI
 definitions). Every expected value below was computed from these BY HAND and
@@ -406,41 +421,9 @@ CORPUS: Mapping[str, Shape] = {
         row=f"6,custom,2026-01-16,Maintenance,Oil,170,19.5,55.00,{CORPUS_VENDOR},",
         expected={"odometer_km": "273.59"},
     ),
-    "service-v2-report-service-history": Shape(
-        pair="service",
-        evidence="ad13de6",
-        header=_SVC_REPORT_HISTORY_V2,
-        # The EIGHT-column service-history report, emitted `ad13de6` through
-        # `2d46bae` across 23 tagged releases. R9 refuses that endpoint's
-        # SEVEN-column form because its `Mileage` header survived the metric
-        # migration; this earlier form did not survive it. It was retired
-        # 2026-02-12, ten weeks BEFORE canonical storage went metric on
-        # 2026-04-25, so every file in this shape is necessarily pre-metric
-        # and therefore miles. It is not ambiguous and must keep importing.
-        # 430 mi * 1.60934 = 692.0162 km.
-        row=f"2026-01-22,430,Oil Change,Synthetic oil,49.99,{CORPUS_VENDOR},555-0100,",
-        expected={"odometer_km": "692.02"},
-    ),
-    "service-v2-report-all-records": Shape(
-        pair="service",
-        evidence="ad13de6",
-        header=_SVC_REPORT_ALL_V2,
-        # The OTHER unversioned report, `reports.download_all_records_csv`.
-        # R9 rejects the service-HISTORY report because its `Mileage` header
-        # survived the metric migration; this one's did not (`6f04e53`
-        # renamed it to `Odometer (km)` in the same commit that changed the
-        # values), so the two eras are distinguishable and neither is
-        # ambiguous. 410 mi * 1.60934 = 659.8294 km.
-        row=f"2026-01-20,Service,Maintenance,Oil change,49.99,410,{CORPUS_VENDOR}",
-        expected={"odometer_km": "659.83"},
-    ),
-    "service-v3-report-all-records": Shape(
-        pair="service",
-        evidence="6f04e53",
-        header=_SVC_REPORT_ALL_V3,
-        row=f"2026-01-21,Service,Maintenance,Oil change,49.99,3700.45,{CORPUS_VENDOR}",
-        expected={"odometer_km": "3700.45"},
-    ),
+    # The three `reports.py` shapes that used to sit here moved to REJECTIONS
+    # below. They are report exports, not backups, and a report CSV is never
+    # importable in any era: see `REPORT_SHAPES` and the note above it.
     # -- odometer ---------------------------------------------------------
     "odometer-v2-bare-reading": Shape(
         pair="odometer",
@@ -1229,13 +1212,85 @@ REJECTIONS: Mapping[str, tuple[str, str, str]] = {
         "service",
         "Date,Mileage,Category,Description,Cost,Vendor,Notes\n"
         "2026-05-11,100,Maintenance,Oil,10.00,Shop,\n",
-        "This file is the unversioned service-history report export. Its 'Mileage' "
-        "column is miles in older files and kilometres in newer ones, with nothing "
-        "in the file to tell them apart, so importing it could silently store the "
-        "wrong distance. Re-export the vehicle from Export > Service records "
-        "instead, which carries a units marker.",
+        "This header row matches the unversioned service-history report export. "
+        "Its 'Mileage' column is miles in older files and kilometres in newer ones, "
+        "with nothing in the file to tell them apart, so importing it could "
+        "silently store the wrong distance. Re-export the vehicle from "
+        "Export > Service records instead, which carries a units marker.",
     ),
 }
+
+# --------------------------------------------------------------------------
+# Every OTHER shape `reports.py` has emitted. These sat in CORPUS until
+# 2026-08-26 asserting the canonical values they imported to; they are now
+# refused, and this is a deliberate compatibility change, not a regression.
+#
+# The old rule refused a report only when its UNITS were ambiguous, which let
+# the all-records report -- the one that actually corrupts -- keep importing.
+# It returns HTTP 200 and writes one service visit per fuel fill-up, stamped
+# `service_category='Maintenance'` because the importer ignores the report's
+# `Type` column, so the fabricated rows are indistinguishable from real
+# maintenance in the UI and in every cost aggregate.
+#
+# The rule is now flat: a report CSV is never importable, in any era. The
+# eight-column service-history form is included even though it is unambiguous
+# (retired 2026-02-12, before the metric migration, so it can only hold
+# miles), because a guard that refuses the newer report and accepts the older
+# one cannot be explained to a user, and "a report is not a backup" can.
+#
+# What must still import, and is pinned elsewhere in this file: the v2 PRIMARY
+# service export (`service-v2`), whose seven names match the seven-column
+# report's in a different order, and the v2 INITIAL service export
+# (`service-v2-initial`), whose eight names overlap the eight-column report's
+# in a different order and carry `Vendor Location` where the report carries
+# `Vendor Phone`. Both survive because the signature is the ordered tuple.
+# --------------------------------------------------------------------------
+
+_SERVICE_HISTORY_REPORT_REFUSAL = (
+    "This header row matches the service-history report export, which is a "
+    "printable summary rather than a backup: it flattens each service visit "
+    "into one row per line item and carries columns the importer does not "
+    "consume, so importing it would create malformed records. Re-export the "
+    "vehicle from Export > Service records instead."
+)
+_ALL_RECORDS_REPORT_REFUSAL = (
+    "This header row matches the all-records report export, which is a "
+    "printable summary rather than a backup: it interleaves fuel rows with "
+    "service rows in one file, so importing it would create a service visit "
+    "out of every fill-up. Re-export the vehicle from Export instead, one "
+    "record type at a time."
+)
+
+REPORT_SHAPES: Mapping[str, tuple[str, str, str]] = {
+    # id -> (evidence commit, CSV body, exact detail string)
+    #
+    # `download_service_history_csv`, EIGHT columns, `ad13de6`..`2d46bae`
+    # across 23 tagged releases. Used to import as 430 mi -> 692.02 km.
+    "report-service-history-v2-eight-column": (
+        "ad13de6",
+        f"{_SVC_REPORT_HISTORY_V2}\n"
+        f"2026-01-22,430,Oil Change,Synthetic oil,49.99,{CORPUS_VENDOR},555-0100,\n",
+        _SERVICE_HISTORY_REPORT_REFUSAL,
+    ),
+    # `download_all_records_csv`, `Mileage` era, `ad13de6`..`6f04e53`.
+    # Used to import as 410 mi -> 659.83 km.
+    "report-all-records-v2": (
+        "ad13de6",
+        f"{_SVC_REPORT_ALL_V2}\n"
+        f"2026-01-20,Service,Maintenance,Oil change,49.99,410,{CORPUS_VENDOR}\n",
+        _ALL_RECORDS_REPORT_REFUSAL,
+    ),
+    # `download_all_records_csv`, `Odometer (km)` era, `6f04e53`..v6.
+    # Used to import as 3700.45 km unchanged.
+    "report-all-records-v3": (
+        "6f04e53",
+        f"{_SVC_REPORT_ALL_V3}\n"
+        f"2026-01-21,Service,Maintenance,Oil change,49.99,3700.45,{CORPUS_VENDOR}\n",
+        _ALL_RECORDS_REPORT_REFUSAL,
+    ),
+}
+
+REPORT_SHAPE_VINS = {name: f"REPORT{index:011d}" for index, name in enumerate(REPORT_SHAPES)}
 
 REJECTION_VINS = {rule: f"REJECT{index:011d}" for index, rule in enumerate(REJECTIONS)}
 
@@ -1260,6 +1315,67 @@ class TestR8Rejections:
                     .all()
                 )
             assert leaked == []
+
+
+class TestReportShapesAreNeverImportable:
+    """Every era of both report exports is refused, and writes nothing.
+
+    These three shapes imported successfully until 2026-08-26 and this file
+    asserted the canonical values they produced. The values were real; the
+    ROWS were not. Flipping them is the deliberate compatibility change that
+    closes the corruption path, and the assertions below are what stop it
+    being quietly reopened.
+    """
+
+    @pytest.mark.parametrize("name", list(REPORT_SHAPES))
+    async def test_the_report_shape_is_refused_and_writes_nothing(
+        self, name: str, client, auth_headers, test_user, db_session, test_sessionmaker
+    ) -> None:
+        _evidence, body, detail = REPORT_SHAPES[name]
+        async with _vehicle(db_session, test_user["id"], REPORT_SHAPE_VINS[name]) as vin:
+            resp = await _post(client, auth_headers, vin, "service", body)
+            assert resp.status_code == 400, resp.text
+            assert resp.json()["detail"] == detail
+            async with test_sessionmaker() as fresh:
+                leaked = (
+                    (await fresh.execute(select(ServiceVisit).where(ServiceVisit.vin == vin)))
+                    .scalars()
+                    .all()
+                )
+            assert leaked == []
+
+    async def test_a_realistic_pre_v6_all_records_file_creates_no_phantom_visits(
+        self, client, auth_headers, test_user, db_session, test_sessionmaker
+    ) -> None:
+        """The scenario the flat rule exists for, at full size.
+
+        A real all-records export interleaves fuel rows with service rows. The
+        single-row fixtures above cannot show what that costs: before the
+        guard covered this shape, this exact body returned HTTP 200 with
+        `success_count: 3` and wrote THREE service visits, two of them
+        fabricated from fill-ups and every one of them stamped
+        `service_category='Maintenance'`, because the importer ignores the
+        report's `Type` column and coerces the unknown category. Those rows
+        are indistinguishable from real maintenance in the UI and in every
+        cost aggregate.
+        """
+        body = (
+            f"{_SVC_REPORT_ALL_V3}\n"
+            f"2026-07-01,Service,Maintenance,Oil change,49.99,12345.00,{CORPUS_VENDOR}\n"
+            "2026-07-02,Fuel,Fuel,40.000L,55.00,800.00,\n"
+            "2026-07-03,Fuel,Fuel,20.000L,30.00,900.00,\n"
+        )
+        async with _vehicle(db_session, test_user["id"], "REPORTPHANTOM001") as vin:
+            resp = await _post(client, auth_headers, vin, "service", body)
+            assert resp.status_code == 400, resp.text
+            assert "all-records report export" in resp.json()["detail"]
+            async with test_sessionmaker() as fresh:
+                visits = (
+                    (await fresh.execute(select(ServiceVisit).where(ServiceVisit.vin == vin)))
+                    .scalars()
+                    .all()
+                )
+            assert visits == [], f"expected no visits, got {[v.odometer_km for v in visits]}"
 
 
 # --------------------------------------------------------------------------

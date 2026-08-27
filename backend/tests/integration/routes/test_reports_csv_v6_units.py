@@ -154,18 +154,18 @@ ALL_RECORDS_UK = [
 
 # The exact 400 detail each emitted report is refused with, hand-written.
 SERVICE_HISTORY_REFUSAL = (
-    "This file is the service-history report export, which is a printable "
-    "summary rather than a backup: it flattens each service visit into one row "
-    "per line item and carries columns the importer does not consume, so "
-    "importing it would create malformed records. Re-export the vehicle from "
-    "Export > Service records instead."
+    "This header row matches the service-history report export, which is a "
+    "printable summary rather than a backup: it flattens each service visit "
+    "into one row per line item and carries columns the importer does not "
+    "consume, so importing it would create malformed records. Re-export the "
+    "vehicle from Export > Service records instead."
 )
 ALL_RECORDS_REFUSAL = (
-    "This file is the all-records report export, which is a printable summary "
-    "rather than a backup: it interleaves fuel rows with service rows in one "
-    "file and carries columns the importer does not consume, so importing it "
-    "would create malformed records. Re-export the vehicle from Export "
-    "instead, one record type at a time."
+    "This header row matches the all-records report export, which is a "
+    "printable summary rather than a backup: it interleaves fuel rows with "
+    "service rows in one file, so importing it would create a service visit "
+    "out of every fill-up. Re-export the vehicle from Export instead, one "
+    "record type at a time."
 )
 
 
@@ -545,6 +545,117 @@ class TestTheFuelDescription:
             rows = _rows(await _get(client, _headers_for(owner), "all-records-csv"))
             assert rows[2][7] == "40.000"
             assert Decimal(rows[2][7]) == Decimal("40.000")
+        finally:
+            await _cleanup(db_session)
+
+
+class TestAZeroOdometerIsARealReading:
+    """`0` km is a reading, not a missing value, and now emits as one.
+
+    Behaviour change, deliberate and user-visible. Both endpoints used to
+    write `visit.odometer_km or ""`, whose falsy test erased a genuine
+    `Decimal("0.00")` into a blank cell. `csv_emission.cell_for` blanks only
+    `None`, so the first service on a brand-new vehicle logged at 0 km now
+    carries `0.00` (metric) / `0.000` (imperial) instead of nothing.
+
+    Not covered anywhere else: the seeded fixtures all use non-zero
+    odometers, so every other assertion in this file passes either way.
+
+    ★ The COST cells in the same rows still use the falsy idiom
+    (`f"{cost:.2f}" if cost else ""`), so a stored cost of exactly `0.00` is
+    still blanked. That inconsistency is known, is shared verbatim with
+    `export.py`'s five CSV money cells, and is left for a single pass over
+    both files rather than fixed in one of them.
+    """
+
+    async def test_a_zero_odometer_emits_a_number_on_both_reports(
+        self, client: AsyncClient, db_session: AsyncSession
+    ) -> None:
+        try:
+            owner = await _make_preset_user(db_session, _OWNER, "metric")
+            await _seed(db_session, owner)
+            visit = ServiceVisit(
+                vin=_VIN,
+                date=date(2026, 2, 1),
+                odometer_km=Decimal("0.00"),
+                service_category="Maintenance",
+                notes="Delivery inspection",
+            )
+            db_session.add(visit)
+            await db_session.commit()
+            await db_session.refresh(visit)
+            db_session.add(
+                ServiceLineItem(visit_id=visit.id, description="PDI", cost=Decimal("0.00"))
+            )
+            await db_session.commit()
+
+            rows = _rows(await _get(client, _headers_for(owner), "service-history-csv"))
+            zero_row = next(row for row in rows[1:] if row[0] == "2026-02-01")
+            assert zero_row[1] == "0.00"
+            # The cost cell in the SAME row still blanks a zero. Asserted so
+            # the inconsistency is recorded rather than discovered later.
+            assert zero_row[4] == ""
+
+            rows = _rows(await _get(client, _headers_for(owner), "all-records-csv"))
+            zero_row = next(row for row in rows[1:] if row[0] == "2026-02-01")
+            assert zero_row[5] == "0.00"
+            assert zero_row[4] == ""
+        finally:
+            await _cleanup(db_session)
+
+    async def test_a_zero_odometer_converts_rather_than_blanking(
+        self, client: AsyncClient, db_session: AsyncSession
+    ) -> None:
+        """0 km is 0 mi, but through the converter, at the imperial column's
+        three decimals rather than the metric column's two."""
+        try:
+            owner = await _make_preset_user(db_session, _OWNER, "metric")
+            caller = await _make_preset_user(db_session, _IMPERIAL_CALLER, "imperial")
+            await _seed(db_session, owner)
+            visit = ServiceVisit(
+                vin=_VIN,
+                date=date(2026, 2, 2),
+                odometer_km=Decimal("0.00"),
+                service_category="Maintenance",
+            )
+            db_session.add(visit)
+            await db_session.commit()
+            await db_session.refresh(visit)
+            db_session.add(
+                ServiceLineItem(visit_id=visit.id, description="PDI", cost=Decimal("1.00"))
+            )
+            await db_session.commit()
+
+            rows = _rows(await _get(client, _headers_for(caller), "service-history-csv"))
+            zero_row = next(row for row in rows[1:] if row[0] == "2026-02-02")
+            assert zero_row[1] == "0.000"
+        finally:
+            await _cleanup(db_session)
+
+    async def test_a_missing_odometer_is_still_blank(
+        self, client: AsyncClient, db_session: AsyncSession
+    ) -> None:
+        """The half of the old behaviour that was right: NULL stays empty."""
+        try:
+            owner = await _make_preset_user(db_session, _OWNER, "metric")
+            await _seed(db_session, owner)
+            visit = ServiceVisit(
+                vin=_VIN,
+                date=date(2026, 2, 3),
+                odometer_km=None,
+                service_category="Maintenance",
+            )
+            db_session.add(visit)
+            await db_session.commit()
+            await db_session.refresh(visit)
+            db_session.add(
+                ServiceLineItem(visit_id=visit.id, description="PDI", cost=Decimal("1.00"))
+            )
+            await db_session.commit()
+
+            rows = _rows(await _get(client, _headers_for(owner), "service-history-csv"))
+            blank_row = next(row for row in rows[1:] if row[0] == "2026-02-03")
+            assert blank_row[1] == ""
         finally:
             await _cleanup(db_session)
 

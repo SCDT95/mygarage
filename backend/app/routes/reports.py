@@ -402,7 +402,16 @@ async def download_service_history_csv(
     # `csv_units.SERVICE_HISTORY_REPORT_HEADERS`.
     writer.writerow(report_header_row(SERVICE_HISTORY_REPORT_HEADERS, {DISTANCE: distance_token}))
 
-    # Write data — one row per line item
+    # Write data - one row per line item.
+    #
+    # `cell_for` blanks a cell only for None, where the old
+    # `visit.odometer_km or ""` also blanked a genuine Decimal("0.00"). A
+    # first service logged at 0 km on a new vehicle therefore now emits
+    # `0.00` instead of nothing; that is a deliberate, user-visible change and
+    # it is in the changelog. The cost cells below still use the falsy idiom,
+    # matching export.py's five CSV money cells, so a zero cost is still
+    # blanked; that inconsistency is known and belongs to a pass over both
+    # files rather than to this one.
     for visit in visits:
         vendor_name = visit.vendor.name if visit.vendor else ""
         for item in visit.line_items:
