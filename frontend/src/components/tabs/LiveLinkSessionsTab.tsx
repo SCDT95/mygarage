@@ -19,10 +19,10 @@ import {
 import { livelinkService } from '@/services/livelinkService'
 import type { DriveSession, DriveSessionListResponse } from '@/types/livelink'
 import { Card, Chip, Mono, EmptyState, Tile } from '../ui'
-import { useUnitPreference } from '@/hooks/useUnitPreference'
+import { useUnitFormat } from '@/hooks/useUnitFormat'
 import { useTimeFormat } from '@/hooks/useTimeFormat'
 import { formatAPITimestamp, formatTime } from '@/utils/parseAPITimestamp'
-import { getActiveLocale } from '@/constants/i18n'
+import { formatUnverifiedValue } from '@/utils/telemetryUnits'
 
 interface LiveLinkSessionsTabProps {
   vin: string
@@ -33,7 +33,7 @@ export default function LiveLinkSessionsTab({ vin }: LiveLinkSessionsTabProps) {
   const [sessions, setSessions] = useState<DriveSessionListResponse | null>(null)
   const [loading, setLoading] = useState(true)
   const [expandedSession, setExpandedSession] = useState<number | null>(null)
-  const { system: unitSystem } = useUnitPreference()
+  const u = useUnitFormat()
 
   const fetchSessions = useCallback(async () => {
     setLoading(true)
@@ -60,32 +60,25 @@ export default function LiveLinkSessionsTab({ vin }: LiveLinkSessionsTabProps) {
     return `${minutes}m`
   }
 
-  // Odometer and distance values from sessions are raw OBD2 values
-  // They match the user's locale (miles for US, km for metric)
-  // No conversion needed - just display with the appropriate unit label
-  const formatOdometer = (value: number | null | undefined) => {
-    if (value == null) return '--'
-    const label = unitSystem === 'imperial' ? 'mi' : 'km'
-    return `${Math.round(value).toLocaleString(getActiveLocale())} ${label}`
-  }
+  // ★ `distance_km`, `start_odometer` and `end_odometer` all come from
+  // `session_service.py::_get_current_odometer`, which reads
+  // `param_key IN ("ODOMETER", "odometer", "ODO", "DISTANCE")`, every one of
+  // them a CUSTOM PID that may already be in the user's own unit, never the
+  // standard `A6-Odometer` that SAE J1979 guarantees is kilometres. The label
+  // this used to append ("mi" for an imperial client, "km" otherwise) was a
+  // guess dressed as a fact, and the same stored number was shown as miles to
+  // one user and kilometres to another. Marking it unverified does NOT fix
+  // that: the provenance is discarded on the backend at write time.
+  const formatUnverified = (value: number | null | undefined): string =>
+    formatUnverifiedValue(value, t)
 
-  const formatSpeed = (kmh: number | null | undefined) => {
-    if (kmh == null) return '--'
-    if (unitSystem === 'imperial') {
-      const mph = kmh * 0.621371
-      return `${mph.toFixed(0)} mph`
-    }
-    return `${kmh.toFixed(0)} km/h`
-  }
+  // Speed and temperature ARE canonical: the session aggregates are km/h and
+  // °C, so they go through the shared adapter like every other quantity.
+  const formatSpeed = (kmh: number | null | undefined): string =>
+    kmh == null ? '--' : u.speed.format(kmh)
 
-  const formatTemp = (celsius: number | null | undefined) => {
-    if (celsius == null) return '--'
-    if (unitSystem === 'imperial') {
-      const fahrenheit = (celsius * 9) / 5 + 32
-      return `${fahrenheit.toFixed(0)}°F`
-    }
-    return `${celsius.toFixed(0)}°C`
-  }
+  const formatTemp = (celsius: number | null | undefined): string =>
+    celsius == null ? '--' : u.temperature.format(celsius)
 
   const toggleExpanded = (sessionId: number) => {
     setExpandedSession(expandedSession === sessionId ? null : sessionId)
@@ -120,7 +113,7 @@ export default function LiveLinkSessionsTab({ vin }: LiveLinkSessionsTabProps) {
           isExpanded={expandedSession === session.id}
           onToggle={() => toggleExpanded(session.id)}
           formatDuration={formatDuration}
-          formatOdometer={formatOdometer}
+          formatUnverified={formatUnverified}
           formatSpeed={formatSpeed}
           formatTemp={formatTemp}
         />
@@ -135,7 +128,7 @@ function SessionCard({
   isExpanded,
   onToggle,
   formatDuration,
-  formatOdometer,
+  formatUnverified,
   formatSpeed,
   formatTemp,
 }: {
@@ -143,7 +136,7 @@ function SessionCard({
   isExpanded: boolean
   onToggle: () => void
   formatDuration: (s: number | null | undefined) => string
-  formatOdometer: (value: number | null | undefined) => string
+  formatUnverified: (value: number | null | undefined) => string
   formatSpeed: (kmh: number | null | undefined) => string
   formatTemp: (c: number | null | undefined) => string
 }) {
@@ -188,7 +181,7 @@ function SessionCard({
             {session.distance_km != null && (
               <div className="flex items-center gap-1">
                 <MapPin aria-hidden="true" className="w-4 h-4" />
-                <Mono size="sm">{formatOdometer(session.distance_km)}</Mono>
+                <Mono size="sm">{formatUnverified(session.distance_km)}</Mono>
               </div>
             )}
             {session.max_speed != null && (
@@ -212,7 +205,7 @@ function SessionCard({
         <div className="px-4 pb-4 border-t border-border">
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4 pt-4">
             <Tile icon={Clock} label={t('livelink.sessions.duration')} value={formatDuration(session.duration_seconds)} />
-            <Tile icon={MapPin} label={t('livelink.sessions.distance')} value={formatOdometer(session.distance_km)} />
+            <Tile icon={MapPin} label={t('livelink.sessions.distance')} value={formatUnverified(session.distance_km)} />
             <Tile icon={Gauge} label={t('livelink.sessions.avgMaxSpeed')} value={`${formatSpeed(session.avg_speed)} / ${formatSpeed(session.max_speed)}`} />
             {session.avg_rpm != null && (
               <Tile icon={Activity} label={t('livelink.sessions.avgMaxRPM')} value={`${session.avg_rpm?.toFixed(0) || '--'} / ${session.max_rpm?.toFixed(0) || '--'}`} />
@@ -221,7 +214,7 @@ function SessionCard({
               <Tile icon={Thermometer} label={t('livelink.sessions.avgMaxCoolant')} value={`${formatTemp(session.avg_coolant_temp)} / ${formatTemp(session.max_coolant_temp)}`} />
             )}
             {session.start_odometer != null && (
-              <Tile icon={Gauge} label={t('livelink.sessions.odometerStartEnd')} value={`${formatOdometer(session.start_odometer)} → ${formatOdometer(session.end_odometer)}`} />
+              <Tile icon={Gauge} label={t('livelink.sessions.odometerStartEnd')} value={`${formatUnverified(session.start_odometer)} → ${formatUnverified(session.end_odometer)}`} />
             )}
             {session.idle_seconds != null && (
               <Tile icon={Clock} label={t('livelink.sessions.idleTime')} value={formatDuration(session.idle_seconds)} />

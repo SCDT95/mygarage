@@ -759,6 +759,7 @@
       "pointCount": "{{count}} GPS points",
       "tripCount": "{{count}} trips recorded"
     },
+    "unknownUnit": "(unknown unit)",
     "vehicleParked": "Vehicle Parked — WiCAN Connected",
     "vehicleRunning": "Vehicle Running",
     "wicanOffline": "WiCAN Offline",

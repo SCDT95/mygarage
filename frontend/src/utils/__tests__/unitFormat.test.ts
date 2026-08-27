@@ -11,6 +11,7 @@
 import { describe, it, expect } from 'vitest'
 import {
   canonicalFromUnitField,
+  formatAtPrecision,
   makeUnitFormat,
   seedUnitField,
   type UnitFieldOrigin,
@@ -102,6 +103,29 @@ describe('step', () => {
     expect(makeUnitFormat(METRIC).tread.step).toBe('0.01')
     expect(makeUnitFormat(IMPERIAL).pressure.step).toBe('0.1')
     expect(makeUnitFormat(METRIC).pressure.step).toBe('1')
+  })
+})
+
+describe('toDisplayText', () => {
+  it('renders the converted number grouped, at the unit precision, with no label', () => {
+    // The label is composed by the caller. LiveLink renders the number and the
+    // unit in different type sizes, and used to reimplement both halves.
+    expect(makeUnitFormat(IMPERIAL).distance.toDisplayText(1609.34)).toBe('1,000')
+    expect(makeUnitFormat(IMPERIAL).pressure.toDisplayText(240)).toBe('34.8')
+    expect(makeUnitFormat(METRIC).pressure.toDisplayText(240)).toBe('240')
+  })
+
+  it('renders an absent value as the empty string, matching toInputValue', () => {
+    expect(makeUnitFormat(IMPERIAL).distance.toDisplayText(null)).toBe('')
+    expect(makeUnitFormat(IMPERIAL).consumption.toDisplayText(0)).toBe('')
+  })
+})
+
+describe('formatAtPrecision', () => {
+  it('groups and fixes the decimals in the active locale', () => {
+    expect(formatAtPrecision(3200, 0)).toBe('3,200')
+    expect(formatAtPrecision(12.6, 2)).toBe('12.60')
+    expect(formatAtPrecision(1000.4, 0)).toBe('1,000')
   })
 })
 

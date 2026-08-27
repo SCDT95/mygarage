@@ -60,6 +60,16 @@ export interface QuantityFormat {
   toCanonical(typed: number | null | undefined): number | null
   /** Canonical to the ungrouped string an `<input type="number">` accepts. */
   toInputValue(canonical: number | null | undefined): string
+  /**
+   * Canonical to the grouped number a reader sees, with NO label.
+   *
+   * `format` is the whole string; this is its numeric half, for a call site
+   * that renders the label separately (LiveLink's gauges set the unit in a
+   * smaller type size). An absent value is `''` rather than `'N/A'`, matching
+   * `toInputValue`: a caller composing its own label supplies its own absent
+   * marker, and `'N/A'` beside a unit label would read as a value.
+   */
+  toDisplayText(canonical: number | null | undefined): string
   /** Canonical to a labelled string, with the counterpart when show-both is on. */
   format(canonical: number | null | undefined): string
 }
@@ -85,11 +95,16 @@ export interface UnitFieldOrigin {
 /**
  * Render a number at a fixed precision, grouped for the active locale.
  *
+ * Exported because a value OUTSIDE the unit system still has to be rendered the
+ * same way: LiveLink's RPM, voltage and percentage gauges carry a precision but
+ * no adapter, and formatting them locally is how `telemetryUnits.ts` grew a
+ * second implementation of this function.
+ *
  * @param value The already-converted display value.
  * @param precision Decimal places.
  * @returns The grouped string, e.g. `'1,000'`.
  */
-function grouped(value: number, precision: number): string {
+export function formatAtPrecision(value: number, precision: number): string {
   return new Intl.NumberFormat(getActiveLocale(), {
     minimumFractionDigits: precision,
     maximumFractionDigits: precision,
@@ -109,7 +124,7 @@ function grouped(value: number, precision: number): string {
 function render(adapter: UnitAdapter, canonical: number | null | undefined): string {
   const display = adapter.toDisplay(canonical)
   if (display === null) return NOT_AVAILABLE
-  const number = grouped(display, adapter.precision)
+  const number = formatAtPrecision(display, adapter.precision)
   return adapter.label.startsWith('/') ? `${number}${adapter.label}` : `${number} ${adapter.label}`
 }
 
@@ -140,6 +155,10 @@ function quantityFormat(units: UnitSet, quantity: UnitQuantity, showBoth: boolea
     toInputValue(canonical) {
       const display = adapter.toDisplay(canonical)
       return display === null ? '' : display.toFixed(adapter.precision)
+    },
+    toDisplayText(canonical) {
+      const display = adapter.toDisplay(canonical)
+      return display === null ? '' : formatAtPrecision(display, adapter.precision)
     },
     format(canonical) {
       // Null short-circuits BEFORE the counterpart, or an absent value renders

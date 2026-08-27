@@ -8,12 +8,8 @@ import { useCurrencyPreference } from '@/hooks/useCurrencyPreference'
 import { useUnitPreference } from '@/hooks/useUnitPreference'
 import { useDateLocale } from '@/hooks/useDateLocale'
 import { formatDateForDisplay } from '@/utils/dateUtils'
-import {
-  canonicalToDisplay,
-  supplyUnitLabel,
-  type SupplyUnitType,
-  type UnitSystem,
-} from '@/utils/supplyUnits'
+import { canonicalToDisplay, supplyUnitLabel, type SupplyUnitType } from '@/utils/supplyUnits'
+import type { UnitSystem } from '@/utils/units'
 import type { SupplyUsage } from '@/types/supplies'
 
 interface SuppliesUsedTabProps {
