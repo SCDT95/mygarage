@@ -172,20 +172,30 @@ describe('TireList under a metric set', () => {
 
     render(<TireList vin="1HGCM82633A004352" />)
     fireEvent.click(screen.getByText('tireList.addReading'))
-    fireEvent.change(screen.getByLabelText('tireList.odometerWithUnit'), {
-      target: { value: '100' },
-    })
+
+    // Same role as the two step assertions above, and for the same reason: the
+    // payload below is what `Number('100')` produced before any of this work, so
+    // on its own this test would pass with the fix absent. km has no decimals,
+    // where every input used to carry a fixed step="0.1".
+    const odo = screen.getByLabelText('tireList.odometerWithUnit') as HTMLInputElement
+    expect(odo.step).toBe('1')
+
+    fireEvent.change(odo, { target: { value: '100' } })
     fireEvent.click(screen.getByText('common:save'))
 
     expect(mutate.mock.calls[0][0].odometer_km).toBe(100)
   })
 
   it('reads the wear projection in the same unit the odometer field accepts', () => {
-    // ★ D2 across two surfaces of one card. `system` is collapsed from VOLUME,
-    // so this set answers 'metric' while distance is miles: a projection left on
-    // `UnitFormatter.formatDistance(..., system, ...)` renders "~1,000 km" above
-    // an odometer field that is in miles and posts `typed x 1.60934`.
+    // ★ D2 across two surfaces of one card, so this test reads BOTH of them.
+    // `system` is collapsed from VOLUME, so this set answers 'metric' while
+    // distance is miles: a projection left on
+    // `UnitFormatter.formatDistance(..., system, ...)` renders "~1,000 km"
+    // directly above an odometer field that is in miles and posts
+    // `typed x 1.60934`. Two distances, one card, two units.
     h.units = { ...METRIC, distance: 'mi' }
+    const mutate = vi.fn()
+    useAddTireReadingMock.mockReturnValue({ mutate, isPending: false })
     useTiresMock.mockReturnValue({
       data: {
         tires: [{ ...STORED_FL_TIRE, projected_km_remaining: '1609.34' }],
@@ -197,9 +207,20 @@ describe('TireList under a metric set', () => {
 
     render(<TireList vin="1HGCM82633A004352" />)
 
-    // 1,609.34 km / 1.60934 = 1000 mi, grouped at mi's zero decimals.
+    // Surface one, the card: 1,609.34 km / 1.60934 = 1000 mi, at mi's zero decimals.
     expect(screen.getByText('~1,000 mi')).toBeInTheDocument()
     expect(screen.queryByText('~1,000 km')).not.toBeInTheDocument()
+
+    // Surface two, the field beneath it. Tread is seeded from the tire, so this
+    // saves with only the odometer touched.
+    fireEvent.click(screen.getByText('tireList.addReading'))
+    fireEvent.change(screen.getByLabelText('tireList.odometerWithUnit'), {
+      target: { value: '100' },
+    })
+    fireEvent.click(screen.getByText('common:save'))
+
+    // 100 mi x 1.60934 = 160.934 km, the same unit the projection just read in.
+    expect(mutate.mock.calls[0][0].odometer_km).toBe(160.934)
   })
 
   it('offers the canonical 2.0 mm default unconverted on an untouched Add form', () => {
