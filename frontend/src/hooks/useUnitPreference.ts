@@ -36,7 +36,13 @@ import { useSyncExternalStore } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import type { components } from '../types/api.generated';
 import { binarySystemFor, presetUnitsFor, type UnitSet } from '../types/units';
-import { type GallonStandard, type UnitSystem } from '../utils/units';
+import {
+  getConverterGallon,
+  getConverterGallonServerSnapshot,
+  subscribeToConverterGallon,
+  type GallonStandard,
+  type UnitSystem,
+} from '../utils/units';
 import {
   getGallonStandard,
   getGallonStandardServerSnapshot,
@@ -114,6 +120,26 @@ export function useUnitPreference(): UnitPreference {
     subscribeToGallonStandard,
     getGallonStandard,
     getGallonStandardServerSnapshot,
+  );
+  // ★ Subscribed for the REPAINT, not for a value this hook returns.
+  //
+  // `useResolvedGallonSync` applies the signed-in account's gallon to
+  // `UnitConverter`'s mutable statics and deliberately does NOT write the
+  // browser-owned store, so the subscription above never fires for it. Every
+  // consumption and fuel-rate reader still takes the binary `system` and reads
+  // those statics, which means the fix would change what the next conversion
+  // returns and repaint nothing: a mounted badge kept rendering US MPG beside a
+  // volume column that had already moved to imperial gallons.
+  //
+  // This hook is the one call every unit-rendering component already makes, so
+  // subscribing HERE reaches all of them without touching one of them, which is
+  // the same argument that made the dispatch fix the right shape. The value is
+  // discarded because `gallonStandard` below is resolved per rung, not read
+  // from the converter.
+  useSyncExternalStore(
+    subscribeToConverterGallon,
+    getConverterGallon,
+    getConverterGallonServerSnapshot,
   );
 
   // Rung 1: the account's own preference.

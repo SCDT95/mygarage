@@ -32,6 +32,46 @@ import type { UnitSet } from '@/types/units';
 export type UnitSystem = 'imperial' | 'metric';
 export type GallonStandard = 'us' | 'uk';
 
+/**
+ * Subscribers to `UnitConverter`'s ACTIVE gallon flavour.
+ *
+ * ★ Separate from `gallonStandardStore` on purpose, and the distinction is the
+ * whole reason this exists. That store owns the BROWSER's value: it persists to
+ * localStorage and holds either an anonymous client's own choice or the
+ * instance default. `useResolvedGallonSync` applies the signed-in ACCOUNT's
+ * flavour to the converter and must not write that key, so the store's
+ * notification path cannot carry the change. This one can, and it fires for
+ * every writer of the static rather than only for the store's.
+ */
+const converterGallonListeners = new Set<() => void>();
+
+/**
+ * Subscribe to changes in the converter's active gallon flavour.
+ *
+ * @param listener Called after the flavour actually changes.
+ * @returns The unsubscribe function.
+ */
+export function subscribeToConverterGallon(listener: () => void): () => void {
+  converterGallonListeners.add(listener);
+  return () => {
+    converterGallonListeners.delete(listener);
+  };
+}
+
+/**
+ * The converter's active gallon flavour, as a `useSyncExternalStore` snapshot.
+ *
+ * @returns 'us' or 'uk'. A primitive, so the snapshot is stable by value.
+ */
+export function getConverterGallon(): GallonStandard {
+  return UnitConverter.getGallonStandard();
+}
+
+/** Server snapshot: nothing has resolved a flavour during prerender. */
+export function getConverterGallonServerSnapshot(): GallonStandard {
+  return 'us';
+}
+
 type Numeric = number | null | undefined;
 
 /**
@@ -108,14 +148,26 @@ export class UnitConverter {
     uk: UnitConverter.UK_GALLONS_TO_LITERS,
   };
 
-  /** Select US or UK imperial gallon (also updates MPG conversion). */
+  /**
+   * Select US or UK imperial gallon (also updates MPG conversion).
+   *
+   * Notifies `subscribeToConverterGallon` when the value actually moves, so a
+   * mounted component can repaint. Without that, writing these statics changes
+   * every subsequent conversion and repaints nothing, which is the failure
+   * `gallonStandardStore`'s docstring records: a component that had already
+   * mounted kept showing US gallons after the setting resolved.
+   */
   static setGallonStandard(standard: GallonStandard): void {
+    const changed = standard !== UnitConverter.getGallonStandard();
     if (standard === 'uk') {
       this.gallonsToLitersFactor = this.UK_GALLONS_TO_LITERS;
       this.mpgToL100kmFactor = this.UK_MPG_TO_L100KM;
     } else {
       this.gallonsToLitersFactor = this.US_GALLONS_TO_LITERS;
       this.mpgToL100kmFactor = this.US_MPG_TO_L100KM;
+    }
+    if (changed) {
+      for (const listener of converterGallonListeners) listener();
     }
   }
 
