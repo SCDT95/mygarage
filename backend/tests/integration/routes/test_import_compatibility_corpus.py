@@ -1,48 +1,80 @@
 """Every CSV shape MyGarage has ever emitted still imports to the right number.
 
 Issue #152 phase 2b, task 4. An export bug shows a wrong number once; an
-import bug writes a wrong number into canonical storage permanently, and the
-four unit-bearing pairs (service, fuel, DEF, odometer) have emitted eleven
-distinct header shapes between them since v2.14.0. This file is the matrix:
-{pair} x {every shape that pair has emitted}, each with version-specific
+import bug writes a wrong number into canonical storage permanently. This
+file is the matrix: {service, fuel, DEF, odometer} x {every distinct header
+row that pair has emitted since v2.14.0}, each cell carrying version-specific
 sentinel values and a hand-written expected canonical outcome.
 
-The shapes are derived from git history, not from what a version "probably"
-looked like. Each fixture records the commit whose `export.py` emitted that
-header row:
+How the shape list was derived
+------------------------------
+An AST walk over EVERY revision of `backend/app/routes/export.py` and
+`backend/app/routes/reports.py` (oldest first), pulling the literal
+`headers = [...]` list and every literal `writer.writerow([...])` out of the
+named export functions and printing each `(pair, header-tuple)` the first
+time it appears. Unfiltered: 16 distinct tuples in `export.py`, 4 in
+`reports.py`. The script and its verbatim output live beside this task's
+report. Nothing here is inferred from what a version "probably" looked like.
 
-  ad13de6  2025-12-02  v2.14.0, the initial commit. No `units_version`
-                       column at all; values were imperial because storage
-                       was imperial.
-  4a45b70  2026-02-11  DEF export added (still unversioned, still imperial).
-                       Fuel drops the derived `MPG` column and gains
-                       `Is Hauling` / `Fuel Type`.
-  299c930  2026-02-28  Service renames `Service Type` -> `Category` and
+A header TUPLE is not the same as a file SHAPE. `generate_csv_stream`
+prepends `units_version` from `f0a8b3b` on and `unit_system` from `f6c8a05`
+on, and `to_imperial` rewrites the unit-bearing names on an `?units=imperial`
+export, so one header tuple can appear as several files. The fixtures below
+enumerate file shapes; the walk enumerates the tuples underneath them.
+
+Timeline, with the commit that first emitted each tuple:
+
+  ad13de6  2025-12-02  v2.14.0, the initial commit. No `units_version` column
+                       at all; values were imperial because storage was.
+  26d0ee5  2026-01-20  Fuel drops the derived `MPG` column and gains
+                       `Is Hauling` / `Fuel Type`. First shipped v2.20.1.
+  4a45b70  2026-02-11  DEF export added, still unversioned and imperial. The
+                       plan's floor table said DEF postdates v2; it does not.
+  2d46bae  2026-02-12  The service-history REPORT drops from eight columns to
+                       seven. The seven-column form is the one R9 refuses.
+  3fc799c  2026-02-13  Service renames `Service Type` -> `Category` and
                        collapses `Vendor Name` / `Vendor Location` into
-                       `Vendor`. This is the seven-column shape R9 has to
-                       tell apart from the service-history REPORT.
+                       `Vendor`. This is the seven-column PRIMARY shape R9 has
+                       to tell apart from that report. First shipped v2.21.1.
   6f04e53  2026-04-25  v3: metric-canonical storage (#70). `units_version`
-                       column appears; `Mileage`/`Gallons`/`Price Per Gallon`
-                       become `Odometer (km)`/`Liters`/`Price Per Liter`.
-                       There is still NO `unit_system` column.
+                       appears; `Mileage`/`Gallons`/`Price Per Gallon` become
+                       `Odometer (km)`/`Liters`/`Price Per Liter`. There is
+                       still NO `unit_system` column.
   f0a8b3b  2026-05-05  v4 pre-marker: extended fuel columns (#69). Still no
-                       `unit_system` column, so a v4 file's units come from
+                       `unit_system`, so a v4 file's units come from
                        `units_version` alone -- R4 step 3.
+  ffee906  2026-07-13  v4 pre-marker + `Rebate`. Shipped in v2.31.0, and it is
+                       the LAST unmarked fuel export MyGarage ever released,
+                       so it carries more R4-step-3 risk than any other fuel
+                       file in the wild.
+  42d1def  2026-07-31  v4 pre-marker + `Engine Hours`, fuel and service.
+                       Superseded by `f6c8a05` five days later, so it appears
+                       in no tag; covered anyway, because a dev instance
+                       running from `main` could have exported one.
   f6c8a05  2026-08-05  v4 + marker: `unit_system` column and the imperial
-                       header rename map (#128). First files whose header
-                       row can be imperial while the schema is >= 3.
-  a88f4bd  2026-08-22  v5: the legacy `Fuel Type` column is retired and the
-                       EV/charge columns arrive.
+                       header rename map (#128). First files whose header row
+                       can be imperial while the schema is >= 3.
+  d997b40  2026-08-17  v4 + marker + the EV/charge columns, with `Fuel Type`
+                       still present. Superseded by `a88f4bd` five days later,
+                       so it too appears in no tag.
+  a88f4bd  2026-08-22  v5: the legacy `Fuel Type` column is retired.
   75b8920  2026-08-24  v5 + `imperial_uk`: the UK gallon flavour gets its own
                        marker. This is the ONLY version that ever emitted it.
   49a4166  2026-08-26  v6: per-column vocabulary tokens, marker `metric` |
                        `imperial` | `custom`.
 
-Two `reports.py` CSVs are covered too, because R9 turns on which of them is
-ambiguous. `download_all_records_csv` renamed `Mileage` to `Odometer (km)` in
-the same commit that made its values canonical (`6f04e53`), so both of its
-eras read correctly and neither is rejected. `download_service_history_csv`
-did not, which is why its exact ordered header tuple is refused outright.
+The `reports.py` CSVs, because R9 turns on which of them is ambiguous
+---------------------------------------------------------------------
+All four report tuples are covered. `download_all_records_csv` renamed
+`Mileage` to `Odometer (km)` in the same commit that made its values
+canonical (`6f04e53`), so both of its eras are self-describing.
+`download_service_history_csv` is the ambiguous one, but ONLY in its
+seven-column form (`2d46bae` onward), which spans the metric migration with
+its `Mileage` header unchanged. Its earlier eight-column form
+(`ad13de6`..`2d46bae`, 23 tagged releases) is NOT ambiguous: it was retired
+2026-02-12, before the metric migration on 2026-04-25, so every file in that
+shape is necessarily pre-metric and therefore miles. It must keep importing,
+and `service-v2-report-service-history` pins that.
 
 Factors, from `UnitConverter` (the app's rounded constants, not the exact SI
 definitions). Every expected value below was computed from these BY HAND and
@@ -55,10 +87,10 @@ never routed back through the code under test:
   UK_MPG_TO_L100KM_NUMERATOR  282.481
   Fahrenheit                  (F - 32) * 5 / 9
 
-Assertions are on the value that LANDS IN THE DATABASE, read back after
-`expire_all()` so the column's own scale has been applied, because that is
-what the compatibility guarantee is actually about. An HTTP 200 proves only
-that nothing raised.
+Assertions are on the value that LANDS IN THE DATABASE, read back through a
+session that never saw the write (see `_one`) so the column's own scale has
+been applied, because that is what the compatibility guarantee is actually
+about. An HTTP 200 proves only that nothing raised.
 """
 
 from __future__ import annotations
@@ -134,6 +166,11 @@ _SVC_V6_MI = (
     "Engine Hours,Cost,Vendor,Notes"
 )
 
+_SVC_V4_PREMARKER_HOURS = (
+    "units_version,Date,Category,Description,Odometer (km),Engine Hours,Cost,Vendor,Notes"
+)
+
+_SVC_REPORT_HISTORY_V2 = "Date,Mileage,Service Type,Description,Cost,Vendor Name,Vendor Phone,Notes"
 _SVC_REPORT_ALL_V2 = "Date,Type,Category,Description,Cost,Mileage,Vendor"
 _SVC_REPORT_ALL_V3 = "Date,Type,Category,Description,Cost,Odometer (km),Vendor"
 
@@ -186,6 +223,25 @@ _FUEL_V4_PREMARKER = (
     "Full Tank,Missed Fill-up,Is Hauling,Fuel Type,Fuel Type Used,Station ID,Station,"
     "Driver ID,Driver,Payment Method,Trip Type,Outside Temp (C),OBC L/100km,"
     "OBC Avg Speed (km/h),OBC Trip Duration (s),Notes"
+)
+_FUEL_V4_PREMARKER_REBATE = (
+    "units_version,Date,Filled At,Odometer (km),Liters,Price Per Liter,Rebate,Total Cost,"
+    "Full Tank,Missed Fill-up,Is Hauling,Fuel Type,Fuel Type Used,Station ID,Station,"
+    "Driver ID,Driver,Payment Method,Trip Type,Outside Temp (C),OBC L/100km,"
+    "OBC Avg Speed (km/h),OBC Trip Duration (s),Notes"
+)
+_FUEL_V4_PREMARKER_HOURS = (
+    "units_version,Date,Filled At,Odometer (km),Engine Hours,Liters,Price Per Liter,Rebate,"
+    "Total Cost,Full Tank,Missed Fill-up,Is Hauling,Fuel Type,Fuel Type Used,Station ID,"
+    "Station,Driver ID,Driver,Payment Method,Trip Type,Outside Temp (C),OBC L/100km,"
+    "OBC Avg Speed (km/h),OBC Trip Duration (s),Notes"
+)
+_FUEL_V4_MARKER_EV_IMPERIAL = (
+    "units_version,unit_system,Date,Filled At,Mileage,Engine Hours,Gallons,"
+    "Price Per Gallon,Rebate,Total Cost,Full Tank,Missed Fill-up,Is Hauling,Fuel Type,"
+    "Fuel Type Used,Station ID,Station,Driver ID,Driver,Payment Method,Trip Type,"
+    "Outside Temp (F),OBC MPG,OBC Avg Speed (mph),OBC Trip Duration (s),"
+    "SOC Start (%),SOC End (%),Charge Level,Charge Location,Battery SOH (%),Notes"
 )
 _FUEL_V4_MARKER_METRIC = (
     "units_version,unit_system,Date,Filled At,Odometer (km),Engine Hours,Liters,"
@@ -253,7 +309,7 @@ CORPUS: Mapping[str, Shape] = {
     ),
     "service-v2": Shape(
         pair="service",
-        evidence="299c930",
+        evidence="3fc799c",
         header=_SVC_V2,
         # 120 mi * 1.60934 = 193.1208 km. Same seven columns as the rejected
         # service-history report, in a different order (R9).
@@ -275,6 +331,18 @@ CORPUS: Mapping[str, Shape] = {
         # therefore comes from `units_version` alone (R4 step 3).
         row=f"4,2026-01-08,Inspection,Annual,1400.25,60.00,{CORPUS_VENDOR},",
         expected={"odometer_km": "1400.25"},
+    ),
+    "service-v4-premarker-engine-hours": Shape(
+        pair="service",
+        evidence="42d1def",
+        header=_SVC_V4_PREMARKER_HOURS,
+        # `Engine Hours` before `unit_system` existed. Never in a tag: it
+        # landed 2026-07-31 and `f6c8a05` superseded it 2026-08-05, with no
+        # tag cut between the two. Covered anyway, because the operator runs
+        # a second instance from `main` and an export from that window would
+        # be in exactly this shape.
+        row=f"4,2026-01-17,Maintenance,Transmission fluid,1800.35,20.5,175.00,{CORPUS_VENDOR},",
+        expected={"odometer_km": "1800.35"},
     ),
     "service-v4-marker-metric": Shape(
         pair="service",
@@ -338,9 +406,24 @@ CORPUS: Mapping[str, Shape] = {
         row=f"6,custom,2026-01-16,Maintenance,Oil,170,19.5,55.00,{CORPUS_VENDOR},",
         expected={"odometer_km": "273.59"},
     ),
+    "service-v2-report-service-history": Shape(
+        pair="service",
+        evidence="ad13de6",
+        header=_SVC_REPORT_HISTORY_V2,
+        # The EIGHT-column service-history report, emitted `ad13de6` through
+        # `2d46bae` across 23 tagged releases. R9 refuses that endpoint's
+        # SEVEN-column form because its `Mileage` header survived the metric
+        # migration; this earlier form did not survive it. It was retired
+        # 2026-02-12, ten weeks BEFORE canonical storage went metric on
+        # 2026-04-25, so every file in this shape is necessarily pre-metric
+        # and therefore miles. It is not ambiguous and must keep importing.
+        # 430 mi * 1.60934 = 692.0162 km.
+        row=f"2026-01-22,430,Oil Change,Synthetic oil,49.99,{CORPUS_VENDOR},555-0100,",
+        expected={"odometer_km": "692.02"},
+    ),
     "service-v2-report-all-records": Shape(
         pair="service",
-        evidence="c576fb3",
+        evidence="ad13de6",
         header=_SVC_REPORT_ALL_V2,
         # The OTHER unversioned report, `reports.download_all_records_csv`.
         # R9 rejects the service-HISTORY report because its `Mileage` header
@@ -610,7 +693,7 @@ CORPUS: Mapping[str, Shape] = {
     ),
     "fuel-v2": Shape(
         pair="fuel",
-        evidence="4a45b70",
+        evidence="26d0ee5",
         header=_FUEL_V2,
         # 340 mi * 1.60934 = 547.1756 km; 12 US gal * 3.78541 = 45.42492 L;
         # 7.57082 / 3.78541 = 2 per litre.
@@ -653,6 +736,47 @@ CORPUS: Mapping[str, Shape] = {
             "obc_avg_speed_kmh": "85.5",
         },
     ),
+    "fuel-v4-premarker-rebate": Shape(
+        pair="fuel",
+        evidence="ffee906",
+        header=_FUEL_V4_PREMARKER_REBATE,
+        # Shipped in v2.31.0 (and v2.31.0-rc3, v3.0.0-rc1). The LAST unmarked
+        # fuel export MyGarage released, so of every fuel file a user could
+        # still be holding, this is the one whose units rest entirely on
+        # `units_version` with no marker to fall back on (R4 step 3).
+        row=(
+            "4,2026-04-13,2026-04-13T13:00:00,4700.15,47.125,1.700,0.50,80.11,Yes,No,No,"
+            "Gasoline,gasoline,,Shell,,Alex,Card,Commute,17.5,6.75,87.5,4500,"
+        ),
+        expected={
+            "odometer_km": "4700.15",
+            "liters": "47.125",
+            "price_per_unit": "1.700",
+            "outside_temp_c": "17.5",
+            "obc_l_per_100km": "6.75",
+            "obc_avg_speed_kmh": "87.5",
+        },
+    ),
+    "fuel-v4-premarker-engine-hours": Shape(
+        pair="fuel",
+        evidence="42d1def",
+        header=_FUEL_V4_PREMARKER_HOURS,
+        # `Engine Hours` added while the file was still unmarked. Never in a
+        # tag (see `service-v4-premarker-engine-hours`), covered for the same
+        # reason.
+        row=(
+            "4,2026-04-14,2026-04-14T13:30:00,4800.25,29.5,48.375,1.750,0.50,84.16,Yes,No,No,"
+            "Gasoline,gasoline,,Shell,,Alex,Card,Commute,16.5,6.50,89.5,4600,"
+        ),
+        expected={
+            "odometer_km": "4800.25",
+            "liters": "48.375",
+            "price_per_unit": "1.750",
+            "outside_temp_c": "16.5",
+            "obc_l_per_100km": "6.50",
+            "obc_avg_speed_kmh": "89.5",
+        },
+    ),
     "fuel-v4-marker-metric": Shape(
         pair="fuel",
         evidence="f6c8a05",
@@ -688,6 +812,33 @@ CORPUS: Mapping[str, Shape] = {
             "outside_temp_c": "20.0",
             "obc_l_per_100km": "10.00",
             "obc_avg_speed_kmh": "96.6",
+        },
+    ),
+    "fuel-v4-marker-ev-fuel-type": Shape(
+        pair="fuel",
+        evidence="d997b40",
+        header=_FUEL_V4_MARKER_EV_IMPERIAL,
+        # The five-day shape: EV/charge columns arrived while the legacy
+        # `Fuel Type` column was still being written, so this file carries
+        # both. `a88f4bd` retired `Fuel Type` and moved the schema to 5
+        # before any tag was cut, so it appears in no release. Its unit
+        # resolution is the same as v5 imperial; what it adds is proof that
+        # the extra dimensionless column does not disturb the R6 allowlist.
+        # 390 mi * 1.60934 = 627.6426 km; 24 US gal * 3.78541 = 90.84984 L;
+        # 15.14164 / 3.78541 = 4 per litre; (140 - 32) * 5/9 = 60 C;
+        # 235.214 / 47.0428 = 5.00 L/100km; 90 mph * 1.60934 = 144.8406.
+        row=(
+            "4,imperial,2026-04-15,2026-04-15T14:00:00,390,30.5,24,15.14164,0.50,363.40,"
+            "Yes,No,No,Gasoline,gasoline,,Shell,,Alex,Card,Commute,140,47.0428,90,4700,"
+            "10.0,90.0,L2,Home,99.0,"
+        ),
+        expected={
+            "odometer_km": "627.64",
+            "liters": "90.850",
+            "price_per_unit": "4.000",
+            "outside_temp_c": "60.0",
+            "obc_l_per_100km": "5.00",
+            "obc_avg_speed_kmh": "144.8",
         },
     ),
     "fuel-v5-metric": Shape(
@@ -963,16 +1114,35 @@ class TestEmittedShapeCorpus:
                 )
 
 
-class TestTheFileContextCoversEveryRow:
-    """`unit_system` and `units_version` sit on every data row, not the file."""
+class TestEveryRowIsConvertedNotJustTheFirst:
+    """A file's units reach row 3, not only the row the reader saw first.
+
+    This does NOT prove R5's pre-scan, and an earlier name claiming it did
+    was wrong. `unit_system` and `units_version` are written into every data
+    row, so an implementation that reads the context off row 1 and one that
+    pre-scans every row emit byte-identical results on any file whose rows
+    agree. No valid file can separate them, because R5's design REJECTS any
+    file whose rows disagree, which is what makes the distinction unobservable
+    from the accepting side.
+
+    The pre-scan itself is pinned by the two rejection fixtures that need it:
+    `rows-disagree-unit-system` and `rows-disagree-units-version` in
+    `TestR8Rejections`. Only a reader that has looked at every row before
+    writing anything can raise those.
+
+    What this class does pin is narrower and still real: the resolved context
+    is applied to every row rather than to the first one alone. Mutations M2,
+    M3 and M7 all break it.
+    """
 
     async def test_all_three_rows_of_one_uk_file_convert_identically(
         self, client, auth_headers, test_user, db_session, test_sessionmaker
     ) -> None:
-        """Reading the context off row 1 only would still pass a 1-row test.
+        """Three identical UK-gallon volumes, all three converted the same.
 
-        Three identical UK-gallon volumes, each 12 UK gal * 4.54609 =
-        54.55308 L. Under US gallons any of them would land at 45.425.
+        12 UK gal * 4.54609 = 54.55308 L each. Under US gallons any of them
+        would land at 45.425, so a row left unconverted, or converted under
+        the wrong flavour, shows up here.
         """
         async with _vehicle(db_session, test_user["id"], "CORPUSMULTIROW01") as vin:
             body = (
@@ -1100,11 +1270,21 @@ class TestR8Rejections:
 class TestR9OrderedTupleSignature:
     """The rejected report is identified by ORDER, never by column membership.
 
-    `reports.download_service_history_csv` writes
-    `Date,Mileage,Category,Description,Cost,Vendor,Notes` and the v2 primary
-    service export (`299c930`) writes the same seven names as
-    `Date,Category,Description,Mileage,Cost,Vendor,Notes`. Matching on the
-    set instead of the tuple would reject every v2 backup restore.
+    `reports.download_service_history_csv` has written
+    `Date,Mileage,Category,Description,Cost,Vendor,Notes` since `2d46bae`
+    (2026-02-12). It has NOT always written that: from `ad13de6` until
+    `2d46bae` it wrote eight columns
+    (`Date,Mileage,Service Type,Description,Cost,Vendor Name,Vendor Phone,Notes`),
+    which is a different tuple and is not rejected, because it was retired
+    before the metric migration and so can only ever hold miles. See
+    `service-v2-report-service-history`.
+
+    The seven-column form is the ambiguous one: it spans the migration with
+    its `Mileage` header unchanged. The v2 PRIMARY service export (`3fc799c`,
+    2026-02-13) writes the same seven names as
+    `Date,Category,Description,Mileage,Cost,Vendor,Notes`, one day later and
+    in a different order. Matching on the set instead of the tuple would
+    reject every v2 backup restore along with the report.
     """
 
     REPORT = "Date,Mileage,Category,Description,Cost,Vendor,Notes"
