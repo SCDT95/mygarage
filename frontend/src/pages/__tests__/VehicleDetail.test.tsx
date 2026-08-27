@@ -459,6 +459,7 @@ describe('VehicleDetail', () => {
       isAdmin: true,
       loading: false,
       authMode: 'local',
+      defaultUnitPrefs: null,
       login: vi.fn(),
       register: vi.fn(),
       logout: vi.fn(),

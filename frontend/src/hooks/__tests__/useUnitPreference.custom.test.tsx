@@ -11,8 +11,12 @@ import { makeUnitSet, type User } from '@/__tests__/factories'
 
 const h = vi.hoisted(() => ({ user: null as Partial<User> | null }))
 
+// `defaultUnitPrefs: null` pins this file to the LOWEST rung: with no instance
+// default published, the logged-out cases below exercise the legacy
+// localStorage keys. The rung boundaries themselves live in
+// useUnitPreference.precedence.test.tsx.
 vi.mock('../../contexts/AuthContext', () => ({
-  useAuth: () => ({ user: h.user, isAuthenticated: h.user !== null }),
+  useAuth: () => ({ user: h.user, isAuthenticated: h.user !== null, defaultUnitPrefs: null }),
 }))
 
 import { useUnitPreference } from '../useUnitPreference'
