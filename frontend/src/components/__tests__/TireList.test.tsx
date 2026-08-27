@@ -100,17 +100,30 @@ describe('TireList', () => {
     })
   })
 
-  it('labels the reading odometer in miles for an imperial user', () => {
+  it('posts a blank reading odometer as null, stepping the field in whole units', () => {
+    // Replaces a test that asserted `tireList.odometerMi` present and
+    // `tireList.odometerKm` absent. One interpolated key plus a mock `t` that
+    // returns the key made both assertions unit-independent, so the name
+    // claimed a property the body no longer exercised. The imperial
+    // discriminator is the conversion test below; the metric one is its pair.
+    const mutate = vi.fn()
+    useAddTireReadingMock.mockReturnValue({ mutate, isPending: false })
+
     render(<TireList vin="1HGCM82633A004352" />)
     fireEvent.click(screen.getByText('tireList.addReading'))
 
-    // One key, interpolated with the resolved unit, instead of a pair of keys
-    // chosen by a ternary. The mock `t` returns the key, so the unit itself is
-    // asserted through the adapter tests and through `step` below.
-    const odo = screen.getByLabelText('tireList.odometerWithUnit') as HTMLInputElement
-    expect(odo).toBeInTheDocument()
     // mi renders at 0 decimals, so the spinner steps in whole miles.
+    const odo = screen.getByLabelText('tireList.odometerWithUnit') as HTMLInputElement
     expect(odo.step).toBe('1')
+    expect(odo.value).toBe('')
+
+    // Tread is seeded from the tire, so this saves without touching anything.
+    fireEvent.click(screen.getByText('common:save'))
+
+    // `0` would be posted if a blank field converted instead of clearing, and
+    // `tire_service.py` differences consecutive readings' odometers for the
+    // wear projection, so a zero poisons it rather than being ignored.
+    expect(mutate.mock.calls[0][0].odometer_km).toBeNull()
   })
 
   it('submits canonical km when the user works in miles', () => {

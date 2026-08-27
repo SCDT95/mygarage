@@ -10,14 +10,12 @@ import {
   useAddTireReading,
   useDeleteTire,
 } from '../hooks/queries/useTires'
-import { useUnitPreference } from '../hooks/useUnitPreference'
 import { useUnitFormat } from '../hooks/useUnitFormat'
 import {
   canonicalFromUnitField,
   seedUnitField,
   type UnitFieldOrigin,
 } from '../utils/unitFormat'
-import { UnitFormatter } from '../utils/units'
 import { getActionErrorMessage } from '../utils/httpErrorHandler'
 import { Button, IconButton, Card, Chip, Drawer, EmptyState, Input, Field } from './ui'
 
@@ -52,6 +50,7 @@ interface TireFormState {
 }
 
 interface ReadingFormOrigins {
+  odometer_km: UnitFieldOrigin
   tread_depth_mm: UnitFieldOrigin
   pressure_kpa: UnitFieldOrigin
 }
@@ -94,6 +93,7 @@ function emptyReadingForm(): ReadingFormState {
     pressure_kpa: '',
     notes: '',
     origins: {
+      odometer_km: { canonical: null, display: '' },
       tread_depth_mm: { canonical: null, display: '' },
       pressure_kpa: { canonical: null, display: '' },
     },
@@ -110,14 +110,14 @@ export default function TireList({ vin }: TireListProps) {
   const upsert = useUpsertTire(vin)
   const addReading = useAddTireReading(vin)
   const remove = useDeleteTire(vin)
-  /* `system` and `showBoth` survive for the ONE remaining legacy formatter on
-   * the card, the wear projection. Everything a user reads or types about tread
-   * and pressure now goes through `u`, which resolves per quantity: a custom
-   * user with litres and thirty-seconds gets `system === 'metric'` and an
-   * imperial tread, and only `u` can say so. Migrating the projection means
-   * choosing whether "~621.37 mi" becomes "~621 mi", which is phase 3b's call,
-   * not a side effect of this one. */
-  const { system, showBoth } = useUnitPreference()
+  /* Every unit on this card and in both drawers resolves through `u`, per
+   * quantity. The binary `system` is gone from the file: it is collapsed from
+   * VOLUME (spec D8), so a custom user with litres and miles reads 'metric' and
+   * a projection formatted from it would render kilometres directly above an
+   * odometer field in miles. Two distances, one card, two units, which is the
+   * disagreement D2 forbids and the one this file already carried for pressure.
+   * Cost of joining: the projection reads "~621 mi" where it read "~621.37 mi",
+   * because distance's declared precision is whole units. */
   const u = useUnitFormat()
 
   /** Tire API fields are `number | string | null`; the unit utils take `number | null`. */
@@ -167,13 +167,6 @@ export default function TireList({ vin }: TireListProps) {
    * and replaces every Tire object, so a captured one would go stale the moment
    * a reading is saved. */
   const readingTire = tires.find((tire: Tire) => tire.id === readingTireId) ?? null
-
-  /** Blank clears the field, so return null: `undefined` is dropped from the
-   *  JSON body and the partial update would then preserve the old value. The
-   *  odometer field always starts empty, so it has no canonical origin to
-   *  preserve and converts unconditionally. */
-  const canonicalOdometer = (typed: string): number | null =>
-    typed.trim() === '' ? null : u.distance.toCanonical(Number(typed))
 
   /* Spelled out as five literal t() calls rather than t(`…positions.${p}`):
    * validate-i18n-usage scans for string literals, so a computed key is
@@ -236,7 +229,11 @@ export default function TireList({ vin }: TireListProps) {
       tread_depth_mm: tread.display,
       pressure_kpa: pressure.display,
       notes: '',
-      origins: { tread_depth_mm: tread, pressure_kpa: pressure },
+      origins: {
+        odometer_km: { canonical: null, display: '' },
+        tread_depth_mm: tread,
+        pressure_kpa: pressure,
+      },
     })
     setReadingTireId(tire.id)
   }
@@ -296,9 +293,11 @@ export default function TireList({ vin }: TireListProps) {
   }
 
   const handleReading = (tireId: number) => {
-    /* Resolved before the guard, so text that is not a number is refused here
-     * rather than posted as NaN, which the old `Number(...)` after a truthiness
-     * check allowed through. */
+    /* Resolved before the guard so the refusal and the payload come from one
+     * computation rather than two. It is NOT a behaviour change against the old
+     * truthiness check: `<Input type="number">` hands back an empty string for
+     * text that is not a number, so `null` here means "blank" and nothing else
+     * reaches it. */
     const tread = canonicalFromUnitField(
       readingForm.tread_depth_mm,
       readingForm.origins.tread_depth_mm,
@@ -312,7 +311,11 @@ export default function TireList({ vin }: TireListProps) {
       {
         tireId,
         recorded_at: readingForm.recorded_at,
-        odometer_km: canonicalOdometer(readingForm.odometer_km),
+        odometer_km: canonicalFromUnitField(
+          readingForm.odometer_km,
+          readingForm.origins.odometer_km,
+          u.distance
+        ),
         tread_depth_mm: tread,
         pressure_kpa: canonicalFromUnitField(
           readingForm.pressure_kpa,
@@ -414,7 +417,7 @@ export default function TireList({ vin }: TireListProps) {
               <dt className="text-text-mute">{t('tireList.projection')}</dt>
               <dd className="font-mono text-xs">
                 {tire.projected_km_remaining != null
-                  ? `~${UnitFormatter.formatDistance(num(tire.projected_km_remaining), system, showBoth)}`
+                  ? `~${u.distance.format(num(tire.projected_km_remaining))}`
                   : '—'}
                 {tire.projected_wear_date
                   ? ` · ${formatDateForDisplay(tire.projected_wear_date)}`

@@ -132,6 +132,11 @@ describe('TireList under a metric set', () => {
     fireEvent.click(screen.getByLabelText('tireList.edit'))
 
     const pressure = screen.getByLabelText('tireList.pressureWithUnit') as HTMLInputElement
+    // kPa has no decimals, so the field steps in whole kilopascals. This is the
+    // assertion that is false at t=0 AND false before the change, where every
+    // input carried a fixed step="0.1": the value and the payload below are
+    // both what the unmigrated component already produced.
+    expect(pressure.step).toBe('1')
     expect(pressure.value).toBe('240')
 
     fireEvent.change(pressure, { target: { value: '250' } })
@@ -146,12 +151,55 @@ describe('TireList under a metric set', () => {
 
     render(<TireList vin="1HGCM82633A004352" />)
     fireEvent.click(screen.getByLabelText('tireList.edit'))
-    fireEvent.change(screen.getByLabelText('tireList.treadWithUnit'), {
-      target: { value: '8' },
-    })
+
+    // Same role as the step assertion above: mm renders at two decimals, which
+    // the fixed step="0.1" never did, so this is false before the change while
+    // the payload below is not.
+    const tread = screen.getByLabelText('tireList.treadWithUnit') as HTMLInputElement
+    expect(tread.step).toBe('0.01')
+
+    fireEvent.change(tread, { target: { value: '8' } })
     fireEvent.click(screen.getByText('common:save'))
 
     expect(mutate.mock.calls[0][0].tread_depth_mm).toBe(8)
+  })
+
+  it('stores the typed kilometres unconverted, where the imperial path scales by 1.60934', () => {
+    // The pair of the imperial `odometer_km === 160.934` test. Together they are
+    // the two-sided control the deleted label test could not be.
+    const mutate = vi.fn()
+    useAddTireReadingMock.mockReturnValue({ mutate, isPending: false })
+
+    render(<TireList vin="1HGCM82633A004352" />)
+    fireEvent.click(screen.getByText('tireList.addReading'))
+    fireEvent.change(screen.getByLabelText('tireList.odometerWithUnit'), {
+      target: { value: '100' },
+    })
+    fireEvent.click(screen.getByText('common:save'))
+
+    expect(mutate.mock.calls[0][0].odometer_km).toBe(100)
+  })
+
+  it('reads the wear projection in the same unit the odometer field accepts', () => {
+    // ★ D2 across two surfaces of one card. `system` is collapsed from VOLUME,
+    // so this set answers 'metric' while distance is miles: a projection left on
+    // `UnitFormatter.formatDistance(..., system, ...)` renders "~1,000 km" above
+    // an odometer field that is in miles and posts `typed x 1.60934`.
+    h.units = { ...METRIC, distance: 'mi' }
+    useTiresMock.mockReturnValue({
+      data: {
+        tires: [{ ...STORED_FL_TIRE, projected_km_remaining: '1609.34' }],
+        total: 1,
+      },
+      isLoading: false,
+      error: null,
+    })
+
+    render(<TireList vin="1HGCM82633A004352" />)
+
+    // 1,609.34 km / 1.60934 = 1000 mi, grouped at mi's zero decimals.
+    expect(screen.getByText('~1,000 mi')).toBeInTheDocument()
+    expect(screen.queryByText('~1,000 km')).not.toBeInTheDocument()
   })
 
   it('offers the canonical 2.0 mm default unconverted on an untouched Add form', () => {

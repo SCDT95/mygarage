@@ -128,8 +128,12 @@ function quantityFormat(units: UnitSet, quantity: UnitQuantity, showBoth: boolea
     unit: adapter.unit,
     label: adapter.label,
     precision: adapter.precision,
-    // 0 -> '1', 1 -> '0.1', 2 -> '0.01'. toFixed keeps this exact where
-    // 10 ** -precision would produce 0.010000000000000002 for larger inputs.
+    // 0 -> '1', 1 -> '0.1', 2 -> '0.01'. `toFixed` is for readability, not for
+    // safety: no adapter in the table has a precision above 2, and `10 ** -1`
+    // and `10 ** -2` both stringify exactly, so this line has no reachable case
+    // where the two spellings differ. Replacing it with `String(...)` survives
+    // mutation for that reason, which is a fact about the vocabulary rather
+    // than a hole in the tests.
     step: adapter.precision === 0 ? '1' : (10 ** -adapter.precision).toFixed(adapter.precision),
     toDisplay: (canonical) => adapter.toDisplay(canonical),
     toCanonical: (typed) => adapter.toCanonical(typed),
