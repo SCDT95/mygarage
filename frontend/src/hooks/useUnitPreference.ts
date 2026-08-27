@@ -1,21 +1,35 @@
 /**
  * Hook to access the unit preference that applies to the current client.
  *
- * Three rungs, highest wins:
+ * Four rungs, highest wins:
  *
  *   1. an authenticated account's own preference and `resolved_units`;
- *   2. otherwise `default_unit_prefs`, the instance-wide set `/settings/public`
- *      publishes for clients with no user (spec D5);
- *   3. otherwise the browser-owned legacy localStorage keys, which survive
- *      until phase 4 retires them.
+ *   2. an explicit anonymous choice: the `unit_preference` localStorage key
+ *      being PRESENT and holding a value the app recognises;
+ *   3. `default_unit_prefs`, the instance-wide set `/settings/public` publishes
+ *      for clients with no user (spec D5);
+ *   4. imperial, which nothing post-093 should reach.
  *
- * Rung 2 is new. Before it, an anonymous visitor and every client on an
+ * Rung 3 is new. Before it, an anonymous visitor and every client on an
  * `auth_mode=none` instance went straight from "no user" to
  * `localStorage.getItem('unit_preference') || 'imperial'`, so a metric-default
  * instance rendered IMPERIAL to logged-out visitors however the admin had
- * configured it. A parsed instance default outranks the legacy keys, including
- * the cached gallon standard: the server's answer is fresher than a browser
- * value that may predate the setting being changed.
+ * configured it.
+ *
+ * ★ Why the instance default sits BELOW the browser key rather than above it.
+ * `default_unit_prefs` is a DEFAULT: what you get before you choose, not
+ * something that overrides a choice already made. For an authenticated user
+ * `resolved_units` IS the recorded choice, seeded from that default at account
+ * creation; for an anonymous client the localStorage key is. Ranking the
+ * default above the key looks harmless until you notice that on an
+ * `auth_mode=none` instance `SettingsSystemTab` writes that key for a client
+ * with no account, `ProtectedRoute` lets `auth_mode=none` reach `/settings`, and
+ * migration 093 seeds `default_unit_prefs` to the imperial or UK-imperial preset
+ * and NEVER to metric. A metric household upgrading would have been flipped to
+ * imperial with no way back, while the toggle went on highlighting the choice it
+ * could no longer honour. There is no way to tell "the user chose imperial" from
+ * "a legacy key was left behind", and no need to: a leftover key is a prior
+ * choice.
  */
 
 import { useSyncExternalStore } from 'react';
@@ -100,11 +114,23 @@ export function useUnitPreference(): UnitPreference {
   }
 
   // `show_both_units` has no counterpart in a UnitSet, so it stays a browser
-  // key for every client without an account. Rung 2 publishes units, not
+  // key for every client without an account. Rung 3 publishes units, not
   // display density.
   const storedShowBoth = localStorage.getItem('show_both_units') === 'true';
 
-  // Rung 2: the instance default, for anonymous clients and auth_mode=none.
+  // Rung 2: an explicit anonymous choice. The same browser that authored this
+  // key authored the cached gallon standard, through the same Settings panel,
+  // so both browser-held values apply together.
+  const storedSystem = readStoredUnitSystem();
+  if (storedSystem !== null) {
+    return {
+      system: storedSystem,
+      showBoth: storedShowBoth,
+      gallonStandard: cachedGallonStandard,
+    };
+  }
+
+  // Rung 3: the instance default, for a browser that has never chosen.
   if (defaultUnitPrefs) {
     return {
       system: binarySystemFor(defaultUnitPrefs.volume),
@@ -113,12 +139,26 @@ export function useUnitPreference(): UnitPreference {
     };
   }
 
-  // Rung 3: the browser-owned legacy keys.
-  const storedSystem = localStorage.getItem('unit_preference') as UnitSystem | null;
-
+  // Rung 4. Post-093 every instance publishes a default, so reaching this means
+  // the settings fetch failed or the row is unparseable.
   return {
-    system: storedSystem || 'imperial',
+    system: 'imperial',
     showBoth: storedShowBoth,
     gallonStandard: cachedGallonStandard,
   };
+}
+
+/**
+ * Read the browser's own unit choice, if it holds one the app recognises.
+ *
+ * `localStorage.getItem('unit_preference') as UnitSystem` used to hand any
+ * stored text straight back as a `UnitSystem`, a value the type says cannot
+ * exist. A key the app cannot read is noise rather than a recorded choice, so
+ * it returns null and the caller falls through to the instance default.
+ *
+ * @returns The stored system, or null when the browser holds no usable choice.
+ */
+function readStoredUnitSystem(): UnitSystem | null {
+  const stored = localStorage.getItem('unit_preference');
+  return stored === 'imperial' || stored === 'metric' ? stored : null;
 }

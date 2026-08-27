@@ -8,6 +8,13 @@
  * the one mode that has no user to carry a preference is the mode that never
  * reached the parse. The default must therefore be read BEFORE that return.
  *
+ * The second is that the instance default is a DEFAULT: it answers for a
+ * browser that has never chosen, and loses to one that has. Both halves are
+ * tested here, because getting that ordering wrong makes metric unreachable on
+ * an `auth_mode=none` instance (migration 093 seeds imperial or UK-imperial and
+ * never metric, and the browser key is the only units control such an instance
+ * has).
+ *
  * These tests drive the REAL AuthProvider and the REAL useUnitPreference, with
  * only the HTTP layer mocked, so they prove the wiring end to end rather than
  * agreeing with a mocked context.
@@ -15,6 +22,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen, waitFor } from '@testing-library/react'
 import { makeUser } from '@/__tests__/factories'
+import { setGallonStandard } from '@/utils/gallonStandardStore'
 import { AuthProvider, useAuth } from '../AuthContext'
 import { useUnitPreference } from '@/hooks/useUnitPreference'
 
@@ -53,7 +61,7 @@ const UK_IMPERIAL_RAW =
 
 function Consumer() {
   const { defaultUnitPrefs, loading, authMode } = useAuth()
-  const { system } = useUnitPreference()
+  const { system, gallonStandard } = useUnitPreference()
   return (
     <div>
       <span data-testid="loading">{String(loading)}</span>
@@ -66,6 +74,7 @@ function Consumer() {
         {defaultUnitPrefs?.secondary_gallon ?? 'none'}
       </span>
       <span data-testid="system">{system}</span>
+      <span data-testid="gallon-standard">{gallonStandard}</span>
     </div>
   )
 }
@@ -86,6 +95,9 @@ function mountWithPublicSettings(settings: Array<{ key: string; value?: string |
 describe('AuthContext default_unit_prefs', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    // The gallon store is a module singleton that carries across tests. Pin it
+    // to 'us' so a 'uk' answer below can only have come from the payload.
+    setGallonStandard('us')
     localStorage.clear()
     sessionStorage.clear()
   })
@@ -110,10 +122,10 @@ describe('AuthContext default_unit_prefs', () => {
     expect(requestedUrls).not.toContain('/auth/me')
   })
 
-  it('an anonymous visitor on a metric-default instance renders metric', async () => {
-    // The shipped defect, end to end. A stale legacy key says imperial and the
-    // instance default says metric; the instance default is the higher rung.
-    localStorage.setItem('unit_preference', 'imperial')
+  it('an anonymous visitor who never chose gets the metric instance default', async () => {
+    // The shipped defect, end to end: no browser key, so the instance default
+    // answers. Before this change the same render produced imperial.
+    expect(localStorage.getItem('unit_preference')).toBeNull()
 
     mountWithPublicSettings([
       { key: 'auth_mode', value: 'local' },
@@ -125,9 +137,28 @@ describe('AuthContext default_unit_prefs', () => {
     })
   })
 
-  it('an anonymous visitor on a UK-imperial instance renders imperial', async () => {
-    // The browser says metric, so 'imperial' here cannot be the rung-3 value
-    // and cannot be the final hardcoded fallback either.
+  it('an anonymous visitor who chose imperial keeps it on a metric-default instance', async () => {
+    // The other half, and the one that makes the fix safe: a default is what
+    // you get before you choose, not something that overrides a choice.
+    localStorage.setItem('unit_preference', 'imperial')
+
+    mountWithPublicSettings([
+      { key: 'auth_mode', value: 'none' },
+      { key: 'default_unit_prefs', value: METRIC_RAW },
+    ])
+
+    await waitFor(() => {
+      expect(screen.getByTestId('loading')).toHaveTextContent('false')
+    })
+    expect(screen.getByTestId('system')).toHaveTextContent('imperial')
+    // The default was still parsed and retained; it simply lost.
+    expect(screen.getByTestId('defaults-volume')).toHaveTextContent('L')
+  })
+
+  it('an anonymous visitor who chose metric keeps it on an auth_mode=none UK instance', async () => {
+    // ★ The regression this ordering exists to prevent. Such an instance has no
+    // other units control, and 093 can only ever seed imperial or UK-imperial,
+    // so a default that outranked this key would make metric unreachable.
     localStorage.setItem('unit_preference', 'metric')
 
     mountWithPublicSettings([
@@ -136,8 +167,24 @@ describe('AuthContext default_unit_prefs', () => {
     ])
 
     await waitFor(() => {
-      expect(screen.getByTestId('system')).toHaveTextContent('imperial')
+      expect(screen.getByTestId('loading')).toHaveTextContent('false')
     })
+    expect(screen.getByTestId('system')).toHaveTextContent('metric')
+  })
+
+  it('an anonymous visitor who never chose gets the UK-imperial instance default', async () => {
+    // 'imperial' alone would be vacuous here, since it is also the terminal
+    // fallback. The gallon standard is what discriminates: the cache is pinned
+    // to 'us', so 'uk' can only have come from the published default.
+    mountWithPublicSettings([
+      { key: 'auth_mode', value: 'none' },
+      { key: 'default_unit_prefs', value: UK_IMPERIAL_RAW },
+    ])
+
+    await waitFor(() => {
+      expect(screen.getByTestId('gallon-standard')).toHaveTextContent('uk')
+    })
+    expect(screen.getByTestId('system')).toHaveTextContent('imperial')
     expect(screen.getByTestId('defaults-volume')).toHaveTextContent('gal_uk')
     expect(screen.getByTestId('defaults-secondary-gallon')).toHaveTextContent('uk')
   })
@@ -174,7 +221,7 @@ describe('AuthContext default_unit_prefs', () => {
     expect(screen.getByTestId('defaults-volume')).toHaveTextContent('L')
   })
 
-  it('drops to the legacy localStorage key when the published row is malformed', async () => {
+  it('retains no default when the published row is malformed', async () => {
     localStorage.setItem('unit_preference', 'metric')
 
     mountWithPublicSettings([
@@ -189,7 +236,7 @@ describe('AuthContext default_unit_prefs', () => {
     expect(screen.getByTestId('system')).toHaveTextContent('metric')
   })
 
-  it('drops to the legacy localStorage key when the instance publishes no default', async () => {
+  it('retains no default when the instance publishes none', async () => {
     localStorage.setItem('unit_preference', 'metric')
 
     mountWithPublicSettings([{ key: 'auth_mode', value: 'none' }])
@@ -201,7 +248,18 @@ describe('AuthContext default_unit_prefs', () => {
     expect(screen.getByTestId('system')).toHaveTextContent('metric')
   })
 
-  it('retains no default when the settings fetch fails outright', async () => {
+  it('a failed settings fetch still finishes loading and leaves the browser in charge', async () => {
+    // Round 1 shipped this test asserting `defaults-present` false and `system`
+    // imperial with an empty localStorage, which holds whether or not any code
+    // in the diff runs: `defaultUnitPrefs` initialises to null and imperial is
+    // the terminal fallback. It was vacuous and survived every mutation.
+    //
+    // Two halves that a mutation CAN break: `loading` reaching false depends on
+    // `setLoading(false)` staying in loadUser's `finally` rather than moving
+    // into the try, which a fetch that throws would then skip forever; and
+    // `system` reading metric depends on the browser's own choice still being
+    // consulted when the server answered with nothing at all.
+    localStorage.setItem('unit_preference', 'metric')
     mockedApi.get.mockImplementation(() => Promise.reject(new Error('offline')))
 
     render(
@@ -214,6 +272,6 @@ describe('AuthContext default_unit_prefs', () => {
       expect(screen.getByTestId('loading')).toHaveTextContent('false')
     })
     expect(screen.getByTestId('defaults-present')).toHaveTextContent('false')
-    expect(screen.getByTestId('system')).toHaveTextContent('imperial')
+    expect(screen.getByTestId('system')).toHaveTextContent('metric')
   })
 })
