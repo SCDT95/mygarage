@@ -23,8 +23,25 @@ vi.mock('@tanstack/react-query', () => ({
 // otherwise, and it's not under test here. Mutable so the B7 unit-aware
 // volume-header test can toggle metric/imperial; every other test leaves it
 // at the metric default restored in afterEach.
-const unitPrefMock = vi.hoisted(() => ({ system: 'metric' as 'metric' | 'imperial', showBoth: false }))
-vi.mock('../../hooks/useUnitPreference', () => ({ useUnitPreference: () => unitPrefMock }))
+const unitPrefMock = vi.hoisted(() => ({
+  system: 'metric' as 'metric' | 'imperial',
+  showBoth: false,
+  // Set to pin an exact resolved set (a `gal_uk` user, say); left null the set
+  // follows `system`, the way the real hook derives both on one rung.
+  units: null as null | import('@/types/units').UnitSet,
+}))
+vi.mock('../../hooks/useUnitPreference', async () => {
+  const { IMPERIAL_UNITS, METRIC_UNITS } = await import('@/__tests__/factories')
+  return {
+    useUnitPreference: () => ({
+      system: unitPrefMock.system,
+      showBoth: unitPrefMock.showBoth,
+      units:
+        unitPrefMock.units ??
+        (unitPrefMock.system === 'imperial' ? IMPERIAL_UNITS : METRIC_UNITS),
+    }),
+  }
+})
 
 // LOCAL i18n mock (same pattern as the fuel-list B5 fix): the GLOBAL setup.ts
 // mock is `t: (key) => key`, which discards interpolation args, so
@@ -49,6 +66,8 @@ vi.mock('../../hooks/useCurrencyPreference', () => ({
   }),
 }))
 
+import { UK_IMPERIAL_UNITS } from '../../__tests__/factories'
+import { UnitConverter } from '../../utils/units'
 import DEFRecordList from '../DEFRecordList'
 
 const mockRecord: DEFRecord = {
@@ -155,5 +174,60 @@ describe('DEFRecordList — DataTable structure + unit-aware header (M3/B7)', ()
     } })
     render(<DEFRecordList vin="TEST12345678901234" />)
     expect(screen.getByText('defList.totalSpent')).toBeInTheDocument()
+  })
+})
+
+describe('DEFRecordList — one gallon per page, taken from the user', () => {
+  beforeEach(() => {
+    UnitConverter.setGallonStandard('us')
+    unitPrefMock.system = 'metric'
+    unitPrefMock.units = null
+    useDEFAnalyticsMock.mockReturnValue({
+      data: {
+        record_count: 1,
+        estimated_km_remaining: null,
+        estimated_days_remaining: null,
+        liters_per_1000_km: '4.700',
+        avg_cost_per_liter: '1.189',
+        total_cost: '24.75',
+        total_liters: '20.820',
+        data_confidence: 'high',
+      },
+    })
+  })
+  afterEach(() => {
+    unitPrefMock.system = 'metric'
+    unitPrefMock.units = null
+  })
+
+  it('puts the consumption card, the cost card and the volume total on the imperial gallon', () => {
+    UnitConverter.setGallonStandard('us')
+    unitPrefMock.system = 'imperial'
+    unitPrefMock.units = UK_IMPERIAL_UNITS
+
+    render(<DEFRecordList vin="TEST12345678901234" />)
+
+    // 4.7 L/1000km is 1.7 imperial gal/1000mi (2.0 US ones).
+    expect(screen.getByText('1.7')).toBeInTheDocument()
+    expect(screen.getByText('gal/1,000 mi')).toBeInTheDocument()
+    // $1.189/L is $5.41 per imperial gallon, $4.50 per US one.
+    expect(screen.getByText('Avg Cost/gal')).toBeInTheDocument()
+    expect(screen.getByText('$5.41')).toBeInTheDocument()
+    // 20.82 L is 4.6 imperial gallons.
+    expect(screen.getByText('4.6 gal total')).toBeInTheDocument()
+    // And the row cell agrees with all three.
+    expect(within(screen.getByRole('table', { name: 'defList.tableCaption' })).getByText('4.58 gal')).toBeInTheDocument()
+    expect(UnitConverter.getGallonStandard()).toBe('us')
+  })
+
+  it('stays in litres for a metric set even on a UK-default instance', () => {
+    UnitConverter.setGallonStandard('uk')
+    render(<DEFRecordList vin="TEST12345678901234" />)
+
+    expect(screen.getByText('4.7')).toBeInTheDocument()
+    expect(screen.getByText('L/1,000 km')).toBeInTheDocument()
+    expect(screen.getByText('Avg Cost/L')).toBeInTheDocument()
+    expect(screen.getByText('$1.19')).toBeInTheDocument()
+    expect(screen.getByText('20.8 L total')).toBeInTheDocument()
   })
 })

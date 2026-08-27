@@ -99,8 +99,8 @@ function systemFor(user: UnitPreferenceFields): UnitSystem {
  *   fully resolved per-quantity set, all decided on the same rung.
  *
  * @example
- * const { system, showBoth } = useUnitPreference();
- * const displayValue = UnitFormatter.formatVolume(gallons, system, showBoth);
+ * const { units, showBoth } = useUnitPreference();
+ * const displayValue = UnitFormatter.formatVolume(liters, units, showBoth);
  *
  * Prefer `useUnitFormat()` in a component: it closes over `units` and answers
  * per quantity, where `system` can only answer for the whole client.

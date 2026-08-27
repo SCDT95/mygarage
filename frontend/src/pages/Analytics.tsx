@@ -91,7 +91,7 @@ const DEFAULT_ANOMALY_RANGE: AnomalyRange = '12m'
 export default function Analytics() {
   const { t } = useTranslation('analytics')
   const { vin } = useParams<{ vin: string }>()
-  const { system, showBoth } = useUnitPreference()
+  const { system, showBoth, units } = useUnitPreference()
   const { currencyCode, locale } = useCurrencyPreference()
   const currencySymbol = useCurrencySymbol()
   const dateLocale = useDateLocale()
@@ -1284,7 +1284,7 @@ export default function Analytics() {
                   <th className="text-left py-2 px-4 text-sm font-medium text-garage-text-muted">{t('vehicle.table.date')}</th>
                   <th className="text-right py-2 px-4 text-sm font-medium text-garage-text-muted">{t('vehicle.table.fuelEconomy')}</th>
                   <th className="text-right py-2 px-4 text-sm font-medium text-garage-text-muted">{t('vehicle.table.mileage', { unit: UnitFormatter.getDistanceUnit(system) })}</th>
-                  <th className="text-right py-2 px-4 text-sm font-medium text-garage-text-muted">{t('vehicle.table.volume', { unit: UnitFormatter.getVolumeUnit(system) })}</th>
+                  <th className="text-right py-2 px-4 text-sm font-medium text-garage-text-muted">{t('vehicle.table.volume', { unit: UnitFormatter.getVolumeUnit(units) })}</th>
                   <th className="text-right py-2 px-4 text-sm font-medium text-garage-text-muted">{t('vehicle.table.cost')}</th>
                 </tr>
               </thead>
@@ -1294,7 +1294,7 @@ export default function Analytics() {
                     <td className="py-2 px-4 text-sm text-garage-text">{formatDate(point.date)}</td>
                     <td className="py-2 px-4 text-sm text-garage-text text-right font-medium">{UnitFormatter.formatFuelEconomy(parseFloat(point.l_per_100km), system, showBoth)}</td>
                     <td className="py-2 px-4 text-sm text-garage-text text-right">{UnitFormatter.formatDistance(parseFloat(point.odometer_km), system, false)}</td>
-                    <td className="py-2 px-4 text-sm text-garage-text text-right">{UnitFormatter.formatVolume(parseFloat(point.liters), system, false)}</td>
+                    <td className="py-2 px-4 text-sm text-garage-text text-right">{UnitFormatter.formatVolume(parseFloat(point.liters), units, false)}</td>
                     <td className="py-2 px-4 text-sm text-garage-text text-right">{formatCurrency(point.cost, { currencyCode, locale })}</td>
                   </tr>
                 ))}
@@ -1494,16 +1494,16 @@ export default function Analytics() {
               </p>
             </div>
             <div className="text-center p-4 bg-garage-bg rounded-lg">
-              <p className="text-sm text-garage-text-muted mb-1">{system === 'metric' ? t('vehicle.totalLiters') : t('vehicle.totalGallons')}</p>
+              <p className="text-sm text-garage-text-muted mb-1">{units.volume === 'L' ? t('vehicle.totalLiters') : t('vehicle.totalGallons')}</p>
               <p className="text-2xl font-bold text-garage-text">
-                {UnitFormatter.formatVolumeShort(parseFloat(propane.total_liters), system)}
+                {UnitFormatter.formatVolumeShort(parseFloat(propane.total_liters), units)}
               </p>
             </div>
             <div className="text-center p-4 bg-garage-bg rounded-lg">
-              <p className="text-sm text-garage-text-muted mb-1">{t('vehicle.avgPricePerUnit', { unit: UnitFormatter.getVolumeUnit(system) })}</p>
+              <p className="text-sm text-garage-text-muted mb-1">{t('vehicle.avgPricePerUnit', { unit: UnitFormatter.getVolumeUnit(units) })}</p>
               <p className="text-2xl font-bold text-primary">
                 {propane.avg_price_per_liter
-                  ? UnitFormatter.formatCostPerVolume(parseFloat(propane.avg_price_per_liter), system, currencyCode, locale)
+                  ? UnitFormatter.formatCostPerVolume(parseFloat(propane.avg_price_per_liter), units, currencyCode, locale)
                   : t('vehicle.notAvailable')}
               </p>
             </div>
@@ -1635,16 +1635,16 @@ export default function Analytics() {
               </p>
             </div>
             <div className="text-center p-4 bg-garage-bg rounded-lg">
-              <p className="text-sm text-garage-text-muted mb-1">{system === 'metric' ? t('vehicle.totalLiters') : t('vehicle.totalGallons')}</p>
+              <p className="text-sm text-garage-text-muted mb-1">{units.volume === 'L' ? t('vehicle.totalLiters') : t('vehicle.totalGallons')}</p>
               <p className="text-2xl font-bold text-garage-text">
-                {UnitFormatter.formatVolumeShort(parseFloat(defAnalysis.total_liters), system)}
+                {UnitFormatter.formatVolumeShort(parseFloat(defAnalysis.total_liters), units)}
               </p>
             </div>
             <div className="text-center p-4 bg-garage-bg rounded-lg">
-              <p className="text-sm text-garage-text-muted mb-1">{UnitFormatter.getCostPerVolumeLabel(system)}</p>
+              <p className="text-sm text-garage-text-muted mb-1">{UnitFormatter.getCostPerVolumeLabel(units)}</p>
               <p className="text-2xl font-bold text-garage-text">
                 {defAnalysis.avg_cost_per_liter
-                  ? UnitFormatter.formatCostPerVolume(parseFloat(defAnalysis.avg_cost_per_liter), system, currencyCode, locale)
+                  ? UnitFormatter.formatCostPerVolume(parseFloat(defAnalysis.avg_cost_per_liter), units, currencyCode, locale)
                   : '-'}
               </p>
             </div>
@@ -1652,7 +1652,7 @@ export default function Analytics() {
               <p className="text-sm text-garage-text-muted mb-1">{t('vehicle.consumptionRate')}</p>
               <p className="text-2xl font-bold text-primary">
                 {defAnalysis.liters_per_1000_km
-                  ? `${UnitFormatter.formatVolumePerDistance(parseFloat(defAnalysis.liters_per_1000_km), system)} ${UnitFormatter.getVolumePerDistanceLabel(system)}`
+                  ? `${UnitFormatter.formatVolumePerDistance(parseFloat(defAnalysis.liters_per_1000_km), units)} ${UnitFormatter.getVolumePerDistanceLabel(units)}`
                   : '-'}
               </p>
             </div>

@@ -23,10 +23,25 @@ vi.mock('../../services/api', () => ({
 // Requires AuthProvider otherwise — same mock pattern as ServiceVisitForm.test.tsx
 // Hoisted + MUTABLE so one describe block (B9, below) can flip to imperial
 // without affecting every other test in this file, which stays on metric.
-const unitPrefMock = vi.hoisted(() => ({ system: 'metric' as 'metric' | 'imperial', showBoth: false }))
-vi.mock('../../hooks/useUnitPreference', () => ({
-  useUnitPreference: () => unitPrefMock,
+const unitPrefMock = vi.hoisted(() => ({
+  system: 'metric' as 'metric' | 'imperial',
+  showBoth: false,
+  // Set to pin an exact resolved set (a `gal_uk` user, say); left null the set
+  // follows `system`, the way the real hook derives both on one rung.
+  units: null as null | import('@/types/units').UnitSet,
 }))
+vi.mock('../../hooks/useUnitPreference', async () => {
+  const { IMPERIAL_UNITS, METRIC_UNITS } = await import('@/__tests__/factories')
+  return {
+    useUnitPreference: () => ({
+      system: unitPrefMock.system,
+      showBoth: unitPrefMock.showBoth,
+      units:
+        unitPrefMock.units ??
+        (unitPrefMock.system === 'imperial' ? IMPERIAL_UNITS : METRIC_UNITS),
+    }),
+  }
+})
 
 vi.mock('../../contexts/AuthContext', () => ({
   useAuth: () => ({ user: null }),

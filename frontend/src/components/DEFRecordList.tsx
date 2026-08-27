@@ -28,7 +28,7 @@ export default function DEFRecordList({ vin, readOnly = false }: DEFRecordListPr
   const [showForm, setShowForm] = useState(false)
   const [editingRecord, setEditingRecord] = useState<DEFRecord | undefined>()
   const { t } = useTranslation('vehicles')
-  const { system, showBoth } = useUnitPreference()
+  const { system, showBoth, units } = useUnitPreference()
   const { currencyCode, locale } = useCurrencyPreference()
 
   const { data: recordsData, isLoading, error } = useDEFRecords(vin)
@@ -80,7 +80,7 @@ export default function DEFRecordList({ vin, readOnly = false }: DEFRecordListPr
   const formatVolume = (liters?: number | string | null): string => {
     const num = parseNum(liters)
     if (num === null) return '-'
-    return UnitFormatter.formatVolume(num, system, showBoth)
+    return UnitFormatter.formatVolume(num, units, showBoth)
   }
 
   const formatFillLevel = (level?: number | string | null): string => {
@@ -109,7 +109,7 @@ export default function DEFRecordList({ vin, readOnly = false }: DEFRecordListPr
       render: (r) => r.odometer_km != null ? UnitFormatter.formatDistance(parseFloat(String(r.odometer_km)), system, showBoth) : '-' },
     // B7: unit-aware header — formatVolume yields liters in metric, so the old static
     // `defList.gallons` ("Gallons") lied to metric users. `volumeUnit` interpolates the system unit.
-    { id: 'gallons', header: t('defList.volumeUnit', { unit: UnitFormatter.getVolumeUnit(system) }), align: 'right', mono: true, render: (r) => formatVolume(r.liters) },
+    { id: 'gallons', header: t('defList.volumeUnit', { unit: UnitFormatter.getVolumeUnit(units) }), align: 'right', mono: true, render: (r) => formatVolume(r.liters) },
     { id: 'fillLevel', header: t('defList.fillLevel'), align: 'left',
       render: (r) => {
         const fillLevel = parseNum(r.fill_level)
@@ -191,17 +191,17 @@ export default function DEFRecordList({ vin, readOnly = false }: DEFRecordListPr
                 <Droplets aria-hidden="true" className="w-3 h-3" />
                 <span>{t('defList.consumption')}</span>
               </div>
-              <Mono size="2xl" weight="bold">{UnitFormatter.formatVolumePerDistance(parseNum(analytics.liters_per_1000_km) ?? 0, system)}</Mono>
-              <p className="text-xs text-text-mute">{UnitFormatter.getVolumePerDistanceLabel(system)}</p>
+              <Mono size="2xl" weight="bold">{UnitFormatter.formatVolumePerDistance(parseNum(analytics.liters_per_1000_km) ?? 0, units)}</Mono>
+              <p className="text-xs text-text-mute">{UnitFormatter.getVolumePerDistanceLabel(units)}</p>
             </Card>
           )}
 
           {analytics.avg_cost_per_liter !== null && (
             <Card padding="sm">
               <div className="flex items-center gap-1 text-xs text-text-mute mb-1">
-                <span>{UnitFormatter.getCostPerVolumeLabel(system)}</span>
+                <span>{UnitFormatter.getCostPerVolumeLabel(units)}</span>
               </div>
-              <Mono size="2xl" weight="bold">{UnitFormatter.formatCostPerVolume(parseNum(analytics.avg_cost_per_liter) ?? 0, system, currencyCode, locale)}</Mono>
+              <Mono size="2xl" weight="bold">{UnitFormatter.formatCostPerVolume(parseNum(analytics.avg_cost_per_liter) ?? 0, units, currencyCode, locale)}</Mono>
             </Card>
           )}
 
@@ -211,7 +211,7 @@ export default function DEFRecordList({ vin, readOnly = false }: DEFRecordListPr
                 <span>{t('defList.totalSpent')}</span>
               </div>
               <Mono size="2xl" weight="bold">{formatCurrency(analytics.total_cost, { currencyCode, locale })}</Mono>
-              <Mono size="sm" tone="muted" className="mt-1 block">{UnitFormatter.formatVolumeTotal(parseNum(analytics.total_liters) ?? 0, system)}</Mono>
+              <Mono size="sm" tone="muted" className="mt-1 block">{UnitFormatter.formatVolumeTotal(parseNum(analytics.total_liters) ?? 0, units)}</Mono>
             </Card>
           )}
 

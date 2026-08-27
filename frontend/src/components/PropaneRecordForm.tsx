@@ -49,7 +49,7 @@ export default function PropaneRecordForm({
   const [error, setError] = useState<string | null>(null)
   const createMutation = useCreatePropaneRecord(vin)
   const updateMutation = useUpdatePropaneRecord(vin)
-  const { system } = useUnitPreference()
+  const { system, units } = useUnitPreference()
 
   // Extract vendor from notes if it was stored there
   const extractVendor = (notes?: string): string => {
@@ -81,9 +81,8 @@ export default function PropaneRecordForm({
           ? parseFloat(record.propane_liters)
           : record.propane_liters
         if (isNaN(liters)) return undefined
-        return system === 'imperial'
-          ? UnitConverter.litersToGallons(liters) ?? undefined
-          : liters
+        // Same resolved set the submit converts back with (defect L1).
+        return UnitConverter.litersToVolumeUnit(liters, units) ?? undefined
       })(),
       // Read uses the record's stored basis so legacy records saved with
       // basis='per_tank' (pre-fix bug — the form labeled the field $/gal
@@ -91,7 +90,7 @@ export default function PropaneRecordForm({
       // the same value the user typed. Records saved with the corrected
       // basis='per_volume' are converted from canonical $/L to $/gal for
       // imperial users.
-      price_per_unit: priceToDisplay(record?.price_per_unit, system, record?.price_basis ?? 'per_volume') ?? undefined,
+      price_per_unit: priceToDisplay(record?.price_per_unit, units, record?.price_basis ?? 'per_volume') ?? undefined,
       cost: (() => {
         if (!record?.cost) return undefined
         const cost = typeof record.cost === 'string'
@@ -127,8 +126,9 @@ export default function PropaneRecordForm({
     // tank_size_kg holds the user's displayed tank weight (kg or lb).
     const kg = system === 'imperial' ? (UnitConverter.lbsToKg(tankSize) ?? tankSize) : tankSize
     const totalLiters = kg * quantity * KG_TO_LITERS
-    const display = system === 'imperial' ? UnitConverter.litersToGallons(totalLiters) : totalLiters
-    return display ?? null
+    // The tank row writes straight into propane_liters, so it has to land in
+    // the SAME unit that field is entered and submitted in.
+    return UnitConverter.litersToVolumeUnit(totalLiters, units)
   }
 
   useOnUserEdit(
@@ -169,7 +169,8 @@ export default function PropaneRecordForm({
         date: data.date,
         odometer_km: undefined,  // Never set for propane
         liters: undefined,  // Never set for propane
-        propane_liters: toCanonicalLiters(data.propane_liters, system) ?? undefined,
+        // ★ Volume and price convert through ONE resolved set (defect L1).
+        propane_liters: toCanonicalLiters(data.propane_liters, units) ?? undefined,
         tank_size_kg: toCanonicalKg(data.tank_size_kg, system) ?? undefined,
         tank_quantity: data.tank_quantity,
         // Form's price field is per-volume math (cost = volume × price), so
@@ -177,7 +178,7 @@ export default function PropaneRecordForm({
         // to canonical $/L. Earlier code saved basis='per_tank' with raw
         // values, which was inconsistent with the form's own math and the
         // rest of the app's metric-canonical storage convention.
-        price_per_unit: priceToCanonical(data.price_per_unit, system, 'per_volume') ?? undefined,
+        price_per_unit: priceToCanonical(data.price_per_unit, units, 'per_volume') ?? undefined,
         price_basis: 'per_volume',
         cost: data.cost,
         fuel_type_used: 'propane_lpg',  // Always propane
@@ -281,18 +282,18 @@ export default function PropaneRecordForm({
               )
               return (
                 <p className="text-xs text-text-mute mt-2">
-                  {t('propaneRecordForm.autoCalculatedVolume', { value: display?.toFixed(2) ?? '', unit: UnitFormatter.getVolumeUnit(system) })}
+                  {t('propaneRecordForm.autoCalculatedVolume', { value: display?.toFixed(2) ?? '', unit: UnitFormatter.getVolumeUnit(units) })}
                 </p>
               )
             })()}
           </div>
 
-          <Field id="propane_liters" label={t('propaneRecordForm.propaneVolume')} unit={UnitFormatter.getVolumeUnit(system)} error={errors.propane_liters}>
+          <Field id="propane_liters" label={t('propaneRecordForm.propaneVolume')} unit={UnitFormatter.getVolumeUnit(units)} error={errors.propane_liters}>
             <NumberInput id="propane_liters" {...registerDecimal(register, 'propane_liters')} placeholder={system === 'imperial' ? '10.500' : '39.750'} invalid={!!errors.propane_liters} disabled={isSubmitting} />
           </Field>
 
           <div className="grid grid-cols-2 gap-4">
-            <Field id="price_per_unit" label={`${t('fuel.pricePer')} ${UnitFormatter.getVolumeUnit(system)}`} error={errors.price_per_unit}>
+            <Field id="price_per_unit" label={`${t('fuel.pricePer')} ${UnitFormatter.getVolumeUnit(units)}`} error={errors.price_per_unit}>
               <div className="relative">
                 <CurrencyInputPrefix />
                 <NumberInput id="price_per_unit" {...registerDecimal(register, 'price_per_unit')} placeholder={system === 'imperial' ? '2.899' : '0.766'} invalid={!!errors.price_per_unit} disabled={isSubmitting} className="pl-7" />

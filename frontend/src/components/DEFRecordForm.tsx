@@ -61,7 +61,7 @@ export default function DEFRecordForm({
   const [error, setError] = useState<string | null>(null)
   const createMutation = useCreateDEFRecord(vin)
   const updateMutation = useUpdateDEFRecord(vin)
-  const { system } = useUnitPreference()
+  const { system, units } = useUnitPreference()
 
   // Zod bakes its messages in at construction, so the schema is rebuilt when
   // the language changes. Only the resolver depends on it — no fetch, no
@@ -85,12 +85,10 @@ export default function DEFRecordForm({
         if (stored === undefined) return undefined
         return system === 'imperial' ? UnitConverter.kmToMiles(stored) ?? undefined : stored
       })(),
-      liters: (() => {
-        const l = readNumber(record?.liters)
-        if (l === undefined) return undefined
-        return system === 'imperial' ? (UnitConverter.litersToGallons(l) ?? l) : l
-      })(),
-      price_per_unit: priceToDisplay(record?.price_per_unit, system, 'per_volume') ?? undefined,
+      // Seeded and submitted through the same resolved set, so reopening a
+      // record cannot re-convert its volume on a different gallon.
+      liters: UnitConverter.litersToVolumeUnit(readNumber(record?.liters), units) ?? undefined,
+      price_per_unit: priceToDisplay(record?.price_per_unit, units, 'per_volume') ?? undefined,
       cost: readNumber(record?.cost),
       fill_level: (() => {
         const fl = readNumber(record?.fill_level)
@@ -120,8 +118,9 @@ export default function DEFRecordForm({
         vin,
         date: data.date,
         odometer_km: toCanonicalKm(data.odometer_km, system) ?? undefined,
-        liters: toCanonicalLiters(data.liters, system) ?? undefined,
-        price_per_unit: priceToCanonical(data.price_per_unit, system, 'per_volume') ?? undefined,
+        // ★ Volume and price convert through ONE resolved set (defect L1).
+        liters: toCanonicalLiters(data.liters, units) ?? undefined,
+        price_per_unit: priceToCanonical(data.price_per_unit, units, 'per_volume') ?? undefined,
         cost: data.cost,
         fill_level: data.fill_level !== undefined ? data.fill_level / 100 : undefined, // Convert % to 0.00-1.00
         source: data.source || undefined,
@@ -233,10 +232,10 @@ export default function DEFRecordForm({
 
           {/* Volume and Pricing */}
           <div className="grid grid-cols-3 gap-4">
-            <Field id="liters" label={UnitFormatter.getVolumeUnit(system)} error={errors.liters}>
+            <Field id="liters" label={UnitFormatter.getVolumeUnit(units)} error={errors.liters}>
               <NumberInput id="liters" {...registerDecimal(register, 'liters')} placeholder="5.500" invalid={!!errors.liters} disabled={isSubmitting} />
             </Field>
-            <Field id="price_per_unit" label={`${t('fuel.pricePer')}/${UnitFormatter.getVolumeUnit(system)}`} error={errors.price_per_unit}>
+            <Field id="price_per_unit" label={`${t('fuel.pricePer')}/${UnitFormatter.getVolumeUnit(units)}`} error={errors.price_per_unit}>
               <div className="relative">
                 <CurrencyInputPrefix />
                 <NumberInput id="price_per_unit" {...registerDecimal(register, 'price_per_unit')} placeholder="4.500" invalid={!!errors.price_per_unit} disabled={isSubmitting} className="pl-7" />

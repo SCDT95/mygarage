@@ -22,6 +22,12 @@
  */
 
 import { getActiveLocale } from '@/constants/i18n';
+// TYPE-ONLY, and it has to stay that way. `utils/unitAdapters.ts` imports
+// `UnitConverter` and builds its adapter table at module scope, so a runtime
+// import back from here would form a cycle whose evaluation order decides
+// whether that table reads `UnitConverter` before the class binding leaves its
+// temporal dead zone. `import type` is erased, so no cycle exists at runtime.
+import type { UnitSet } from '@/types/units';
 
 export type UnitSystem = 'imperial' | 'metric';
 export type GallonStandard = 'us' | 'uk';
@@ -58,6 +64,49 @@ export class UnitConverter {
   static readonly US_MPG_TO_L100KM = 235.214;
   static readonly UK_MPG_TO_L100KM = 282.481;
   private static mpgToL100kmFactor = UnitConverter.US_MPG_TO_L100KM;
+
+  // ── Resolved-set dispatch ────────────────────────────────────────────────
+  //
+  // The two mutable fields above follow the INSTANCE gallon setting, which is
+  // not the same thing as the client's own units: phase 1 gave every account a
+  // `resolved_units` set, so a user resolving `gal_uk` on a US-default instance
+  // must get the imperial gallon regardless of what the instance holds. The
+  // maps below are how a resolved token becomes a factor.
+  //
+  // They ARE a second dispatch of a decision `utils/unitAdapters.ts` also
+  // makes, and duplicated unit knowledge is exactly what this workstream keeps
+  // finding (defect L1 was a hardcoded `3.78541` under a comment claiming it
+  // mirrored this class). Two things keep them honest: the `Record<...>` types
+  // fail to compile if the API schema adds a token, and
+  // `utils/__tests__/unitFactorParity.test.ts` asserts every entry equals what
+  // `UNIT_ADAPTERS` converts. The duplication exists only because the import
+  // cycle above forbids reading the adapter table directly; collapsing it is a
+  // 3b job, once `unitAdapters` no longer depends on this module.
+
+  /** Litres in one unit of each volume token a resolved set can name. */
+  static readonly LITERS_PER_VOLUME_UNIT: Readonly<Record<UnitSet['volume'], number>> = {
+    L: 1,
+    gal_us: UnitConverter.US_GALLONS_TO_LITERS,
+    gal_uk: UnitConverter.UK_GALLONS_TO_LITERS,
+  };
+
+  /** Kilograms in one unit of each mass token a resolved set can name. */
+  static readonly KG_PER_MASS_UNIT: Readonly<Record<UnitSet['mass'], number>> = {
+    kg: 1,
+    lb: UnitConverter.LBS_TO_KG,
+  };
+
+  /**
+   * Litres in the gallon a LITRE primary pairs with under show-both (spec D4b).
+   *
+   * `L` cannot state its own gallon flavour, so the set carries it separately.
+   */
+  static readonly LITERS_PER_SECONDARY_GALLON: Readonly<
+    Record<UnitSet['secondary_gallon'], number>
+  > = {
+    us: UnitConverter.US_GALLONS_TO_LITERS,
+    uk: UnitConverter.UK_GALLONS_TO_LITERS,
+  };
 
   /** Select US or UK imperial gallon (also updates MPG conversion). */
   static setGallonStandard(standard: GallonStandard): void {
@@ -104,6 +153,29 @@ export class UnitConverter {
       return null;
     }
     return this.roundResult(liters / this.gallonsToLitersFactor);
+  }
+
+  /**
+   * Convert canonical litres into the volume unit a resolved set names.
+   *
+   * The resolved-set counterpart of `litersToGallons`, and the reason the
+   * flavour is right for a `gal_uk` user on a US-default instance. A litre set
+   * returns the value untouched rather than passing it through `roundResult`:
+   * this feeds form fields, and re-rounding a stored value a metric user never
+   * edited would rewrite it on save.
+   *
+   * @param liters Canonical litres.
+   * @param units The client's resolved unit set.
+   * @returns The value in `units.volume`, or null when there is none.
+   */
+  static litersToVolumeUnit(liters: Numeric, units: UnitSet): number | null {
+    if (liters === null || liters === undefined) {
+      return null;
+    }
+    if (units.volume === 'L') {
+      return liters;
+    }
+    return this.roundResult(liters / UnitConverter.LITERS_PER_VOLUME_UNIT[units.volume]);
   }
 
   // ========== DISTANCE CONVERSIONS ==========
@@ -400,11 +472,15 @@ export class UnitFormatter {
   /**
    * Format volume with appropriate unit label.
    *
+   * Takes the client's resolved `UnitSet` rather than a binary system: the
+   * gallon flavour belongs to the user (`resolved_units.volume`), not to the
+   * instance-wide setting `UnitConverter`'s mutable factor follows.
+   *
    * @param liters - Value in liters (canonical metric)
-   * @param system - Target unit system
+   * @param units - The client's resolved unit set
    * @param showBoth - Show both units (e.g., "94.6 L (25 gal)")
    */
-  static formatVolume(liters: Numeric, system: UnitSystem, showBoth: boolean = false): string {
+  static formatVolume(liters: Numeric, units: UnitSet, showBoth: boolean = false): string {
     if (liters === null || liters === undefined) {
       return 'N/A';
     }
@@ -412,15 +488,17 @@ export class UnitFormatter {
     const litersNum = typeof liters === 'string' ? parseFloat(liters) : liters;
     if (isNaN(litersNum)) return 'N/A';
 
-    if (system === 'metric') {
+    if (units.volume === 'L') {
       const primary = `${litersNum.toFixed(2)} L`;
       if (showBoth) {
-        const gallons = UnitConverter.litersToGallons(litersNum);
-        return `${primary} (${gallons?.toFixed(2)} gal)`;
+        // D4b: a litre primary's counterpart gallon comes from the set, since
+        // 'L' cannot state a flavour of its own.
+        const gallons = litersNum / UnitConverter.LITERS_PER_SECONDARY_GALLON[units.secondary_gallon];
+        return `${primary} (${gallons.toFixed(2)} gal)`;
       }
       return primary;
     } else {
-      const gallons = UnitConverter.litersToGallons(litersNum);
+      const gallons = UnitConverter.litersToVolumeUnit(litersNum, units);
       const primary = `${gallons?.toFixed(2)} gal`;
       if (showBoth) {
         return `${primary} (${litersNum.toFixed(2)} L)`;
@@ -664,9 +742,11 @@ export class UnitFormatter {
 
   /**
    * Get volume unit label for input placeholders.
+   *
+   * @param units - The client's resolved unit set
    */
-  static getVolumeUnit(system: UnitSystem): string {
-    return system === 'imperial' ? 'gal' : 'L';
+  static getVolumeUnit(units: UnitSet): string {
+    return units.volume === 'L' ? 'L' : 'gal';
   }
 
   /**
@@ -712,6 +792,20 @@ export class UnitFormatter {
   }
 
   /**
+   * Get the mass unit label a resolved set names.
+   *
+   * The resolved-set counterpart of `getWeightUnit`, and it exists because
+   * `priceToDisplay`'s `per_weight` denominator reads `units.mass`: the label
+   * beside that field has to name the same unit. `system` cannot, being
+   * D8-collapsed from VOLUME, so it answers "kg" for a user who chose pounds.
+   *
+   * @param units - The client's resolved unit set
+   */
+  static getMassUnit(units: UnitSet): string {
+    return units.mass === 'kg' ? 'kg' : 'lb';
+  }
+
+  /**
    * Get torque unit label for input placeholders.
    */
   static getTorqueUnit(system: UnitSystem): string {
@@ -732,16 +826,16 @@ export class UnitFormatter {
    * `formatVolumeTotal(...).replace(' total', '')`. That substring hack breaks
    * silently the moment this file is localized, so it has its own method.
    */
-  static formatVolumeShort(liters: number, system: UnitSystem): string {
-    if (system === 'imperial') {
-      const gallons = UnitConverter.litersToGallons(liters);
-      return `${(gallons ?? 0).toFixed(1)} gal`;
+  static formatVolumeShort(liters: number, units: UnitSet): string {
+    if (units.volume === 'L') {
+      return `${liters.toFixed(1)} L`;
     }
-    return `${liters.toFixed(1)} L`;
+    const gallons = UnitConverter.litersToVolumeUnit(liters, units);
+    return `${(gallons ?? 0).toFixed(1)} gal`;
   }
 
-  static formatVolumeTotal(liters: number, system: UnitSystem): string {
-    return `${UnitFormatter.formatVolumeShort(liters, system)} total`;
+  static formatVolumeTotal(liters: number, units: UnitSet): string {
+    return `${UnitFormatter.formatVolumeShort(liters, units)} total`;
   }
 
   /**
@@ -750,13 +844,16 @@ export class UnitFormatter {
    */
   static formatCostPerVolume(
     costPerLiter: number,
-    system: UnitSystem,
+    units: UnitSet,
     currencyCode: string = 'USD',
     locale: string = 'en-US'
   ): string {
-    const value = system === 'imperial'
-      ? costPerLiter * 3.78541  // $/L → $/gal
-      : costPerLiter;
+    // Defect L1's second half: this line multiplied by a hardcoded 3.78541, so
+    // a UK user's card read about 20 percent low while the volume column beside
+    // it converted through the dynamic factor. $/L x litres-per-unit = $/unit,
+    // and a litre set's factor is 1, so the metric pass-through is the same
+    // expression rather than a branch.
+    const value = costPerLiter * UnitConverter.LITERS_PER_VOLUME_UNIT[units.volume];
     return new Intl.NumberFormat(locale, {
       style: 'currency',
       currency: currencyCode,
@@ -769,8 +866,8 @@ export class UnitFormatter {
    * Get the label for cost-per-volume cards.
    * Returns "Avg Cost/L" or "Avg Cost/gal".
    */
-  static getCostPerVolumeLabel(system: UnitSystem): string {
-    return `Avg Cost/${UnitFormatter.getVolumeUnit(system)}`;
+  static getCostPerVolumeLabel(units: UnitSet): string {
+    return `Avg Cost/${UnitFormatter.getVolumeUnit(units)}`;
   }
 
   /**
@@ -808,21 +905,29 @@ export class UnitFormatter {
    * Input: liters per 1,000 km (canonical metric L/1000km).
    * Output: "3.4" (L/1,000 km) or "2.1" (gal/1,000 mi).
    */
-  static formatVolumePerDistance(litersPer1kKm: number, system: UnitSystem): string {
-    if (system === 'imperial') {
-      // L/1000km → gal/1000mi: (L / 3.78541) * 1.60934
-      const galPer1kMi = (litersPer1kKm / 3.78541) * 1.60934;
-      return `${galPer1kMi.toFixed(1)}`;
+  static formatVolumePerDistance(litersPer1kKm: number, units: UnitSet): string {
+    if (units.volume === 'L') {
+      return `${litersPer1kKm.toFixed(1)}`;
     }
-    return `${litersPer1kKm.toFixed(1)}`;
+    // L/1000km → gal/1000mi. The VOLUME half follows the resolved token (this
+    // line held the second hardcoded 3.78541). The DISTANCE half deliberately
+    // does NOT read `units.distance`: it stays on the binary system the volume
+    // token collapses to (spec D8), because the neighbouring cells on the same
+    // DEF card still branch on `system`, and putting miles here next to their
+    // kilometres would manufacture the same-screen disagreement this change
+    // exists to remove. Distance migrates in 3b, per file, with its neighbours.
+    const galPer1kMi =
+      (litersPer1kKm / UnitConverter.LITERS_PER_VOLUME_UNIT[units.volume]) *
+      UnitConverter.MILES_TO_KM;
+    return `${galPer1kMi.toFixed(1)}`;
   }
 
   /**
    * Get the sub-label for volume-per-distance cards.
    * Returns "gal/1,000 mi" or "L/1,000 km".
    */
-  static getVolumePerDistanceLabel(system: UnitSystem): string {
-    return system === 'imperial' ? 'gal/1,000 mi' : 'L/1,000 km';
+  static getVolumePerDistanceLabel(units: UnitSet): string {
+    return units.volume === 'L' ? 'L/1,000 km' : 'gal/1,000 mi';
   }
 }
 

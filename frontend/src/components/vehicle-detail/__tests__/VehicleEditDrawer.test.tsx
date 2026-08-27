@@ -15,10 +15,28 @@ vi.mock('../../../services/api', () => ({
 vi.mock('sonner', () => ({ toast: { error: vi.fn(), success: vi.fn() } }))
 
 // Requires AuthProvider otherwise — same mock pattern as ServiceVisitForm.test.tsx
-vi.mock('../../../hooks/useUnitPreference', () => ({
-  useUnitPreference: () => ({ system: 'metric', showBoth: false }),
+const unitPrefMock = vi.hoisted(() => ({
+  system: 'metric' as 'metric' | 'imperial',
+  showBoth: false,
+  // Set to pin an exact resolved set (a `gal_uk` user, say); left null the set
+  // follows `system`, the way the real hook derives both on one rung.
+  units: null as null | import('@/types/units').UnitSet,
 }))
+vi.mock('../../../hooks/useUnitPreference', async () => {
+  const { IMPERIAL_UNITS, METRIC_UNITS } = await import('@/__tests__/factories')
+  return {
+    useUnitPreference: () => ({
+      system: unitPrefMock.system,
+      showBoth: unitPrefMock.showBoth,
+      units:
+        unitPrefMock.units ??
+        (unitPrefMock.system === 'imperial' ? IMPERIAL_UNITS : METRIC_UNITS),
+    }),
+  }
+})
 
+import { UK_IMPERIAL_UNITS } from '../../../__tests__/factories'
+import { UnitConverter } from '../../../utils/units'
 import { toast } from 'sonner'
 import api from '../../../services/api'
 import VehicleEditDrawer from '../VehicleEditDrawer'
@@ -765,5 +783,59 @@ describe('VehicleEditDrawer — connected devices (Torque sources)', () => {
     const body = mockedApi.put.mock.calls.at(-1)?.[1] as Record<string, unknown>
     expect(body.vehicle_type).toBe('Car')
     expect(body.usage_unit).toBe('hours')
+  })
+})
+
+describe('VehicleEditDrawer — the DEF tank capacity is the eighth gallon write site', () => {
+  // ★ Not in any revision of the phase plan and not in any of the four codex
+  // rounds: `def_tank_capacity_liters` goes through the same
+  // `toCanonicalLiters` boundary the fuel forms do, so a UK user entering a
+  // capacity in gallons stored it with the US factor.
+  const dieselWithCapacity: Vehicle = {
+    ...baseVehicle,
+    fuel_type: 'diesel',
+    def_tank_capacity_liters: '19.0',
+  }
+
+  beforeEach(() => {
+    vi.clearAllMocks()
+    unitPrefMock.system = 'metric'
+    unitPrefMock.units = null
+    UnitConverter.setGallonStandard('us')
+  })
+
+  it('seeds and submits the capacity on the USER\'s gallon, on a US-default instance', async () => {
+    UnitConverter.setGallonStandard('us')
+    unitPrefMock.system = 'imperial'
+    unitPrefMock.units = UK_IMPERIAL_UNITS
+
+    renderVehicleEdit(dieselWithCapacity)
+
+    // 19 L is 4.18 imperial gallons; it would read 5.02 on US ones.
+    const capacity = (await screen.findByLabelText('edit.defTankCapacity (gal)')) as HTMLInputElement
+    expect(capacity.value).toBe('4.18')
+
+    fireEvent.click(screen.getByRole('button', { name: 'edit.saveChanges' }))
+    await waitFor(() => expect(mockedApi.put).toHaveBeenCalled())
+    const [, payload] = mockedApi.put.mock.calls[0] as [string, Record<string, unknown>]
+    // 4.18 x 4.54609 = 19.0026562 -> 19.003 at the wire precision.
+    expect(payload.def_tank_capacity_liters).toBe(19.003)
+    expect(UnitConverter.getGallonStandard()).toBe('us')
+  })
+
+  it('labels and converts in litres for a metric set, on a UK-default instance', async () => {
+    UnitConverter.setGallonStandard('uk')
+    unitPrefMock.system = 'metric'
+    unitPrefMock.units = null
+
+    renderVehicleEdit(dieselWithCapacity)
+
+    const capacity = (await screen.findByLabelText('edit.defTankCapacity (L)')) as HTMLInputElement
+    expect(capacity.value).toBe('19')
+
+    fireEvent.click(screen.getByRole('button', { name: 'edit.saveChanges' }))
+    await waitFor(() => expect(mockedApi.put).toHaveBeenCalled())
+    const [, payload] = mockedApi.put.mock.calls[0] as [string, Record<string, unknown>]
+    expect(payload.def_tank_capacity_liters).toBe(19)
   })
 })

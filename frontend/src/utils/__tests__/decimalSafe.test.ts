@@ -1,92 +1,148 @@
-import { describe, it, expect } from 'vitest'
+/**
+ * The volume and price entry/storage boundary, driven by a resolved `UnitSet`.
+ *
+ * Defect L1: these helpers took a binary `UnitSystem` and multiplied by a
+ * hardcoded `3.78541` under a comment claiming the factor was "mirrored from
+ * UnitConverter", which stopped being true when the UK gallon shipped in
+ * v3.1.0. A UK user entering 6.00/gal stored 6.00 / 3.78541 = 1.585/L instead
+ * of 6.00 / 4.54609 = 1.320/L, 20.1 percent high, and the form read it back
+ * through the same wrong factor so nothing on screen disagreed.
+ *
+ * Substituting the dynamic `UnitConverter.gallonsToLiters` would NOT have been
+ * the fix: its flavour comes from the instance-wide gallon setting
+ * (`useGallonStandardSync`), while phase 1 gave each account its own
+ * `resolved_units`. Every test below that names a gallon therefore pins the
+ * INSTANCE standard to `us` first, so a helper still reading the global cannot
+ * pass a `gal_uk` case.
+ */
+
+import { beforeEach, describe, expect, it } from 'vitest'
+import { makeUnitSet } from '@/__tests__/factories'
 import {
+  priceToCanonical,
+  priceToDisplay,
+  toCanonicalKg,
   toCanonicalKm,
   toCanonicalLiters,
-  toCanonicalKg,
   toCanonicalMeters,
-  priceToDisplay,
-  priceToCanonical,
 } from '../decimalSafe'
+import { UnitConverter } from '../units'
 
-describe('toCanonical*', () => {
-  it('passes metric values through unchanged', () => {
+const METRIC = makeUnitSet()
+const US = makeUnitSet({ volume: 'gal_us', mass: 'lb', secondary_gallon: 'us' })
+/** A UK-gallon user. On this instance the global standard stays `us` below. */
+const UK = makeUnitSet({ volume: 'gal_uk', mass: 'lb', secondary_gallon: 'uk' })
+
+beforeEach(() => {
+  // The instance-wide flavour, as `useGallonStandardSync` would leave it on a
+  // US-default install. Nothing here may consult it.
+  UnitConverter.setGallonStandard('us')
+})
+
+describe('toCanonicalLiters', () => {
+  it('converts on the resolved volume token, not the instance gallon standard', () => {
+    // 10 x 3.78541 = 37.8541 -> 37.854 at the API contract's 3 decimal places.
+    expect(toCanonicalLiters(10, US)).toBe(37.854)
+    // 10 x 4.54609 = 45.4609 -> 45.461. The instance standard is `us`, so a
+    // helper reading the global would answer 37.854 here.
+    expect(toCanonicalLiters(10, UK)).toBe(45.461)
+    expect(UnitConverter.getGallonStandard()).toBe('us')
+  })
+
+  it('leaves a litre entry as it was typed, apart from the wire precision', () => {
+    expect(toCanonicalLiters(50, METRIC)).toBe(50)
+    // `liters` and `propane_liters` declare `decimal_places=3` in the API
+    // schema, and pydantic REJECTS a fourth. A metric user typing 47.3176 used
+    // to post it verbatim and take a 422.
+    expect(toCanonicalLiters(47.3176, METRIC)).toBe(47.318)
+  })
+
+  it('returns null for an absent or unparseable entry, and a number for a real one', () => {
+    expect(toCanonicalLiters(null, UK)).toBeNull()
+    expect(toCanonicalLiters(undefined, METRIC)).toBeNull()
+    expect(toCanonicalLiters(NaN, UK)).toBeNull()
+    expect(toCanonicalLiters(0, UK)).toBe(0)
+    expect(toCanonicalLiters(1, UK)).toBe(4.546)
+  })
+})
+
+describe('the boundary this task moved, and the ones it did not', () => {
+  it('moves volume onto the resolved set and leaves distance, mass and length binary', () => {
+    // Volume: resolved-set driven, and the instance standard is `us`.
+    expect(toCanonicalLiters(10, UK)).toBe(45.461)
+    // Distance, mass and length carry no gallon, so they keep their binary
+    // signature and their existing rounding until 3b migrates them.
     expect(toCanonicalKm(100, 'metric')).toBe(100)
-    expect(toCanonicalLiters(50, 'metric')).toBe(50)
+    expect(toCanonicalKm(60, 'imperial')).toBeCloseTo(96.56, 2)
     expect(toCanonicalKg(20, 'metric')).toBe(20)
     expect(toCanonicalMeters(5, 'metric')).toBe(5)
-  })
-
-  it('converts imperial values to canonical metric', () => {
-    expect(toCanonicalKm(60, 'imperial')).toBeCloseTo(96.56, 2)
-    expect(toCanonicalLiters(10, 'imperial')).toBeCloseTo(37.85, 2)
-  })
-
-  it('returns null for nullish or NaN input', () => {
-    expect(toCanonicalKm(null, 'imperial')).toBeNull()
-    expect(toCanonicalLiters(undefined, 'metric')).toBeNull()
     expect(toCanonicalKg(NaN, 'imperial')).toBeNull()
   })
 })
 
-describe('priceToDisplay / priceToCanonical (per_volume)', () => {
-  it('converts $/L canonical to $/gal for imperial display', () => {
-    // Real bug repro: stored $1.136/L should display as $4.30/gal
-    expect(priceToDisplay(1.136, 'imperial', 'per_volume')).toBeCloseTo(4.3, 2)
+describe('priceToDisplay / priceToCanonical — per_volume', () => {
+  it('scales the canonical $/L by the resolved set\'s litres-per-unit', () => {
+    // Real bug repro: stored $1.136/L reads $4.30/gal on US gallons and
+    // $5.16/gal on imperial ones. 1.136 x 3.78541 = 4.30022576 -> 4.300;
+    // 1.136 x 4.54609 = 5.16435824 -> 5.164.
+    expect(priceToDisplay(1.136, US, 'per_volume')).toBe(4.3)
+    expect(priceToDisplay(1.136, UK, 'per_volume')).toBe(5.164)
+    // A litre user's price IS canonical: no conversion, and no re-rounding of
+    // a stored value they never touched.
+    expect(priceToDisplay(1.135845, METRIC, 'per_volume')).toBe(1.135845)
   })
 
-  it('passes $/L through for metric users', () => {
-    expect(priceToDisplay(1.136, 'metric', 'per_volume')).toBe(1.136)
+  it('divides an entered price by the resolved set\'s litres-per-unit', () => {
+    // 6.00/gal is 6 / 4.54609 = 1.31981548979 $/L for an imperial gallon and
+    // 6 / 3.78541 = 1.58503306115 for a US one. The 20.1 percent that L1 was.
+    expect(priceToCanonical(6, UK, 'per_volume')).toBe(1.31981548979)
+    expect(priceToCanonical(6, US, 'per_volume')).toBe(1.58503306115)
+    expect(priceToCanonical(1.136, METRIC, 'per_volume')).toBe(1.136)
   })
 
-  it('converts $/gal back to $/L on submit', () => {
-    expect(priceToCanonical(4.3, 'imperial', 'per_volume')).toBeCloseTo(1.136, 3)
+  it('round-trips an entered UK price through canonical and back unchanged', () => {
+    const typed = 6
+    const canonical = priceToCanonical(typed, UK, 'per_volume')
+    expect(canonical).toBe(1.31981548979)
+    expect(priceToDisplay(canonical, UK, 'per_volume')).toBe(typed)
   })
 
-  it('round-trips imperial → canonical → display without drift beyond 3 decimals', () => {
-    const userTyped = 4.299
-    const canonical = priceToCanonical(userTyped, 'imperial', 'per_volume')
-    expect(canonical).not.toBeNull()
-    const back = priceToDisplay(canonical!, 'imperial', 'per_volume')
-    expect(back).toBeCloseTo(userTyped, 2)
-  })
-
-  it('accepts string input from API responses', () => {
-    expect(priceToDisplay('1.136', 'imperial', 'per_volume')).toBeCloseTo(4.3, 2)
-  })
-})
-
-describe('priceToDisplay / priceToCanonical (per_weight)', () => {
-  it('converts $/kg canonical to $/lb for imperial display', () => {
-    // 2.20 $/kg ≈ 1.00 $/lb
-    expect(priceToDisplay(2.2046, 'imperial', 'per_weight')).toBeCloseTo(1.0, 2)
-  })
-
-  it('converts $/lb back to $/kg on submit', () => {
-    // $1/lb means a kg (heavier) costs more: 1 / 0.453592 ≈ $2.205/kg
-    expect(priceToCanonical(1.0, 'imperial', 'per_weight')).toBeCloseTo(2.205, 3)
+  it('accepts the string an API response carries', () => {
+    expect(priceToDisplay('1.136', UK, 'per_volume')).toBe(5.164)
   })
 })
 
-describe('priceToDisplay / priceToCanonical (universal bases)', () => {
-  it('passes per_kwh through unchanged for both systems', () => {
-    expect(priceToDisplay(0.13, 'imperial', 'per_kwh')).toBe(0.13)
-    expect(priceToCanonical(0.13, 'imperial', 'per_kwh')).toBe(0.13)
+describe('priceToDisplay / priceToCanonical — per_weight', () => {
+  it('scales by the resolved MASS token, independently of the volume one', () => {
+    // $2.2046/kg is about $1.00/lb; $1.00/lb is 1 / 0.453592 = 2.20462442018.
+    expect(priceToDisplay(2.2046, UK, 'per_weight')).toBe(1)
+    expect(priceToCanonical(1, UK, 'per_weight')).toBe(2.20462442018)
+    // A kilogram user's price is already canonical, even though the same set
+    // names a gallon for volume.
+    const kgWithGallons = makeUnitSet({ volume: 'gal_uk', mass: 'kg' })
+    expect(priceToDisplay(2.2046, kgWithGallons, 'per_weight')).toBe(2.2046)
+  })
+})
+
+describe('priceToDisplay / priceToCanonical — bases with no unit to convert', () => {
+  it('leaves per_kwh, per_tank and an unknown basis alone on a gallon set', () => {
+    expect(priceToDisplay(0.13, UK, 'per_kwh')).toBe(0.13)
+    expect(priceToCanonical(0.13, UK, 'per_kwh')).toBe(0.13)
+    expect(priceToDisplay(25, UK, 'per_tank')).toBe(25)
+    expect(priceToCanonical(25, UK, 'per_tank')).toBe(25)
+    expect(priceToDisplay(1.136, UK, null)).toBe(1.136)
+    expect(priceToDisplay(1.136, UK, undefined)).toBe(1.136)
+    expect(priceToDisplay(1.136, UK, 'something_else')).toBe(1.136)
+    // Same set, same value, a basis that DOES name a unit: proves the four
+    // pass-throughs above are the basis dispatch and not a dead helper.
+    expect(priceToDisplay(1.136, UK, 'per_volume')).toBe(5.164)
   })
 
-  it('passes per_tank through unchanged', () => {
-    expect(priceToDisplay(25, 'imperial', 'per_tank')).toBe(25)
-    expect(priceToCanonical(25, 'imperial', 'per_tank')).toBe(25)
-  })
-
-  it('passes through when basis is missing or unknown', () => {
-    expect(priceToDisplay(1.136, 'imperial', null)).toBe(1.136)
-    expect(priceToDisplay(1.136, 'imperial', undefined)).toBe(1.136)
-    expect(priceToDisplay(1.136, 'imperial', 'something_else')).toBe(1.136)
-  })
-
-  it('returns null for nullish or NaN input', () => {
-    expect(priceToDisplay(null, 'imperial', 'per_volume')).toBeNull()
-    expect(priceToDisplay(undefined, 'metric', 'per_volume')).toBeNull()
-    expect(priceToCanonical(NaN, 'imperial', 'per_volume')).toBeNull()
+  it('returns null for an absent or unparseable price, and converts a real one', () => {
+    expect(priceToDisplay(null, UK, 'per_volume')).toBeNull()
+    expect(priceToDisplay(undefined, METRIC, 'per_volume')).toBeNull()
+    expect(priceToDisplay('not a number', UK, 'per_volume')).toBeNull()
+    expect(priceToCanonical(NaN, UK, 'per_volume')).toBeNull()
+    expect(priceToCanonical(6, UK, 'per_volume')).toBe(1.31981548979)
   })
 })

@@ -17,10 +17,25 @@ vi.mock('../../hooks/queries/useFuelRecords', () => ({
 vi.mock('../../services/api', () => ({ default: { get: (...a: unknown[]) => apiGetMock(...a) } }))
 // Mutable so the unit-aware volume-header test (B7) can toggle metric/imperial;
 // every other test leaves it at the metric default set in beforeEach.
-const unitPrefMock = vi.hoisted(() => ({ system: 'metric' as 'metric' | 'imperial', showBoth: false }))
-vi.mock('../../hooks/useUnitPreference', () => ({
-  useUnitPreference: () => unitPrefMock,
+const unitPrefMock = vi.hoisted(() => ({
+  system: 'metric' as 'metric' | 'imperial',
+  showBoth: false,
+  // Set to pin an exact resolved set (a `gal_uk` user, say); left null the set
+  // follows `system`, the way the real hook derives both on one rung.
+  units: null as null | import('@/types/units').UnitSet,
 }))
+vi.mock('../../hooks/useUnitPreference', async () => {
+  const { IMPERIAL_UNITS, METRIC_UNITS } = await import('@/__tests__/factories')
+  return {
+    useUnitPreference: () => ({
+      system: unitPrefMock.system,
+      showBoth: unitPrefMock.showBoth,
+      units:
+        unitPrefMock.units ??
+        (unitPrefMock.system === 'imperial' ? IMPERIAL_UNITS : METRIC_UNITS),
+    }),
+  }
+})
 // LOCAL i18n mock (same pattern as the plan's DEF/Propane B5 fix — see
 // task-3-review.md Important #1): the GLOBAL setup.ts mock is `t: (key) => key`,
 // which discards interpolation args, so `t('fuelList.volumeUnit', { unit })` renders
@@ -45,6 +60,8 @@ vi.mock('../../hooks/useCurrencyPreference', () => ({
 }))
 vi.mock('sonner', () => ({ toast: { success: vi.fn(), error: vi.fn() } }))
 
+import { UK_IMPERIAL_UNITS } from '../../__tests__/factories'
+import { UnitConverter } from '../../utils/units'
 import FuelRecordList from '../FuelRecordList'
 
 const record: FuelRecord = {
@@ -74,6 +91,8 @@ const table = () => screen.getByRole('table', { name: 'fuelList.tableCaption' })
 beforeEach(() => {
   vi.clearAllMocks()
   unitPrefMock.system = 'metric'
+  unitPrefMock.units = null
+  UnitConverter.setGallonStandard('us')
   vi.spyOn(window, 'confirm').mockReturnValue(true)
   useFuelRecordsMock.mockReturnValue({
     data: { records: [record], total: 1, average_l_per_100km: '8.5' },
@@ -300,5 +319,47 @@ describe('FuelRecordList — empty state CTA is wired', () => {
     expect(screen.getByText('fuelList.noRecords')).toBeInTheDocument()
     fireEvent.click(screen.getByRole('button', { name: 'fuelList.addFirstFillUp' }))
     expect(onAddClick).toHaveBeenCalled()
+  })
+})
+
+describe('FuelRecordList — one gallon per page, taken from the user', () => {
+  // ★ The plan's stated failure mode: fixing `decimalSafe` alone would make a
+  // UK user's ROW read $4.55/gal while the summary card on the SAME PAGE still
+  // read $3.79/gal, because `formatCostPerVolume` held its own hardcoded
+  // 3.78541. The row's volume, the row's price and both volume cards have to
+  // come from one resolved set, and the instance's own flavour is not it.
+  it('renders the header, the volume cell, the price cell and both volume cards on the imperial gallon', async () => {
+    UnitConverter.setGallonStandard('us')
+    unitPrefMock.system = 'imperial'
+    unitPrefMock.units = UK_IMPERIAL_UNITS
+
+    render(<FuelRecordList {...DEFAULT_PROPS} />)
+    await waitFor(() => expect(apiGetMock).toHaveBeenCalled())
+
+    const t = table()
+    // 47.318 L is 10.41 imperial gallons; 12.50 US ones.
+    expect(within(t).getByRole('columnheader', { name: 'fuelList.volumeUnit (gal)' })).toBeInTheDocument()
+    expect(within(t).getByText('10.41 gal')).toBeInTheDocument()
+    // $0.925/L is $4.21/imperial gal, $3.50/US gal.
+    expect(within(t).getByText('$4.21')).toBeInTheDocument()
+    // Summary cards, OUTSIDE the table, on the same gallon.
+    expect(screen.getByText('10.4 gal total')).toBeInTheDocument()
+    expect(screen.getByText('Avg Cost/gal')).toBeInTheDocument()
+    expect(screen.getByText('$4.20')).toBeInTheDocument()
+    expect(UnitConverter.getGallonStandard()).toBe('us')
+  })
+
+  it('renders litres everywhere for a metric set, even on a UK-default instance', async () => {
+    UnitConverter.setGallonStandard('uk')
+    unitPrefMock.system = 'metric'
+    unitPrefMock.units = null
+
+    render(<FuelRecordList {...DEFAULT_PROPS} />)
+    await waitFor(() => expect(apiGetMock).toHaveBeenCalled())
+
+    expect(within(table()).getByRole('columnheader', { name: 'fuelList.volumeUnit (L)' })).toBeInTheDocument()
+    expect(within(table()).getByText('47.32 L')).toBeInTheDocument()
+    expect(screen.getByText('47.3 L total')).toBeInTheDocument()
+    expect(screen.getByText('Avg Cost/L')).toBeInTheDocument()
   })
 })

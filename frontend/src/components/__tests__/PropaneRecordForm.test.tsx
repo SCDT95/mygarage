@@ -9,15 +9,40 @@ vi.mock('../../hooks/queries/usePropaneRecords', () => ({
   useCreatePropaneRecord: () => ({ mutateAsync: createMock }),
   useUpdatePropaneRecord: () => ({ mutateAsync: updateMock }),
 }))
-vi.mock('../../hooks/useUnitPreference', () => ({ useUnitPreference: () => ({ system: 'metric' }) }))
+const unitPrefMock = vi.hoisted(() => ({
+  system: 'metric' as 'metric' | 'imperial',
+  showBoth: false,
+  // Set to pin an exact resolved set (a `gal_uk` user, say); left null the set
+  // follows `system`, the way the real hook derives both on one rung.
+  units: null as null | import('@/types/units').UnitSet,
+}))
+vi.mock('../../hooks/useUnitPreference', async () => {
+  const { IMPERIAL_UNITS, METRIC_UNITS } = await import('@/__tests__/factories')
+  return {
+    useUnitPreference: () => ({
+      system: unitPrefMock.system,
+      showBoth: unitPrefMock.showBoth,
+      units:
+        unitPrefMock.units ??
+        (unitPrefMock.system === 'imperial' ? IMPERIAL_UNITS : METRIC_UNITS),
+    }),
+  }
+})
 vi.mock('../../hooks/useCurrencySymbol', () => ({ useCurrencySymbol: () => '$' }))
 
+import { UK_IMPERIAL_UNITS } from '../../__tests__/factories'
+import { UnitConverter } from '../../utils/units'
 import PropaneRecordForm from '../PropaneRecordForm'
 
 const DEFAULT_PROPS = { vin: 'TEST12345678901234', onClose: vi.fn(), onSuccess: vi.fn() }
 const propaneForm = () => document.getElementById('propane-record-form') as HTMLFormElement
 
-beforeEach(() => vi.clearAllMocks())
+beforeEach(() => {
+  vi.clearAllMocks()
+  unitPrefMock.system = 'metric'
+  unitPrefMock.units = null
+  UnitConverter.setGallonStandard('us')
+})
 
 describe('PropaneRecordForm — structure', () => {
   it('renders every field control by id (fails if the restyle drops a field)', () => {
@@ -142,5 +167,76 @@ describe('PropaneRecordForm — edit round-trip', () => {
     // 9.07 kg x 1 x 1.968 = 17.850 L, x 0.948 = 16.92
     await waitFor(() => expect((document.getElementById('propane_liters') as HTMLInputElement).value).toBe('17.85'))
     await waitFor(() => expect((document.getElementById('cost') as HTMLInputElement).value).toBe('16.92'))
+  })
+})
+
+describe('PropaneRecordForm — the gallon comes from the user, not the instance', () => {
+  it('CREATE: a gal_uk user on a US-default instance stores volume AND price on the imperial gallon', async () => {
+    UnitConverter.setGallonStandard('us')
+    unitPrefMock.system = 'imperial'
+    unitPrefMock.units = UK_IMPERIAL_UNITS
+
+    render(<PropaneRecordForm {...DEFAULT_PROPS} />)
+    fireEvent.change(document.getElementById('date') as HTMLInputElement, { target: { value: '2026-02-10' } })
+    fireEvent.change(document.getElementById('propane_liters') as HTMLInputElement, { target: { value: '10' } })
+    fireEvent.change(document.getElementById('price_per_unit') as HTMLInputElement, { target: { value: '6' } })
+    fireEvent.submit(propaneForm())
+
+    await waitFor(() => expect(createMock).toHaveBeenCalled())
+    const payload = createMock.mock.calls[0][0] as Record<string, unknown>
+    expect(payload.propane_liters).toBe(45.461)
+    expect(payload.price_per_unit).toBe(1.31981548979)
+    // Propane deliberately leaves `liters` unset and uses its own column, which
+    // is why the corruption detector coalesces the two.
+    expect(payload.liters).toBeUndefined()
+    expect(UnitConverter.getGallonStandard()).toBe('us')
+  })
+
+  it('the tank auto-calc lands in the SAME unit the volume field is submitted in', async () => {
+    // The tank row writes straight into propane_liters, so a volume computed
+    // on the instance gallon would be submitted back through the user's one.
+    UnitConverter.setGallonStandard('us')
+    unitPrefMock.system = 'imperial'
+    unitPrefMock.units = UK_IMPERIAL_UNITS
+
+    render(<PropaneRecordForm {...DEFAULT_PROPS} />)
+    fireEvent.change(document.getElementById('date') as HTMLInputElement, { target: { value: '2026-02-10' } })
+    fireEvent.change(document.getElementById('tank_size_kg') as HTMLSelectElement, { target: { value: '20' } })
+    fireEvent.change(document.getElementById('tank_quantity') as HTMLInputElement, { target: { value: '2' } })
+    // 2 x 9.07 kg x 1.968 L/kg = 35.69952 L, which is 7.85 imperial gallons
+    // (it would be 9.43 US ones).
+    await waitFor(() =>
+      expect((document.getElementById('propane_liters') as HTMLInputElement).value).toBe('7.85')
+    )
+
+    fireEvent.change(document.getElementById('price_per_unit') as HTMLInputElement, { target: { value: '6' } })
+    await waitFor(() => expect((document.getElementById('cost') as HTMLInputElement).value).toBe('47.1'))
+    fireEvent.submit(propaneForm())
+
+    await waitFor(() => expect(createMock).toHaveBeenCalled())
+    const payload = createMock.mock.calls[0][0] as Record<string, unknown>
+    expect(payload.propane_liters).toBe(35.687)   // 7.85 x 4.54609, at 3 dp
+    expect(payload.price_per_unit).toBe(1.31981548979)
+    const ratio = (payload.price_per_unit as number) * (payload.propane_liters as number) / (payload.cost as number)
+    expect(ratio).toBeCloseTo(1, 3)
+  })
+
+  it('EDIT: reopening a gal_uk record and saving it untouched changes neither half', async () => {
+    UnitConverter.setGallonStandard('us')
+    unitPrefMock.system = 'imperial'
+    unitPrefMock.units = UK_IMPERIAL_UNITS
+
+    render(<PropaneRecordForm {...DEFAULT_PROPS} record={{
+      id: 12, vin: DEFAULT_PROPS.vin, date: '2026-02-10',
+      propane_liters: 45.461, price_per_unit: 1.31981548979, price_basis: 'per_volume', cost: 60,
+    } as never} />)
+    expect((document.getElementById('propane_liters') as HTMLInputElement).value).toBe('10')
+    expect((document.getElementById('price_per_unit') as HTMLInputElement).value).toBe('6')
+
+    fireEvent.submit(propaneForm())
+    await waitFor(() => expect(updateMock).toHaveBeenCalled())
+    const payload = updateMock.mock.calls[0][0] as Record<string, unknown>
+    expect(payload.propane_liters).toBe(45.461)
+    expect(payload.price_per_unit).toBe(1.31981548979)
   })
 })

@@ -1,41 +1,113 @@
-import { describe, it, expect } from 'vitest'
-import { UnitFormatter } from '../units'
+/**
+ * The summary-card and list helpers that render a volume, or something derived
+ * from one.
+ *
+ * Defect L1's second half lived here: `formatCostPerVolume` multiplied by a
+ * hardcoded `3.78541` and `formatVolumePerDistance` divided by it, so a UK
+ * user's Avg Cost/gal card read about 20 percent low while the row beneath it,
+ * which went through `priceToDisplay`, read the same wrong number. Fixing only
+ * `decimalSafe` would have made the two disagree on one page, which is worse
+ * than being uniformly wrong.
+ *
+ * Every gallon case pins the INSTANCE standard to `us` first: these helpers now
+ * take the client's resolved `UnitSet`, and one still reading
+ * `UnitConverter.getGallonStandard()` cannot pass a `gal_uk` case.
+ */
+
+import { beforeEach, describe, expect, it } from 'vitest'
+import { makeUnitSet } from '@/__tests__/factories'
+import { UnitConverter, UnitFormatter } from '../units'
+
+const METRIC = makeUnitSet()
+const US = makeUnitSet({ volume: 'gal_us', secondary_gallon: 'us' })
+const UK = makeUnitSet({ volume: 'gal_uk', secondary_gallon: 'uk' })
+
+beforeEach(() => {
+  UnitConverter.setGallonStandard('us')
+})
 
 // All summary card helpers take CANONICAL METRIC inputs:
 // - formatVolumeTotal: liters
 // - formatCostPerVolume: $/L
 // - formatCostPerDistance: $/km (rendered as $/100km metric or $/1000mi imperial)
 // - formatVolumePerDistance: L/1000km
+describe('UnitConverter.litersToVolumeUnit', () => {
+  it('hands a litre set its stored value untouched and rounds a gallon one for display', () => {
+    // Form fields are seeded from this. A litre set must NOT go through
+    // `roundResult`: re-rounding a canonical value the user never edited would
+    // rewrite it on save, which is the round-trip corruption the tread work
+    // spent a whole task on.
+    expect(UnitConverter.litersToVolumeUnit(45.461, METRIC)).toBe(45.461)
+    // 45.461 / 4.54609 = 10 exactly; / 3.78541 = 12.01.
+    expect(UnitConverter.litersToVolumeUnit(45.461, UK)).toBe(10)
+    expect(UnitConverter.litersToVolumeUnit(45.461, US)).toBe(12.01)
+    expect(UnitConverter.litersToVolumeUnit(null, UK)).toBeNull()
+    expect(UnitConverter.litersToVolumeUnit(undefined, METRIC)).toBeNull()
+  })
+})
+
 describe('UnitFormatter summary card helpers', () => {
-  describe('formatVolumeTotal', () => {
-    it('metric: shows liters with 1 decimal', () => {
-      expect(UnitFormatter.formatVolumeTotal(47.3, 'metric')).toBe('47.3 L total')
+  describe('formatVolume', () => {
+    it('renders in the resolved volume unit, not the instance gallon standard', () => {
+      // 47.317625 L is 12.50 US gallons and 10.41 imperial ones.
+      expect(UnitFormatter.formatVolume(47.317625, METRIC)).toBe('47.32 L')
+      expect(UnitFormatter.formatVolume(47.317625, US)).toBe('12.50 gal')
+      expect(UnitFormatter.formatVolume(47.317625, UK)).toBe('10.41 gal')
     })
 
-    it('imperial: converts liters to gallons with 1 decimal', () => {
-      // 47.317625 L / 3.78541 = 12.5 gal
-      expect(UnitFormatter.formatVolumeTotal(47.317625, 'imperial')).toBe('12.5 gal total')
+    it('pairs a litre primary with the set\'s secondary gallon (D4b), not the global', () => {
+      const metricUk = makeUnitSet({ secondary_gallon: 'uk' })
+      expect(UnitFormatter.formatVolume(47.317625, METRIC, true)).toBe('47.32 L (12.50 gal)')
+      expect(UnitFormatter.formatVolume(47.317625, metricUk, true)).toBe('47.32 L (10.41 gal)')
+      expect(UnitFormatter.formatVolume(47.317625, UK, true)).toBe('10.41 gal (47.32 L)')
+    })
+
+    it('renders N/A for an absent value in every set', () => {
+      expect(UnitFormatter.formatVolume(null, UK)).toBe('N/A')
+      expect(UnitFormatter.formatVolume(undefined, UK)).toBe('N/A')
+      // Not N/A, and not the US answer: the guard precedes the conversion.
+      expect(UnitFormatter.formatVolume(45.4609, UK)).toBe('10.00 gal')
+    })
+  })
+
+  describe('getVolumeUnit', () => {
+    it('labels from the resolved volume token', () => {
+      expect(UnitFormatter.getVolumeUnit(METRIC)).toBe('L')
+      expect(UnitFormatter.getVolumeUnit(US)).toBe('gal')
+      expect(UnitFormatter.getVolumeUnit(UK)).toBe('gal')
+    })
+  })
+
+  describe('formatVolumeShort / formatVolumeTotal', () => {
+    it('converts the total on the resolved token, at one decimal', () => {
+      expect(UnitFormatter.formatVolumeShort(47.3, METRIC)).toBe('47.3 L')
+      expect(UnitFormatter.formatVolumeShort(47.317625, US)).toBe('12.5 gal')
+      // 47.317625 / 4.54609 = 10.408 -> 10.4
+      expect(UnitFormatter.formatVolumeShort(47.317625, UK)).toBe('10.4 gal')
+    })
+
+    it('appends "total" without changing the number', () => {
+      expect(UnitFormatter.formatVolumeTotal(47.3, METRIC)).toBe('47.3 L total')
+      expect(UnitFormatter.formatVolumeTotal(47.317625, US)).toBe('12.5 gal total')
+      expect(UnitFormatter.formatVolumeTotal(47.317625, UK)).toBe('10.4 gal total')
     })
   })
 
   describe('formatCostPerVolume', () => {
-    it('metric: shows $/L with 2 decimals', () => {
-      expect(UnitFormatter.formatCostPerVolume(1.0, 'metric')).toBe('$1.00')
-    })
-
-    it('imperial: converts $/L to $/gal with 2 decimals', () => {
-      // $1/L * 3.78541 = $3.79/gal
-      expect(UnitFormatter.formatCostPerVolume(1.0, 'imperial')).toBe('$3.79')
+    it('scales $/L by the resolved set\'s litres-per-unit', () => {
+      expect(UnitFormatter.formatCostPerVolume(1.0, METRIC)).toBe('$1.00')
+      // $1/L x 3.78541 = $3.79/gal; x 4.54609 = $4.55/gal. The card and the
+      // row below it now agree, because both read the same resolved token.
+      expect(UnitFormatter.formatCostPerVolume(1.0, US)).toBe('$3.79')
+      expect(UnitFormatter.formatCostPerVolume(1.0, UK)).toBe('$4.55')
     })
   })
 
   describe('getCostPerVolumeLabel', () => {
-    it('imperial: Avg Cost/gal', () => {
-      expect(UnitFormatter.getCostPerVolumeLabel('imperial')).toBe('Avg Cost/gal')
-    })
-
-    it('metric: Avg Cost/L', () => {
-      expect(UnitFormatter.getCostPerVolumeLabel('metric')).toBe('Avg Cost/L')
+    it('names the resolved volume unit', () => {
+      expect(UnitFormatter.getCostPerVolumeLabel(US)).toBe('Avg Cost/gal')
+      expect(UnitFormatter.getCostPerVolumeLabel(UK)).toBe('Avg Cost/gal')
+      expect(UnitFormatter.getCostPerVolumeLabel(METRIC)).toBe('Avg Cost/L')
     })
   })
 
@@ -62,24 +134,36 @@ describe('UnitFormatter summary card helpers', () => {
   })
 
   describe('formatVolumePerDistance', () => {
-    it('metric: shows L/1k km with 1 decimal', () => {
-      expect(UnitFormatter.formatVolumePerDistance(4.7, 'metric')).toBe('4.7')
+    it('converts the volume half on the resolved token', () => {
+      expect(UnitFormatter.formatVolumePerDistance(4.7, METRIC)).toBe('4.7')
+      // (4.7 / 3.78541) * 1.60934 = 2.0 gal/1000mi
+      expect(UnitFormatter.formatVolumePerDistance(4.7, US)).toBe('2.0')
+      // (4.7 / 4.54609) * 1.60934 = 1.66 -> 1.7
+      expect(UnitFormatter.formatVolumePerDistance(4.7, UK)).toBe('1.7')
     })
 
-    it('imperial: converts L/1k km to gal/1k mi with 1 decimal', () => {
-      // 4.7 L/1000km → (4.7 / 3.78541) * 1.60934 = 2.0 gal/1000mi
-      const result = UnitFormatter.formatVolumePerDistance(4.7, 'imperial')
-      expect(result).toBe('2.0')
+    it('keeps the DISTANCE half on the binary system the volume token collapses to', () => {
+      // Deliberate: the neighbouring "Est. km Left" cell on the same DEF card
+      // still branches on `system`, which spec D8 derives from VOLUME. Reading
+      // `units.distance` here instead would put miles next to kilometres for a
+      // custom user, which is the same-screen defect this task exists to
+      // remove. Distance moves in 3b, as one file, with its neighbours.
+      const litreVolumeMileDistance = makeUnitSet({ distance: 'mi' })
+      expect(UnitFormatter.formatVolumePerDistance(4.7, litreVolumeMileDistance)).toBe('4.7')
+      expect(UnitFormatter.getVolumePerDistanceLabel(litreVolumeMileDistance)).toBe('L/1,000 km')
+      // The mirror case: a gallon volume with a kilometre distance still
+      // converts BOTH halves, because the volume token is what decides.
+      const gallonVolumeKmDistance = makeUnitSet({ volume: 'gal_uk', distance: 'km' })
+      expect(UnitFormatter.formatVolumePerDistance(4.7, gallonVolumeKmDistance)).toBe('1.7')
+      expect(UnitFormatter.getVolumePerDistanceLabel(gallonVolumeKmDistance)).toBe('gal/1,000 mi')
     })
   })
 
   describe('getVolumePerDistanceLabel', () => {
-    it('imperial: gal/1,000 mi', () => {
-      expect(UnitFormatter.getVolumePerDistanceLabel('imperial')).toBe('gal/1,000 mi')
-    })
-
-    it('metric: L/1,000 km', () => {
-      expect(UnitFormatter.getVolumePerDistanceLabel('metric')).toBe('L/1,000 km')
+    it('names the resolved volume unit over the collapsed distance one', () => {
+      expect(UnitFormatter.getVolumePerDistanceLabel(US)).toBe('gal/1,000 mi')
+      expect(UnitFormatter.getVolumePerDistanceLabel(UK)).toBe('gal/1,000 mi')
+      expect(UnitFormatter.getVolumePerDistanceLabel(METRIC)).toBe('L/1,000 km')
     })
   })
 })

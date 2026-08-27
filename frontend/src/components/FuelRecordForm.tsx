@@ -81,7 +81,7 @@ export default function FuelRecordForm({ vin, record, onClose, onSuccess }: Fuel
   // flash the wrong field before the vehicle fetch resolves.
   const [vehicleUsageUnit, setVehicleUsageUnit] = useState<string>('distance')
   const [vehicleSecondaryUsageEnabled, setVehicleSecondaryUsageEnabled] = useState<boolean>(false)
-  const { system } = useUnitPreference()
+  const { system, units } = useUnitPreference()
   const { timeFormat } = useTimeFormat()
   const { user } = useAuth()
 
@@ -197,19 +197,19 @@ export default function FuelRecordForm({ vin, record, onClose, onSuccess }: Fuel
         : readNumber(record?.odometer_km),
       // Engine hours are dimensionless — no unit conversion regardless of system.
       engine_hours: readNumber(record?.engine_hours),
-      liters: system === 'imperial' && record?.liters != null
-        ? UnitConverter.litersToGallons(readNumber(record.liters)!) ?? undefined
-        : readNumber(record?.liters),
-      propane_liters: system === 'imperial' && record?.propane_liters != null
-        ? UnitConverter.litersToGallons(readNumber(record.propane_liters)!) ?? undefined
-        : readNumber(record?.propane_liters),
+      // Volume is seeded through the SAME resolved set the submit converts
+      // back with; a seed on one gallon and a submit on another rewrites a
+      // record the user only opened (defect L1).
+      liters: UnitConverter.litersToVolumeUnit(readNumber(record?.liters), units) ?? undefined,
+      propane_liters:
+        UnitConverter.litersToVolumeUnit(readNumber(record?.propane_liters), units) ?? undefined,
       kwh: readNumber(record?.kwh),
       soc_start_pct: readNumber((record as { soc_start_pct?: number | string | null })?.soc_start_pct),
       soc_end_pct: readNumber((record as { soc_end_pct?: number | string | null })?.soc_end_pct),
       charge_level: (record as { charge_level?: 'L1' | 'L2' | 'DCFC' | null })?.charge_level ?? undefined,
       charge_location: (record as { charge_location?: 'home' | 'public' | null })?.charge_location ?? undefined,
       battery_soh_pct: readNumber((record as { battery_soh_pct?: number | string | null })?.battery_soh_pct),
-      price_per_unit: priceToDisplay(record?.price_per_unit, system, record?.price_basis) ?? undefined,
+      price_per_unit: priceToDisplay(record?.price_per_unit, units, record?.price_basis) ?? undefined,
       price_basis: (record?.price_basis as 'per_volume' | 'per_weight' | 'per_kwh' | 'per_tank' | undefined) ?? undefined,
       cost: readNumber(record?.cost),
       rebate: readNumber(record?.rebate),
@@ -435,8 +435,7 @@ export default function FuelRecordForm({ vin, record, onClose, onSuccess }: Fuel
     }
     if (receiptDraft.liters != null) {
       const raw = Number(receiptDraft.liters)
-      const display =
-        system === 'imperial' ? UnitConverter.litersToGallons(raw) : raw
+      const display = UnitConverter.litersToVolumeUnit(raw, units)
       if (display != null && !Number.isNaN(display)) {
         setValue('liters', Math.round(display * 1000) / 1000, { shouldValidate: true })
       }
@@ -448,7 +447,7 @@ export default function FuelRecordForm({ vin, record, onClose, onSuccess }: Fuel
       setValue('cost', Number(receiptDraft.cost), { shouldValidate: true })
     }
     if (receiptDraft.price_per_unit != null) {
-      const display = priceToDisplay(Number(receiptDraft.price_per_unit), system, 'per_volume')
+      const display = priceToDisplay(Number(receiptDraft.price_per_unit), units, 'per_volume')
       if (display != null) {
         setValue('price_per_unit', display, { shouldValidate: true })
       }
@@ -522,15 +521,19 @@ export default function FuelRecordForm({ vin, record, onClose, onSuccess }: Fuel
         odometer_km: toCanonicalKm(data.odometer_km, system) ?? undefined,
         // Dimensionless — submitted verbatim, no canonical conversion.
         engine_hours: data.engine_hours,
-        liters: toCanonicalLiters(data.liters, system) ?? undefined,
-        propane_liters: toCanonicalLiters(data.propane_liters, system) ?? undefined,
+        // ★ Volume and price convert through ONE resolved set. Splitting them
+        // stores 10 gal as 37.85 L against an imperial-gallon price: one
+        // payload, internally inconsistent, and worse than being uniformly
+        // wrong. See utils/decimalSafe.ts.
+        liters: toCanonicalLiters(data.liters, units) ?? undefined,
+        propane_liters: toCanonicalLiters(data.propane_liters, units) ?? undefined,
         kwh: data.kwh,
         soc_start_pct: data.soc_start_pct,
         soc_end_pct: data.soc_end_pct,
         charge_level: data.charge_level,
         charge_location: data.charge_location,
         battery_soh_pct: data.battery_soh_pct,
-        price_per_unit: priceToCanonical(data.price_per_unit, system, data.price_basis) ?? undefined,
+        price_per_unit: priceToCanonical(data.price_per_unit, units, data.price_basis) ?? undefined,
         price_basis: data.price_basis,
         cost: data.cost,
         rebate: data.rebate,
@@ -634,7 +637,7 @@ export default function FuelRecordForm({ vin, record, onClose, onSuccess }: Fuel
   const showDefLevel = isDiesel
 
   // Dynamic labels
-  const priceLabel = isElectric ? t('fuel.pricePerKwh') : `${t('fuel.pricePer')} ${UnitFormatter.getVolumeUnit(system)}`
+  const priceLabel = isElectric ? t('fuel.pricePerKwh') : `${t('fuel.pricePer')} ${UnitFormatter.getVolumeUnit(units)}`
 
   return (
     <FormModalWrapper
@@ -776,7 +779,7 @@ export default function FuelRecordForm({ vin, record, onClose, onSuccess }: Fuel
 
           <div className="grid grid-cols-3 gap-4">
             {showGallons && (
-              <Field id="liters" label={t('fuel.volume')} unit={UnitFormatter.getVolumeUnit(system)} error={errors.liters}>
+              <Field id="liters" label={t('fuel.volume')} unit={UnitFormatter.getVolumeUnit(units)} error={errors.liters}>
                 <NumberInput id="liters" {...registerDecimal(register, 'liters')} placeholder={system === 'imperial' ? '12.500' : '47.318'} invalid={!!errors.liters} disabled={isSubmitting} />
               </Field>
             )}
@@ -786,7 +789,7 @@ export default function FuelRecordForm({ vin, record, onClose, onSuccess }: Fuel
               </Field>
             )}
             {showPropane && (
-              <Field id="propane_liters" label={t('fuel.propane')} unit={UnitFormatter.getVolumeUnit(system)} error={errors.propane_liters}>
+              <Field id="propane_liters" label={t('fuel.propane')} unit={UnitFormatter.getVolumeUnit(units)} error={errors.propane_liters}>
                 <NumberInput id="propane_liters" {...registerDecimal(register, 'propane_liters')} placeholder="0.000" invalid={!!errors.propane_liters} disabled={isSubmitting} />
               </Field>
             )}
@@ -858,8 +861,8 @@ export default function FuelRecordForm({ vin, record, onClose, onSuccess }: Fuel
               invalid={!!errors.price_basis}
               defaultValue={isElectric ? 'per_kwh' : 'per_volume'}
               options={[
-                { value: 'per_volume', label: t('fuel.priceBasisPerVolume', { unit: system === 'imperial' ? 'gal' : 'L' }) },
-                { value: 'per_weight', label: t('fuel.priceBasisPerWeight', { unit: system === 'imperial' ? 'lb' : 'kg' }) },
+                { value: 'per_volume', label: t('fuel.priceBasisPerVolume', { unit: UnitFormatter.getVolumeUnit(units) }) },
+                { value: 'per_weight', label: t('fuel.priceBasisPerWeight', { unit: UnitFormatter.getMassUnit(units) }) },
                 { value: 'per_kwh', label: t('fuel.priceBasisPerKwh') },
                 { value: 'per_tank', label: t('fuel.priceBasisPerTank') },
               ]}

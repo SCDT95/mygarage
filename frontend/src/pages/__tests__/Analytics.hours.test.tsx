@@ -56,6 +56,8 @@ vi.mock('../../services/api', () => ({
   },
 }))
 
+import { IMPERIAL_UNITS, METRIC_UNITS } from '@/__tests__/factories'
+
 const unitPreferenceMock = vi.fn()
 vi.mock('../../hooks/useUnitPreference', () => ({
   useUnitPreference: () => unitPreferenceMock(),
@@ -170,7 +172,7 @@ function findChartData(key: string): unknown[] | undefined {
 beforeEach(() => {
   vi.clearAllMocks()
   captured.lineCharts = []
-  unitPreferenceMock.mockReturnValue({ system: 'metric', showBoth: false })
+  unitPreferenceMock.mockReturnValue({ system: 'metric', showBoth: false, units: METRIC_UNITS })
 })
 
 afterEach(() => {
@@ -208,7 +210,7 @@ describe('Analytics — hours efficiency chart (Task 17)', () => {
   })
 
   it('converts l_per_hr to GPH (gallons/hour) for the displayed series when imperial (canonical lPerHr stays in L/hr)', async () => {
-    unitPreferenceMock.mockReturnValue({ system: 'imperial', showBoth: false })
+    unitPreferenceMock.mockReturnValue({ system: 'imperial', showBoth: false, units: IMPERIAL_UNITS })
     mockAnalyticsResponse(baseAnalytics({
       hours_economy: {
         average_l_per_hr: '3.80', average_cost_per_hr: '2.75', best_l_per_hr: '3.80', worst_l_per_hr: '3.80',

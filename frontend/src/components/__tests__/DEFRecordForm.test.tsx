@@ -9,15 +9,40 @@ vi.mock('../../hooks/queries/useDEFRecords', () => ({
   useCreateDEFRecord: () => ({ mutateAsync: createMock }),
   useUpdateDEFRecord: () => ({ mutateAsync: updateMock }),
 }))
-vi.mock('../../hooks/useUnitPreference', () => ({ useUnitPreference: () => ({ system: 'metric' }) }))
+const unitPrefMock = vi.hoisted(() => ({
+  system: 'metric' as 'metric' | 'imperial',
+  showBoth: false,
+  // Set to pin an exact resolved set (a `gal_uk` user, say); left null the set
+  // follows `system`, the way the real hook derives both on one rung.
+  units: null as null | import('@/types/units').UnitSet,
+}))
+vi.mock('../../hooks/useUnitPreference', async () => {
+  const { IMPERIAL_UNITS, METRIC_UNITS } = await import('@/__tests__/factories')
+  return {
+    useUnitPreference: () => ({
+      system: unitPrefMock.system,
+      showBoth: unitPrefMock.showBoth,
+      units:
+        unitPrefMock.units ??
+        (unitPrefMock.system === 'imperial' ? IMPERIAL_UNITS : METRIC_UNITS),
+    }),
+  }
+})
 vi.mock('../../hooks/useCurrencySymbol', () => ({ useCurrencySymbol: () => '$' }))
 
+import { UK_IMPERIAL_UNITS } from '../../__tests__/factories'
+import { UnitConverter } from '../../utils/units'
 import DEFRecordForm from '../DEFRecordForm'
 
 const DEFAULT_PROPS = { vin: 'TEST12345678901234', onClose: vi.fn(), onSuccess: vi.fn() }
 const defForm = () => document.getElementById('def-record-form') as HTMLFormElement
 
-beforeEach(() => vi.clearAllMocks())
+beforeEach(() => {
+  vi.clearAllMocks()
+  unitPrefMock.system = 'metric'
+  unitPrefMock.units = null
+  UnitConverter.setGallonStandard('us')
+})
 
 describe('DEFRecordForm — structure', () => {
   it('renders every field control by id, INCLUDING odometer_km (fails if the restyle drops a field)', () => {
@@ -123,5 +148,69 @@ describe('DEFRecordForm — edit round-trip', () => {
     } as never} />)
     fireEvent.change(document.getElementById('liters') as HTMLInputElement, { target: { value: '10' } })
     await waitFor(() => expect((document.getElementById('cost') as HTMLInputElement).value).toBe('80'))
+  })
+})
+
+describe('DEFRecordForm — the gallon comes from the user, not the instance', () => {
+  it('CREATE: a gal_uk user on a US-default instance stores volume AND price on the imperial gallon', async () => {
+    // Defect L1: `toCanonicalLiters` used UnitConverter's instance-wide factor
+    // while `priceToCanonical` used a hardcoded US gallon. Splitting the two
+    // writes one payload with two gallons in it.
+    UnitConverter.setGallonStandard('us')
+    unitPrefMock.system = 'imperial'
+    unitPrefMock.units = UK_IMPERIAL_UNITS
+
+    render(<DEFRecordForm {...DEFAULT_PROPS} />)
+    fireEvent.change(document.getElementById('date') as HTMLInputElement, { target: { value: '2026-02-10' } })
+    fireEvent.change(document.getElementById('liters') as HTMLInputElement, { target: { value: '10' } })
+    fireEvent.change(document.getElementById('price_per_unit') as HTMLInputElement, { target: { value: '6' } })
+    fireEvent.submit(defForm())
+
+    await waitFor(() => expect(createMock).toHaveBeenCalled())
+    const payload = createMock.mock.calls[0][0] as Record<string, unknown>
+    expect(payload.liters).toBe(45.461)             // 10 x 4.54609, at the schema's 3 dp
+    expect(payload.price_per_unit).toBe(1.31981548979)  // 6 / 4.54609
+    expect(UnitConverter.getGallonStandard()).toBe('us')
+    // The row reconciles: the cost the user saw is price x volume in canonical
+    // units too, which is only true when both used the same gallon.
+    const ratio = (payload.price_per_unit as number) * (payload.liters as number) / (payload.cost as number)
+    expect(ratio).toBeCloseTo(1, 4)
+  })
+
+  it('EDIT: a metric record with three stored decimals survives an untouched save', async () => {
+    // The litre seed must not re-round: 45.461 L is inside the API's declared
+    // three decimal places, and a display-precision round on the way IN would
+    // hand 45.46 straight back out on save.
+    unitPrefMock.system = 'metric'
+    unitPrefMock.units = null
+
+    render(<DEFRecordForm {...DEFAULT_PROPS} record={{
+      id: 13, vin: DEFAULT_PROPS.vin, date: '2026-02-10', liters: 45.461, cost: 60,
+    } as never} />)
+    expect((document.getElementById('liters') as HTMLInputElement).value).toBe('45.461')
+
+    fireEvent.submit(defForm())
+    await waitFor(() => expect(updateMock).toHaveBeenCalled())
+    expect((updateMock.mock.calls[0][0] as Record<string, unknown>).liters).toBe(45.461)
+  })
+
+  it('EDIT: reopening a gal_uk record and saving it untouched changes neither half', async () => {
+    UnitConverter.setGallonStandard('us')
+    unitPrefMock.system = 'imperial'
+    unitPrefMock.units = UK_IMPERIAL_UNITS
+
+    render(<DEFRecordForm {...DEFAULT_PROPS} record={{
+      id: 11, vin: DEFAULT_PROPS.vin, date: '2026-02-10',
+      liters: 45.461, price_per_unit: 1.31981548979, cost: 60,
+    } as never} />)
+    // Seeded in the USER's gallon: 45.461 / 4.54609 = 10, not 45.461 / 3.78541.
+    expect((document.getElementById('liters') as HTMLInputElement).value).toBe('10')
+    expect((document.getElementById('price_per_unit') as HTMLInputElement).value).toBe('6')
+
+    fireEvent.submit(defForm())
+    await waitFor(() => expect(updateMock).toHaveBeenCalled())
+    const payload = updateMock.mock.calls[0][0] as Record<string, unknown>
+    expect(payload.liters).toBe(45.461)
+    expect(payload.price_per_unit).toBe(1.31981548979)
   })
 })

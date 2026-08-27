@@ -93,7 +93,7 @@ export default function VehicleEditDrawer({
   // fresh data never populates — `reset()` then submits them as explicit
   // `null`, clearing real columns.
   const [seedSource, setSeedSource] = useState<Vehicle | null>(null)
-  const { system } = useUnitPreference()
+  const { system, units } = useUnitPreference()
 
   const isMotorized = seedSource ? !NON_MOTORIZED.includes(seedSource.vehicle_type) : false
   const hasWindowSticker = seedSource
@@ -175,7 +175,8 @@ export default function VehicleEditDrawer({
         if (cap == null) return undefined
         const num = typeof cap === 'string' ? parseFloat(cap) : Number(cap)
         if (isNaN(num)) return undefined
-        return system === 'imperial' ? UnitConverter.litersToGallons(num) ?? num : num
+        // Seeded on the resolved set, exactly as onSubmit converts it back.
+        return UnitConverter.litersToVolumeUnit(num, units) ?? num
       })(),
     }
 
@@ -191,7 +192,7 @@ export default function VehicleEditDrawer({
     // another.
     setSeedSource(source)
     reset(formData as VehicleEditFormData)
-  }, [vin, vehicle, reset, system])
+  }, [vin, vehicle, reset, units])
 
   // Reseed on each open transition only. Deliberately NOT keyed on `vehicle`:
   // the parent re-setting it while the drawer is open would reset the form
@@ -220,7 +221,7 @@ export default function VehicleEditDrawer({
     } else if (data.def_tank_capacity_liters != null) {
       // The entered value is in the user's display unit (L metric, gal
       // imperial). Convert to canonical litres before submit.
-      const canonical = toCanonicalLiters(data.def_tank_capacity_liters, system)
+      const canonical = toCanonicalLiters(data.def_tank_capacity_liters, units)
       data.def_tank_capacity_liters = canonical ?? data.def_tank_capacity_liters
     }
 
@@ -410,7 +411,7 @@ export default function VehicleEditDrawer({
                   <Field
                     id="def_tank_capacity_liters"
                     label={t('edit.defTankCapacity')}
-                    unit={UnitFormatter.getVolumeUnit(system)}
+                    unit={UnitFormatter.getVolumeUnit(units)}
                     error={errors.def_tank_capacity_liters}
                     hint={isDieselSelected ? t('edit.defTankCapacityHint') : undefined}
                   >
