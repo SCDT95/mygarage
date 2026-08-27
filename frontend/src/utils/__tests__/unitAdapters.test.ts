@@ -8,7 +8,13 @@
  * nowhere in the frontend before this module.
  */
 import { describe, it, expect } from 'vitest'
-import { UNIT_ADAPTERS, adapterFor, counterpartFor, type UnitToken } from '../unitAdapters'
+import {
+  UNIT_ADAPTERS,
+  adapterFor,
+  counterpartFor,
+  radiusToMeters,
+  type UnitToken,
+} from '../unitAdapters'
 import { presetUnitsFor, type UnitQuantity } from '@/types/units'
 import type { UnitSet } from '@/types/units'
 
@@ -277,3 +283,22 @@ const QUANTITY_OF: Record<UnitToken, UnitQuantity> = {
   mm: 'tread',
   in32: 'tread',
 }
+
+describe('radiusToMeters', () => {
+  it('reads the radius in the set own distance unit, not in a binary system', () => {
+    // 5 mi x 1.60934 = 8.0467 km = 8046.7 m.
+    expect(radiusToMeters(presetUnitsFor('imperial', 'us'), 5)).toBe(8047)
+    expect(radiusToMeters(presetUnitsFor('metric', 'us'), 10)).toBe(10000)
+  })
+
+  it('follows the DISTANCE token for a custom set whose volume says otherwise', () => {
+    // D8 collapses `system` from volume, so this set reads 'metric' and used to
+    // get kilometre radii while the user had chosen miles.
+    const custom: UnitSet = { ...presetUnitsFor('metric', 'us'), distance: 'mi' }
+    expect(radiusToMeters(custom, 25)).toBe(40234)
+  })
+
+  it('returns null for a radius that is not a number', () => {
+    expect(radiusToMeters(presetUnitsFor('metric', 'us'), Number.NaN)).toBeNull()
+  })
+})

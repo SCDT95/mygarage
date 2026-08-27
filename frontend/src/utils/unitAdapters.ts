@@ -76,6 +76,9 @@ const F_OFFSET = 32
 /** Significant digits kept on every result. See the module docstring. */
 const SIGNIFICANT_DIGITS = 12
 
+/** Metres per kilometre. Canonical distance is km; maps and geo APIs take metres. */
+const M_PER_KM = 1000
+
 /** One typed unit's round trip to and from its canonical representation. */
 export interface UnitAdapter {
   /** The `UnitSet` token this adapter serves, e.g. `'in32'`. */
@@ -291,4 +294,49 @@ export function counterpartFor(units: UnitSet, quantity: UnitQuantity): UnitAdap
     counterpart = FIXED_COUNTERPARTS[token]
   }
   return counterpart === undefined ? null : UNIT_ADAPTERS[counterpart]
+}
+
+/**
+ * Convert a search radius typed in the client's own distance unit into metres.
+ *
+ * ★ The one place a distance-to-metres conversion happens. Three hardcoded
+ * copies of `1609.34` used to do this: `POIFinder` and `ShopFinder` each
+ * branched on the binary `system`, and `LeafletMap` applied it UNCONDITIONALLY,
+ * so a metric user picking a 25 km radius searched 25 km and was drawn a
+ * 40.2 km circle. The binary branches were wrong in their own way: `system` is
+ * collapsed from VOLUME (spec D8), so a custom user with litres and miles got
+ * kilometre radii against a mile preference.
+ *
+ * Whole metres, because both consumers are metre-resolution: the search API's
+ * integer `radius_meters` and a map circle's radius in metres.
+ *
+ * @param units The client's resolved unit set.
+ * @param radius The radius as the user typed or selected it.
+ * @returns The radius in whole metres, or null when there is no radius.
+ */
+export function radiusToMeters(units: UnitSet, radius: number | null | undefined): number | null {
+  const km = adapterFor(units, 'distance').toCanonical(radius)
+  return km === null ? null : Math.round(km * M_PER_KM)
+}
+
+/**
+ * Convert a distance in metres into the client's own distance unit.
+ *
+ * The read half of `radiusToMeters`: the POI and shop search APIs report each
+ * result's `distance_meters`, and both finders used to divide by 1000 and then
+ * branch on the binary `system` to decide whether to convert. Exact, unrounded;
+ * the caller picks a precision, and both finders deliberately show one decimal
+ * rather than the km/mi adapter's own zero, which would collapse every nearby
+ * result to "0 mi".
+ *
+ * @param units The client's resolved unit set.
+ * @param meters The distance in metres.
+ * @returns The distance in the set's distance unit, or null when there is none.
+ */
+export function metersToDistance(
+  units: UnitSet,
+  meters: number | null | undefined
+): number | null {
+  if (meters === null || meters === undefined || Number.isNaN(meters)) return null
+  return adapterFor(units, 'distance').toDisplay(meters / M_PER_KM)
 }
