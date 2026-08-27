@@ -28,6 +28,7 @@ from app.utils.csv_emission import (
     marker_for,
     token_for,
 )
+from app.utils.csv_safe import sanitize_csv_cell
 from app.utils.csv_units import (
     DEF_PRICE,
     FUEL_CONSUMPTION,
@@ -265,6 +266,21 @@ class TestCellsAreNumericOnly:
         assert cell_for(column, "km", Decimal("1234567.89")) == "1234567.89"
         # What the primitive formatter would have produced instead.
         assert ADAPTERS["km"].format(Decimal("1234567.89")) == "1,234,568 km"
+
+    def test_a_negative_value_stays_a_plain_number(self) -> None:
+        """`-` is one of the CSV formula-injection lead characters.
+
+        `sanitize_csv_cell` exempts strings that parse as a number, so a
+        sub-zero temperature must reach the file as `-10.0` and not as
+        `'-10.0`. Asserted through the sanitiser the export actually applies,
+        because a cell this module made non-numeric would be quoted there and
+        stop being a number in the spreadsheet.
+        """
+        column = EMITTED_COLUMNS["Outside Temp (C)"]
+        assert cell_for(column, "c", Decimal("-10.0")) == "-10.0"
+        # -10 C = 14 F
+        assert cell_for(column, "f", Decimal("-10.0")) == "14.0"
+        assert sanitize_csv_cell(cell_for(column, "c", Decimal("-10.0"))) == "-10.0"
 
     def test_no_cell_contains_a_letter_or_a_comma(self) -> None:
         for canonical, column in EMITTED_COLUMNS.items():
