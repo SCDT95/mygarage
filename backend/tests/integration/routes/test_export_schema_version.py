@@ -281,7 +281,13 @@ class TestCSVSchemaVersionAlsoAppliesToUnitBearingPairs:
         )
         await db_session.commit()
 
-        response = await client.get(f"/api/export/vehicles/{vin}/fuel/csv", headers=auth_headers)
+        # `?units=metric` is explicit: from phase 2b task 3 an omitted
+        # parameter exports in the CALLER's own units, and conftest's
+        # `test_user` is an imperial-preset account. This test is about the
+        # version cell, so it pins the unit system rather than inheriting it.
+        response = await client.get(
+            f"/api/export/vehicles/{vin}/fuel/csv?units=metric", headers=auth_headers
+        )
         assert response.status_code == 200, response.text
 
         reader = csv.DictReader(io.StringIO(response.text))

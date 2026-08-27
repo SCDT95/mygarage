@@ -260,13 +260,18 @@ def _reject(detail: str) -> NoReturn:
     raise HTTPException(status_code=400, detail=detail)
 
 
-def _volume_factor(token: str) -> Decimal:
-    """Litres in one `token`, e.g. `3.785411784` for `gal_us`.
+def volume_factor(token: str) -> Decimal:
+    """Litres in one `token`, e.g. `3.78541` for `gal_us`.
 
     Read off the adapter rather than re-declared, so the price denominator
     can never drift from the volume column's own factor. Valid only because
     every volume adapter is proportional (no offset); `_ensure_volume_token`
     holds that line.
+
+    Public because `app.utils.csv_emission` multiplies a canonical per-litre
+    price by this on the way out and this module divides by it on the way in.
+    Import and export MUST use the same factor, so there is one definition
+    and the exporter imports it rather than owning a second copy.
     """
     _ensure_volume_token(token)
     factor = ADAPTERS[token].to_canonical(Decimal("1"))
@@ -276,7 +281,7 @@ def _volume_factor(token: str) -> Decimal:
 
 
 def _ensure_volume_token(token: str) -> None:
-    """Guard `_volume_factor` against a non-volume token reaching it."""
+    """Guard `volume_factor` against a non-volume token reaching it."""
     if token not in QUANTITY_TOKENS[VOLUME]:
         raise ValueError(f"{token!r} is not a volume token")
 
@@ -328,7 +333,7 @@ class CsvUnitContext:
         if binding is None:
             return value
         if quantity == PRICE_PER_VOLUME:
-            return value / _volume_factor(binding.token)
+            return value / volume_factor(binding.token)
         return ADAPTERS[binding.token].to_canonical(value)
 
 

@@ -20,7 +20,16 @@ them into one.
 
 1. USER PREFERENCE -- resolve from the caller's UnitSet (phase 1) or, today,
    from this module:
-     - routes/export.py                      CSV export values and marker
+     - (none left)
+
+   MIGRATED (phase 2b, task 3): routes/export.py's CSV export values and
+   marker. `build_csv` now takes one resolved `UnitSet`
+   (`resolve_export_units`) and derives both the header tokens and the
+   `unit_system` marker from it, so an `?units=imperial` export is the
+   imperial PRESET (US gallons, marker `imperial`) whatever this setting
+   says, and a UK account's own export carries `Volume (gal_uk)` under
+   marker `custom`. Emitting `imperial_uk` has stopped; accepting it on
+   import has not.
 
    MIGRATED (phase 2a, task 6): services/notifications/dispatcher.py's DEF-low
    volume no longer calls this module. It takes a `RenderContext` from its
@@ -44,7 +53,9 @@ them into one.
        property that made it correct -- the unit travels with the data, never
        from a preference -- is unchanged and is now asserted behaviourally by
        a cross-user import test.
-     - routes/export.py `?units=` query parameter      caller's explicit request
+     - routes/export.py `?units=` query parameter      caller's explicit
+       request, now resolved to a whole `UnitSet` rather than a gallon
+       flavour (phase 2b, task 3)
      - services/notifications/dispatcher.py `notify_livelink_threshold_alert`
        (CLASSIFIED phase 2a, after the whole-branch review found it
        unclassified). It renders `f"{value:.1f}{unit_str} vs threshold

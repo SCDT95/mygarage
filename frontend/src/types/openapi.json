@@ -27211,16 +27211,22 @@
             }
           },
           {
-            "description": "Unit system for the exported values. Defaults to metric (canonical storage); `imperial` converts distance, volume, price-per-volume and temperature, and renames those columns accordingly.",
+            "description": "Unit system for the exported values. OMIT this parameter to export in the caller's own unit preferences (the instance default on an auth_mode=none instance), which is the only way to receive a mixed set such as kilometres with UK gallons. Pass `metric` or `imperial` to force that preset instead. Every unit-bearing column names its unit in the header, e.g. `Odometer (mi)`, `Volume (gal_uk)`, `Price Per Unit (gal_uk)`.",
             "in": "query",
             "name": "units",
             "required": false,
             "schema": {
-              "default": "metric",
-              "description": "Unit system for the exported values. Defaults to metric (canonical storage); `imperial` converts distance, volume, price-per-volume and temperature, and renames those columns accordingly.",
-              "pattern": "^(metric|imperial)$",
-              "title": "Units",
-              "type": "string"
+              "anyOf": [
+                {
+                  "pattern": "^(metric|imperial)$",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Unit system for the exported values. OMIT this parameter to export in the caller's own unit preferences (the instance default on an auth_mode=none instance), which is the only way to receive a mixed set such as kilometres with UK gallons. Pass `metric` or `imperial` to force that preset instead. Every unit-bearing column names its unit in the header, e.g. `Odometer (mi)`, `Volume (gal_uk)`, `Price Per Unit (gal_uk)`.",
+              "title": "Units"
             }
           }
         ],
@@ -27270,16 +27276,22 @@
             }
           },
           {
-            "description": "Unit system for the exported values. Defaults to metric (canonical storage); `imperial` converts distance, volume, price-per-volume and temperature, and renames those columns accordingly.",
+            "description": "Unit system for the exported values. OMIT this parameter to export in the caller's own unit preferences (the instance default on an auth_mode=none instance), which is the only way to receive a mixed set such as kilometres with UK gallons. Pass `metric` or `imperial` to force that preset instead. Every unit-bearing column names its unit in the header, e.g. `Odometer (mi)`, `Volume (gal_uk)`, `Price Per Unit (gal_uk)`.",
             "in": "query",
             "name": "units",
             "required": false,
             "schema": {
-              "default": "metric",
-              "description": "Unit system for the exported values. Defaults to metric (canonical storage); `imperial` converts distance, volume, price-per-volume and temperature, and renames those columns accordingly.",
-              "pattern": "^(metric|imperial)$",
-              "title": "Units",
-              "type": "string"
+              "anyOf": [
+                {
+                  "pattern": "^(metric|imperial)$",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Unit system for the exported values. OMIT this parameter to export in the caller's own unit preferences (the instance default on an auth_mode=none instance), which is the only way to receive a mixed set such as kilometres with UK gallons. Pass `metric` or `imperial` to force that preset instead. Every unit-bearing column names its unit in the header, e.g. `Odometer (mi)`, `Volume (gal_uk)`, `Price Per Unit (gal_uk)`.",
+              "title": "Units"
             }
           }
         ],
@@ -27513,16 +27525,22 @@
             }
           },
           {
-            "description": "Unit system for the exported values. Defaults to metric (canonical storage); `imperial` converts distance, volume, price-per-volume and temperature, and renames those columns accordingly.",
+            "description": "Unit system for the exported values. OMIT this parameter to export in the caller's own unit preferences (the instance default on an auth_mode=none instance), which is the only way to receive a mixed set such as kilometres with UK gallons. Pass `metric` or `imperial` to force that preset instead. Every unit-bearing column names its unit in the header, e.g. `Odometer (mi)`, `Volume (gal_uk)`, `Price Per Unit (gal_uk)`.",
             "in": "query",
             "name": "units",
             "required": false,
             "schema": {
-              "default": "metric",
-              "description": "Unit system for the exported values. Defaults to metric (canonical storage); `imperial` converts distance, volume, price-per-volume and temperature, and renames those columns accordingly.",
-              "pattern": "^(metric|imperial)$",
-              "title": "Units",
-              "type": "string"
+              "anyOf": [
+                {
+                  "pattern": "^(metric|imperial)$",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Unit system for the exported values. OMIT this parameter to export in the caller's own unit preferences (the instance default on an auth_mode=none instance), which is the only way to receive a mixed set such as kilometres with UK gallons. Pass `metric` or `imperial` to force that preset instead. Every unit-bearing column names its unit in the header, e.g. `Odometer (mi)`, `Volume (gal_uk)`, `Price Per Unit (gal_uk)`.",
+              "title": "Units"
             }
           }
         ],
@@ -27572,16 +27590,22 @@
             }
           },
           {
-            "description": "Unit system for the exported values. Defaults to metric (canonical storage); `imperial` converts distance, volume, price-per-volume and temperature, and renames those columns accordingly.",
+            "description": "Unit system for the exported values. OMIT this parameter to export in the caller's own unit preferences (the instance default on an auth_mode=none instance), which is the only way to receive a mixed set such as kilometres with UK gallons. Pass `metric` or `imperial` to force that preset instead. Every unit-bearing column names its unit in the header, e.g. `Odometer (mi)`, `Volume (gal_uk)`, `Price Per Unit (gal_uk)`.",
             "in": "query",
             "name": "units",
             "required": false,
             "schema": {
-              "default": "metric",
-              "description": "Unit system for the exported values. Defaults to metric (canonical storage); `imperial` converts distance, volume, price-per-volume and temperature, and renames those columns accordingly.",
-              "pattern": "^(metric|imperial)$",
-              "title": "Units",
-              "type": "string"
+              "anyOf": [
+                {
+                  "pattern": "^(metric|imperial)$",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Unit system for the exported values. OMIT this parameter to export in the caller's own unit preferences (the instance default on an auth_mode=none instance), which is the only way to receive a mixed set such as kilometres with UK gallons. Pass `metric` or `imperial` to force that preset instead. Every unit-bearing column names its unit in the header, e.g. `Odometer (mi)`, `Volume (gal_uk)`, `Price Per Unit (gal_uk)`.",
+              "title": "Units"
             }
           }
         ],

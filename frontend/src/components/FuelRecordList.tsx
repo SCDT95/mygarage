@@ -114,8 +114,15 @@ export default function FuelRecordList({ vin, onAddClick, onEditClick }: FuelRec
       // metric-canonical, so without this an imperial account got a
       // metric file (#128). The backend stamps a `unit_system` column
       // so re-importing converts back correctly.
+      //
+      // `units` is deliberately NOT sent. It used to carry `system`, the
+      // binary metric/imperial collapse of the account's volume unit, which
+      // meant an account with mixed preferences (km with UK gallons, say)
+      // asked for a clean preset and never received its own units. Omitting
+      // the parameter tells the backend to export in the caller's resolved
+      // unit set, which CSV schema v6 spells out per column
+      // (`Odometer (km)`, `Volume (gal_uk)`).
       const response = await api.get(`/export/vehicles/${vin}/fuel/csv`, {
-        params: { units: system },
         responseType: 'blob'
       })
 
