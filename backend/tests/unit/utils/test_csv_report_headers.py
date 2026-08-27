@@ -39,7 +39,12 @@ from __future__ import annotations
 import pytest
 
 from app.constants.units import IMPERIAL_PRESET, METRIC_PRESET, UnitSet
-from app.utils.csv_emission import ODOMETER_COLUMN, VOLUME_COLUMN, token_for
+from app.utils.csv_emission import (
+    EMITTED_COLUMNS,
+    ODOMETER_COLUMN,
+    VOLUME_COLUMN,
+    token_for,
+)
 from app.utils.csv_units import (
     ALL_RECORDS_REPORT_HEADERS,
     DISTANCE,
@@ -364,12 +369,32 @@ class TestTheReportColumnsAreTheExportColumns:
     def test_the_report_volume_base_matches_the_export_volume_base(self) -> None:
         assert ReportColumn(FUEL_VOLUME).base == VOLUME_COLUMN.base
 
-    def test_the_emitter_can_emit_exactly_the_tokens_the_guard_expands_over(self) -> None:
-        """The guard cross-multiplies `QUANTITY_TOKENS`; the emitter's cells
-        come from `EmittedColumn.decimals`. A token in one and not the other
-        is either an emittable row the guard misses or a guard row nothing can
-        emit.
+    @pytest.mark.parametrize("canonical", sorted(EMITTED_COLUMNS))
+    def test_every_emitted_column_can_emit_exactly_its_quantity_vocabulary(
+        self, canonical: str
+    ) -> None:
+        """`EmittedColumn.decimals` IS the column's vocabulary, and it must
+        equal the quantity's.
+
+        A token in `QUANTITY_TOKENS` but missing from `decimals` makes
+        `token_for` raise `ValueError` -> HTTP 500 on export for any account
+        that selected it; a token in `decimals` but not in `QUANTITY_TOKENS`
+        is a header the importer would refuse to parse back.
+
+        Parametrised over ALL of `EMITTED_COLUMNS` rather than the two the
+        reports happen to use. The previous version asserted only distance and
+        volume, and the seam test next door iterates `column.decimals`, so a
+        token missing from `decimals` was invisible to both: price,
+        temperature, consumption and speed had no equivalent guard anywhere.
         """
+        column = EMITTED_COLUMNS[canonical]
+        assert set(column.decimals) == QUANTITY_TOKENS[column.quantity], canonical
+
+    def test_the_report_columns_are_two_of_those_six(self) -> None:
+        """The two the reports emit are the same objects the backup exports
+        use, not lookalikes: same base, same decimals, same vocabulary."""
+        assert EMITTED_COLUMNS["Odometer (km)"] is ODOMETER_COLUMN
+        assert EMITTED_COLUMNS["Liters"] is VOLUME_COLUMN
         assert set(ODOMETER_COLUMN.decimals) == QUANTITY_TOKENS[DISTANCE]
         assert set(VOLUME_COLUMN.decimals) == QUANTITY_TOKENS[VOLUME]
 

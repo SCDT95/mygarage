@@ -11,7 +11,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Groundwork for per-quantity unit preferences: per-user unit columns and a resolved unit set on the user API, with no settings UI yet (migration 093, #152).
 - Instance-wide default unit set for anonymous clients and new accounts.
 - CSV import reads schema v6 per-column unit headers (`Odometer (mi)`, `Volume (gal_uk)`, `Price Per Unit (gal_us)`), taking each column's unit from the file rather than from any account preference (#152).
-- CSV export writes schema v6 per-column unit headers in the reader's own units, so a file exported by a user with custom units round-trips back to the same values (#152).
+- CSV export writes schema v6 per-column unit headers in the reader's own units, so a file exported by a user with custom units round-trips back to the same values (#152). One CSV is not covered: the LiveLink session export still writes `distance_km` and raw km/h speeds for everyone.
 - All-records report CSV gains a `Volume (<unit>)` column, so a fill-up's quantity is a number a spreadsheet can sum (#152).
 
 ### Changed

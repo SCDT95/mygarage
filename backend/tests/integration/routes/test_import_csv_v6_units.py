@@ -28,6 +28,7 @@ from __future__ import annotations
 import ast
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
+from decimal import Decimal
 from io import BytesIO
 from pathlib import Path
 
@@ -266,6 +267,87 @@ class TestDerivedFuelConsumers:
 # --------------------------------------------------------------------------
 
 
+class TestATokenlessDistanceColumnResolvesToKilometres:
+    """The canonical-token table's DISTANCE cell, which nothing else can kill.
+
+    `csv_units._CANONICAL_TOKEN[DISTANCE] = "km"` is the unit a distance
+    column's values are already in when the FILE resolves metric and the
+    column carries no token of its own. Mutating that one cell to `"mi"`
+    passed the entire 3781-test backend suite byte-identically, while its
+    three siblings (`VOLUME`, `PRICE_PER_VOLUME`, and `_IMPERIAL_TOKEN`'s
+    distance entry) are killed by 12, 11 and 27 tests. This class exists to
+    close that hole.
+
+    The branch is live, not dead code. It runs for any file whose distance
+    column is a TOKENLESS header (`Mileage`, bare `Reading`) and which
+    resolves metric, either by an explicit `unit_system=metric` marker or by a
+    `units_version` of 3 or more. Both are realistic: a hand-built sheet using
+    the older column name, or a v5 export whose `unit_system` cell a
+    spreadsheet blanked.
+
+    Why the corpus cannot cover this. From v3 onward the service and odometer
+    pairs' only unit-bearing column is `Odometer (km)` / `Reading (km)`, a
+    TOKEN header, which R4 step 1 resolves before the file context is ever
+    consulted. So `corpus[service-v3]`, `corpus[odometer-v3]` and
+    `corpus[service-v4-premarker]` are metric-identity by construction: their
+    expected value is their input value and no mutation of the unit tables can
+    move them. A tokenless distance column under a metric file is the one
+    shape that reaches the cell, and no fixture had one.
+
+    What a regression would cost: a future tidy-up of that table multiplies
+    every such odometer by 1.60934 on the way into canonical storage,
+    permanently, with `bin/ci-check`, the compatibility corpus and the
+    PostgreSQL suite all still green.
+    """
+
+    async def test_mileage_under_a_metric_marker_is_kilometres(
+        self, client, auth_headers, test_user, db_session
+    ):
+        """`Mileage` names an imperial-era column but says nothing about its
+        own unit, so the marker decides. 100 under `metric` is 100 km, NOT
+        100 miles."""
+        async with _vehicle(db_session, test_user["id"], "V6CANONMARK00001") as vin:
+            body = "units_version,unit_system,Date,Mileage\n6,metric,2026-03-20,100\n"
+            resp = await _post(client, auth_headers, vin, "fuel", body)
+            assert resp.status_code == 200, resp.text
+            record = await _one(db_session, FuelRecord, vin)
+            assert record.odometer_km == Decimal("100.00")
+
+    async def test_mileage_under_a_metric_version_is_kilometres(
+        self, client, auth_headers, test_user, db_session
+    ):
+        """The other way in: no marker at all, `units_version=5`. R4 step 4
+        reads 5 as metric canonical, and the tokenless column follows it.
+
+        The SERVICE pair, so this also covers what `corpus[service-v3]`
+        structurally cannot.
+        """
+        async with _vehicle(db_session, test_user["id"], "V6CANONVERS00001") as vin:
+            body = "units_version,Date,Category,Description,Mileage\n5,2026-03-21,Maintenance,Oil,100\n"
+            resp = await _post(client, auth_headers, vin, "service", body)
+            assert resp.status_code == 200, resp.text
+            visit = await _one(db_session, ServiceVisit, vin)
+            assert visit.odometer_km == Decimal("100.00")
+
+    async def test_a_bare_reading_under_a_metric_marker_is_kilometres(
+        self, client, auth_headers, test_user, db_session
+    ):
+        """The ODOMETER pair's tokenless spelling, covering what
+        `corpus[odometer-v3]` structurally cannot.
+
+        Note the contrast with `test_bare_reading_with_no_marker_is_the_v2_
+        odometer_shape`: the SAME header with no marker and no version is
+        defined as miles (R9), and with a metric marker is kilometres. Both
+        directions are now pinned, so neither can drift into the other.
+        """
+        async with _vehicle(db_session, test_user["id"], "V6CANONREAD00001") as vin:
+            body = "units_version,unit_system,Date,Reading\n6,metric,2026-03-22,100\n"
+            resp = await _post(client, auth_headers, vin, "odometer", body)
+            assert resp.status_code == 200, resp.text
+            record = await _one(db_session, OdometerRecord, vin)
+            assert record.odometer_km == Decimal("100.00")
+
+
 class TestResolutionOrder:
     async def test_token_beats_the_marker(self, client, auth_headers, test_user, db_session):
         """A `(mi)` token under a `metric` marker is still miles.
@@ -331,6 +413,26 @@ class TestResolutionOrder:
         """
         async with _vehicle(db_session, test_user["id"], "V6ORDFUTURE00001") as vin:
             body = "units_version,Date,Liters\n99,2026-03-16,10\n"
+            resp = await _post(client, auth_headers, vin, "fuel", body)
+            assert resp.status_code == 200, resp.text
+            record = await _one(db_session, FuelRecord, vin)
+            assert float(record.liters) == pytest.approx(10.0, abs=0.001)
+
+    async def test_the_version_boundary_is_exactly_three(
+        self, client, auth_headers, test_user, db_session
+    ):
+        """`units_version=3` is METRIC. v3 is the release that made canonical
+        storage metric, so 3 is the first version that is not legacy imperial.
+
+        The sibling above uses `2` and the one below `99`, so a threshold that
+        slipped by one (`< 4`) would satisfy both. Only a fixture sitting ON
+        the boundary constrains it, and until this test the boundary was
+        pinned solely by two corpus cells whose ids advertise a file shape
+        rather than the rule. 10 L stays 10 L; under `< 4` it would be read as
+        10 US gallons and stored as 37.8541.
+        """
+        async with _vehicle(db_session, test_user["id"], "V6ORDVER3000001") as vin:
+            body = "units_version,Date,Liters\n3,2026-03-18,10\n"
             resp = await _post(client, auth_headers, vin, "fuel", body)
             assert resp.status_code == 200, resp.text
             record = await _one(db_session, FuelRecord, vin)
