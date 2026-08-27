@@ -32,6 +32,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Widget `odometer` (v1 and v2) rounds the mile figure once instead of twice, which moves about one reading in 200 by a single mile. The field is still miles for every user.
 
 ### Fixed
+- Logged-out visitors, and every user on an instance with authentication disabled, now see the unit system the instance is configured for. They were always shown imperial, whatever the admin had set.
 - PSI-to-canonical conversion returned bar instead of kPa.
 - Exporting an imperial CSV backup and importing it again silently changed the data. Miles and gallons were written with two decimals, so 500.00 km came back as 500.01 and 40.000 L came back as 40.012, drifting further on every round trip. v6 writes enough decimals to be exact.
 - Fuel CSV import reads back the outside temperature, on-board economy and average speed columns the exporter has always written; they were silently dropped, so those three values were lost on every export-and-reimport.
