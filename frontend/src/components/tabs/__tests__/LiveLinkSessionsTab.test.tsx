@@ -134,6 +134,29 @@ describe('LiveLinkSessionsTab', () => {
     expect(screen.getByText('194.0 \u00b0F / 203.0 \u00b0F')).toBeInTheDocument()
   })
 
+  it('groups RPM in the active locale and treats zero as a reading, not as absent', async () => {
+    // RPM is outside the unit system, but it is still a NUMBER a reader reads:
+    // `toFixed(0)` is locale-blind, so this tile said "2000" while the LiveLink
+    // gauge for the same reading said "2,000". That half is the fix.
+    //
+    // The zero half is a PIN, not a fix, and the distinction is deliberate: the
+    // old `avg_rpm?.toFixed(0) || '--'` looks like it swallows a genuine 0 and
+    // does not, because `(0)?.toFixed(0)` is the truthy string "0". Verified
+    // rather than assumed. It is pinned so that a later `value ? ... : '--'`,
+    // which WOULD swallow it, cannot land silently.
+    render(<LiveLinkSessionsTab vin="V1" />)
+    await screen.findByText('1h 0m')
+    fireEvent.click(screen.getByRole('button'))
+    expect(screen.getByText('2,000 / 4,000')).toBeInTheDocument()
+    cleanup()
+
+    getSessions.mockResolvedValue(list({ sessions: [{ ...endedSession, avg_rpm: 0 }] }))
+    render(<LiveLinkSessionsTab vin="V1" />)
+    await screen.findByText('1h 0m')
+    fireEvent.click(screen.getByRole('button'))
+    expect(screen.getByText('0 / 4,000')).toBeInTheDocument()
+  })
+
   it('answers PER QUANTITY for a custom set, where the binary system would say metric', async () => {
     // Spec D8 collapses `system` from VOLUME, so this client reads 'metric' and
     // every `system === 'imperial'` branch answers no, while the user has in

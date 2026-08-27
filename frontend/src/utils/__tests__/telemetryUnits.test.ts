@@ -64,6 +64,21 @@ describe('classifyTelemetryParam', () => {
     })
   })
 
+  it('trusts a key it cannot name when the DEVICE states kilometres', () => {
+    // The disjunct the old `detectParamType` carried and nothing reached: a key
+    // that is neither speed, temperature, odometer nor distance, whose device
+    // reports `km` anyway. Deleting the branch leaves it dimensionless, so the
+    // value would render unconverted with a raw `km` label for a mile client.
+    expect(classifyTelemetryParam('TRIP_A', 'km')).toStrictEqual({
+      kind: 'quantity',
+      quantity: 'distance',
+    })
+    expect(classifyTelemetryParam('TRIP_A', 'kilometers')).toStrictEqual({
+      kind: 'quantity',
+      quantity: 'distance',
+    })
+  })
+
   it('classifies speed, temperature and pressure by key or by reported unit', () => {
     expect(classifyTelemetryParam('0D-VehicleSpeed', null)).toStrictEqual({
       kind: 'quantity',
@@ -137,6 +152,15 @@ describe('convertTelemetryValue', () => {
     })
   })
 
+  it('converts a device-stated kilometre reading whose key names nothing', () => {
+    // 8 km / 1.60934 = 4.97..., at the mi adapter's 0 dp.
+    expect(convertTelemetryValue(8, 'TRIP_A', 'km', IMPERIAL, t)).toStrictEqual({
+      text: '5',
+      unit: 'mi',
+      unverified: false,
+    })
+  })
+
   it('converts a standard odometer (1000 / 1.60934 = 621.37... at 0 dp)', () => {
     expect(convertTelemetryValue(1000, 'A6-Odometer', null, IMPERIAL, t)).toStrictEqual({
       text: '621',
@@ -193,9 +217,13 @@ describe('formatUnverifiedValue', () => {
     expect(formatUnverifiedValue(1000, t)).toBe('1,000 (unknown unit)')
   })
 
-  it('renders the absent marker for a missing value', () => {
+  it('renders the absent marker for a missing value, NaN included', () => {
     expect(formatUnverifiedValue(null, t)).toBe('--')
     expect(formatUnverifiedValue(undefined, t)).toBe('--')
+    // NaN is absent, not a value: `formatAtPrecision` would render the string
+    // "NaN" and the marker would then claim an unknown unit for a non-number.
+    // Same policy as `unitAdapters.normalise`, which treats NaN as absent too.
+    expect(formatUnverifiedValue(Number.NaN, t)).toBe('--')
   })
 })
 

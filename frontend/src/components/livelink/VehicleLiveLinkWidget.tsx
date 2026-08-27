@@ -10,6 +10,10 @@ import { livelinkService } from '@/services/livelinkService'
 import type { VehicleLiveLinkStatus } from '@/types/livelink'
 import { useUnitFormat } from '@/hooks/useUnitFormat'
 import { convertTelemetryValue } from '@/utils/telemetryUnits'
+import { formatAtPrecision } from '@/utils/unitFormat'
+
+/** RPM is outside the unit system: not converted, still grouped for the locale. */
+const RPM_PRECISION = 0
 
 interface VehicleLiveLinkWidgetProps {
   vin: string
@@ -163,7 +167,7 @@ export default function VehicleLiveLinkWidget({ vin }: VehicleLiveLinkWidgetProp
           {rpm !== undefined && (
             <div className="text-center">
               <Car className="w-3 h-3 mx-auto mb-1 text-garage-text-muted" />
-              <div className="text-xs font-bold text-garage-text">{rpm.value.toFixed(0)}</div>
+              <div className="text-xs font-bold text-garage-text">{formatAtPrecision(rpm.value, RPM_PRECISION)}</div>
               <div className="text-[10px] text-garage-text-muted">RPM</div>
             </div>
           )}

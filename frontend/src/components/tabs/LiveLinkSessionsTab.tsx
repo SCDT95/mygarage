@@ -23,6 +23,34 @@ import { useUnitFormat } from '@/hooks/useUnitFormat'
 import { useTimeFormat } from '@/hooks/useTimeFormat'
 import { formatAPITimestamp, formatTime } from '@/utils/parseAPITimestamp'
 import { formatUnverifiedValue } from '@/utils/telemetryUnits'
+import { formatAtPrecision } from '@/utils/unitFormat'
+
+/** RPM is a whole number, matching the LiveLink gauge's own classification. */
+const RPM_PRECISION = 0
+
+/**
+ * Render an RPM figure.
+ *
+ * RPM is outside the unit system, so nothing converts it, but it is still a
+ * number a reader reads: `toFixed` is locale-blind and ungrouped, so this tile
+ * rendered "2000" while the LiveLink gauge rendered "2,000" from the same
+ * reading.
+ *
+ * The guard is `== null`, not a truthy test. The line this replaces read
+ * `avg_rpm?.toFixed(0) || '--'`, which LOOKS like it swallows a genuine 0 and
+ * does not: `(0)?.toFixed(0)` is the STRING "0", which is truthy, so `||` never
+ * fired for a real reading. Written explicitly so the next reader does not have
+ * to re-derive that, and so a refactor to `value ? ... : '--'` fails a test.
+ *
+ * Module scope, not a closure: it depends on no hook, and `SessionCard` is a
+ * separate component that would otherwise need a fifth formatter prop.
+ *
+ * @param value The RPM reading, if any.
+ * @returns The grouped figure, or the absent marker.
+ */
+function formatRpm(value: number | null | undefined): string {
+  return value == null ? '--' : formatAtPrecision(value, RPM_PRECISION)
+}
 
 interface LiveLinkSessionsTabProps {
   vin: string
@@ -208,7 +236,7 @@ function SessionCard({
             <Tile icon={MapPin} label={t('livelink.sessions.distance')} value={formatUnverified(session.distance_km)} />
             <Tile icon={Gauge} label={t('livelink.sessions.avgMaxSpeed')} value={`${formatSpeed(session.avg_speed)} / ${formatSpeed(session.max_speed)}`} />
             {session.avg_rpm != null && (
-              <Tile icon={Activity} label={t('livelink.sessions.avgMaxRPM')} value={`${session.avg_rpm?.toFixed(0) || '--'} / ${session.max_rpm?.toFixed(0) || '--'}`} />
+              <Tile icon={Activity} label={t('livelink.sessions.avgMaxRPM')} value={`${formatRpm(session.avg_rpm)} / ${formatRpm(session.max_rpm)}`} />
             )}
             {session.avg_coolant_temp != null && (
               <Tile icon={Thermometer} label={t('livelink.sessions.avgMaxCoolant')} value={`${formatTemp(session.avg_coolant_temp)} / ${formatTemp(session.max_coolant_temp)}`} />

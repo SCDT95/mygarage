@@ -30,6 +30,13 @@
  * a fix for the underlying defect: the backend contract still has to record
  * which PID produced a value and whether it was normalised.
  *
+ * Consumers of that column the deferred backend fix must cover, because a
+ * frontend marker reaches none of them: `routes/fuel.py:194-213`, which turns
+ * it into a PERSISTED `obc_l_per_100km` when a user accepts an OBC suggestion
+ * (and persists `obc_avg_speed_kmh` from `session.avg_speed` in the same
+ * write), and `routes/livelink_vehicle.py:708,732,748`, which exports it as a
+ * labelled CSV column that leaves the product entirely.
+ *
  * Native OBD2 units, all of which are the canonical metric ones the adapters
  * take: speed km/h, temperature °C, distance km, pressure kPa or bar. RPM,
  * percentage, voltage and time are outside the unit system entirely.
@@ -81,6 +88,16 @@ export type TelemetryClass =
  * Decide what a telemetry parameter measures, from its key and reported unit.
  *
  * The only classifier in the codebase; see the module docstring.
+ *
+ * ★ Why a custom `SPEED` PID IS trusted while a custom `ODOMETER` is not, since
+ * the asymmetry is deliberate and this is the one place it can be read.
+ * `SPEED_PARAM_KEYS` on the backend is `["SPEED", "0D-VehicleSpeed",
+ * "0D-VEHICLESPEED"]`, so a non-hex custom speed carries exactly the same
+ * hazard. It is trusted anyway because the standard PID is the common case for
+ * speed, where for the odometer the backend query reads ONLY custom keys, so
+ * marking every speed unverified would cost a large regression to buy a rare
+ * correctness win. The right fix for both halves is on the write side, and it
+ * is the same fix: record which PID produced the value.
  *
  * @param paramKey The parameter key, e.g. `'A6-Odometer'` or `'COOLANT_TMP'`.
  * @param unit The unit string the device reported, if any.

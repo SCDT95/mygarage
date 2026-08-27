@@ -90,8 +90,10 @@ describe('VehicleLiveLinkWidget keyboard activation (I12 a11y fix)', () => {
     // 90 C x 9/5 + 32 = 194, at the f adapter's 1 dp. It read "194\u00b0F" before,
     // because the widget rounded the number itself.
     expect(screen.getByText('194.0\u00b0F')).toBeInTheDocument()
-    // RPM is outside the unit system and must pass through untouched.
-    expect(screen.getByText('3200')).toBeInTheDocument()
+    // RPM is outside the unit system, so it is not CONVERTED, but it is still
+    // grouped for the locale by the same helper every other figure uses. It
+    // read "3200" here and "3,200" on the LiveLink gauge, from one reading.
+    expect(screen.getByText('3,200')).toBeInTheDocument()
   })
 
   it('ignores other keys', async () => {
