@@ -20,7 +20,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - The service-history report CSV's `Mileage` column is now `Odometer (<unit>)`, matching every other CSV the app writes. `Mileage` is still read on import from older backup files.
 - All-records report CSV fuel rows describe the fuel grade instead of repeating the quantity as text (`40.000L`); the quantity moved to the new `Volume` column.
 - Importing a report CSV is refused with HTTP 400, whatever version exported it. A report is a printable summary, not a backup: importing an all-records report created a service visit out of every fuel fill-up, recorded as Maintenance and indistinguishable from real service. Backups from Export still import, v2-era files included.
-- Report CSVs write an odometer of exactly 0 as `0.00` instead of leaving the cell blank. 0 km is a real reading on a new vehicle.
+- Report CSVs write a value of exactly 0 as a number instead of leaving the cell blank: 0 km is a real reading on a new vehicle, and a warranty repair really can cost $0.00. A blank cell now means only that nothing was recorded.
 - A standalone odometer CSV whose only distance column is a bare `Reading`, with no units marker and no schema version, is now read as miles (the v2 export shape) rather than kilometres.
 - PDFs and notifications now follow each user's unit preferences. Two surfaces do not: low-tread reminder notes still use millimetres and kilometres, and LiveLink threshold alerts still report the unit the device sent.
 - The Vehicle Analytics PDF's "Cost Per km" card is now "Cost Per Distance", and its value states its own unit (for example, $42.00/100 km).

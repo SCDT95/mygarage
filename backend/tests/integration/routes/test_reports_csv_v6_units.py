@@ -549,28 +549,36 @@ class TestTheFuelDescription:
             await _cleanup(db_session)
 
 
-class TestAZeroOdometerIsARealReading:
-    """`0` km is a reading, not a missing value, and now emits as one.
+class TestAZeroIsARealValue:
+    """`0` is a value, not a missing one, in both the odometer and the cost.
 
-    Behaviour change, deliberate and user-visible. Both endpoints used to
-    write `visit.odometer_km or ""`, whose falsy test erased a genuine
-    `Decimal("0.00")` into a blank cell. `csv_emission.cell_for` blanks only
-    `None`, so the first service on a brand-new vehicle logged at 0 km now
-    carries `0.00` (metric) / `0.000` (imperial) instead of nothing.
+    Behaviour change, deliberate and user-visible. Every numeric cell on both
+    reports used to be written with a FALSY guard (`visit.odometer_km or ""`,
+    `f"{item.cost:.2f}" if item.cost else ""`), which cannot tell a genuine
+    `Decimal("0.00")` from a missing value and erased both into a blank cell.
 
-    Not covered anywhere else: the seeded fixtures all use non-zero
-    odometers, so every other assertion in this file passes either way.
+    The odometer half changed first, as a side effect of routing the cell
+    through `csv_emission.cell_for`, which blanks only `None`. That left the
+    cost cell beside it still falsy, which was worse than either consistent
+    answer: one row, two rules. The cost cells are now `is not None` too.
 
-    ★ The COST cells in the same rows still use the falsy idiom
-    (`f"{cost:.2f}" if cost else ""`), so a stored cost of exactly `0.00` is
-    still blanked. That inconsistency is known, is shared verbatim with
-    `export.py`'s five CSV money cells, and is left for a single pass over
-    both files rather than fixed in one of them.
+    The two cases this makes distinguishable in a file:
+
+    - the first service on a brand-new vehicle, logged at 0 km, versus a
+      service whose odometer nobody recorded;
+    - a warranty repair that genuinely cost $0.00, versus a service whose
+      cost nobody recorded.
+
+    Not covered anywhere else: every seeded fixture in this file uses non-zero
+    odometers and costs, so all the other assertions pass either way.
     """
 
-    async def test_a_zero_odometer_emits_a_number_on_both_reports(
+    async def test_a_zero_odometer_and_a_zero_cost_both_emit_numbers(
         self, client: AsyncClient, db_session: AsyncSession
     ) -> None:
+        """Both cells, both endpoints: both odometer sites, and two of the
+        three cost sites (the service-history line item and the all-records
+        service row)."""
         try:
             owner = await _make_preset_user(db_session, _OWNER, "metric")
             await _seed(db_session, owner)
@@ -592,14 +600,45 @@ class TestAZeroOdometerIsARealReading:
             rows = _rows(await _get(client, _headers_for(owner), "service-history-csv"))
             zero_row = next(row for row in rows[1:] if row[0] == "2026-02-01")
             assert zero_row[1] == "0.00"
-            # The cost cell in the SAME row still blanks a zero. Asserted so
-            # the inconsistency is recorded rather than discovered later.
-            assert zero_row[4] == ""
+            assert zero_row[4] == "0.00"
 
             rows = _rows(await _get(client, _headers_for(owner), "all-records-csv"))
             zero_row = next(row for row in rows[1:] if row[0] == "2026-02-01")
             assert zero_row[5] == "0.00"
-            assert zero_row[4] == ""
+            assert zero_row[4] == "0.00"
+        finally:
+            await _cleanup(db_session)
+
+    async def test_a_zero_cost_fuel_row_emits_a_number(
+        self, client: AsyncClient, db_session: AsyncSession
+    ) -> None:
+        """The third cost site: all-records writes fuel rows through their
+        own row list, so the service-row fix does not reach it.
+
+        A free fill-up is real (a loyalty reward, a fleet card, a warranty
+        top-up), and blanking it makes the row look like one whose cost was
+        never entered.
+        """
+        try:
+            owner = await _make_preset_user(db_session, _OWNER, "metric")
+            await _seed(db_session, owner)
+            db_session.add(
+                FuelRecord(
+                    vin=_VIN,
+                    date=date(2026, 2, 4),
+                    odometer_km=Decimal("1000.00"),
+                    liters=Decimal("10.000"),
+                    cost=Decimal("0.00"),
+                    fuel_type_used="Regular",
+                )
+            )
+            await db_session.commit()
+
+            rows = _rows(await _get(client, _headers_for(owner), "all-records-csv"))
+            free_row = next(row for row in rows[1:] if row[0] == "2026-02-04")
+            assert free_row[1] == "Fuel"
+            assert free_row[4] == "0.00"
+            assert free_row[7] == "10.000"
         finally:
             await _cleanup(db_session)
 
@@ -632,10 +671,12 @@ class TestAZeroOdometerIsARealReading:
         finally:
             await _cleanup(db_session)
 
-    async def test_a_missing_odometer_is_still_blank(
+    async def test_a_missing_odometer_and_a_missing_cost_are_still_blank(
         self, client: AsyncClient, db_session: AsyncSession
     ) -> None:
-        """The half of the old behaviour that was right: NULL stays empty."""
+        """The half of the old behaviour that was right, and the half of the
+        new behaviour that would be wrong if `is not None` were dropped for a
+        plain truthiness-free `f"{...}"`: NULL stays empty."""
         try:
             owner = await _make_preset_user(db_session, _OWNER, "metric")
             await _seed(db_session, owner)
@@ -648,14 +689,18 @@ class TestAZeroOdometerIsARealReading:
             db_session.add(visit)
             await db_session.commit()
             await db_session.refresh(visit)
-            db_session.add(
-                ServiceLineItem(visit_id=visit.id, description="PDI", cost=Decimal("1.00"))
-            )
+            db_session.add(ServiceLineItem(visit_id=visit.id, description="PDI", cost=None))
             await db_session.commit()
 
             rows = _rows(await _get(client, _headers_for(owner), "service-history-csv"))
             blank_row = next(row for row in rows[1:] if row[0] == "2026-02-03")
             assert blank_row[1] == ""
+            assert blank_row[4] == ""
+
+            rows = _rows(await _get(client, _headers_for(owner), "all-records-csv"))
+            blank_row = next(row for row in rows[1:] if row[0] == "2026-02-03")
+            assert blank_row[5] == ""
+            assert blank_row[4] == ""
         finally:
             await _cleanup(db_session)
 

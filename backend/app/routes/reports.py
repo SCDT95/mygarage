@@ -404,14 +404,18 @@ async def download_service_history_csv(
 
     # Write data - one row per line item.
     #
-    # `cell_for` blanks a cell only for None, where the old
-    # `visit.odometer_km or ""` also blanked a genuine Decimal("0.00"). A
-    # first service logged at 0 km on a new vehicle therefore now emits
-    # `0.00` instead of nothing; that is a deliberate, user-visible change and
-    # it is in the changelog. The cost cells below still use the falsy idiom,
-    # matching export.py's five CSV money cells, so a zero cost is still
-    # blanked; that inconsistency is known and belongs to a pass over both
-    # files rather than to this one.
+    # Every numeric cell on both reports tests `is None`, never truthiness.
+    # The odometer used to be `visit.odometer_km or ""` and the cost
+    # `if item.cost else ""`, and a falsy guard cannot tell a genuine
+    # Decimal("0.00") from a missing value: it erased the first service on a
+    # new vehicle logged at 0 km, and a warranty repair that really cost
+    # $0.00, into the same blank cell a never-recorded value produces.
+    # Deliberate, user-visible, in the changelog, and pinned by
+    # tests/integration/routes/test_reports_csv_v6_units.py::TestAZeroIsARealValue.
+    #
+    # export.py's eleven CSV money cells still use the falsy idiom. That is a
+    # separate export family this task does not touch; see the report's
+    # round-3 note.
     for visit in visits:
         vendor_name = visit.vendor.name if visit.vendor else ""
         for item in visit.line_items:
@@ -422,7 +426,7 @@ async def download_service_history_csv(
                         cell_for(ODOMETER_COLUMN, distance_token, visit.odometer_km),
                         visit.service_category or "",
                         item.description or "",
-                        f"{item.cost:.2f}" if item.cost else "",
+                        f"{item.cost:.2f}" if item.cost is not None else "",
                         vendor_name,
                         visit.notes or "",
                     ]
@@ -493,7 +497,7 @@ async def download_all_records_csv(
                         type_label,
                         category,
                         item.description or "",
-                        f"{item.cost:.2f}" if item.cost else "",
+                        f"{item.cost:.2f}" if item.cost is not None else "",
                         cell_for(ODOMETER_COLUMN, distance_token, visit.odometer_km),
                         vendor_name,
                         # A service visit has no fuel volume. The quantity is
@@ -523,7 +527,7 @@ async def download_all_records_csv(
                     # the description says what was bought -- the fuel-row
                     # analogue of a service row's line-item description.
                     record.fuel_type_used or "Fuel",
-                    f"{record.cost:.2f}" if record.cost else "",
+                    f"{record.cost:.2f}" if record.cost is not None else "",
                     cell_for(ODOMETER_COLUMN, distance_token, record.odometer_km),
                     "",  # No vendor: a fuel record has no service vendor.
                     cell_for(VOLUME_COLUMN, volume_token, record.liters),
