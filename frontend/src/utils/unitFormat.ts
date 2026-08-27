@@ -1,0 +1,206 @@
+/**
+ * Composition layer: turn a canonical number into the string a user reads, and
+ * into the string a form field holds.
+ *
+ * The frontend mirror of `backend/app/utils/unit_formatting.py`. It sits on top
+ * of the conversion layer (`utils/unitAdapters.ts`) and is the first place the
+ * show-both grammar (a primary representation, optionally followed by its
+ * counterpart in parentheses) is assembled. The adapters are deliberately
+ * primitive so that composition lives here instead of leaking into them.
+ *
+ * **Everything user-visible here returns a `string`; every number that reaches
+ * it has already been converted by the layer below.** `toDisplay` and
+ * `toCanonical` are re-exposed per quantity purely as delegation, so a call
+ * site holds one object rather than an adapter and a formatter; they contain no
+ * arithmetic of their own.
+ *
+ * `format` short-circuits on null before the counterpart is considered, exactly
+ * as the backend does: naively formatting both sides of an absent value would
+ * render `"N/A (N/A)"`. The check is the primary adapter's own `toDisplay`, not
+ * a string comparison, so a coincidentally N/A-shaped label cannot fool it.
+ *
+ * ★ `toInputValue` and the two `UnitField` helpers are the ENTRY and STORAGE
+ * boundary, and they exist because a display unit that only formats corrupts
+ * data. Binding decision D2 requires one unit for entry and display, so once a
+ * tread field reads `9/32 in` the input means thirty-seconds too. The trap is
+ * the round trip: 7.50 mm shows as 9, and 9 converts back to 7.14375 mm, so a
+ * user who opens a form, edits an unrelated field and saves would silently
+ * rewrite a value they never touched. `seedUnitField` records the canonical
+ * value each field was populated from, and `canonicalFromUnitField` gives that
+ * value straight back when the field still reads what it was seeded with. Every
+ * form path (add, edit, and any separate reading path) must go through both, or
+ * the one that does not becomes the corrupting one.
+ *
+ * There are no translated strings in this module. Unit labels are symbols, not
+ * prose, and `"N/A"` matches what `UnitFormatter` has always rendered; adding
+ * `i18next.t()` here would need namespace-qualified keys, since this is not a
+ * component and has no `useTranslation`.
+ */
+
+import { getActiveLocale } from '@/constants/i18n'
+import { UNIT_QUANTITIES, type UnitQuantity, type UnitSet } from '@/types/units'
+import { adapterFor, counterpartFor, type UnitAdapter, type UnitToken } from './unitAdapters'
+
+/** What `format` renders when there is no value to render. */
+const NOT_AVAILABLE = 'N/A'
+
+/** One quantity's units, resolved for a particular client. */
+export interface QuantityFormat {
+  /** The resolved token, e.g. `'in32'`. */
+  readonly unit: UnitToken
+  /** The unit's display label, e.g. `'/32 in'`. */
+  readonly label: string
+  /** Decimal places this unit is read and entered at. */
+  readonly precision: number
+  /** The `step` an `<input type="number">` in this unit should carry. */
+  readonly step: string
+  /** Canonical to this unit. Exact; the conversion layer's answer, unrounded. */
+  toDisplay(canonical: number | null | undefined): number | null
+  /** This unit to canonical. Exact; the conversion layer's answer, unrounded. */
+  toCanonical(typed: number | null | undefined): number | null
+  /** Canonical to the ungrouped string an `<input type="number">` accepts. */
+  toInputValue(canonical: number | null | undefined): string
+  /** Canonical to a labelled string, with the counterpart when show-both is on. */
+  format(canonical: number | null | undefined): string
+}
+
+/** Every quantity, resolved for a particular client. */
+export type UnitFormat = Readonly<Record<UnitQuantity, QuantityFormat>>
+
+/**
+ * A unit-bearing form field's canonical origin.
+ *
+ * `display` is the string `seedUnitField` produced, kept so that "the user did
+ * not touch this" is a comparison rather than a guess. Re-typing the same
+ * displayed value counts as untouched, which is correct: the displayed quantity
+ * did not change, so neither should the stored one.
+ */
+export interface UnitFieldOrigin {
+  /** The canonical value the field was populated from, if any. */
+  canonical: number | null
+  /** The string that canonical value produced, in the client's unit. */
+  display: string
+}
+
+/**
+ * Render a number at a fixed precision, grouped for the active locale.
+ *
+ * @param value The already-converted display value.
+ * @param precision Decimal places.
+ * @returns The grouped string, e.g. `'1,000'`.
+ */
+function grouped(value: number, precision: number): string {
+  return new Intl.NumberFormat(getActiveLocale(), {
+    minimumFractionDigits: precision,
+    maximumFractionDigits: precision,
+  }).format(value)
+}
+
+/**
+ * Render one adapter's view of a canonical value, label included.
+ *
+ * The separating space is suppressed for a label that starts with `/`, so tread
+ * reads `'9/32 in'` rather than `'9 /32 in'`.
+ *
+ * @param adapter The adapter to render through.
+ * @param canonical The canonical value.
+ * @returns The labelled string, or `'N/A'` when there is nothing to render.
+ */
+function render(adapter: UnitAdapter, canonical: number | null | undefined): string {
+  const display = adapter.toDisplay(canonical)
+  if (display === null) return NOT_AVAILABLE
+  const number = grouped(display, adapter.precision)
+  return adapter.label.startsWith('/') ? `${number}${adapter.label}` : `${number} ${adapter.label}`
+}
+
+/**
+ * Build one quantity's formatter.
+ *
+ * @param units The client's resolved unit set.
+ * @param quantity Which quantity to build.
+ * @param showBoth Whether to append the counterpart representation.
+ * @returns The quantity's formatter.
+ */
+function quantityFormat(units: UnitSet, quantity: UnitQuantity, showBoth: boolean): QuantityFormat {
+  const adapter = adapterFor(units, quantity)
+  const counterpart = counterpartFor(units, quantity)
+  return {
+    unit: adapter.unit,
+    label: adapter.label,
+    precision: adapter.precision,
+    // 0 -> '1', 1 -> '0.1', 2 -> '0.01'. toFixed keeps this exact where
+    // 10 ** -precision would produce 0.010000000000000002 for larger inputs.
+    step: adapter.precision === 0 ? '1' : (10 ** -adapter.precision).toFixed(adapter.precision),
+    toDisplay: (canonical) => adapter.toDisplay(canonical),
+    toCanonical: (typed) => adapter.toCanonical(typed),
+    toInputValue(canonical) {
+      const display = adapter.toDisplay(canonical)
+      return display === null ? '' : display.toFixed(adapter.precision)
+    },
+    format(canonical) {
+      // Null short-circuits BEFORE the counterpart, or an absent value renders
+      // as "N/A (N/A)".
+      if (adapter.toDisplay(canonical) === null) return NOT_AVAILABLE
+      const primary = render(adapter, canonical)
+      if (!showBoth || counterpart === null) return primary
+      return `${primary} (${render(counterpart, canonical)})`
+    },
+  }
+}
+
+/**
+ * Build the formatters for a resolved unit set.
+ *
+ * The non-hook entry point: anything outside a component (an export, a chart
+ * transform, a test) resolves its own set and calls this. `useUnitFormat()`
+ * wraps it for components.
+ *
+ * @param units The client's resolved unit set.
+ * @param showBoth Whether to append each counterpart representation.
+ * @returns One formatter per quantity.
+ */
+export function makeUnitFormat(units: UnitSet, showBoth = false): UnitFormat {
+  const out = {} as Record<UnitQuantity, QuantityFormat>
+  for (const quantity of UNIT_QUANTITIES) {
+    out[quantity] = quantityFormat(units, quantity, showBoth)
+  }
+  return out
+}
+
+/**
+ * Populate a unit-bearing form field, remembering where its value came from.
+ *
+ * @param canonical The stored canonical value, or null for an empty field.
+ * @param quantity The formatter for the field's quantity.
+ * @returns The field's display string and its canonical origin.
+ */
+export function seedUnitField(
+  canonical: number | null | undefined,
+  quantity: QuantityFormat
+): UnitFieldOrigin {
+  return { canonical: canonical ?? null, display: quantity.toInputValue(canonical) }
+}
+
+/**
+ * Read a unit-bearing form field back into canonical storage.
+ *
+ * An untouched field returns the canonical value it was seeded from, NOT a
+ * re-conversion of its display string: converting `7.50 mm` to `9/32 in` and
+ * back yields `7.14375 mm`, so re-converting would corrupt a field the user
+ * never edited. See the module docstring.
+ *
+ * @param typed What the input currently holds.
+ * @param origin What `seedUnitField` recorded for this field.
+ * @param quantity The formatter for the field's quantity.
+ * @returns The canonical value to store, or null when the field is empty or
+ *   holds something that is not a number.
+ */
+export function canonicalFromUnitField(
+  typed: string,
+  origin: UnitFieldOrigin,
+  quantity: QuantityFormat
+): number | null {
+  if (typed === origin.display) return origin.canonical
+  if (typed.trim() === '') return null
+  return quantity.toCanonical(Number(typed))
+}

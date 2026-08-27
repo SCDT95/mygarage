@@ -36,18 +36,27 @@ type Numeric = number | null | undefined;
  * in both directions, not tied to canonical storage.
  */
 export class UnitConverter {
-  // Conversion factors (imperial to metric)
-  private static readonly US_GALLONS_TO_LITERS = 3.78541;
-  private static readonly UK_GALLONS_TO_LITERS = 4.54609;
+  // Conversion factors (imperial to metric).
+  //
+  // The `readonly` factors are PUBLIC so `utils/unitAdapters.ts` can build its
+  // per-token table from them instead of declaring a second copy, exactly as
+  // `backend/app/utils/unit_adapters.py` imports them from the backend's
+  // `UnitConverter`. A duplicated factor table is the defect this workstream
+  // keeps finding (`telemetryUnits.ts` has four of them); one more would be a
+  // fifth. The two MUTABLE fields below stay private on purpose: they are
+  // process-global state driven by the instance gallon setting, and an adapter
+  // resolved from a user's own `UnitSet` must never read them.
+  static readonly US_GALLONS_TO_LITERS = 3.78541;
+  static readonly UK_GALLONS_TO_LITERS = 4.54609;
   private static gallonsToLitersFactor = UnitConverter.US_GALLONS_TO_LITERS;
-  private static readonly MILES_TO_KM = 1.60934;
-  private static readonly FEET_TO_METERS = 0.3048;
+  static readonly MILES_TO_KM = 1.60934;
+  static readonly FEET_TO_METERS = 0.3048;
   private static readonly PSI_TO_BAR = 0.0689476;
-  private static readonly PSI_TO_KPA = 6.89476;
-  private static readonly LBS_TO_KG = 0.453592;
-  private static readonly LBFT_TO_NM = 1.35582;
-  private static readonly US_MPG_TO_L100KM = 235.214;
-  private static readonly UK_MPG_TO_L100KM = 282.481;
+  static readonly PSI_TO_KPA = 6.89476;
+  static readonly LBS_TO_KG = 0.453592;
+  static readonly LBFT_TO_NM = 1.35582;
+  static readonly US_MPG_TO_L100KM = 235.214;
+  static readonly UK_MPG_TO_L100KM = 282.481;
   private static mpgToL100kmFactor = UnitConverter.US_MPG_TO_L100KM;
 
   /** Select US or UK imperial gallon (also updates MPG conversion). */

@@ -35,7 +35,7 @@
 import { useSyncExternalStore } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import type { components } from '../types/api.generated';
-import { binarySystemFor } from '../types/units';
+import { binarySystemFor, presetUnitsFor, type UnitSet } from '../types/units';
 import { type GallonStandard, type UnitSystem } from '../utils/units';
 import {
   getGallonStandard,
@@ -48,6 +48,18 @@ interface UnitPreference {
   system: UnitSystem;
   showBoth: boolean;
   gallonStandard: GallonStandard;
+  /**
+   * The fully resolved per-quantity set, which `useUnitFormat()` closes over.
+   *
+   * Derived on the SAME rung as `system` and `gallonStandard`, never
+   * independently: those two are what a resolved set collapses to
+   * (`binarySystemFor(units.volume)` and `gallonStandardFor(units)`), and a
+   * screen where the card and the form below it disagree about a unit is worse
+   * than one that is uniformly wrong. Rungs 1 and 3 have a real set; rungs 2
+   * and 4 hold only a binary system and a gallon flavour, so they expand it
+   * through `presetUnitsFor` rather than inventing one at the call site.
+   */
+  units: UnitSet;
 }
 
 /** The parts of an account that decide the binary system. */
@@ -80,13 +92,18 @@ function systemFor(user: UnitPreferenceFields): UnitSystem {
 }
 
 /**
- * Get the unit preference for the current client, by the three-rung precedence.
+ * Get the unit preference for the current client, by the four-rung precedence
+ * this file's header describes.
  *
- * @returns Object containing system ('imperial' | 'metric'), showBoth, gallonStandard
+ * @returns The binary system, the show-both flag, the gallon standard, and the
+ *   fully resolved per-quantity set, all decided on the same rung.
  *
  * @example
  * const { system, showBoth } = useUnitPreference();
  * const displayValue = UnitFormatter.formatVolume(gallons, system, showBoth);
+ *
+ * Prefer `useUnitFormat()` in a component: it closes over `units` and answers
+ * per quantity, where `system` can only answer for the whole client.
  */
 export function useUnitPreference(): UnitPreference {
   const { user, isAuthenticated, defaultUnitPrefs } = useAuth();
@@ -110,6 +127,7 @@ export function useUnitPreference(): UnitPreference {
       gallonStandard: user.resolved_units
         ? gallonStandardFor(user.resolved_units)
         : cachedGallonStandard,
+      units: user.resolved_units ?? presetUnitsFor(systemFor(user), cachedGallonStandard),
     };
   }
 
@@ -127,6 +145,7 @@ export function useUnitPreference(): UnitPreference {
       system: storedSystem,
       showBoth: storedShowBoth,
       gallonStandard: cachedGallonStandard,
+      units: presetUnitsFor(storedSystem, cachedGallonStandard),
     };
   }
 
@@ -136,6 +155,7 @@ export function useUnitPreference(): UnitPreference {
       system: binarySystemFor(defaultUnitPrefs.volume),
       showBoth: storedShowBoth,
       gallonStandard: gallonStandardFor(defaultUnitPrefs),
+      units: defaultUnitPrefs,
     };
   }
 
@@ -145,6 +165,7 @@ export function useUnitPreference(): UnitPreference {
     system: 'imperial',
     showBoth: storedShowBoth,
     gallonStandard: cachedGallonStandard,
+    units: presetUnitsFor('imperial', cachedGallonStandard),
   };
 }
 

@@ -32,6 +32,8 @@ import { renderHook } from '@testing-library/react'
 import { IMPERIAL_UNITS, METRIC_UNITS, makeUnitSet, makeUser, type User } from '@/__tests__/factories'
 import type { UnitSet } from '@/types/units'
 import { setGallonStandard } from '@/utils/gallonStandardStore'
+import { binarySystemFor } from '@/types/units'
+import { gallonStandardFor } from '@/utils/publicUnitDefaults'
 
 const h = vi.hoisted(() => ({
   user: null as User | null,
@@ -225,5 +227,121 @@ describe('useUnitPreference precedence', () => {
 
       expect(result.current.gallonStandard).toBe('uk')
     })
+  })
+})
+
+/**
+ * The resolved `UnitSet` the hook now publishes alongside the binary system.
+ *
+ * `useUnitFormat()` closes over this, so every rung has to produce a complete
+ * set, and the set has to AGREE with the `system` and `gallonStandard` the same
+ * call returns. Two independently derived answers on one screen is the failure
+ * this workstream keeps finding, so the agreement is asserted at every rung
+ * rather than assumed.
+ */
+describe('the resolved unit set', () => {
+  // Its own reset, not the outer suite's: `h` is module-scoped and the gallon
+  // store is a module singleton, so a leftover user from the block above wins
+  // rung 1 here and every rung-2/3/4 assertion below passes or fails for the
+  // wrong reason.
+  beforeEach(() => {
+    localStorage.clear()
+    h.user = null
+    h.defaultUnitPrefs = null
+    setGallonStandard('us')
+  })
+
+  it('rung 1: hands an account its own set through, overrides and all', () => {
+    // A per-quantity set no preset can produce: metric everything, imperial
+    // tread. A hook that rebuilt the set from the binary system would answer
+    // 'mm' here, and a hook that rebuilt it from the imperial preset 'psi'.
+    const resolved = makeUnitSet({ tread: 'in32' })
+    h.user = makeUser({ unit_preference: 'custom', resolved_units: resolved })
+
+    const { result } = renderHook(() => useUnitPreference())
+
+    expect(result.current.units.tread).toBe('in32')
+    expect(result.current.units.pressure).toBe('kpa')
+    expect(result.current.units.volume).toBe('L')
+  })
+
+  it('rung 1: falls back to a preset when a stale bundle has no resolved set', () => {
+    setGallonStandard('uk')
+    h.user = makeUser({ unit_preference: 'imperial', resolved_units: undefined })
+
+    const { result } = renderHook(() => useUnitPreference())
+
+    expect(result.current.units.volume).toBe('gal_uk')
+    expect(result.current.units.tread).toBe('in32')
+  })
+
+  it('rung 2: expands an explicit anonymous choice with the browser gallon', () => {
+    localStorage.setItem('unit_preference', 'metric')
+    setGallonStandard('uk')
+    h.defaultUnitPrefs = IMPERIAL_UNITS
+
+    const { result } = renderHook(() => useUnitPreference())
+
+    // Metric from the key, UK from the store, and NOT the instance default.
+    expect(result.current.units.volume).toBe('L')
+    expect(result.current.units.secondary_gallon).toBe('uk')
+  })
+
+  it('rung 3: hands the instance default through, overrides and all', () => {
+    h.defaultUnitPrefs = makeUnitSet({ pressure: 'bar', tread: 'in32' })
+
+    const { result } = renderHook(() => useUnitPreference())
+
+    expect(result.current.units.pressure).toBe('bar')
+    expect(result.current.units.tread).toBe('in32')
+  })
+
+  it('rung 4: falls back to imperial carrying the cached gallon standard', () => {
+    setGallonStandard('uk')
+
+    const { result } = renderHook(() => useUnitPreference())
+
+    expect(result.current.units.volume).toBe('gal_uk')
+    expect(result.current.units.consumption).toBe('mpg_uk')
+  })
+
+  it('agrees with the system and gallon standard it returns, at every rung', () => {
+    const cases: Array<{ rung: string; arrange: () => void }> = [
+      {
+        rung: '1',
+        arrange: () => {
+          h.user = makeUser({
+            unit_preference: 'custom',
+            resolved_units: makeUnitSet({ volume: 'gal_uk', secondary_gallon: 'uk' }),
+          })
+        },
+      },
+      {
+        rung: '2',
+        arrange: () => {
+          localStorage.setItem('unit_preference', 'metric')
+          setGallonStandard('uk')
+        },
+      },
+      { rung: '3', arrange: () => { h.defaultUnitPrefs = METRIC_UNITS } },
+      { rung: '4', arrange: () => { setGallonStandard('uk') } },
+    ]
+
+    for (const { rung, arrange } of cases) {
+      localStorage.clear()
+      h.user = null
+      h.defaultUnitPrefs = null
+      setGallonStandard('us')
+      arrange()
+
+      const { result } = renderHook(() => useUnitPreference())
+
+      expect(binarySystemFor(result.current.units.volume), `rung ${rung}`).toBe(
+        result.current.system
+      )
+      expect(gallonStandardFor(result.current.units), `rung ${rung}`).toBe(
+        result.current.gallonStandard
+      )
+    }
   })
 })

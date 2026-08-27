@@ -11,11 +11,32 @@ import {
   useDeleteTire,
 } from '../hooks/queries/useTires'
 import { useUnitPreference } from '../hooks/useUnitPreference'
-import { UnitConverter, UnitFormatter } from '../utils/units'
+import { useUnitFormat } from '../hooks/useUnitFormat'
+import {
+  canonicalFromUnitField,
+  seedUnitField,
+  type UnitFieldOrigin,
+} from '../utils/unitFormat'
+import { UnitFormatter } from '../utils/units'
 import { getActionErrorMessage } from '../utils/httpErrorHandler'
 import { Button, IconButton, Card, Chip, Drawer, EmptyState, Input, Field } from './ui'
 
 const POSITIONS: TirePosition[] = ['FL', 'FR', 'RL', 'RR', 'SPARE']
+
+/**
+ * The canonical origin of every unit-bearing field on the tire form.
+ *
+ * Held INSIDE the form state rather than beside it: every `setForm({ ...form,
+ * x })` then carries the origins forward automatically, so there is no way to
+ * update one and forget the other. See `utils/unitFormat.ts` for why an
+ * untouched field must submit the value it was seeded from rather than a
+ * re-conversion of what it displays.
+ */
+interface TireFormOrigins {
+  tread_depth_mm: UnitFieldOrigin
+  min_tread_mm: UnitFieldOrigin
+  pressure_kpa: UnitFieldOrigin
+}
 
 interface TireFormState {
   position: TirePosition
@@ -27,26 +48,56 @@ interface TireFormState {
   pressure_kpa: string
   min_tread_mm: string
   notes: string
+  origins: TireFormOrigins
 }
 
-const EMPTY_TIRE_FORM: TireFormState = {
-  position: 'FL',
-  brand: '',
-  model_name: '',
-  size: '',
-  dot_code: '',
-  tread_depth_mm: '',
-  pressure_kpa: '',
-  min_tread_mm: '2.0',
-  notes: '',
+interface ReadingFormOrigins {
+  tread_depth_mm: UnitFieldOrigin
+  pressure_kpa: UnitFieldOrigin
 }
 
-const EMPTY_READING_FORM = {
-  recorded_at: '',
-  odometer_km: '',
-  tread_depth_mm: '',
-  pressure_kpa: '',
-  notes: '',
+interface ReadingFormState {
+  recorded_at: string
+  odometer_km: string
+  tread_depth_mm: string
+  pressure_kpa: string
+  notes: string
+  origins: ReadingFormOrigins
+}
+
+/**
+ * The wear-out threshold a new tire gets, in canonical MILLIMETRES.
+ *
+ * Mirrors `TireBase.min_tread_mm`'s Pydantic default. It used to live in the
+ * form as the string `'2.0'`, which was correct only while the input meant
+ * millimetres: once an imperial user's field means thirty-seconds of an inch,
+ * submitting that string unconverted stores 1.5875 mm, and converting it stores
+ * 2.38125 mm. Neither is 2.0, and the user touched nothing.
+ */
+const DEFAULT_MIN_TREAD_MM = 2.0
+
+/**
+ * A blank reading form.
+ *
+ * A function rather than a shared constant so two open-and-cancel cycles never
+ * alias the same origin objects. Both origins are empty, which is the same
+ * answer `seedUnitField(null, ...)` gives for any quantity: an empty field has
+ * no canonical value to preserve.
+ *
+ * @returns The empty reading form state.
+ */
+function emptyReadingForm(): ReadingFormState {
+  return {
+    recorded_at: '',
+    odometer_km: '',
+    tread_depth_mm: '',
+    pressure_kpa: '',
+    notes: '',
+    origins: {
+      tread_depth_mm: { canonical: null, display: '' },
+      pressure_kpa: { canonical: null, display: '' },
+    },
+  }
 }
 
 interface TireListProps {
@@ -59,14 +110,54 @@ export default function TireList({ vin }: TireListProps) {
   const upsert = useUpsertTire(vin)
   const addReading = useAddTireReading(vin)
   const remove = useDeleteTire(vin)
+  /* `system` and `showBoth` survive for the ONE remaining legacy formatter on
+   * the card, the wear projection. Everything a user reads or types about tread
+   * and pressure now goes through `u`, which resolves per quantity: a custom
+   * user with litres and thirty-seconds gets `system === 'metric'` and an
+   * imperial tread, and only `u` can say so. Migrating the projection means
+   * choosing whether "~621.37 mi" becomes "~621 mi", which is phase 3b's call,
+   * not a side effect of this one. */
   const { system, showBoth } = useUnitPreference()
-  const isImperial = system === 'imperial'
+  const u = useUnitFormat()
+
+  /** Tire API fields are `number | string | null`; the unit utils take `number | null`. */
+  const num = (v: number | string | null | undefined): number | null =>
+    v === null || v === undefined || v === '' ? null : Number(v)
+
+  /**
+   * Populate the tire form, recording what each unit-bearing field came from.
+   *
+   * One seeding path for Add and Edit, because they used to differ: Add carried
+   * a raw canonical default and Edit read stored values straight into the input.
+   * Both were correct only while the input meant millimetres.
+   *
+   * @param tire The tire being edited, or null when adding.
+   * @param position The position to start on.
+   * @returns The form state, origins included.
+   */
+  const seedTireForm = (tire: Tire | null, position: TirePosition): TireFormState => {
+    const tread = seedUnitField(num(tire?.tread_depth_mm), u.tread)
+    const minTread = seedUnitField(num(tire?.min_tread_mm) ?? DEFAULT_MIN_TREAD_MM, u.tread)
+    const pressure = seedUnitField(num(tire?.pressure_kpa), u.pressure)
+    return {
+      position,
+      brand: tire?.brand ?? '',
+      model_name: tire?.model_name ?? '',
+      size: tire?.size ?? '',
+      dot_code: tire?.dot_code ?? '',
+      tread_depth_mm: tread.display,
+      pressure_kpa: pressure.display,
+      min_tread_mm: minTread.display,
+      notes: tire?.notes ?? '',
+      origins: { tread_depth_mm: tread, min_tread_mm: minTread, pressure_kpa: pressure },
+    }
+  }
 
   const [formOpen, setFormOpen] = useState(false)
   const [editingTireId, setEditingTireId] = useState<number | null>(null)
   const [readingTireId, setReadingTireId] = useState<number | null>(null)
-  const [form, setForm] = useState<TireFormState>(EMPTY_TIRE_FORM)
-  const [readingForm, setReadingForm] = useState(EMPTY_READING_FORM)
+  const [form, setForm] = useState<TireFormState>(() => seedTireForm(null, 'FL'))
+  const [readingForm, setReadingForm] = useState<ReadingFormState>(emptyReadingForm)
 
   const tires = data?.tires ?? []
   const takenPositions = new Set(tires.map((tire: Tire) => tire.position))
@@ -77,28 +168,12 @@ export default function TireList({ vin }: TireListProps) {
    * a reading is saved. */
   const readingTire = tires.find((tire: Tire) => tire.id === readingTireId) ?? null
 
-  /** Tire API fields are `number | string | null`; the unit utils take `number | null`. */
-  const num = (v: number | string | null | undefined): number | null =>
-    v === null || v === undefined || v === '' ? null : Number(v)
-
-  /* Storage is metric-canonical kPa. Imperial users type PSI; metric users type
-   * kPa directly. Note we do NOT use UnitFormatter.getPressureUnit here: it
-   * returns 'bar' for metric, and passing a bar value into a kPa column would be
-   * a 100x error. */
-  const displayPressure = (kpa: number | string | null | undefined): number | null =>
-    isImperial ? UnitConverter.kPaToPsi(num(kpa)) : num(kpa)
-
   /** Blank clears the field, so return null: `undefined` is dropped from the
-   *  JSON body and the partial update would then preserve the old value. */
-  const canonicalPressure = (typed: string): number | null => {
-    if (!typed) return null
-    return isImperial ? UnitConverter.psiToKPa(Number(typed)) : Number(typed)
-  }
-
-  const canonicalOdometer = (typed: string): number | null => {
-    if (!typed) return null
-    return isImperial ? UnitConverter.milesToKm(Number(typed)) : Number(typed)
-  }
+   *  JSON body and the partial update would then preserve the old value. The
+   *  odometer field always starts empty, so it has no canonical origin to
+   *  preserve and converts unconditionally. */
+  const canonicalOdometer = (typed: string): number | null =>
+    typed.trim() === '' ? null : u.distance.toCanonical(Number(typed))
 
   /* Spelled out as five literal t() calls rather than t(`…positions.${p}`):
    * validate-i18n-usage scans for string literals, so a computed key is
@@ -114,22 +189,13 @@ export default function TireList({ vin }: TireListProps) {
     SPARE: t('tireList.positions.SPARE'),
   }
 
-  const pressureLabel = t('tireList.pressureWithUnit', {
-    unit: isImperial ? 'PSI' : 'kPa',
-  })
-  const odometerLabel = isImperial ? t('tireList.odometerMi') : t('tireList.odometerKm')
-
-  const formFromTire = (tire: Tire): TireFormState => ({
-    position: tire.position,
-    brand: tire.brand ?? '',
-    model_name: tire.model_name ?? '',
-    size: tire.size ?? '',
-    dot_code: tire.dot_code ?? '',
-    tread_depth_mm: tire.tread_depth_mm != null ? String(tire.tread_depth_mm) : '',
-    pressure_kpa: tire.pressure_kpa != null ? String(displayPressure(tire.pressure_kpa)) : '',
-    min_tread_mm: tire.min_tread_mm != null ? String(tire.min_tread_mm) : '2.0',
-    notes: tire.notes ?? '',
-  })
+  /* One key per field, interpolated with the resolved unit, replacing the pairs
+   * of unit-specific keys a ternary used to choose between. `odometerMi` and
+   * `odometerKm` could only ever name two of the vocabulary's units. */
+  const pressureLabel = t('tireList.pressureWithUnit', { unit: u.pressure.label })
+  const odometerLabel = t('tireList.odometerWithUnit', { unit: u.distance.label })
+  const treadLabel = t('tireList.treadWithUnit', { unit: u.tread.label })
+  const minTreadLabel = t('tireList.minTreadWithUnit', { unit: u.tread.label })
 
   /* Add and Edit are deliberately separate intents. The form is one mutable
    * object holding every in-progress field, so reloading it when the position
@@ -137,13 +203,13 @@ export default function TireList({ vin }: TireListProps) {
    * Instead, Add only offers unoccupied positions and Edit locks the position. */
   const openAddForm = () => {
     setEditingTireId(null)
-    setForm({ ...EMPTY_TIRE_FORM, position: freePositions[0] ?? 'FL' })
+    setForm(seedTireForm(null, freePositions[0] ?? 'FL'))
     setFormOpen(true)
   }
 
   const openEditForm = (tire: Tire) => {
     setEditingTireId(tire.id)
-    setForm(formFromTire(tire))
+    setForm(seedTireForm(tire, tire.position))
     setFormOpen(true)
   }
 
@@ -153,13 +219,24 @@ export default function TireList({ vin }: TireListProps) {
   }
 
   /* Seeded from the tire's current values so the common case — pressure checked,
-   * tread unchanged — is a single edit rather than re-typing both. */
+   * tread unchanged — is a single edit rather than re-typing both.
+   *
+   * ★ That convenience is exactly why this path has to record origins too. The
+   * backend overwrites the parent tire's tread from the newest reading
+   * (`app/services/tire_service.py`), so a user who opens this drawer, corrects
+   * only the pressure and saves would rewrite the tire's stored tread with a
+   * round-tripped 7.14375 mm. Its own seed and submit are why it was missed
+   * when Add and Edit were fixed. */
   const openReadingForm = (tire: Tire) => {
+    const tread = seedUnitField(num(tire.tread_depth_mm), u.tread)
+    const pressure = seedUnitField(num(tire.pressure_kpa), u.pressure)
     setReadingForm({
-      ...EMPTY_READING_FORM,
       recorded_at: new Date().toISOString().slice(0, 10),
-      tread_depth_mm: tire.tread_depth_mm != null ? String(tire.tread_depth_mm) : '',
-      pressure_kpa: tire.pressure_kpa != null ? String(displayPressure(tire.pressure_kpa)) : '',
+      odometer_km: '',
+      tread_depth_mm: tread.display,
+      pressure_kpa: pressure.display,
+      notes: '',
+      origins: { tread_depth_mm: tread, pressure_kpa: pressure },
     })
     setReadingTireId(tire.id)
   }
@@ -173,9 +250,19 @@ export default function TireList({ vin }: TireListProps) {
         model_name: form.model_name || null,
         size: form.size || null,
         dot_code: form.dot_code || null,
-        tread_depth_mm: form.tread_depth_mm ? Number(form.tread_depth_mm) : null,
-        pressure_kpa: canonicalPressure(form.pressure_kpa),
-        min_tread_mm: form.min_tread_mm ? Number(form.min_tread_mm) : 2.0,
+        tread_depth_mm: canonicalFromUnitField(
+          form.tread_depth_mm,
+          form.origins.tread_depth_mm,
+          u.tread
+        ),
+        pressure_kpa: canonicalFromUnitField(
+          form.pressure_kpa,
+          form.origins.pressure_kpa,
+          u.pressure
+        ),
+        min_tread_mm:
+          canonicalFromUnitField(form.min_tread_mm, form.origins.min_tread_mm, u.tread) ??
+          DEFAULT_MIN_TREAD_MM,
         notes: form.notes || null,
       },
       {
@@ -209,7 +296,15 @@ export default function TireList({ vin }: TireListProps) {
   }
 
   const handleReading = (tireId: number) => {
-    if (!readingForm.tread_depth_mm) {
+    /* Resolved before the guard, so text that is not a number is refused here
+     * rather than posted as NaN, which the old `Number(...)` after a truthiness
+     * check allowed through. */
+    const tread = canonicalFromUnitField(
+      readingForm.tread_depth_mm,
+      readingForm.origins.tread_depth_mm,
+      u.tread
+    )
+    if (tread === null) {
       toast.error(t('tireList.treadRequired'))
       return
     }
@@ -218,8 +313,12 @@ export default function TireList({ vin }: TireListProps) {
         tireId,
         recorded_at: readingForm.recorded_at,
         odometer_km: canonicalOdometer(readingForm.odometer_km),
-        tread_depth_mm: Number(readingForm.tread_depth_mm),
-        pressure_kpa: canonicalPressure(readingForm.pressure_kpa),
+        tread_depth_mm: tread,
+        pressure_kpa: canonicalFromUnitField(
+          readingForm.pressure_kpa,
+          readingForm.origins.pressure_kpa,
+          u.pressure
+        ),
         notes: readingForm.notes || null,
       },
       {
@@ -302,13 +401,15 @@ export default function TireList({ vin }: TireListProps) {
               <dd className="font-mono">{tire.dot_code || '—'}</dd>
               <dt className="text-text-mute">{t('tireList.tread')}</dt>
               <dd className="font-mono">
-                {tire.tread_depth_mm != null ? `${tire.tread_depth_mm} mm` : '—'}
+                {tire.tread_depth_mm != null ? u.tread.format(num(tire.tread_depth_mm)) : '—'}
               </dd>
               <dt className="text-text-mute">{t('tireList.pressure')}</dt>
+              {/* Through the adapter, not UnitFormatter.formatPressure: that
+                  renders BAR for a metric user while the form below it accepts
+                  kPa, a disagreement this file's own comment used to document.
+                  Binding decision D2 requires one unit for entry and display. */}
               <dd className="font-mono">
-                {tire.pressure_kpa != null
-                  ? UnitFormatter.formatPressure(num(tire.pressure_kpa), system, showBoth)
-                  : '—'}
+                {tire.pressure_kpa != null ? u.pressure.format(num(tire.pressure_kpa)) : '—'}
               </dd>
               <dt className="text-text-mute">{t('tireList.projection')}</dt>
               <dd className="font-mono text-xs">
@@ -439,11 +540,11 @@ export default function TireList({ vin }: TireListProps) {
                 onChange={(e) => setForm({ ...form, dot_code: e.target.value })}
               />
             </Field>
-            <Field id="tire-tread" label={t('tireList.treadMm')}>
+            <Field id="tire-tread" label={treadLabel}>
               <Input
                 id="tire-tread"
                 type="number"
-                step="0.1"
+                step={u.tread.step}
                 value={form.tread_depth_mm}
                 onChange={(e) => setForm({ ...form, tread_depth_mm: e.target.value })}
               />
@@ -452,16 +553,16 @@ export default function TireList({ vin }: TireListProps) {
               <Input
                 id="tire-pressure"
                 type="number"
-                step="0.1"
+                step={u.pressure.step}
                 value={form.pressure_kpa}
                 onChange={(e) => setForm({ ...form, pressure_kpa: e.target.value })}
               />
             </Field>
-            <Field id="tire-min" label={t('tireList.minTreadMm')}>
+            <Field id="tire-min" label={minTreadLabel}>
               <Input
                 id="tire-min"
                 type="number"
-                step="0.1"
+                step={u.tread.step}
                 value={form.min_tread_mm}
                 onChange={(e) => setForm({ ...form, min_tread_mm: e.target.value })}
               />
@@ -503,11 +604,11 @@ export default function TireList({ vin }: TireListProps) {
               onChange={(e) => setReadingForm({ ...readingForm, recorded_at: e.target.value })}
             />
           </Field>
-          <Field id="reading-tread" label={t('tireList.treadMm')}>
+          <Field id="reading-tread" label={treadLabel}>
             <Input
               id="reading-tread"
               type="number"
-              step="0.1"
+              step={u.tread.step}
               value={readingForm.tread_depth_mm}
               onChange={(e) => setReadingForm({ ...readingForm, tread_depth_mm: e.target.value })}
             />
@@ -516,7 +617,7 @@ export default function TireList({ vin }: TireListProps) {
             <Input
               id="reading-pressure"
               type="number"
-              step="0.1"
+              step={u.pressure.step}
               value={readingForm.pressure_kpa}
               onChange={(e) => setReadingForm({ ...readingForm, pressure_kpa: e.target.value })}
             />
@@ -525,7 +626,7 @@ export default function TireList({ vin }: TireListProps) {
             <Input
               id="reading-odo"
               type="number"
-              step="0.1"
+              step={u.distance.step}
               value={readingForm.odometer_km}
               onChange={(e) => setReadingForm({ ...readingForm, odometer_km: e.target.value })}
             />

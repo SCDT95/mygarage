@@ -1219,10 +1219,9 @@
     "emptyHint": "Add FL/FR/RL/RR (and spare) with tread depth and DOT code.",
     "loadAction": "load tires",
     "lowTread": "Low Tread",
-    "minTreadMm": "Min Tread (mm)",
+    "minTreadWithUnit": "Min Tread ({{unit}})",
     "model": "Model",
-    "odometerKm": "Odometer (km)",
-    "odometerMi": "Odometer (mi)",
+    "odometerWithUnit": "Odometer ({{unit}})",
     "position": "Position",
     "positions": {
       "FL": "Front Left",
@@ -1242,8 +1241,8 @@
     "size": "Size",
     "title": "Tires",
     "tread": "Tread",
-    "treadMm": "Tread (mm)",
-    "treadRequired": "Tread depth is required"
+    "treadRequired": "Tread depth is required",
+    "treadWithUnit": "Tread ({{unit}})"
   },
   "warrantyList": {
     "addFirstWarranty": "Add Your First Warranty",
