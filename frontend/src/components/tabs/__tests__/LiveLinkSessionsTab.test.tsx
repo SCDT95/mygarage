@@ -3,7 +3,7 @@ import type { ReactNode } from 'react'
 import { render, screen, cleanup } from '../../../__tests__/test-utils'
 import { fireEvent } from '@testing-library/react'
 import type { DriveSession, DriveSessionListResponse } from '../../../types/livelink'
-import { presetUnitsFor, type UnitSet } from '../../../types/units'
+import { binarySystemFor, presetUnitsFor, type UnitSet } from '../../../types/units'
 import vehiclesEn from '../../../locales/en/vehicles.json'
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -49,9 +49,18 @@ vi.mock('@/services/livelinkService', () => ({
 // The tab reads `useUnitFormat()`, which is left REAL so the rendered strings
 // come from the shared adapter table rather than from a stub. Only the resolved
 // set underneath it is swapped, per test.
+// `system` is DERIVED from `units` exactly as the real hook derives it. Pinning
+// it to a literal would let the custom-set case pass for the wrong reason: the
+// defect being pinned is that `system` (collapsed from VOLUME) disagrees with
+// the per-quantity tokens, and a hardcoded `system` cannot express that.
 let units: UnitSet = presetUnitsFor('imperial', 'us')
 vi.mock('@/hooks/useUnitPreference', () => ({
-  useUnitPreference: () => ({ system: 'imperial', showBoth: false, units, gallonStandard: 'us' }),
+  useUnitPreference: () => ({
+    system: binarySystemFor(units.volume),
+    showBoth: false,
+    units,
+    gallonStandard: units.secondary_gallon,
+  }),
 }))
 vi.mock('@/hooks/useTimeFormat', () => ({ useTimeFormat: () => ({ timeFormat: '12h' }) }))
 vi.mock('@/constants/i18n', () => ({ getActiveLocale: () => 'en-US' }))

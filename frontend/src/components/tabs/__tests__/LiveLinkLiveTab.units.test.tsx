@@ -15,7 +15,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 import type { ReactNode } from 'react'
 import { render, screen } from '../../../__tests__/test-utils'
 import type { VehicleLiveLinkStatus } from '../../../types/livelink'
-import { presetUnitsFor, type UnitSet } from '../../../types/units'
+import { binarySystemFor, presetUnitsFor, type UnitSet } from '../../../types/units'
 import vehiclesEn from '../../../locales/en/vehicles.json'
 
 // Resolves ONLY the affordance key from the shipped English bundle, so the
@@ -38,9 +38,16 @@ const getVehicleStatus = vi.fn()
 vi.mock('@/services/livelinkService', () => ({
   livelinkService: { getVehicleStatus: (vin: string) => getVehicleStatus(vin) },
 }))
+// `system` is DERIVED from `units`, as the real hook derives it: a literal here
+// would make the custom-set case pass for the wrong reason.
 let units: UnitSet = presetUnitsFor('imperial', 'us')
 vi.mock('@/hooks/useUnitPreference', () => ({
-  useUnitPreference: () => ({ system: 'imperial', showBoth: false, units, gallonStandard: 'us' }),
+  useUnitPreference: () => ({
+    system: binarySystemFor(units.volume),
+    showBoth: false,
+    units,
+    gallonStandard: units.secondary_gallon,
+  }),
 }))
 vi.mock('@/hooks/useTimeFormat', () => ({ useTimeFormat: () => ({ timeFormat: '12h' }) }))
 vi.mock('@/utils/parseAPITimestamp', () => ({ formatTime: () => '12:00:00' }))
