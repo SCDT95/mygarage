@@ -209,4 +209,23 @@ describe('FuelRecordForm — the gallon comes from the user, not the instance', 
     expect(UnitFormatter.getMassUnit({ ...UK_IMPERIAL_UNITS, mass: 'kg' })).toBe('kg')
     expect(UnitFormatter.getVolumeUnit({ ...UK_IMPERIAL_UNITS, mass: 'kg' })).toBe('gal')
   })
+
+  it('the price field\'s own denominator follows the basis, not the volume unit', async () => {
+    // A litre user who prices by weight in pounds: `priceToDisplay` scales by
+    // `units.mass`, so a label that keeps naming the volume unit claims $/L
+    // over a $/lb number. That was pre-existing for `system`, and reading the
+    // mass token independently is what made it reachable.
+    UnitConverter.setGallonStandard('us')
+    unitPrefMock.system = 'metric'
+    unitPrefMock.units = { ...UK_IMPERIAL_UNITS, volume: 'L', consumption: 'l_100km', mass: 'lb' }
+
+    render(<FuelRecordForm {...DEFAULT_PROPS} />)
+    await waitFor(() => expect(mockedApiGet).toHaveBeenCalled())
+    const label = () => document.querySelector('label[for="price_per_unit"]')?.textContent
+
+    fireEvent.change(field('price_basis'), { target: { value: 'per_volume' } })
+    await waitFor(() => expect(label()).toBe('fuel.pricePer L'))
+    fireEvent.change(field('price_basis'), { target: { value: 'per_weight' } })
+    await waitFor(() => expect(label()).toBe('fuel.pricePer lb'))
+  })
 })

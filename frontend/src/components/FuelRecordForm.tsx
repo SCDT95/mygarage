@@ -636,8 +636,15 @@ export default function FuelRecordForm({ vin, record, onClose, onSuccess }: Fuel
   const showHaulingCheckbox = !isElectric
   const showDefLevel = isDiesel
 
-  // Dynamic labels
-  const priceLabel = isElectric ? t('fuel.pricePerKwh') : `${t('fuel.pricePer')} ${UnitFormatter.getVolumeUnit(units)}`
+  // Dynamic labels. The denominator follows the PRICE BASIS, not the volume
+  // unit alone: `priceToDisplay` scales a `per_weight` price by the resolved
+  // MASS token, and a label that says "/gal" over a $/lb value is the
+  // same-screen disagreement this change exists to remove. `per_kwh` and
+  // `per_tank` convert nothing in either direction and are left as they were.
+  const priceBasis = watch('price_basis')
+  const priceDenominator =
+    priceBasis === 'per_weight' ? UnitFormatter.getMassUnit(units) : UnitFormatter.getVolumeUnit(units)
+  const priceLabel = isElectric ? t('fuel.pricePerKwh') : `${t('fuel.pricePer')} ${priceDenominator}`
 
   return (
     <FormModalWrapper

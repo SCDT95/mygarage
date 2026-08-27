@@ -18,7 +18,7 @@ const CANONICAL_SIGNIFICANT_DIGITS = 12
  * is rounded ONLY where the API contract declares a precision, and then to
  * exactly the precision it declares. `liters` and `propane_liters` carry
  * `decimal_places=3` in `app/schemas/fuel.py` and `app/schemas/def_record.py`,
- * and pydantic REJECTS a fourth with a 422 rather than rounding it — so this
+ * and pydantic REJECTS a fourth with a 422 rather than rounding it, so this
  * rounding is the contract's, not one the client invented. Everything else
  * this file writes (`price_per_unit`) declares no precision and is therefore
  * posted exactly, the same way `odometer_km`, `tread_depth_mm` and
