@@ -106,6 +106,7 @@ from app.utils.csv_units import (
     SPEED,
     TEMPERATURE,
     VOLUME,
+    spell_header,
     volume_factor,
 )
 from app.utils.unit_adapters import ADAPTERS
@@ -149,10 +150,18 @@ _SPEED_DECIMALS: Mapping[str, int] = {"kmh": 1, "mph": 2}
 # dimensionless and passes through untouched (R6: an allowlist, not a suffix
 # parser -- `SOC Start (%)` and `OBC Trip Duration (s)` are real v4 headers
 # whose parentheses hold no unit token).
+# Named separately from the map below because `routes/reports.py` needs these
+# two by name: the report CSVs build their rows by hand rather than through
+# `apply_unit_set`, but their odometer and volume cells are the SAME columns
+# the backup exports write, so they resolve their token and their decimal
+# places from these definitions rather than from a second copy.
+ODOMETER_COLUMN = EmittedColumn(DISTANCE, "distance", "Odometer", _DISTANCE_DECIMALS)
+VOLUME_COLUMN = EmittedColumn(VOLUME, "volume", "Volume", _VOLUME_DECIMALS)
+
 EMITTED_COLUMNS: Mapping[str, EmittedColumn] = {
-    "Odometer (km)": EmittedColumn(DISTANCE, "distance", "Odometer", _DISTANCE_DECIMALS),
+    "Odometer (km)": ODOMETER_COLUMN,
     "Reading (km)": EmittedColumn(DISTANCE, "distance", "Reading", _DISTANCE_DECIMALS),
-    "Liters": EmittedColumn(VOLUME, "volume", "Volume", _VOLUME_DECIMALS),
+    "Liters": VOLUME_COLUMN,
     "Price Per Liter": EmittedColumn(PRICE_PER_VOLUME, "volume", "Price Per Unit", _PRICE_DECIMALS),
     # DEF's price column has always been called `Price Per Unit`; v6 adds the
     # volume token to it and the two pairs then share one spelling.
@@ -194,10 +203,12 @@ def token_for(column: EmittedColumn, units: UnitSet) -> str:
 def header_for(column: EmittedColumn, token: str) -> str:
     """The v6 header for `column` in `token`, e.g. `Volume (gal_uk)`.
 
-    Case-preserving: the token is never lowercased, because `L` (litres) and
-    `l` are different vocabulary entries.
+    Delegates the spelling to `csv_units.spell_header`, the inverse of the
+    importer's own `_split_token`, so the two halves of the round trip cannot
+    hold two different format strings. The two report exports spell their
+    headers through the same function.
     """
-    return f"{column.base} ({token})"
+    return spell_header(column.base, token)
 
 
 def _as_decimal(value: Any) -> Decimal | None:

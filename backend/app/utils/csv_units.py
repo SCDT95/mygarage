@@ -129,23 +129,8 @@ VALID_MARKERS: frozenset[str] = frozenset(
     {MARKER_METRIC, MARKER_IMPERIAL, MARKER_IMPERIAL_UK, MARKER_CUSTOM}
 )
 
-# R9. The unversioned service-history REPORT export
-# (`reports.download_service_history_csv`) kept the header `Mileage` when its
-# values changed from miles to canonical km, so a pre-migration file and a
-# post-migration one are byte-indistinguishable. It is rejected by its exact
-# ORDERED header tuple and never by column membership: the v2 PRIMARY service
-# export carried the same seven columns in a different order, and matching on
-# membership would break every v2 backup restore.
-REJECTED_HEADER_TUPLES: frozenset[tuple[str, ...]] = frozenset(
-    {("Date", "Mileage", "Category", "Description", "Cost", "Vendor", "Notes")}
-)
-REJECTED_REPORT_DETAIL = (
-    "This file is the unversioned service-history report export. Its 'Mileage' "
-    "column is miles in older files and kilometres in newer ones, with nothing "
-    "in the file to tell them apart, so importing it could silently store the "
-    "wrong distance. Re-export the vehicle from Export > Service records "
-    "instead, which carries a units marker."
-)
+# The rejected report shapes live at the bottom of this module, next to the
+# report header templates they are derived from: see "The report exports".
 
 # R9. The v2 standalone odometer export used a bare `Reading` column holding
 # MILES, with no marker and no version column. Stated here as a definition
@@ -369,6 +354,22 @@ def _single_version(rows: Sequence[Mapping[str, Any]]) -> str:
     return next(iter(seen), "")
 
 
+def spell_header(base: str, token: str) -> str:
+    """The v6 header spelling for `base` in `token`, e.g. `"Odometer (mi)"`.
+
+    The exact inverse of `_split_token`, and deliberately its neighbour: the
+    two are a bijective pair and a change to either that is not mirrored in
+    the other silently breaks the round trip. Every emitter in the app spells
+    a tokened header through this one function -- `csv_emission.header_for`
+    for the four backup exports, `report_header_row` for the two reports --
+    so there is no second copy of the format string to drift.
+
+    Case-preserving: the token is never lowercased, because `L` (litres) and
+    `l` are different vocabulary entries.
+    """
+    return f"{base} ({token})"
+
+
 def _split_token(header: str, bases: tuple[str, ...]) -> tuple[str, str] | None:
     """`("Odometer", "mi")` for `"Odometer (mi)"`, else None.
 
@@ -485,12 +486,13 @@ def build_csv_unit_context(
     recognised token for the wrong quantity, an unrecognised marker, marker
     `custom` with a tokenless unit column, two candidate columns for one
     quantity, a duplicated unit column, rows that disagree about
-    `unit_system` or `units_version`, and the irreducibly ambiguous
-    unversioned service-history report.
+    `unit_system` or `units_version`, the irreducibly ambiguous unversioned
+    service-history report, and either of the two v6 report exports.
     """
     headers = list(fieldnames or [])
-    if tuple(headers) in REJECTED_HEADER_TUPLES:
-        _reject(REJECTED_REPORT_DETAIL)
+    rejection = REJECTED_HEADER_TUPLES.get(tuple(headers))
+    if rejection is not None:
+        _reject(rejection)
 
     marker = _normalised_markers(rows)
     version = _single_version(rows)
@@ -547,3 +549,188 @@ def build_csv_unit_context(
         gallon_flavour=gallon_flavour,
         bindings=resolved,
     )
+
+
+# --- The report exports, and why they are not importable --------------------
+#
+# `routes/reports.py` emits two CSVs that are printable summaries rather than
+# backups. Both are rejected on import, and both spell their unit-bearing
+# columns with the same v6 vocabulary tokens the backup exports use.
+#
+# The templates below are the ONE source for those header rows: `reports.py`
+# emits from them via `report_header_row`, and `REJECTED_HEADER_TUPLES` is
+# derived from them by `_report_header_variants`. Renaming a report column
+# therefore updates the guard by construction, instead of leaving a
+# hand-maintained literal to fall out of step with the emitter.
+
+
+@dataclass(frozen=True)
+class ReportColumn:
+    """One report header cell whose spelling depends on the reader's units.
+
+    Built from the importer's own `QuantitySpec` rather than from a loose
+    string, so the base name a report emits is by construction a base name
+    this module already accepts. `bases` is unpacked as a one-tuple, which
+    fails loudly if a spec ever grows a second base and this code has to
+    choose between them.
+    """
+
+    spec: QuantitySpec
+
+    @property
+    def base(self) -> str:
+        """The single base name the report spells this quantity with."""
+        (base,) = self.spec.bases
+        return base
+
+    @property
+    def quantity(self) -> str:
+        """The quantity this cell carries, keying `QUANTITY_TOKENS`."""
+        return self.spec.quantity
+
+
+# A header row where a plain `str` is a fixed column name and a `ReportColumn`
+# is one whose spelling depends on the reader's resolved units.
+ReportHeaderTemplate = tuple[str | ReportColumn, ...]
+
+# `reports.download_service_history_csv`. The distance column was called
+# `Mileage` until v6; T5-R5 renames it to `Odometer (<token>)` so that one
+# base name spells distance across every CSV the app emits, and `Mileage`
+# survives only as a legacy alias the importer reads (`ODOMETER_DISTANCE`).
+SERVICE_HISTORY_REPORT_HEADERS: ReportHeaderTemplate = (
+    "Date",
+    ReportColumn(ODOMETER_DISTANCE),
+    "Category",
+    "Description",
+    "Cost",
+    "Vendor",
+    "Notes",
+)
+
+# `reports.download_all_records_csv`. `Volume (<token>)` is new in v6 and is
+# APPENDED rather than inserted: under metric the seven pre-v6 columns keep
+# their exact spellings and positions, so a spreadsheet reading columns 0..6
+# is unaffected, and the two row-type-specific columns (`Vendor`, which only
+# service rows fill, and `Volume`, which only fuel rows fill) end up adjacent
+# at the end instead of splitting the free-text block around `Description`.
+ALL_RECORDS_REPORT_HEADERS: ReportHeaderTemplate = (
+    "Date",
+    "Type",
+    "Category",
+    "Description",
+    "Cost",
+    ReportColumn(ODOMETER_DISTANCE),
+    "Vendor",
+    ReportColumn(FUEL_VOLUME),
+)
+
+
+def report_header_row(template: ReportHeaderTemplate, tokens: Mapping[str, str]) -> list[str]:
+    """`template` spelled out for a reader whose units are `tokens`.
+
+    `tokens` maps a quantity constant (`DISTANCE`, `VOLUME`) to the
+    vocabulary token that quantity is emitted in. A template cell whose
+    quantity is missing from `tokens` raises `KeyError` rather than falling
+    back to canonical, because a silently-metric column in an imperial file
+    is the exact defect this phase exists to remove.
+    """
+    return [
+        cell if isinstance(cell, str) else spell_header(cell.base, tokens[cell.quantity])
+        for cell in template
+    ]
+
+
+def _report_header_variants(template: ReportHeaderTemplate) -> set[tuple[str, ...]]:
+    """Every header row `template` can be emitted as, over all unit sets.
+
+    The cross product of each `ReportColumn`'s full quantity vocabulary, so
+    the guard covers an imperial reader's export as well as a metric one's.
+    Both quantities are small (two distance tokens, three volume tokens), so
+    the all-records template expands to six rows and the service-history one
+    to two.
+    """
+    rows: list[tuple[str, ...]] = [()]
+    for cell in template:
+        if isinstance(cell, str):
+            rows = [row + (cell,) for row in rows]
+            continue
+        rows = [
+            row + (spell_header(cell.base, token),)
+            for row in rows
+            for token in sorted(QUANTITY_TOKENS[cell.quantity])
+        ]
+    return set(rows)
+
+
+# R9. The unversioned service-history REPORT export kept the header `Mileage`
+# when its values changed from miles to canonical km, so a pre-migration file
+# and a post-migration one are byte-indistinguishable.
+#
+# ★ This literal is NOT redundant with the derived tuples below and must not
+# be deleted as such. The emitter that wrote it no longer exists, so nothing
+# can derive it; deleting it silently un-rejects every v2.21-era report.
+#
+# Its EIGHT-column predecessor (`Date,Mileage,Service Type,Description,Cost,
+# Vendor Name,Vendor Phone,Notes`, retired 2026-02-12) is deliberately absent:
+# it was retired before canonical storage went metric on 2026-04-25, so every
+# file in that shape is necessarily miles and is not ambiguous. Likewise the
+# two historical `download_all_records_csv` shapes, whose distance column was
+# renamed from `Mileage` to `Odometer (km)` in the same commit that made its
+# values canonical, so neither era is ambiguous. All three still import, and
+# `tests/integration/routes/test_import_compatibility_corpus.py` pins that.
+_HISTORICAL_SERVICE_HISTORY_REPORT = (
+    "Date",
+    "Mileage",
+    "Category",
+    "Description",
+    "Cost",
+    "Vendor",
+    "Notes",
+)
+
+REJECTED_REPORT_DETAIL = (
+    "This file is the unversioned service-history report export. Its 'Mileage' "
+    "column is miles in older files and kilometres in newer ones, with nothing "
+    "in the file to tell them apart, so importing it could silently store the "
+    "wrong distance. Re-export the vehicle from Export > Service records "
+    "instead, which carries a units marker."
+)
+
+# T5-R3. Tokening a report header removes the UNIT ambiguity but not the
+# reason for the guard: a report flattens each service visit into one row per
+# line item and carries columns (`Vendor`, `Notes`, `Type`) the service
+# importer does not consume, and the all-records report additionally
+# interleaves fuel rows into what would be read as a service file. Importing
+# either would create malformed records however cleanly the units parsed, so
+# the guard's purpose does not expire when the header gains a token.
+_SERVICE_HISTORY_REPORT_DETAIL = (
+    "This file is the service-history report export, which is a printable "
+    "summary rather than a backup: it flattens each service visit into one row "
+    "per line item and carries columns the importer does not consume, so "
+    "importing it would create malformed records. Re-export the vehicle from "
+    "Export > Service records instead."
+)
+_ALL_RECORDS_REPORT_DETAIL = (
+    "This file is the all-records report export, which is a printable summary "
+    "rather than a backup: it interleaves fuel rows with service rows in one "
+    "file and carries columns the importer does not consume, so importing it "
+    "would create malformed records. Re-export the vehicle from Export "
+    "instead, one record type at a time."
+)
+
+# Rejected by exact ORDERED header tuple, never by column membership: the v2
+# PRIMARY service export carried the same seven names as the historical report
+# in a different order, and matching on membership would break every v2 backup
+# restore. Mapped to the detail each shape is refused with, so the message
+# names the actual file the user picked.
+REJECTED_HEADER_TUPLES: Mapping[tuple[str, ...], str] = {
+    _HISTORICAL_SERVICE_HISTORY_REPORT: REJECTED_REPORT_DETAIL,
+    **{
+        headers: _SERVICE_HISTORY_REPORT_DETAIL
+        for headers in _report_header_variants(SERVICE_HISTORY_REPORT_HEADERS)
+    },
+    **{
+        headers: _ALL_RECORDS_REPORT_DETAIL
+        for headers in _report_header_variants(ALL_RECORDS_REPORT_HEADERS)
+    },
+}
