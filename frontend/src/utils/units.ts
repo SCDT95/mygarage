@@ -577,7 +577,8 @@ export class UnitFormatter {
    *
    * Engine hours are dimensionless — only the volume side converts between
    * systems. Mirrors formatFuelEconomy's N/A-guard and showBoth shape; uses
-   * the active gallon standard (US 3.78541 or UK 4.54609).
+   * the active gallon standard, which `useResolvedGallonSync` resolves from the
+   * client's own units rather than the instance setting.
    *
    * @param lPerHr - Value in L/hr (canonical metric)
    * @param system - Target unit system
@@ -591,7 +592,12 @@ export class UnitFormatter {
     const lNum = typeof lPerHr === 'string' ? parseFloat(lPerHr) : lPerHr;
     if (isNaN(lNum) || lNum === 0) return 'N/A';
 
-    const LITERS_PER_GALLON = UnitConverter.getGallonStandard() === 'uk' ? 4.54609 : 3.785411784;
+    // Was a fourth, separately-rounded spelling of the US gallon
+    // (`3.785411784`) beside a duplicate of the UK one. The dispatch is the
+    // same table every other gallon decision now uses, and the active standard
+    // is this CLIENT's, not the instance's (`useResolvedGallonSync`).
+    const LITERS_PER_GALLON =
+      UnitConverter.LITERS_PER_SECONDARY_GALLON[UnitConverter.getGallonStandard()];
 
     if (system === 'metric') {
       const primary = `${lNum.toFixed(2)} L/hr`;
