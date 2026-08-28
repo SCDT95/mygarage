@@ -2833,17 +2833,19 @@
   {
    "path": "src/utils/units.ts",
    "disposition": "audited",
-   "digest": "86801fc6757e53482587be35de448327c7b7c17063443982c48d3b4be38d6526",
+   "digest": "1540da8a241eeb001528e85a0037a3f4ba4a35211e6cc9f383eeb88425ce6d4e",
    "reason": "gate-detectable unit decisions, recorded not asserted clean (plan 3b task 1 ordering)",
    "tests": [
+    "utils/__tests__/unitFactorParity.test.ts",
+    "utils/__tests__/unitsBinaryApiSurface.test.ts",
     "utils/__tests__/unitsFuelRate.test.ts",
-    "utils/__tests__/unitsSummaryHelpers.test.ts",
-    "utils/__tests__/unitFactorParity.test.ts"
+    "utils/__tests__/unitsSummaryHelpers.test.ts"
    ],
    "findings": [
-    "compare x16 (units gate baseline)",
+    "compare x9 (units gate baseline)",
     "token-branch x7 (units gate baseline)",
-    "R2: 16 comparisons, migrate-or-exempt per occurrence; the 7 token branches are the resolved-set collapse (formatVolumePerDistance, getVolumePerDistanceLabel)"
+    "R2: 16 comparisons, migrate-or-exempt per occurrence. Seven are gone: formatTemperature, formatPressure, formatWeight, formatTorque, getTemperatureUnit, getPressureUnit and getTorqueUnit were binary UnitSystem APIs no production file called, and utils/__tests__/unitsBinaryApiSurface.test.ts now fails if another one outlives its last caller. The nine survivors are exempt only while task 6 (formatDistance, formatFuelEconomy, formatFuelRate, getDistanceUnit, getFuelEconomyUnit, getFuelRateUnit, formatCostPerDistance, getCostPerDistanceLabel) and task 3 (getWeightUnit, via PropaneRecordForm) still have call sites.",
+    "the 7 token branches are the resolved-set collapse (formatVolumePerDistance, getVolumePerDistanceLabel)"
    ],
    "owners": [
     "task 2",

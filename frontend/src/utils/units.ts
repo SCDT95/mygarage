@@ -669,136 +669,6 @@ export class UnitFormatter {
   }
 
   /**
-   * Format temperature with appropriate unit label.
-   *
-   * @param celsius - Value in Celsius (canonical metric)
-   * @param system - Target unit system
-   * @param showBoth - Show both units
-   */
-  static formatTemperature(celsius: Numeric, system: UnitSystem, showBoth: boolean = false): string {
-    if (celsius === null || celsius === undefined) {
-      return 'N/A';
-    }
-
-    const cNum = typeof celsius === 'string' ? parseFloat(celsius) : celsius;
-    if (isNaN(cNum)) return 'N/A';
-
-    if (system === 'metric') {
-      const primary = `${cNum.toFixed(1)}°C`;
-      if (showBoth) {
-        const fahrenheit = UnitConverter.celsiusToFahrenheit(cNum);
-        return `${primary} (${fahrenheit?.toFixed(1)}°F)`;
-      }
-      return primary;
-    } else {
-      const fahrenheit = UnitConverter.celsiusToFahrenheit(cNum);
-      const primary = `${fahrenheit?.toFixed(1)}°F`;
-      if (showBoth) {
-        return `${primary} (${cNum.toFixed(1)}°C)`;
-      }
-      return primary;
-    }
-  }
-
-  /**
-   * Format pressure with appropriate unit label.
-   *
-   * @param kPa - Value in kilopascals (canonical metric). Display in metric uses bar = kPa/100.
-   * @param system - Target unit system
-   * @param showBoth - Show both units
-   */
-  static formatPressure(kPa: Numeric, system: UnitSystem, showBoth: boolean = false): string {
-    if (kPa === null || kPa === undefined) {
-      return 'N/A';
-    }
-
-    const kPaNum = typeof kPa === 'string' ? parseFloat(kPa) : kPa;
-    if (isNaN(kPaNum)) return 'N/A';
-
-    const bar = kPaNum / 100;
-
-    if (system === 'metric') {
-      const primary = `${bar.toFixed(2)} bar`;
-      if (showBoth) {
-        const psi = UnitConverter.kPaToPsi(kPaNum);
-        return `${primary} (${psi?.toFixed(1)} PSI)`;
-      }
-      return primary;
-    } else {
-      const psi = UnitConverter.kPaToPsi(kPaNum);
-      const primary = `${psi?.toFixed(1)} PSI`;
-      if (showBoth) {
-        return `${primary} (${bar.toFixed(2)} bar)`;
-      }
-      return primary;
-    }
-  }
-
-  /**
-   * Format weight with appropriate unit label.
-   *
-   * @param kg - Value in kilograms (canonical metric)
-   * @param system - Target unit system
-   * @param showBoth - Show both units
-   */
-  static formatWeight(kg: Numeric, system: UnitSystem, showBoth: boolean = false): string {
-    if (kg === null || kg === undefined) {
-      return 'N/A';
-    }
-
-    const kgNum = typeof kg === 'string' ? parseFloat(kg) : kg;
-    if (isNaN(kgNum)) return 'N/A';
-
-    if (system === 'metric') {
-      const primary = `${kgNum.toLocaleString(getActiveLocale())} kg`;
-      if (showBoth) {
-        const lbs = UnitConverter.kgToLbs(kgNum);
-        return `${primary} (${lbs?.toLocaleString(getActiveLocale())} lbs)`;
-      }
-      return primary;
-    } else {
-      const lbs = UnitConverter.kgToLbs(kgNum);
-      const primary = `${lbs?.toLocaleString(getActiveLocale())} lbs`;
-      if (showBoth) {
-        return `${primary} (${kgNum.toLocaleString(getActiveLocale())} kg)`;
-      }
-      return primary;
-    }
-  }
-
-  /**
-   * Format torque with appropriate unit label.
-   *
-   * @param nm - Value in Newton-meters (canonical metric)
-   * @param system - Target unit system
-   * @param showBoth - Show both units
-   */
-  static formatTorque(nm: Numeric, system: UnitSystem, showBoth: boolean = false): string {
-    if (nm === null || nm === undefined) {
-      return 'N/A';
-    }
-
-    const nmNum = typeof nm === 'string' ? parseFloat(nm) : nm;
-    if (isNaN(nmNum)) return 'N/A';
-
-    if (system === 'metric') {
-      const primary = `${nmNum.toFixed(1)} Nm`;
-      if (showBoth) {
-        const lbft = UnitConverter.nmToLbft(nmNum);
-        return `${primary} (${lbft?.toFixed(1)} lb-ft)`;
-      }
-      return primary;
-    } else {
-      const lbft = UnitConverter.nmToLbft(nmNum);
-      const primary = `${lbft?.toFixed(1)} lb-ft`;
-      if (showBoth) {
-        return `${primary} (${nmNum.toFixed(1)} Nm)`;
-      }
-      return primary;
-    }
-  }
-
-  /**
    * Get volume unit label for input placeholders.
    *
    * @param units - The client's resolved unit set
@@ -829,20 +699,6 @@ export class UnitFormatter {
   }
 
   /**
-   * Get temperature unit label for input placeholders.
-   */
-  static getTemperatureUnit(system: UnitSystem): string {
-    return system === 'imperial' ? '°F' : '°C';
-  }
-
-  /**
-   * Get pressure unit label for input placeholders.
-   */
-  static getPressureUnit(system: UnitSystem): string {
-    return system === 'imperial' ? 'PSI' : 'bar';
-  }
-
-  /**
    * Get weight unit label for input placeholders.
    */
   static getWeightUnit(system: UnitSystem): string {
@@ -861,13 +717,6 @@ export class UnitFormatter {
    */
   static getMassUnit(units: UnitSet): string {
     return units.mass === 'kg' ? 'kg' : 'lb';
-  }
-
-  /**
-   * Get torque unit label for input placeholders.
-   */
-  static getTorqueUnit(system: UnitSystem): string {
-    return system === 'imperial' ? 'lb-ft' : 'Nm';
   }
 
   // ========== SUMMARY CARD HELPERS ==========

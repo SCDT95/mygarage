@@ -387,13 +387,13 @@
   "file": "src/utils/units.ts",
   "kind": "compare",
   "text": "system === 'imperial'",
-  "count": 9
+  "count": 6
  },
  {
   "file": "src/utils/units.ts",
   "kind": "compare",
   "text": "system === 'metric'",
-  "count": 7
+  "count": 3
  },
  {
   "file": "src/utils/units.ts",
