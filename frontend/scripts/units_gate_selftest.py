@@ -120,9 +120,12 @@ class Mutation:
     #: further simultaneous edits, for a guard that is defended more than once.
     also: list[tuple[str, str]] = field(default_factory=list)
     #: what the validity probe must see. 'clean' is the default: the mutant runs
-    #: and reports nothing on an input with nothing in it. 'refuses' is for a
-    #: mutation whose whole point is that the gate now refuses everything, where
-    #: a clean probe would read as a broken mutant.
+    #: and reports nothing on an input with nothing in it. 'refuses:<substring>'
+    #: is for a mutation whose whole point is that the gate now refuses
+    #: everything, where a clean probe would read as a broken mutant. The
+    #: substring is REQUIRED and names the refusal expected: an earlier version
+    #: matched any nonzero exit carrying the one hardcoded message, so a second
+    #: refusing mutation would have been scored against the first one's text.
     expect_probe: str = "clean"
 
 
@@ -160,6 +163,7 @@ MUTATIONS = [
             "S-P26-parenthesised-alias",
             "S-P27-indexed-access",
             "S-P28-alias-or-undefined",
+            "S-P36-double-quoted-union",
             "S-P29-backtick-vocabulary",
         ],
         "half the vocabulary is half the gate",
@@ -251,6 +255,7 @@ MUTATIONS = [
             "S-P26-parenthesised-alias",
             "S-P27-indexed-access",
             "S-P28-alias-or-undefined",
+            "S-P36-double-quoted-union",
             "S-P29-backtick-vocabulary",
         ],
         "★ R2's forbidden implementation: it passes every case that spells the "
@@ -277,6 +282,7 @@ MUTATIONS = [
             "S-P16-widened-alias",
             "S-P26-parenthesised-alias",
             "S-P28-alias-or-undefined",
+            "S-P36-double-quoted-union",
             "S-P29-backtick-vocabulary",
         ],
         "★ R8's hole: a name denylist walks straight past `type Sys = 'imperial'|'metric'`",
@@ -391,7 +397,12 @@ MUTATIONS = [
         ["S-P26-parenthesised-alias", "S-P27-indexed-access"],
         "a parenthesised unit alias is defended twice, by paren stripping and by "
         "the fail-closed UNKNOWN class, so only removing BOTH flips it",
-        also=[("  while (out.startsWith('(') && out.endsWith(')')) {", "  while (false) {")],
+        also=[
+            (
+                "  while (out.startsWith('(') && out.endsWith(')')) {",
+                "  while (false) {",
+            )
+        ],
     ),
     Mutation(
         "M42-no-parse-diagnostics-property",
@@ -406,7 +417,234 @@ MUTATIONS = [
         "into a refusal on every file, which is why this mutation needs the "
         "'refuses' probe: a clean probe would read a deliberate refusal as a "
         "broken mutant.",
-        expect_probe="refuses",
+        expect_probe="refuses:parseDiagnostics",
+    ),
+    # ---------------- script leg: the three phase-3b detectors ---------------
+    Mutation(
+        "M44-drop-formatter-leg",
+        "gate",
+        "        if (BINARY_FORMATTER_METHODS.has(called)) {",
+        "        if (false && BINARY_FORMATTER_METHODS.has(called)) {",
+        "script",
+        [
+            "S-P30-formatter-binary-call",
+            "S-P31-formatter-label-selector",
+            "S-P35-aliased-formatter-receiver",
+        ],
+        "the whole formatter leg. 73 production calls carry no system literal, so "
+        "without it the comparison leg certifies every one of them as clean.",
+    ),
+    Mutation(
+        "M45-formatter-format-prefix-only",
+        "gate",
+        "        if (!isStatic(member) || !takesBinarySystem(member, source)) continue",
+        "        if (!isStatic(member) || !member.name?.getText(source).startsWith('format')) continue",
+        "script",
+        [
+            "S-N7-formatter-resolved-set",
+            "S-P31-formatter-label-selector",
+            "S-P35-aliased-formatter-receiver",
+        ],
+        "★ ROUND 1's ACTUAL MISTAKE, built and run. A `format*` name rule is wrong "
+        "in BOTH directions at once: it misses every label selector "
+        "(`getDistanceUnit`, `getFuelEconomyUnit`) and it flags `formatVolume`, "
+        "which takes a resolved set and is the destination. That is why the "
+        "callable set is derived as 'a parameter is a UnitSystem'.",
+    ),
+    Mutation(
+        "M49-formatter-receiver-spelling",
+        "gate",
+        "      if (callee?.kind === ts.SyntaxKind.PropertyAccessExpression) {",
+        "      if (callee?.expression?.getText(sf) === FORMATTER_CLASS) {",
+        "script",
+        ["S-P35-aliased-formatter-receiver"],
+        "keying on the receiver's spelling makes `import { UnitFormatter as UF }` "
+        "a one-line bypass",
+    ),
+    Mutation(
+        "M52-formatter-name-without-receiver",
+        "gate",
+        "      if (callee?.kind === ts.SyntaxKind.PropertyAccessExpression) {",
+        "      if (true) {",
+        "script",
+        ["S-N8-local-format-distance"],
+        "the mirror of M49: dropping the receiver entirely flags three module-local "
+        "`formatDistance` helpers, one of which (POICard's) is correct migrated code",
+    ),
+    Mutation(
+        "M51-every-static-method-is-binary",
+        "gate",
+        "        if (!isStatic(member) || !takesBinarySystem(member, source)) continue",
+        "        if (!isStatic(member)) continue",
+        "script",
+        ["S-N7-formatter-resolved-set"],
+        "T4-R7's mirror on the new leg: a detector that flags every formatter call "
+        "looks healthier than one that flags none and is worth exactly as much",
+    ),
+    Mutation(
+        "M46-drop-conversion-leg",
+        "gate",
+        "      if (BINARY_CONVERSION_HELPERS.has(called)) {",
+        "      if (false && BINARY_CONVERSION_HELPERS.has(called)) {",
+        "script",
+        ["S-P32-binary-conversion-call"],
+        "R8's whole point: the function that WRITES the wrong number, invisible to "
+        "both of the originally proposed legs",
+    ),
+    Mutation(
+        "M53-every-exported-helper-is-binary",
+        "gate",
+        "      if (takesBinarySystem(node, source) && node.name) found.add(node.name.getText(source))",
+        "      if (node.name) found.add(node.name.getText(source))",
+        "script",
+        ["S-N9-set-conversion-helper"],
+        "`toCanonicalLiters` sits in the same file and takes a resolved set: the "
+        "leg cannot key on the module or on the `toCanonical` prefix",
+    ),
+    Mutation(
+        "M47-drop-token-branch-leg",
+        "gate",
+        "        const quantity = quantityBranchOf(node, sf)",
+        "        const quantity = null",
+        "script",
+        ["S-P33-token-branch-property", "S-P34-token-branch-destructured"],
+        "scope category 4's second half, which carries no system literal at all",
+    ),
+    Mutation(
+        "M48-token-branch-property-only",
+        "gate",
+        "      : operand.kind === ts.SyntaxKind.Identifier",
+        "      : false",
+        "script",
+        ["S-P34-token-branch-destructured"],
+        "one destructure would otherwise be a complete bypass",
+    ),
+    Mutation(
+        "M54-token-branch-any-property",
+        "gate",
+        "  return QUANTITY_TOKENS.has(name) ? name : null",
+        "  return name === '' ? null : name",
+        "script",
+        ["S-N10-foreign-token-property", "S-N11-wrong-quantity-vocabulary"],
+        "the property name and the per-quantity vocabulary defend this leg "
+        "TOGETHER, so only removing both flips anything: with the name gate alone "
+        "removed, `size` has no vocabulary and the lookup still misses. Both off, "
+        "and every shirt sized 'L' is a fuel record.",
+        also=[
+            (
+                "    if (quantity !== null && QUANTITY_TOKENS.get(quantity)?.has(literal.text)) return quantity",
+                "    if (quantity !== null && [...QUANTITY_TOKENS.values()].some((v) => v.has(literal.text)))\n      return quantity",
+            )
+        ],
+    ),
+    Mutation(
+        "M55-token-vocabulary-is-pooled",
+        "gate",
+        "    if (quantity !== null && QUANTITY_TOKENS.get(quantity)?.has(literal.text)) return quantity",
+        "    if (quantity !== null && [...QUANTITY_TOKENS.values()].some((v) => v.has(literal.text)))\n      return quantity",
+        "script",
+        ["S-N11-wrong-quantity-vocabulary"],
+        "pooling the ten vocabularies loses the pairing, and a `pressure` field "
+        "holding 'kg' becomes a unit decision",
+    ),
+    Mutation(
+        "M56-secondary-gallon-is-a-quantity",
+        "gate",
+        "        if (!quantities.has(quantity)) continue",
+        "        if (false) continue",
+        "script",
+        ["S-N12-secondary-gallon"],
+        "★ R1's structural exemption, from the other side. Deriving the quantity "
+        "names from `UnitSet`'s keys instead of `UNIT_QUANTITIES` admits "
+        "`secondary_gallon`, and the gallon-panel visibility becomes a finding "
+        "that no correct code can clear.",
+    ),
+    # ---------------- script leg: the guard that stops a blind detector ------
+    Mutation(
+        "M61-empty-formatter-derivation-refuses",
+        "gate",
+        '    if (node.kind === ts.SyntaxKind.ClassDeclaration && node.name?.text === FORMATTER_CLASS) {',
+        '    if (false) {',
+        "script",
+        [],  # filled in below: every script case, because the gate refuses them all
+        "★ THE loadTypeScript LESSON, one layer in. The callable set is DERIVED "
+        "from units.ts, so a rename of the class (or of the UnitSystem type) "
+        "empties it, and a detector with an empty vocabulary reports zero "
+        "findings on a tree full of them while the gate prints a tick. The "
+        "fail-loud guard turns that into a refusal, which is what this mutation "
+        "measures.",
+        expect_probe="refuses:derived no binary formatter method",
+    ),
+    Mutation(
+        "M62-empty-derivation-without-the-guard",
+        "gate",
+        '    if (node.kind === ts.SyntaxKind.ClassDeclaration && node.name?.text === FORMATTER_CLASS) {',
+        '    if (false) {',
+        "script",
+        [
+            "S-P30-formatter-binary-call",
+            "S-P31-formatter-label-selector",
+            "S-P35-aliased-formatter-receiver",
+        ],
+        "★ and the SURVIVOR the guard prevents, built and run: with "
+        "requireNonEmpty gone, the same empty derivation is SILENT. Three "
+        "positives quietly stop being reported and every other case, including "
+        "both positive controls, still passes. That is what a gate that cannot "
+        "fire looks like from the outside, and it is why the guard is not "
+        "defensive clutter.",
+        also=[("  return requireNonEmpty(found, 'binary formatter method', UNITS_SOURCE)", '  return found')],
+    ),
+    # ---------------- script leg: the R6 carry, five of six ------------------
+    Mutation(
+        "M50-drop-double-quoted-vocabulary",
+        "gate",
+        "  '\"imperial\"',\n  '\"metric\"',\n  '\"custom\"',\n",
+        "",
+        "script",
+        ["S-P36-double-quoted-union"],
+        "R6 carry, branch 6 of 6: added in round 2, unexercised until now. "
+        "STRING_LITERAL_TYPE reads a double-quoted literal, so a missing "
+        "vocabulary entry is a FAIL-OPEN rather than a fail-closed miss.",
+    ),
+    Mutation(
+        "M57-drop-paren-balance-check",
+        "gate",
+        "    if (!balanced || depth !== 0) break",
+        "    if (false) break",
+        "script",
+        ["S-N13-doubly-parenthesised-foreign"],
+        "R6 carry, branch 2 of 6: without the balance check `('light') | "
+        "('imperial')` is stripped ACROSS the union, both halves become "
+        "unreadable, and fail-closed UNKNOWN flags correct code",
+    ),
+    Mutation(
+        "M58-drop-void-never-nullish",
+        "gate",
+        "const NULLISH_MEMBERS = new Set(['null', 'undefined', 'void', 'never'])",
+        "const NULLISH_MEMBERS = new Set(['null', 'undefined'])",
+        "script",
+        ["S-N14-void-and-never-members"],
+        "R6 carry, branch 3 of 6: only `null` and `undefined` were exercised",
+    ),
+    Mutation(
+        "M59-drop-numeric-boolean-literals",
+        "gate",
+        "const STRING_LITERAL_TYPE = /^(?:'[^']*'|\"[^\"]*\"|`[^`]*`|-?\\d+(?:\\.\\d+)?|true|false)$/",
+        "const STRING_LITERAL_TYPE = /^(?:'[^']*'|\"[^\"]*\"|`[^`]*`)$/",
+        "script",
+        ["S-N15-numeric-and-boolean-members"],
+        "R6 carry, branch 4 of 6: the gate's own docstring states this rounding "
+        "(`'imperial' | 'metric' | 0` is a different enum) and nothing exercised it",
+    ),
+    Mutation(
+        "M60-all-nullish-is-unknown",
+        "gate",
+        "  if (significant.length === 0) return 'nullish'",
+        "  if (significant.length === 0) return 'unknown'",
+        "script",
+        ["S-N16-all-nullish-annotation"],
+        "R6 carry, branch 5 of 6: the all-nullish return, reachable only from a "
+        "degenerate annotation and unexercised since it was written",
     ),
     # ---------------- script leg: what the detector must NOT catch -----------
     Mutation(
@@ -434,7 +672,14 @@ MUTATIONS = [
         "          if (!hasForeignProvenance(operand, index) && !isPlaceholderAttribute(node)) {",
         "          if (!isPlaceholderAttribute(node)) {",
         "script",
-        ["S-N2-foreign-provenance", "S-N6-parenthesised-foreign-alias"],
+        [
+            "S-N13-doubly-parenthesised-foreign",
+            "S-N14-void-and-never-members",
+            "S-N15-numeric-and-boolean-members",
+            "S-N16-all-nullish-annotation",
+            "S-N2-foreign-provenance",
+            "S-N6-parenthesised-foreign-alias",
+        ],
         "★ R3: without the binding lookup this leg is an ESLint selector again. "
         "Both Theme cases go, which is the point: the exemption is one rule, not "
         "one case.",
@@ -482,7 +727,13 @@ MUTATIONS = [
         "  if (significant.includes('foreign')) return 'foreign'",
         "  if (false) return 'foreign'",
         "script",
-        ["S-N2-foreign-provenance", "S-N6-parenthesised-foreign-alias"],
+        [
+            "S-N13-doubly-parenthesised-foreign",
+            "S-N14-void-and-never-members",
+            "S-N15-numeric-and-boolean-members",
+            "S-N2-foreign-provenance",
+            "S-N6-parenthesised-foreign-alias",
+        ],
         "★ the reviewer's LITERAL rule, built and run: foreign only when no member "
         "is a unit system. It flips `type Theme = 'light' | 'dark' | 'imperial'`, "
         "which R2 requires to be accepted and R3 names as the case this leg exists "
@@ -494,7 +745,7 @@ MUTATIONS = [
         "  while (out.startsWith('(') && out.endsWith(')')) {",
         "  while (false) {",
         "script",
-        ["S-N6-parenthesised-foreign-alias"],
+        ["S-N13-doubly-parenthesised-foreign", "S-N6-parenthesised-foreign-alias"],
         "paren stripping can only be pinned from the NEGATIVE side: removing it "
         "makes the gate stricter, so no positive can flip",
     ),
@@ -504,7 +755,15 @@ MUTATIONS = [
         "        if (rightIsLiteral || leftIsLiteral) {",
         "        if (true) {",
         "script",
-        ["S-N3-near-miss-literal", "S-N5-positive-control"],
+        [
+            "S-N10-foreign-token-property",
+            "S-N11-wrong-quantity-vocabulary",
+            "S-N12-secondary-gallon",
+            "S-N3-near-miss-literal",
+            "S-N5-positive-control",
+            "S-P33-token-branch-property",
+            "S-P34-token-branch-destructured",
+        ],
         "★ T4-R7's mirror: a guard that fires unconditionally looks healthier "
         "than one that never fires and is worth exactly as much",
     ),
@@ -625,8 +884,13 @@ MUTATIONS = [
 # M42 makes the gate refuse every file, so it flips every script case by
 # construction. Derived, never typed out: this phase has now twice been bitten by
 # a hardcoded expectation that went stale one argument over.
+# M61 does the same for a different reason: the derivation guard refuses before
+# any file is scanned.
 for _m in MUTATIONS:
-    if _m.mid == "M42-no-parse-diagnostics-property":
+    if _m.mid in {
+        "M42-no-parse-diagnostics-property",
+        "M61-empty-formatter-derivation-refuses",
+    }:
         _m.flips = [c.cid for c in C.SCRIPT_POSITIVE + C.SCRIPT_NEGATIVE]
 
 # Mutations of the tree WALK rather than the scan. `walkDir` is unreachable from
@@ -682,7 +946,9 @@ def write_mutant(
     return dst, worst
 
 
-def mutant_is_valid(target: str, tmpdir: Path, expect_probe: str = "clean") -> str | None:
+def mutant_is_valid(
+    target: str, tmpdir: Path, expect_probe: str = "clean"
+) -> str | None:
     """Prove the mutant still RUNS before its result is allowed to mean anything.
 
     Round 1 of the sibling mutation harness scored a syntax-broken mutant as a
@@ -704,14 +970,20 @@ def mutant_is_valid(target: str, tmpdir: Path, expect_probe: str = "clean") -> s
             capture_output=True,
             text=True,
         )
-        if expect_probe == "refuses":
+        if expect_probe.startswith("refuses:"):
             # The mutation's whole point is that the gate now refuses every
-            # file. It must still refuse with its OWN message rather than
-            # crashing, or it is broken rather than deliberately strict.
+            # file. It must still refuse with the SPECIFIC message it names,
+            # rather than crashing or refusing for some other reason: a
+            # substring check against one hardcoded message would score every
+            # refusing mutation against whichever one was written first.
+            expected = expect_probe.split(":", 1)[1]
             if p.returncode == 0:
                 return "mutant was expected to refuse and did not"
-            if "parseDiagnostics" not in (p.stderr or p.stdout):
-                return f"mutant crashed instead of refusing: {(p.stderr or p.stdout).strip()[-200:]}"
+            if expected not in (p.stderr or p.stdout):
+                return (
+                    f"mutant did not refuse with {expected!r}: "
+                    f"{(p.stderr or p.stdout).strip()[-200:]}"
+                )
             return None
         if p.returncode != 0:
             return f"mutant does not run: {(p.stderr or p.stdout).strip()[-200:]}"
@@ -802,7 +1074,9 @@ def scope_proof() -> list[str]:
     try:
         outside = eslint_messages(SCOPE_FIXTURE)
         if outside:
-            failures.append(f"scope: a path outside the scope was linted anyway: {outside}")
+            failures.append(
+                f"scope: a path outside the scope was linted anyway: {outside}"
+            )
         print(
             f"  scope OUTSIDE  {'silent' if not outside else '*** LOUD ***'}"
             "   scripts/ is outside src/**, so the corpus cannot self-trigger"
@@ -853,7 +1127,9 @@ def scope_proof() -> list[str]:
         CFG_MUTANT.write_text(original.replace(exempt_anchor, ""))
         after = eslint_messages(probe, str(CFG_MUTANT.relative_to(FRONTEND)))
         if len(after) != 1 or "Raw unit-conversion constant" not in after[0]:
-            failures.append(f"scope: un-exempting unitAdapters.ts did not flag it: {after}")
+            failures.append(
+                f"scope: un-exempting unitAdapters.ts did not flag it: {after}"
+            )
         print(
             f"  scope EXEMPT   {'real' if not before and after else '*** NOT REAL ***'}"
             f"       silent while listed, {len(after)} finding(s) when un-listed"
@@ -869,7 +1145,9 @@ def scope_proof() -> list[str]:
         entries = re.findall(r"^\s*'([^']+)',\s*$", block.group(1), re.M)
         missing = [e for e in entries if not (FRONTEND / e).exists()]
         if missing:
-            failures.append(f"scope: {len(missing)} exemption(s) name no file: {missing}")
+            failures.append(
+                f"scope: {len(missing)} exemption(s) name no file: {missing}"
+            )
         print(
             f"  scope ENTRIES  {'all real' if not missing else '*** MISSING ***'}"
             f"    {len(entries)} exemptions, {len(missing)} that name nothing"

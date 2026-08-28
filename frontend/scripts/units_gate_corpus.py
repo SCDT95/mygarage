@@ -504,6 +504,106 @@ SCRIPT_POSITIVE = [
         "M43-drop-backtick-vocabulary",
         ext=".ts",
     ),
+    # ---- phase 3b: the three shapes the comparison leg cannot see -----------
+    Case(
+        "S-P30-formatter-binary-call",
+        "import { UnitFormatter } from '@/utils/units'\n"
+        + HOOK_IMPORT
+        + "export function odometer(km: number): string {\n"
+        "  const { system } = useUnitPreference()\n"
+        "  return UnitFormatter.formatDistance(km, system)\n"
+        "}\n",
+        1,
+        "formatter-binary",
+        "★ nothing at this call site names a system: the binary collapse happens "
+        "inside the callee, so the comparison leg is blind to it by construction",
+        "M44-drop-formatter-leg",
+    ),
+    Case(
+        "S-P31-formatter-label-selector",
+        "import { UnitFormatter } from '@/utils/units'\n"
+        + HOOK_IMPORT
+        + "export function unit(): string {\n"
+        "  const { system } = useUnitPreference()\n"
+        "  return UnitFormatter.getDistanceUnit(system)\n"
+        "}\n",
+        1,
+        "formatter-binary",
+        "★ THE case that makes the set DERIVED rather than transcribed: round 1 "
+        "hand-listed the `format*` methods and missed every label selector, which "
+        "takes the same binary system and is just as wrong for a mixed user",
+        "M45-formatter-format-prefix-only",
+    ),
+    Case(
+        "S-P32-binary-conversion-call",
+        "import { toCanonicalKm } from '@/utils/decimalSafe'\n"
+        + HOOK_IMPORT
+        + "export function submit(entered: number): number | null {\n"
+        "  const { system } = useUnitPreference()\n"
+        "  return toCanonicalKm(entered, system)\n"
+        "}\n",
+        1,
+        "binary-conversion",
+        "★ R8: this one WRITES. `system` collapses from volume, so a "
+        "{volume:'L', distance:'mi'} user's 500 miles is stored as 500 km, and "
+        "neither proposed gate leg saw the function that wrote the wrong number",
+        "M46-drop-conversion-leg",
+        ext=".ts",
+    ),
+    Case(
+        "S-P33-token-branch-property",
+        "import type { UnitSet } from '@/types/units'\n"
+        "export function label(units: UnitSet, km: number): string {\n"
+        "  return units.volume === 'L' ? `${km} km` : `${km} mi`\n"
+        "}\n",
+        1,
+        "token-branch",
+        "scope category 4: DISTANCE collapsed out of VOLUME, with no 'imperial' "
+        "or 'metric' anywhere. Live at PropaneRecordList and twice in Analytics.",
+        "M47-drop-token-branch-leg",
+        ext=".ts",
+    ),
+    Case(
+        "S-P34-token-branch-destructured",
+        "import type { UnitSet } from '@/types/units'\n"
+        "export function label(units: UnitSet): string {\n"
+        "  const { volume } = units\n"
+        "  return volume === 'L' ? 'km' : 'mi'\n"
+        "}\n",
+        1,
+        "token-branch",
+        "keying on the property access alone would make one destructure a bypass, "
+        "which is S-P7's rename wearing different punctuation",
+        "M48-token-branch-property-only",
+        ext=".ts",
+    ),
+    Case(
+        "S-P35-aliased-formatter-receiver",
+        "import { UnitFormatter as UF } from '@/utils/units'\n"
+        + HOOK_IMPORT
+        + "export function unit(): string {\n"
+        "  const { system } = useUnitPreference()\n"
+        "  return UF.getFuelEconomyUnit(system)\n"
+        "}\n",
+        1,
+        "formatter-binary",
+        "the receiver is REQUIRED but never READ: requiring the spelling makes "
+        "`import { UnitFormatter as UF }` a one-line bypass",
+        "M49-formatter-receiver-spelling",
+    ),
+    Case(
+        "S-P36-double-quoted-union",
+        'type Sys = "imperial" | "metric"\n'
+        "export function label(s: Sys): string {\n"
+        "  return s === 'imperial' ? 'mi' : 'km'\n"
+        "}\n",
+        1,
+        "compare",
+        "R6 carry, branch 6 of 6: UNIT_VOCABULARY's double-quoted forms went in "
+        "during round 2 and were still unexercised three rounds later",
+        "M50-drop-double-quoted-vocabulary",
+        ext=".ts",
+    ),
 ]
 
 SCRIPT_NEGATIVE = [
@@ -579,6 +679,138 @@ SCRIPT_NEGATIVE = [
         why="T4-R7 positive control: correctly migrated code must be silently clean",
         pinned_by="M11-flag-every-equality",
         tags=["control"],
+    ),
+    # ---- phase 3b: what the three new legs must NOT catch -------------------
+    Case(
+        "S-N7-formatter-resolved-set",
+        "import { UnitFormatter } from '@/utils/units'\n"
+        "import type { UnitSet } from '@/types/units'\n"
+        "export function label(liters: number, units: UnitSet): string {\n"
+        "  return UnitFormatter.formatVolume(liters, units)\n"
+        "}\n",
+        0,
+        why="the DESTINATION shape. A UnitSet-taking formatter is what the binary "
+        "ones must become, so a leg that flags it flags correct code",
+        pinned_by="M51-every-static-method-is-binary",
+        ext=".ts",
+    ),
+    Case(
+        "S-N8-local-format-distance",
+        "import type { UnitSet } from '@/types/units'\n"
+        "function formatDistance(meters: number, units: UnitSet): string {\n"
+        "  return `${meters} ${units.distance}`\n"
+        "}\n"
+        "export function cell(m: number, units: UnitSet): string {\n"
+        "  return formatDistance(m, units)\n"
+        "}\n",
+        0,
+        why="★ POICard's real shape, measured: matching the METHOD NAME alone "
+        "flagged three module-local `formatDistance` helpers, and POICard's is "
+        "correct migrated code taking a resolved set. A static method is only "
+        "reachable through a receiver, so requiring one separates them.",
+        pinned_by="M52-formatter-name-without-receiver",
+        ext=".ts",
+    ),
+    Case(
+        "S-N9-set-conversion-helper",
+        "import { toCanonicalLiters } from '@/utils/decimalSafe'\n"
+        "import type { UnitSet } from '@/types/units'\n"
+        "export function submit(entered: number, units: UnitSet): number | null {\n"
+        "  return toCanonicalLiters(entered, units)\n"
+        "}\n",
+        0,
+        why="R8's destination: the resolved-set converter beside the binary ones "
+        "in the same file, so the leg cannot key on the file or the name prefix",
+        pinned_by="M53-every-exported-helper-is-binary",
+        ext=".ts",
+    ),
+    Case(
+        "S-N10-foreign-token-property",
+        "export function size(shirt: Readonly<{ size: string }>): string {\n"
+        "  return shirt.size === 'L' ? 'large' : 'small'\n"
+        "}\n",
+        0,
+        why="'L' is a volume token and `size` is not a quantity. Without the "
+        "property name in the rule, every shirt is a fuel record.",
+        pinned_by="M54-token-branch-any-property",
+        ext=".ts",
+    ),
+    Case(
+        "S-N11-wrong-quantity-vocabulary",
+        "export function isKg(record: Readonly<{ pressure: string }>): boolean {\n"
+        "  return record.pressure === 'kg'\n"
+        "}\n",
+        0,
+        why="`pressure` IS a quantity and 'kg' IS a token, but not of that "
+        "quantity. Pooling the ten vocabularies into one loses the pairing.",
+        pinned_by="M55-token-vocabulary-is-pooled",
+        ext=".ts",
+    ),
+    Case(
+        "S-N12-secondary-gallon",
+        "import type { UnitSet } from '@/types/units'\n"
+        "export function showsPanel(units: UnitSet): boolean {\n"
+        "  return units.secondary_gallon === 'uk'\n"
+        "}\n",
+        0,
+        why="★ R1's exemption, made STRUCTURAL rather than a prose pragma: the "
+        "gallon flavour is a choice BETWEEN units with no quantity to convert, "
+        "and UNIT_QUANTITIES excludes it behind a compile-time completeness proof",
+        pinned_by="M56-secondary-gallon-is-a-quantity",
+        ext=".ts",
+    ),
+    # ---- phase 3b: the R6 carry, five of the six unexercised helper branches -
+    Case(
+        "S-N13-doubly-parenthesised-foreign",
+        "type Theme = ('light') | ('imperial')\n"
+        "export function themeClass(theme: Theme): string {\n"
+        "  return theme === 'imperial' ? 'a' : 'b'\n"
+        "}\n",
+        0,
+        why="R6 carry, branch 2 of 6: stripOuterParens' balance check. Without "
+        "it the outer parens are stripped across the union, both halves become "
+        "unreadable, and fail-closed UNKNOWN flags correct code.",
+        pinned_by="M57-drop-paren-balance-check",
+        ext=".ts",
+    ),
+    Case(
+        "S-N14-void-and-never-members",
+        "type Theme = 'light' | 'dark' | void | never\n"
+        "export function themeClass(theme: Theme): string {\n"
+        "  return theme === 'imperial' ? 'a' : 'b'\n"
+        "}\n",
+        0,
+        why="R6 carry, branch 3 of 6: only `null` and `undefined` were ever "
+        "exercised. Dropped from NULLISH_MEMBERS, `void` reads as a bare "
+        "identifier, resolves to nothing, and takes the whole union to UNKNOWN.",
+        pinned_by="M58-drop-void-never-nullish",
+        ext=".ts",
+    ),
+    Case(
+        "S-N15-numeric-and-boolean-members",
+        "type Flag = 'imperial' | 0 | true\n"
+        "export function on(flag: Flag): boolean {\n"
+        "  return flag === 'imperial'\n"
+        "}\n",
+        0,
+        why="R6 carry, branch 4 of 6: STRING_LITERAL_TYPE's numeric and boolean "
+        "alternatives. The gate docstring already states this rounding (a "
+        "recognised literal no unit system contains means a different enum); "
+        "nothing exercised it.",
+        pinned_by="M59-drop-numeric-boolean-literals",
+        ext=".ts",
+    ),
+    Case(
+        "S-N16-all-nullish-annotation",
+        "export function label(s: null | undefined): string {\n"
+        "  return s === 'imperial' ? 'mi' : 'km'\n"
+        "}\n",
+        0,
+        why="R6 carry, branch 5 of 6: the all-nullish return. A degenerate "
+        "annotation rather than production code, kept because the branch is "
+        "otherwise unexercised and returning UNKNOWN instead would flag it.",
+        pinned_by="M60-all-nullish-is-unknown",
+        ext=".ts",
     ),
 ]
 
@@ -762,9 +994,7 @@ def run_script_leg(case: Case, tmpdir: Path, gate: str = GATE) -> tuple[int, lis
         text=True,
     )
     if p.returncode != 0:
-        return -1, [
-            _refusal(p.stderr or p.stdout)
-        ]
+        return -1, [_refusal(p.stderr or p.stdout)]
     try:
         payload = json.loads(p.stdout)
     except json.JSONDecodeError:
@@ -801,7 +1031,9 @@ def run_eslint_leg(case: Case, config: str | None = None) -> tuple[int, list[str
 def check(case: Case, got: int, detail: list[str]) -> str | None:
     """Return a failure description, or None when the case behaved."""
     if got != case.expect:
-        return f"expected {case.expect} finding(s), got {got}: {[d[:160] for d in detail]}"
+        return (
+            f"expected {case.expect} finding(s), got {got}: {[d[:160] for d in detail]}"
+        )
     if case.expect != 0 and case.expect_kind:
         wrong = [d for d in detail if case.expect_kind not in d]
         if wrong:

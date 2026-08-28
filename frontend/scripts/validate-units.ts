@@ -6,6 +6,35 @@
  * and onto `useUnitFormat()`. This exists so the next contributor cannot rebuild
  * TireList's ternary somewhere else and have nothing complain.
  *
+ * ★ FOUR KINDS, AND WHAT THEY DELIBERATELY DO NOT COVER (plan 3b, criterion 2).
+ * Phase 3b added three legs beside the original comparison one, because the
+ * comparison leg sees a literal `'imperial'` or `'metric'` and three whole
+ * defect shapes carry neither:
+ *
+ *   compare / switch-case  `system === 'imperial'`, the original leg.
+ *   formatter-binary       a call to a static `UnitFormatter` method whose
+ *                          parameter is a `UnitSystem`. Nothing at the call
+ *                          site names a system; the binary decision happens
+ *                          inside the callee.
+ *   binary-conversion      a call to an exported helper whose parameter is a
+ *                          `UnitSystem` and whose result is WRITTEN as
+ *                          canonical (`toCanonicalKm(500, system)` stores 500
+ *                          km for a `{volume:'L', distance:'mi'}` user, because
+ *                          `system` collapses from volume).
+ *   token-branch           `units.volume === 'L' ? km : miles`, which collapses
+ *                          DISTANCE out of VOLUME with no system literal
+ *                          anywhere.
+ *
+ * ★ And the category this gate deliberately DOES NOT detect, stated here so the
+ * next person does not add it thinking it was forgotten: a resolved-set
+ * function that collapses INTERNALLY. `formatVolume(units)` is correct and
+ * `formatVolumePerDistance(units)` derives its distance half from
+ * `units.volume`, and the two are CALL-SITE IDENTICAL. A name blacklist either
+ * keeps rejecting the helper after somebody fixes it or misses the next one, so
+ * that category belongs to `units.manifest.json`, which is reviewed rather than
+ * matched. Forced-unit sites (`` `${liters} L` ``) have no lexical form at all
+ * and belong there too.
+ *
  * ★ WHY THIS IS A SCRIPT AND NOT AN ESLINT SELECTOR (plan ruling R3).
  * `no-restricted-syntax` registers purely syntactic selectors against
  * individual nodes and performs no binding or data-flow analysis at all
@@ -107,6 +136,11 @@ interface TsNode {
   name?: TsNode
   type?: TsNode
   initializer?: TsNode
+  /** Class and type-literal members, for the derivations below. */
+  members?: TsNode[]
+  /** Method and function parameters, likewise. */
+  parameters?: TsNode[]
+  modifiers?: { kind: number }[]
   getText: (source?: TsSourceFile) => string
   getStart: (source?: TsSourceFile) => number
 }
@@ -217,6 +251,192 @@ const LITERAL_KINDS = new Set([
   ts.SyntaxKind.StringLiteral,
   ts.SyntaxKind.NoSubstitutionTemplateLiteral,
 ])
+
+// ---------------------------------------------------------------------------
+// Derived vocabularies (plan 3b ruling R8, and exit criterion 2)
+// ---------------------------------------------------------------------------
+/**
+ * ★ EVERY SET BELOW IS DERIVED FROM THE REAL SOURCE, NEVER TRANSCRIBED.
+ *
+ * Round 1 of this workstream hand-counted "about 21 binary formatter calls
+ * across nine files". Round 2 asked the AST and got 73 calls across 18 files.
+ * The hand count was not merely low: it was low in a SHAPED way, because a
+ * human enumerating "formatters" writes down the `format*` methods and forgets
+ * the label selectors (`getDistanceUnit`, `getFuelEconomyUnit`,
+ * `getCostPerDistanceLabel`), which take the same binary `UnitSystem` and are
+ * just as wrong for a `{volume:'L', distance:'mi'}` user. So the rule here is
+ * structural rather than lexical: **a method is binary when one of its
+ * parameters is a `UnitSystem`**, whatever it is called.
+ *
+ * The same reasoning applies one file over. `toCanonicalKm`, `toCanonicalKg`
+ * and `toCanonicalMeters` are binary unit APIs that WRITE canonical values
+ * (R8), and a `toCanonicalFathoms` added next month would be invisible to a
+ * transcribed list on the day it lands.
+ *
+ * Each derivation is fail-loud when it comes back empty, for the same reason
+ * `loadTypeScript` is: a detector whose vocabulary is empty reports zero
+ * findings on a tree full of them, and a gate that cannot fire is worse than
+ * no gate because it is believed.
+ */
+const UNITS_SOURCE = join(SRC_DIR, 'utils', 'units.ts')
+const CONVERSION_SOURCE = join(SRC_DIR, 'utils', 'decimalSafe.ts')
+const QUANTITY_SOURCE = join(SRC_DIR, 'types', 'units.ts')
+const SCHEMA_SOURCE = join(SRC_DIR, 'types', 'api.generated.ts')
+
+/** The binary type whose presence in a signature makes an API binary. */
+const BINARY_SYSTEM_TYPE = 'UnitSystem'
+
+/** The class whose static surface the formatter leg watches. */
+const FORMATTER_CLASS = 'UnitFormatter'
+
+function parseForDerivation(path: string): TsSourceFile {
+  let text: string
+  try {
+    text = readFileSync(path, 'utf-8')
+  } catch {
+    throw new Error(
+      `${relative(ROOT, path)} is missing, so the vocabulary derived from it would ` +
+        'be empty and the detector that uses it would report zero findings. Refusing to run.',
+    )
+  }
+  return ts.createSourceFile(path, text, ts.ScriptTarget.Latest, true, ts.ScriptKind.TS)
+}
+
+function requireNonEmpty<T>(values: Set<T>, what: string, where: string): Set<T> {
+  if (values.size === 0) {
+    throw new Error(
+      `derived no ${what} from ${relative(ROOT, where)}. The matching detector would ` +
+        'report zero findings for every file, which this gate would report as clean. ' +
+        'Refusing to run. Fix the source, or fix the derivation.',
+    )
+  }
+  return values
+}
+
+function isStatic(node: TsNode): boolean {
+  return (node.modifiers ?? []).some((m) => m.kind === ts.SyntaxKind.StaticKeyword)
+}
+
+function isExported(node: TsNode): boolean {
+  return (node.modifiers ?? []).some((m) => m.kind === ts.SyntaxKind.ExportKeyword)
+}
+
+function takesBinarySystem(node: TsNode, source: TsSourceFile): boolean {
+  return (node.parameters ?? []).some((p) => p.type?.getText(source).trim() === BINARY_SYSTEM_TYPE)
+}
+
+/** Every static `UnitFormatter` method that decides on a binary `UnitSystem`. */
+function deriveBinaryFormatterMethods(): Set<string> {
+  const source = parseForDerivation(UNITS_SOURCE)
+  const found = new Set<string>()
+  const walk = (node: TsNode): void => {
+    if (node.kind === ts.SyntaxKind.ClassDeclaration && node.name?.text === FORMATTER_CLASS) {
+      for (const member of node.members ?? []) {
+        if (member.kind !== ts.SyntaxKind.MethodDeclaration) continue
+        if (!isStatic(member) || !takesBinarySystem(member, source)) continue
+        if (member.name) found.add(member.name.getText(source))
+      }
+    }
+    ts.forEachChild(node, walk)
+  }
+  walk(source)
+  return requireNonEmpty(found, 'binary formatter method', UNITS_SOURCE)
+}
+
+/** Every exported conversion helper that decides on a binary `UnitSystem` (R8). */
+function deriveBinaryConversionHelpers(): Set<string> {
+  const source = parseForDerivation(CONVERSION_SOURCE)
+  const found = new Set<string>()
+  const walk = (node: TsNode): void => {
+    if (node.kind === ts.SyntaxKind.FunctionDeclaration && isExported(node)) {
+      if (takesBinarySystem(node, source) && node.name) found.add(node.name.getText(source))
+    }
+    ts.forEachChild(node, walk)
+  }
+  walk(source)
+  return requireNonEmpty(found, 'binary conversion helper', CONVERSION_SOURCE)
+}
+
+/**
+ * The ten convertible quantities, read from the list the compiler proves complete.
+ *
+ * `UNIT_QUANTITIES` is `satisfies readonly UnitQuantity[]` on one side and
+ * `UNIT_QUANTITIES_ARE_COMPLETE` on the other, so a quantity added to `UnitSet`
+ * and forgotten here stops the build. That makes it a better source than any
+ * list this script could keep.
+ *
+ * ★ It also deliberately EXCLUDES `secondary_gallon`, and that exclusion is the
+ * structural exemption R1 asks for rather than a prose rule: the gallon flavour
+ * is a choice between units with no quantity to convert, so
+ * `units.secondary_gallon === 'uk'` is not a display conversion and the gate
+ * must not learn to call it one.
+ */
+function deriveQuantityNames(): Set<string> {
+  const source = parseForDerivation(QUANTITY_SOURCE)
+  const found = new Set<string>()
+  const walk = (node: TsNode): void => {
+    if (
+      node.kind === ts.SyntaxKind.VariableDeclaration &&
+      node.name?.getText(source) === 'UNIT_QUANTITIES' &&
+      node.initializer
+    ) {
+      collectStringLiterals(node.initializer, found)
+    }
+    ts.forEachChild(node, walk)
+  }
+  walk(source)
+  return requireNonEmpty(found, 'unit quantity name', QUANTITY_SOURCE)
+}
+
+function collectStringLiterals(node: TsNode, into: Set<string>): void {
+  if (LITERAL_KINDS.has(node.kind) && typeof node.text === 'string') into.add(node.text)
+  ts.forEachChild(node, (child) => collectStringLiterals(child, into))
+}
+
+/**
+ * Each quantity's resolved-token vocabulary, read from the generated schema.
+ *
+ * The schema is the single source of truth the api-freshness gate keeps in
+ * step with the backend, so a token the backend adds arrives here without
+ * anybody remembering to add it.
+ */
+function deriveQuantityTokens(): Map<string, Set<string>> {
+  const quantities = deriveQuantityNames()
+  const source = parseForDerivation(SCHEMA_SOURCE)
+  const tokens = new Map<string, Set<string>>()
+  const walk = (node: TsNode): void => {
+    if (
+      node.kind === ts.SyntaxKind.PropertySignature &&
+      node.name?.getText(source) === 'UnitSet' &&
+      node.type?.kind === ts.SyntaxKind.TypeLiteral
+    ) {
+      for (const member of node.type.members ?? []) {
+        if (member.kind !== ts.SyntaxKind.PropertySignature || !member.name || !member.type) continue
+        const quantity = member.name.getText(source)
+        if (!quantities.has(quantity)) continue
+        const vocabulary = new Set<string>()
+        collectStringLiterals(member.type, vocabulary)
+        if (vocabulary.size > 0) tokens.set(quantity, vocabulary)
+      }
+    }
+    ts.forEachChild(node, walk)
+  }
+  walk(source)
+  requireNonEmpty(new Set(tokens.keys()), 'quantity token vocabulary', SCHEMA_SOURCE)
+  const missing = [...quantities].filter((q) => !tokens.has(q))
+  if (missing.length > 0) {
+    throw new Error(
+      `no token vocabulary for ${missing.join(', ')} in ${relative(ROOT, SCHEMA_SOURCE)}. ` +
+        'A quantity with no vocabulary is a quantity the token-branch leg cannot see. ' +
+        'Refusing to run.',
+    )
+  }
+  return tokens
+}
+
+const BINARY_FORMATTER_METHODS = deriveBinaryFormatterMethods()
+const BINARY_CONVERSION_HELPERS = deriveBinaryConversionHelpers()
+const QUANTITY_TOKENS = deriveQuantityTokens()
 
 export interface Finding {
   file: string
@@ -476,6 +696,64 @@ function normalize(text: string): string {
 }
 
 /**
+ * The name a call expression invokes, ignoring what it is invoked on.
+ *
+ * `toCanonicalKm(v, system)` and `helpers.toCanonicalKm(v, system)` are the
+ * same decision, and an import alias must not be an escape hatch.
+ */
+function calleeName(callee: TsNode | undefined, source: TsSourceFile): string {
+  if (!callee) return ''
+  if (callee.kind === ts.SyntaxKind.Identifier) return callee.text ?? ''
+  if (callee.kind === ts.SyntaxKind.PropertyAccessExpression) {
+    return callee.name?.getText(source) ?? ''
+  }
+  return ''
+}
+
+/**
+ * The `UnitSet` quantity an operand names, or null.
+ *
+ * Both spellings count: the property access `units.volume` and the bare
+ * `volume` a destructure leaves behind. Keying on the property access alone
+ * would make `const { volume } = units` a one-line bypass, which is the same
+ * shape as the destructuring rename the comparison leg already defends against
+ * (corpus S-P7).
+ */
+function quantityNameOf(operand: TsNode | undefined, source: TsSourceFile): string | null {
+  if (!operand) return null
+  const name =
+    operand.kind === ts.SyntaxKind.PropertyAccessExpression
+      ? (operand.name?.getText(source) ?? '')
+      : operand.kind === ts.SyntaxKind.Identifier
+        ? (operand.text ?? '')
+        : ''
+  return QUANTITY_TOKENS.has(name) ? name : null
+}
+
+/**
+ * The quantity a raw resolved-token comparison decides, or null.
+ *
+ * This is scope category 4's second half: `units.volume === 'L' ? km : miles`
+ * collapses DISTANCE out of VOLUME with no `imperial` or `metric` literal
+ * anywhere, so the comparison leg is blind to it by construction. Live today at
+ * `PropaneRecordList`, `Analytics` (twice) and inside `units.ts` itself.
+ *
+ * The literal must belong to THAT quantity's own vocabulary, so `mass === 'psi'`
+ * and a `size === 'L'` on a shirt are both left alone.
+ */
+function quantityBranchOf(node: TsNode, source: TsSourceFile): string | null {
+  for (const [operand, literal] of [
+    [node.left, node.right],
+    [node.right, node.left],
+  ] as [TsNode | undefined, TsNode | undefined][]) {
+    if (!literal || !LITERAL_KINDS.has(literal.kind) || typeof literal.text !== 'string') continue
+    const quantity = quantityNameOf(operand, source)
+    if (quantity !== null && QUANTITY_TOKENS.get(quantity)?.has(literal.text)) return quantity
+  }
+  return null
+}
+
+/**
  * The escape hatch, and it must carry a reason.
  *
  * Round 1 tested `line.includes('units-exempt')`, so a bare marker with no
@@ -549,11 +827,40 @@ export function scanSource(source: string, rel: string): Finding[] {
             record(node, 'compare', normalize(node.getText(sf)))
           }
         }
+        const quantity = quantityBranchOf(node, sf)
+        if (quantity !== null) {
+          record(node, 'token-branch', `${quantity}: ${normalize(node.getText(sf))}`)
+        }
       }
     }
     if (node.kind === ts.SyntaxKind.CaseClause && isSystemLiteral(node.expression)) {
       const literal = node.expression as TsNode
       record(literal, 'switch-case', `case ${normalize(literal.getText(sf))}`)
+    }
+    if (node.kind === ts.SyntaxKind.CallExpression) {
+      const callee = node.expression
+      const called = calleeName(callee, sf)
+      // A static method is only ever reachable through a receiver, so requiring
+      // one is what separates `UnitFormatter.formatDistance(km, system)` from a
+      // module-local `formatDistance(meters, units)`. That distinction is load
+      // bearing rather than cosmetic: three local helpers spell that name today
+      // and `POICard`'s is CORRECT migrated code taking a resolved `UnitSet`.
+      // Matching on the name alone flagged all three, and a gate that reports
+      // correct code is the one people learn to run --update against.
+      // Keying on the receiver's SPELLING instead would make
+      // `import { UnitFormatter as UF }` a one-line bypass, so the object is
+      // required but not read.
+      if (callee?.kind === ts.SyntaxKind.PropertyAccessExpression) {
+        if (BINARY_FORMATTER_METHODS.has(called)) {
+          record(node, 'formatter-binary', `${normalize(callee.getText(sf))}(...)`)
+        }
+      }
+      // The conversion helpers are module functions, so the mirror of the rule
+      // above applies: a bare call IS the shape, and a namespace import is not
+      // an escape hatch either.
+      if (BINARY_CONVERSION_HELPERS.has(called)) {
+        record(node, 'binary-conversion', `${called}(...)`)
+      }
     }
     ts.forEachChild(node, walk)
   }
@@ -709,8 +1016,18 @@ function main(): void {
       '\nRoute the decision through useUnitFormat() (or makeUnitFormat() outside a\n' +
         'component) so the quantity is converted and labelled by the resolved unit\n' +
         'set rather than a binary system. If the branch genuinely is not a display\n' +
-        'conversion, mark the line `// units-exempt` with the reason.\n' +
-        'Do NOT run --update to silence a new finding: the baseline is phase 3b\'s\n' +
+        'conversion, mark the line `// units-exempt` with the reason.\n\n' +
+        '  [formatter-binary]   a static UnitFormatter method taking a UnitSystem.\n' +
+        '                       Use the matching u.<quantity> adapter instead: the\n' +
+        '                       binary argument collapses ten quantities into one.\n' +
+        '  [binary-conversion]  a helper taking a UnitSystem and WRITING canonical.\n' +
+        '                       Convert through the resolved set on submit, and use\n' +
+        '                       the origin-preserving pair so an untouched save does\n' +
+        '                       not reconvert the rounded display value.\n' +
+        '  [token-branch]       a resolved token read as a proxy for a whole system.\n' +
+        '                       Read the quantity you actually mean: deriving the\n' +
+        '                       distance half from units.volume is the defect.\n\n' +
+        "Do NOT run --update to silence a new finding: the baseline is phase 3b's\n" +
         'work list and it should only shrink.\n',
     )
     process.exit(1)

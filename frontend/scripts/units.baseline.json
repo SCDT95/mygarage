@@ -6,15 +6,117 @@
   "count": 1
  },
  {
+  "file": "src/components/DEFRecordList.tsx",
+  "kind": "formatter-binary",
+  "text": "UnitFormatter.formatDistance(...)",
+  "count": 1
+ },
+ {
+  "file": "src/components/DEFRecordList.tsx",
+  "kind": "formatter-binary",
+  "text": "UnitFormatter.getDistanceUnit(...)",
+  "count": 1
+ },
+ {
+  "file": "src/components/FleetHealthStrip.tsx",
+  "kind": "formatter-binary",
+  "text": "UnitFormatter.formatDistance(...)",
+  "count": 1
+ },
+ {
+  "file": "src/components/FuelRecordForm.tsx",
+  "kind": "token-branch",
+  "text": "distance: units.distance === 'mi'",
+  "count": 1
+ },
+ {
+  "file": "src/components/FuelRecordForm.tsx",
+  "kind": "token-branch",
+  "text": "volume: units.volume === 'L'",
+  "count": 2
+ },
+ {
+  "file": "src/components/FuelRecordList.tsx",
+  "kind": "formatter-binary",
+  "text": "UnitFormatter.formatCostPerDistance(...)",
+  "count": 1
+ },
+ {
+  "file": "src/components/FuelRecordList.tsx",
+  "kind": "formatter-binary",
+  "text": "UnitFormatter.formatDistance(...)",
+  "count": 1
+ },
+ {
+  "file": "src/components/FuelRecordList.tsx",
+  "kind": "formatter-binary",
+  "text": "UnitFormatter.formatFuelEconomy(...)",
+  "count": 2
+ },
+ {
+  "file": "src/components/FuelRecordList.tsx",
+  "kind": "formatter-binary",
+  "text": "UnitFormatter.formatFuelRate(...)",
+  "count": 2
+ },
+ {
+  "file": "src/components/FuelRecordList.tsx",
+  "kind": "formatter-binary",
+  "text": "UnitFormatter.getCostPerDistanceLabel(...)",
+  "count": 1
+ },
+ {
+  "file": "src/components/FuelRecordList.tsx",
+  "kind": "formatter-binary",
+  "text": "UnitFormatter.getFuelRateUnit(...)",
+  "count": 1
+ },
+ {
   "file": "src/components/LineItemEditor.tsx",
   "kind": "compare",
   "text": "system === 'imperial'",
   "count": 4
  },
  {
+  "file": "src/components/LineItemEditor.tsx",
+  "kind": "formatter-binary",
+  "text": "UnitFormatter.getDistanceUnit(...)",
+  "count": 3
+ },
+ {
+  "file": "src/components/OdometerRecordForm.tsx",
+  "kind": "binary-conversion",
+  "text": "toCanonicalKm(...)",
+  "count": 1
+ },
+ {
   "file": "src/components/OdometerRecordForm.tsx",
   "kind": "compare",
   "text": "system === 'imperial'",
+  "count": 1
+ },
+ {
+  "file": "src/components/OdometerRecordForm.tsx",
+  "kind": "formatter-binary",
+  "text": "UnitFormatter.getDistanceUnit(...)",
+  "count": 1
+ },
+ {
+  "file": "src/components/OdometerRecordList.tsx",
+  "kind": "formatter-binary",
+  "text": "UnitFormatter.formatDistance(...)",
+  "count": 2
+ },
+ {
+  "file": "src/components/OdometerRecordList.tsx",
+  "kind": "formatter-binary",
+  "text": "UnitFormatter.getDistanceUnit(...)",
+  "count": 1
+ },
+ {
+  "file": "src/components/PropaneRecordForm.tsx",
+  "kind": "binary-conversion",
+  "text": "toCanonicalKg(...)",
   "count": 1
  },
  {
@@ -24,15 +126,63 @@
   "count": 4
  },
  {
+  "file": "src/components/PropaneRecordForm.tsx",
+  "kind": "formatter-binary",
+  "text": "UnitFormatter.getWeightUnit(...)",
+  "count": 2
+ },
+ {
+  "file": "src/components/PropaneRecordList.tsx",
+  "kind": "token-branch",
+  "text": "volume: units.volume === 'L'",
+  "count": 1
+ },
+ {
+  "file": "src/components/ReminderForm.tsx",
+  "kind": "binary-conversion",
+  "text": "toCanonicalKm(...)",
+  "count": 2
+ },
+ {
   "file": "src/components/ReminderForm.tsx",
   "kind": "compare",
   "text": "system === 'imperial'",
   "count": 2
  },
  {
+  "file": "src/components/ReminderForm.tsx",
+  "kind": "formatter-binary",
+  "text": "UnitFormatter.getDistanceUnit(...)",
+  "count": 5
+ },
+ {
+  "file": "src/components/ReminderList.tsx",
+  "kind": "formatter-binary",
+  "text": "UnitFormatter.formatDistance(...)",
+  "count": 1
+ },
+ {
+  "file": "src/components/ServiceVisitForm.tsx",
+  "kind": "binary-conversion",
+  "text": "toCanonicalKm(...)",
+  "count": 1
+ },
+ {
   "file": "src/components/ServiceVisitForm.tsx",
   "kind": "compare",
   "text": "system === 'imperial'",
+  "count": 1
+ },
+ {
+  "file": "src/components/ServiceVisitForm.tsx",
+  "kind": "formatter-binary",
+  "text": "UnitFormatter.getDistanceUnit(...)",
+  "count": 1
+ },
+ {
+  "file": "src/components/ServiceVisitList.tsx",
+  "kind": "formatter-binary",
+  "text": "UnitFormatter.formatDistance(...)",
   "count": 1
  },
  {
@@ -54,9 +204,69 @@
   "count": 1
  },
  {
+  "file": "src/components/vehicle-detail/VehicleHero.tsx",
+  "kind": "formatter-binary",
+  "text": "UnitFormatter.formatDistance(...)",
+  "count": 2
+ },
+ {
+  "file": "src/components/vehicle-detail/VehicleOverviewTab.tsx",
+  "kind": "formatter-binary",
+  "text": "UnitFormatter.formatFuelEconomy(...)",
+  "count": 3
+ },
+ {
+  "file": "src/components/VehicleStatisticsCard.tsx",
+  "kind": "formatter-binary",
+  "text": "UnitFormatter.formatDistance(...)",
+  "count": 1
+ },
+ {
+  "file": "src/components/VehicleStatisticsCard.tsx",
+  "kind": "formatter-binary",
+  "text": "UnitFormatter.formatFuelEconomy(...)",
+  "count": 2
+ },
+ {
+  "file": "src/components/VehicleStatisticsCard.tsx",
+  "kind": "formatter-binary",
+  "text": "UnitFormatter.formatFuelRate(...)",
+  "count": 1
+ },
+ {
+  "file": "src/components/VehicleStatisticsCard.tsx",
+  "kind": "formatter-binary",
+  "text": "UnitFormatter.getFuelEconomyUnit(...)",
+  "count": 1
+ },
+ {
+  "file": "src/components/VehicleStatisticsCard.tsx",
+  "kind": "formatter-binary",
+  "text": "UnitFormatter.getFuelRateUnit(...)",
+  "count": 1
+ },
+ {
+  "file": "src/components/WarrantyForm.tsx",
+  "kind": "binary-conversion",
+  "text": "toCanonicalKm(...)",
+  "count": 1
+ },
+ {
   "file": "src/components/WarrantyForm.tsx",
   "kind": "compare",
   "text": "system === 'imperial'",
+  "count": 1
+ },
+ {
+  "file": "src/components/WarrantyForm.tsx",
+  "kind": "formatter-binary",
+  "text": "UnitFormatter.getDistanceUnit(...)",
+  "count": 1
+ },
+ {
+  "file": "src/components/WarrantyList.tsx",
+  "kind": "formatter-binary",
+  "text": "UnitFormatter.formatDistance(...)",
   "count": 1
  },
  {
@@ -66,9 +276,81 @@
   "count": 2
  },
  {
+  "file": "src/pages/Analytics.tsx",
+  "kind": "formatter-binary",
+  "text": "UnitFormatter.formatCostPerDistance(...)",
+  "count": 2
+ },
+ {
+  "file": "src/pages/Analytics.tsx",
+  "kind": "formatter-binary",
+  "text": "UnitFormatter.formatDistance(...)",
+  "count": 8
+ },
+ {
+  "file": "src/pages/Analytics.tsx",
+  "kind": "formatter-binary",
+  "text": "UnitFormatter.formatFuelEconomy(...)",
+  "count": 11
+ },
+ {
+  "file": "src/pages/Analytics.tsx",
+  "kind": "formatter-binary",
+  "text": "UnitFormatter.formatFuelRate(...)",
+  "count": 1
+ },
+ {
+  "file": "src/pages/Analytics.tsx",
+  "kind": "formatter-binary",
+  "text": "UnitFormatter.getCostPerDistanceLabel(...)",
+  "count": 2
+ },
+ {
+  "file": "src/pages/Analytics.tsx",
+  "kind": "formatter-binary",
+  "text": "UnitFormatter.getDistanceUnit(...)",
+  "count": 1
+ },
+ {
+  "file": "src/pages/Analytics.tsx",
+  "kind": "formatter-binary",
+  "text": "UnitFormatter.getFuelEconomyUnit(...)",
+  "count": 2
+ },
+ {
+  "file": "src/pages/Analytics.tsx",
+  "kind": "formatter-binary",
+  "text": "UnitFormatter.getFuelRateUnit(...)",
+  "count": 2
+ },
+ {
+  "file": "src/pages/Analytics.tsx",
+  "kind": "token-branch",
+  "text": "volume: units.volume === 'L'",
+  "count": 2
+ },
+ {
   "file": "src/pages/Calendar.tsx",
   "kind": "compare",
   "text": "system === 'imperial'",
+  "count": 1
+ },
+ {
+  "file": "src/pages/Calendar.tsx",
+  "kind": "formatter-binary",
+  "text": "UnitFormatter.formatDistance(...)",
+  "count": 2
+ },
+ {
+  "file": "src/pages/Calendar.tsx",
+  "kind": "formatter-binary",
+  "text": "UnitFormatter.getDistanceUnit(...)",
+  "count": 1
+ },
+ {
+  "file": "src/types/units.ts",
+  "kind": "token-branch",
+  "text": "volume: volume === 'L'",
   "count": 1
  },
  {
@@ -76,6 +358,18 @@
   "kind": "compare",
   "text": "system === 'metric'",
   "count": 3
+ },
+ {
+  "file": "src/utils/publicUnitDefaults.ts",
+  "kind": "token-branch",
+  "text": "volume: units.volume === 'gal_uk'",
+  "count": 1
+ },
+ {
+  "file": "src/utils/publicUnitDefaults.ts",
+  "kind": "token-branch",
+  "text": "volume: units.volume === 'gal_us'",
+  "count": 1
  },
  {
   "file": "src/utils/supplyUnits.ts",
@@ -100,5 +394,17 @@
   "kind": "compare",
   "text": "system === 'metric'",
   "count": 7
+ },
+ {
+  "file": "src/utils/units.ts",
+  "kind": "token-branch",
+  "text": "mass: units.mass === 'kg'",
+  "count": 1
+ },
+ {
+  "file": "src/utils/units.ts",
+  "kind": "token-branch",
+  "text": "volume: units.volume === 'L'",
+  "count": 6
  }
 ]
