@@ -28,6 +28,15 @@ import { SUPPORTED_LANGUAGES } from '@/constants/i18n'
  * component could move to `{{unitList}}`, every bundle would keep rendering a
  * raw `{{units}}` to users, and this file would stay green. The language list
  * is read from `SUPPORTED_LANGUAGES` for the same reason.
+ *
+ * ★ AND THE READ MUST BE UNAMBIGUOUS, which is the second revision of it. The
+ * first took the FIRST match and asserted nothing about the rest, so adding any
+ * other interpolating `units.*` call above line 728 silently relocated this
+ * whole file onto that other key: with a second call added and the real key
+ * dropped from `de`, all 56 tests passed. A missing key is a NON-BLOCKING
+ * warning in `validate-translations.ts`, so this file is the only protection
+ * six locales have, and a guard that can be moved off its subject by an
+ * unrelated edit is not one. Two matches is now a hard error naming both.
  */
 
 const FRONTEND = resolve(__dirname, '..', '..')
@@ -59,8 +68,8 @@ type UnitsBlock = Record<string, unknown>
  */
 function contractFromComponent(): { key: string; variable: string } {
   const source = readFileSync(COMPONENT, 'utf-8')
-  const match = /\bt\(\s*'units\.([A-Za-z]+)'\s*,\s*\{\s*([A-Za-z]+):/.exec(source)
-  if (match === null) {
+  const matches = [...source.matchAll(/\bt\(\s*'units\.([A-Za-z]+)'\s*,\s*\{\s*([A-Za-z]+):/g)]
+  if (matches.length === 0) {
     throw new Error(
       'could not find an interpolating t(\'units.*\', { ... }) call in ' +
         'src/components/tabs/SettingsSystemTab.tsx. The unit description is composed ' +
@@ -69,7 +78,17 @@ function contractFromComponent(): { key: string; variable: string } {
         'Either way the locale assertions below would be checking nothing.'
     )
   }
-  return { key: match[1], variable: match[2] }
+  if (matches.length > 1) {
+    throw new Error(
+      `src/components/tabs/SettingsSystemTab.tsx now has ${matches.length} interpolating ` +
+        `units.* calls (${matches.map(m => `units.${m[1]}`).join(', ')}). This file takes ` +
+        'the single one as its subject, so a second call would silently relocate every ' +
+        'assertion below onto whichever came first and leave the real key unguarded in ' +
+        'six locales, where a missing key is only a non-blocking warning. Point this ' +
+        'reader at one key explicitly before adding another.'
+    )
+  }
+  return { key: matches[0][1], variable: matches[0][2] }
 }
 
 const { key: DESCRIPTION_KEY, variable: DESCRIPTION_VARIABLE } = contractFromComponent()

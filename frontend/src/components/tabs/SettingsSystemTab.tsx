@@ -4,7 +4,7 @@ import { Server, CheckCircle, AlertCircle, Info, Shield, Users, AlertTriangle, K
 import { useAuth } from '@/contexts/AuthContext'
 import { useSettings } from '@/contexts/SettingsContext'
 import type { DashboardResponse } from '@/types/dashboard'
-import { binarySystemFor, presetUnitsFor, type UnitPreference, type UnitSet } from '@/types/units'
+import { binarySystemFor, type UnitPreference } from '@/types/units'
 import { asTimeFormat } from '@/hooks/useTimeFormat'
 import { useUnitPreference } from '@/hooks/useUnitPreference'
 import api from '@/services/api'
@@ -70,29 +70,34 @@ export default function SettingsSystemTab() {
   const [gallonStandard, setGallonStandard] = useState<'us' | 'uk'>('us')
   const [gallonStandardSaving, setGallonStandardSaving] = useState(false)
 
-  // The units this account actually renders in. `unitPreference` can be
-  // 'custom' (migration 093 materialises a UK instance's imperial users that
-  // way), which is neither 'imperial' nor 'metric', so branching on it directly
-  // showed those users the metric description and hid the US/UK gallon panel
-  // entirely — removing the only UI that changes their gallon flavour, on
-  // exactly the instances this feature exists for. `useUnitPreference` already
-  // owns the resolved set; the local state still wins for the two preset values
-  // so the copy switches with the optimistic toggle instead of lagging a
-  // refreshUser() round trip.
+  // The units this account actually renders in, read from the RESOLVED SET and
+  // from nothing else. `unitPreference` is the base preset, not the answer:
+  // spec D3 is "any non-null override column beats the preset, regardless of
+  // which preset is set", and `resolve_units` on the backend applies the
+  // overrides on top of the preset for every account, `custom` or not.
   //
-  // ★ This is the resolved SET rather than the binary system, because the
-  // description below is composed from it (plan 3b R1). The gallon flavour is
-  // taken from the resolved set even when a preset wins, so the whole set is
-  // decided on one rung the way `useUnitPreference` decides its own.
-  // `displaySystem` is then derived FROM the set rather than alongside it: two
-  // parallel derivations are two answers to "what does this account render in",
-  // and the panel below and the sentence above must not be able to disagree.
+  // ★ WHY NOT `unitPreference` FOR THE TWO PRESET VALUES, which is what this
+  // line did through two revisions. Migration 093 materialises a UK instance's
+  // imperial users as `custom` with all eleven columns written, deliberately, so
+  // a later preset selection cannot silently revert them. `PUT /auth/me` sets
+  // `unit_preference` and never clears an override column, and nothing else
+  // clears one either. So `{preference: 'metric', overrides: UK imperial}` is a
+  // state the product creates on purpose, and branching on the preference
+  // painted "km, km/h, m, L, L/100km, kPa, °C, kg, Nm, mm" and hid the gallon
+  // panel for an account every other screen renders in gallons, miles and °F.
+  // That is R1's defect surviving inside R1's own fix, one branch over.
+  //
+  // The cost is that a preset click no longer repaints the copy before the
+  // `refreshUser()` round trip lands. That is the correct trade: the old
+  // behaviour was not "optimistic", it was a guess that is wrong for exactly
+  // the accounts this feature exists for, and for an account with overrides the
+  // honest answer to "what do I use" does not change when the preset does.
+  //
+  // `displaySystem` is derived FROM the same set rather than alongside it, so
+  // the gallon panel below and the sentence above cannot disagree: one
+  // expression, not two answers to the same question.
   const { units: resolvedUnits } = useUnitPreference()
-  const displayUnits: UnitSet =
-    unitPreference === 'custom'
-      ? resolvedUnits
-      : presetUnitsFor(unitPreference, resolvedUnits.secondary_gallon)
-  const displaySystem = binarySystemFor(displayUnits.volume)
+  const displaySystem = binarySystemFor(resolvedUnits.volume)
   const [autoArchiveDays, setAutoArchiveDays] = useState('0')
   const [autoArchiveSaving, setAutoArchiveSaving] = useState(false)
 
@@ -725,7 +730,7 @@ export default function SettingsSystemTab() {
             </button>
           </div>
           <p className="mt-2 text-sm text-garage-text-muted">
-            {t('units.resolvedDescription', { units: resolvedUnitSummary(displayUnits) })}
+            {t('units.resolvedDescription', { units: resolvedUnitSummary(resolvedUnits) })}
           </p>
 
           {/* Show Both Units Toggle */}

@@ -1,20 +1,28 @@
 /**
  * The Units card describes the set the account RESOLVES to, per quantity.
  *
- * Two defects, one old and one this file now pins:
+ * Three defects, all in the same line of the same file:
  *
  * 1. Migration 093 materialises a UK instance's imperial users as
  *    `unit_preference='custom'`. Branching the gallon sub-panel on
  *    `unitPreference === 'imperial'` removed their only UI for changing gallon
- *    flavour. The panel follows the resolved system instead.
+ *    flavour.
  *
- * 2. ★ The description used to be one of two fixed sentences chosen by that
- *    same collapsed binary system, which is derived from VOLUME (spec D8). A
+ * 2. The description used to be one of two fixed sentences chosen by the
+ *    collapsed binary system, which is derived from VOLUME (spec D8). A
  *    `{volume:'L', distance:'mi', pressure:'psi'}` account was therefore told
  *    "Using metric units: liters, kilometers, L/100km, °C, bar, kg, Nm" while
  *    it renders miles and PSI. Plan 3b ruling R1 calls that a false statement
  *    rather than copy needing an exemption, so the sentence is COMPOSED from
- *    the resolved set. The assertions below quote what a user reads.
+ *    the resolved set.
+ *
+ * 3. ★ The first fix for (2) composed from `presetUnitsFor(unitPreference, ...)`
+ *    whenever the preference was `imperial` or `metric`, which contradicts
+ *    spec D3: an override column beats the preset for every account, not only
+ *    for `custom` ones. `PUT /auth/me` writes `unit_preference` and never
+ *    clears an override, so `{preference: 'metric', overrides: UK imperial}` is
+ *    a state the product creates on purpose, and it painted metric units and
+ *    hid the gallon panel. The `D3` block below is that case, both directions.
  *
  * ★ THE DESCRIPTION KEY IS RESOLVED THROUGH THE APP'S OWN i18next INSTANCE,
  * not through a hand-rolled substitution. The composed list contains `/` in
@@ -23,6 +31,13 @@
  * makes them render as themselves. A test that spelled its own `.replace()`
  * would assert a sentence no user can get. Every other key echoes, matching the
  * global mock.
+ *
+ * ★ EVERY CASE ASSERTS THE SENTENCE AND THE PANEL TOGETHER, in one
+ * `toStrictEqual`. Two reasons. `expect(await findByText(x)).toBeInTheDocument()`
+ * cannot fail: `findByText` already threw if it was absent, so the `expect` is
+ * decoration. And the card's own claim is that the panel and the sentence are
+ * derived from ONE expression, so a case that reads only one of them leaves
+ * that claim undefended.
  *
  * The two-option toggle itself still shows the raw stored value (a per-quantity
  * editor is phase 4) and is deliberately not asserted here.
@@ -43,6 +58,10 @@ import type { UnitSet } from '@/types/units'
 
 /** The composed description, as the component asks for it. */
 const DESCRIPTION_KEY = 'units.resolvedDescription'
+
+/** Hand-written from `UNIT_ADAPTERS`, in `UNIT_QUANTITIES` order. */
+const IMPERIAL_TEXT = 'Using these units: mi, mph, ft, gal, MPG, PSI, °F, lb, lb-ft, /32 in'
+const METRIC_TEXT = 'Using these units: km, km/h, m, L, L/100km, kPa, °C, kg, Nm, mm'
 
 const h = vi.hoisted(() => ({
   user: null as User | null,
@@ -110,105 +129,94 @@ function renderTab(): void {
   )
 }
 
-describe('SettingsSystemTab — units card follows the resolved system', () => {
-  beforeEach(() => {
-    vi.clearAllMocks()
-    localStorage.clear()
-    h.user = null
-    mockedApi.get.mockImplementation((url: string) => {
-      if (url === '/settings') {
-        return Promise.resolve({
-          data: { settings: [{ key: 'timezone', value: 'UTC' }] },
-        })
-      }
-      if (url === '/auth/users/count') return Promise.resolve({ data: { count: 2 } })
-      if (url === '/dashboard') return Promise.resolve({ data: { total_vehicles: 0 } })
-      if (url === '/health') return Promise.resolve({ data: { authenticator_detected: false } })
-      return Promise.resolve({ data: {} })
-    })
-    mockedApi.post.mockResolvedValue({ data: { settings: [], total: 0 } })
-    mockedApi.put.mockResolvedValue({ data: {} })
-  })
+/** What the Units card says, and whether the gallon sub-panel is on screen. */
+interface UnitsCard {
+  description: string
+  gallonPanel: boolean
+}
 
-  it('keeps the gallon-standard panel for a custom user resolving to UK gallons', async () => {
-    h.user = makeUser({ unit_preference: 'custom', resolved_units: UK_IMPERIAL_UNITS })
-
-    renderTab()
-
-    expect(await screen.findByText('units.gallonStandard')).toBeInTheDocument()
-  })
-
-  it('hides the gallon-standard panel for a custom user resolving to litres', async () => {
-    h.user = makeUser({ unit_preference: 'custom', resolved_units: METRIC_UNITS })
-
-    renderTab()
-
-    await waitFor(() => expect(mockedApi.get).toHaveBeenCalledWith('/settings'))
-    expect(screen.queryByText('units.gallonStandard')).not.toBeInTheDocument()
-  })
-
-  it('still shows the panel for a preset imperial user', async () => {
-    h.user = makeUser({ unit_preference: 'imperial', resolved_units: IMPERIAL_UNITS })
-
-    renderTab()
-
-    expect(await screen.findByText('units.gallonStandard')).toBeInTheDocument()
-  })
-
-  it('still hides the panel for a preset metric user', async () => {
-    h.user = makeUser({ unit_preference: 'metric', resolved_units: METRIC_UNITS })
-
-    renderTab()
-
-    await waitFor(() => expect(mockedApi.get).toHaveBeenCalledWith('/settings'))
-    expect(screen.queryByText('units.gallonStandard')).not.toBeInTheDocument()
-  })
-})
-
-describe('SettingsSystemTab — the description is composed from the resolved set', () => {
-  beforeEach(() => {
-    vi.clearAllMocks()
-    localStorage.clear()
-    h.user = null
-    mockedApi.get.mockImplementation((url: string) => {
-      if (url === '/settings') {
-        return Promise.resolve({
-          data: { settings: [{ key: 'timezone', value: 'UTC' }] },
-        })
-      }
-      if (url === '/auth/users/count') return Promise.resolve({ data: { count: 2 } })
-      if (url === '/dashboard') return Promise.resolve({ data: { total_vehicles: 0 } })
-      if (url === '/health') return Promise.resolve({ data: { authenticator_detected: false } })
-      return Promise.resolve({ data: {} })
-    })
-    mockedApi.post.mockResolvedValue({ data: { settings: [], total: 0 } })
-    mockedApi.put.mockResolvedValue({ data: {} })
-  })
-
-  /** Mount as a custom account on `units` and return what the card says. */
-  async function describedUnits(units: UnitSet): Promise<string> {
-    h.user = makeUser({ unit_preference: 'custom', resolved_units: units })
-    renderTab()
-    const paragraph = await screen.findByText(/^Using these units: /)
-    return paragraph.textContent ?? ''
+/** Read the card back once it has settled. */
+async function readCard(): Promise<UnitsCard> {
+  const paragraph = await screen.findByText(/^Using these units: /)
+  return {
+    description: paragraph.textContent ?? '',
+    gallonPanel: screen.queryByText('units.gallonStandard') !== null,
   }
+}
+
+/** Mount as `user` and read the Units card back. */
+async function cardFor(user: User): Promise<UnitsCard> {
+  h.user = user
+  renderTab()
+  return readCard()
+}
+
+describe('SettingsSystemTab — the Units card reads the resolved set', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    localStorage.clear()
+    h.user = null
+    mockedApi.get.mockImplementation((url: string) => {
+      if (url === '/settings') {
+        return Promise.resolve({
+          data: { settings: [{ key: 'timezone', value: 'UTC' }] },
+        })
+      }
+      if (url === '/auth/users/count') return Promise.resolve({ data: { count: 2 } })
+      if (url === '/dashboard') return Promise.resolve({ data: { total_vehicles: 0 } })
+      if (url === '/health') return Promise.resolve({ data: { authenticator_detected: false } })
+      return Promise.resolve({ data: {} })
+    })
+    mockedApi.post.mockResolvedValue({ data: { settings: [], total: 0 } })
+    mockedApi.put.mockResolvedValue({ data: {} })
+  })
+
+  it('keeps the gallon panel for a custom user resolving to UK gallons', async () => {
+    const card = await cardFor(
+      makeUser({ unit_preference: 'custom', resolved_units: UK_IMPERIAL_UNITS }),
+    )
+    expect(card).toStrictEqual({ description: IMPERIAL_TEXT, gallonPanel: true })
+  })
+
+  it('hides the gallon panel for a custom user resolving to litres', async () => {
+    const card = await cardFor(
+      makeUser({ unit_preference: 'custom', resolved_units: METRIC_UNITS }),
+    )
+    expect(card).toStrictEqual({ description: METRIC_TEXT, gallonPanel: false })
+  })
+
+  it('describes a preset imperial account in the units it renders', async () => {
+    const card = await cardFor(
+      makeUser({ unit_preference: 'imperial', resolved_units: IMPERIAL_UNITS }),
+    )
+    expect(card).toStrictEqual({ description: IMPERIAL_TEXT, gallonPanel: true })
+  })
+
+  it('describes a preset metric account with kPa, which the retired copy called bar', async () => {
+    const card = await cardFor(
+      makeUser({ unit_preference: 'metric', resolved_units: METRIC_UNITS }),
+    )
+    expect(card).toStrictEqual({ description: METRIC_TEXT, gallonPanel: false })
+  })
 
   it('names miles and PSI for the litres-and-miles account R1 describes', async () => {
     // The exact set from plan 3b R1. `binarySystemFor('L')` is metric, so the
     // retired copy told this reader "kilometers ... bar".
     const units: UnitSet = { ...METRIC_UNITS, distance: 'mi', pressure: 'psi' }
-    expect(await describedUnits(units)).toBe(
-      'Using these units: mi, km/h, m, L, L/100km, PSI, °C, kg, Nm, mm',
-    )
+    const card = await cardFor(makeUser({ unit_preference: 'custom', resolved_units: units }))
+    expect(card).toStrictEqual({
+      description: 'Using these units: mi, km/h, m, L, L/100km, PSI, °C, kg, Nm, mm',
+      gallonPanel: false,
+    })
   })
 
   it('names Celsius, Nm and mm for an otherwise imperial account', async () => {
-    // Collapses to imperial (gallons), so the retired copy claimed °F, lb-ft
-    // and the 1/32-inch tread this account does not use.
     const units: UnitSet = { ...IMPERIAL_UNITS, temperature: 'c', torque: 'nm', tread: 'mm' }
-    expect(await describedUnits(units)).toBe(
-      'Using these units: mi, mph, ft, gal, MPG, PSI, °C, lb, Nm, mm',
-    )
+    const card = await cardFor(makeUser({ unit_preference: 'custom', resolved_units: units }))
+    expect(card).toStrictEqual({
+      description: 'Using these units: mi, mph, ft, gal, MPG, PSI, °C, lb, Nm, mm',
+      gallonPanel: true,
+    })
   })
 
   it('names km/L and bar, which neither retired sentence could say', async () => {
@@ -222,44 +230,70 @@ describe('SettingsSystemTab — the description is composed from the resolved se
       pressure: 'bar',
       mass: 'lb',
     }
-    expect(await describedUnits(units)).toBe(
-      'Using these units: km, mph, m, L, km/L, bar, °C, lb, Nm, mm',
+    const card = await cardFor(makeUser({ unit_preference: 'custom', resolved_units: units }))
+    expect(card).toStrictEqual({
+      description: 'Using these units: km, mph, m, L, km/L, bar, °C, lb, Nm, mm',
+      gallonPanel: false,
+    })
+  })
+})
+
+describe('SettingsSystemTab — D3: an override column beats the preset', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    localStorage.clear()
+    h.user = null
+    mockedApi.get.mockImplementation((url: string) => {
+      if (url === '/settings') {
+        return Promise.resolve({
+          data: { settings: [{ key: 'timezone', value: 'UTC' }] },
+        })
+      }
+      if (url === '/auth/users/count') return Promise.resolve({ data: { count: 2 } })
+      if (url === '/dashboard') return Promise.resolve({ data: { total_vehicles: 0 } })
+      if (url === '/health') return Promise.resolve({ data: { authenticator_detected: false } })
+      return Promise.resolve({ data: {} })
+    })
+    mockedApi.post.mockResolvedValue({ data: { settings: [], total: 0 } })
+    mockedApi.put.mockResolvedValue({ data: {} })
+  })
+
+  it('renders gallons for a METRIC-preset account whose overrides are UK imperial', async () => {
+    // Reachable on purpose: migration 093 materialises all eleven columns, and
+    // `PUT /auth/me` sets the preference without clearing one. Composing from
+    // the preference painted metric units and hid the gallon panel here.
+    const card = await cardFor(
+      makeUser({ unit_preference: 'metric', resolved_units: UK_IMPERIAL_UNITS }),
     )
+    expect(card).toStrictEqual({ description: IMPERIAL_TEXT, gallonPanel: true })
   })
 
-  it('describes a preset metric account with kPa, which the retired copy called bar', async () => {
-    h.user = makeUser({ unit_preference: 'metric', resolved_units: METRIC_UNITS })
-
-    renderTab()
-
-    expect(
-      await screen.findByText('Using these units: km, km/h, m, L, L/100km, kPa, °C, kg, Nm, mm'),
-    ).toBeInTheDocument()
+  it('renders litres for an IMPERIAL-preset account whose overrides are metric', async () => {
+    // The mirror. Without it, "use the preset" could be reintroduced for the
+    // imperial half alone and one direction would still pass.
+    const card = await cardFor(
+      makeUser({ unit_preference: 'imperial', resolved_units: METRIC_UNITS }),
+    )
+    expect(card).toStrictEqual({ description: METRIC_TEXT, gallonPanel: false })
   })
 
-  it('rests on the imperial preset and switches with the optimistic toggle', async () => {
-    // Two assertions, both load bearing. The first is the imperial resting
-    // state; a standalone test for it was deleted because it set up exactly
-    // this account and asserted exactly this string, so it could not fail while
-    // this one passed. The second is the switch: the account stays imperial for
-    // the whole test (`useAuth` is mocked with a fixed user and `refreshUser`
-    // is a no-op), so a description read from the hook alone would never move.
-    // The preset branch of `displayUnits` is what makes the copy follow the
-    // click.
-    h.user = makeUser({ unit_preference: 'imperial', resolved_units: IMPERIAL_UNITS })
-
+  it('does not repaint the card for a preset click the account still overrides', async () => {
+    // The resting state of this account is pinned by the first case in the
+    // block above, so it is not re-asserted here. What this adds is that the
+    // CLICK lands (`api.put` is called with the new preference) and the card
+    // still reports the units the account actually resolves to.
+    h.user = makeUser({ unit_preference: 'custom', resolved_units: UK_IMPERIAL_UNITS })
     renderTab()
-
-    expect(
-      await screen.findByText(
-        'Using these units: mi, mph, ft, gal, MPG, PSI, °F, lb, lb-ft, /32 in',
-      ),
-    ).toBeInTheDocument()
+    await screen.findByText(/^Using these units: /)
 
     await userEvent.click(screen.getByText('units.metric'))
+    await waitFor(() =>
+      expect(mockedApi.put).toHaveBeenCalledWith('/auth/me', { unit_preference: 'metric' }),
+    )
 
-    expect(
-      await screen.findByText('Using these units: km, km/h, m, L, L/100km, kPa, °C, kg, Nm, mm'),
-    ).toBeInTheDocument()
+    expect(await readCard()).toStrictEqual({
+      description: IMPERIAL_TEXT,
+      gallonPanel: true,
+    })
   })
 })

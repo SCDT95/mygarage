@@ -63,6 +63,12 @@
    "tests": [
     "__tests__/unitDescriptionLocales.test.ts",
     "components/tabs/__tests__/SettingsSystemTab.units.test.tsx"
+   ],
+   "findings": [
+    "units.showBothDescription still frames show-both as \"imperial and metric\" with a fixed 25 MPG (9.4 L/100km) example, but counterparts are resolved PER QUANTITY by counterpartFor and the example is only what an mpg_us account sees. Same shape as R1 one notch down: an example rather than a claim about this account's units, and no comparison selects it so neither gate leg reports it. Deferred by task 2b rather than absorbed; the cheap honest fix is to stop naming the two systems (\"Display each value with its counterpart unit as well\") in all seven bundles, not to compose a second list."
+   ],
+   "owners": [
+    "task 6"
    ]
   },
   {
@@ -121,6 +127,12 @@
    "tests": [
     "__tests__/unitDescriptionLocales.test.ts",
     "components/tabs/__tests__/SettingsSystemTab.units.test.tsx"
+   ],
+   "findings": [
+    "units.showBothDescription still frames show-both as \"imperial and metric\" with a fixed 25 MPG (9.4 L/100km) example, but counterparts are resolved PER QUANTITY by counterpartFor and the example is only what an mpg_us account sees. Same shape as R1 one notch down: an example rather than a claim about this account's units, and no comparison selects it so neither gate leg reports it. Deferred by task 2b rather than absorbed; the cheap honest fix is to stop naming the two systems (\"Display each value with its counterpart unit as well\") in all seven bundles, not to compose a second list."
+   ],
+   "owners": [
+    "task 6"
    ]
   },
   {
@@ -167,6 +179,12 @@
    "tests": [
     "__tests__/unitDescriptionLocales.test.ts",
     "components/tabs/__tests__/SettingsSystemTab.units.test.tsx"
+   ],
+   "findings": [
+    "units.showBothDescription still frames show-both as \"imperial and metric\" with a fixed 25 MPG (9.4 L/100km) example, but counterparts are resolved PER QUANTITY by counterpartFor and the example is only what an mpg_us account sees. Same shape as R1 one notch down: an example rather than a claim about this account's units, and no comparison selects it so neither gate leg reports it. Deferred by task 2b rather than absorbed; the cheap honest fix is to stop naming the two systems (\"Display each value with its counterpart unit as well\") in all seven bundles, not to compose a second list."
+   ],
+   "owners": [
+    "task 6"
    ]
   },
   {
@@ -207,6 +225,12 @@
    "tests": [
     "__tests__/unitDescriptionLocales.test.ts",
     "components/tabs/__tests__/SettingsSystemTab.units.test.tsx"
+   ],
+   "findings": [
+    "units.showBothDescription still frames show-both as \"imperial and metric\" with a fixed 25 MPG (9.4 L/100km) example, but counterparts are resolved PER QUANTITY by counterpartFor and the example is only what an mpg_us account sees. Same shape as R1 one notch down: an example rather than a claim about this account's units, and no comparison selects it so neither gate leg reports it. Deferred by task 2b rather than absorbed; the cheap honest fix is to stop naming the two systems (\"Display each value with its counterpart unit as well\") in all seven bundles, not to compose a second list."
+   ],
+   "owners": [
+    "task 6"
    ]
   },
   {
@@ -253,6 +277,12 @@
    "tests": [
     "__tests__/unitDescriptionLocales.test.ts",
     "components/tabs/__tests__/SettingsSystemTab.units.test.tsx"
+   ],
+   "findings": [
+    "units.showBothDescription still frames show-both as \"imperial and metric\" with a fixed 25 MPG (9.4 L/100km) example, but counterparts are resolved PER QUANTITY by counterpartFor and the example is only what an mpg_us account sees. Same shape as R1 one notch down: an example rather than a claim about this account's units, and no comparison selects it so neither gate leg reports it. Deferred by task 2b rather than absorbed; the cheap honest fix is to stop naming the two systems (\"Display each value with its counterpart unit as well\") in all seven bundles, not to compose a second list."
+   ],
+   "owners": [
+    "task 6"
    ]
   },
   {
@@ -293,6 +323,12 @@
    "tests": [
     "__tests__/unitDescriptionLocales.test.ts",
     "components/tabs/__tests__/SettingsSystemTab.units.test.tsx"
+   ],
+   "findings": [
+    "units.showBothDescription still frames show-both as \"imperial and metric\" with a fixed 25 MPG (9.4 L/100km) example, but counterparts are resolved PER QUANTITY by counterpartFor and the example is only what an mpg_us account sees. Same shape as R1 one notch down: an example rather than a claim about this account's units, and no comparison selects it so neither gate leg reports it. Deferred by task 2b rather than absorbed; the cheap honest fix is to stop naming the two systems (\"Display each value with its counterpart unit as well\") in all seven bundles, not to compose a second list."
+   ],
+   "owners": [
+    "task 6"
    ]
   },
   {
@@ -1389,17 +1425,19 @@
   {
    "path": "src/components/tabs/SettingsSystemTab.tsx",
    "disposition": "audited",
-   "digest": "6133d7833263f6b7143ccc1918e50cb40874f88de92b9559f74c54b6b36f6004",
-   "reason": "the unit description is COMPOSED from the resolved set (plan 3b R1), so the card no longer selects one of two fixed sentences on the volume-collapsed binary system. The three comparisons left are R1's structural exemptions, recorded not asserted clean until the task 8 gate flip.",
+   "digest": "bf64702d20be0650ef3d4b94cfc89f852ef8c28c5251a01c8cf5d5e328018155",
+   "reason": "the unit description is COMPOSED from the resolved set in EVERY branch (plan 3b R1 plus spec D3: an override column beats the preset regardless of which preset is set), so the card no longer selects one of two fixed sentences and no longer reads unit_preference for the two preset values. The gallon panel is derived from the same expression. The three comparisons left are R1's structural exemptions, recorded not asserted clean until the task 8 gate flip.",
    "tests": [
     "components/tabs/__tests__/SettingsSystemTab.units.test.tsx"
    ],
    "findings": [
     "compare x3 (units gate baseline)",
-    "R1's three structural exemptions: the two preset-selection controls (unitPreference === 'imperial' / 'metric') and the gallon-panel visibility (displaySystem === 'imperial'). Each is a choice BETWEEN units with no quantity to convert, so task 8 exempts them structurally or by exact match in the gate rather than with a reason-bearing pragma, which silences anything."
+    "R1's three structural exemptions: the two preset-selection controls (unitPreference === 'imperial' / 'metric') and the gallon-panel visibility (displaySystem === 'imperial'). Each is a choice BETWEEN units with no quantity to convert, so task 8 exempts them structurally or by exact match in the gate rather than with a reason-bearing pragma, which silences anything.",
+    "The composed description cannot distinguish US from UK gallons: gal_us and gal_uk both label \"gal\" and mpg_us and mpg_uk both label \"MPG\", so two accounts that convert at 3.785 L and 4.546 L read the same sentence. Incomplete rather than false. The gallon sub-panel below is only a partial mitigation because it renders the INSTANCE-wide imperial_gallon_standard setting, not this account's secondary_gallon. Deferred to phase 4, which owns the gallon key and the eleven Custom controls; a flavour suffix in UNIT_ADAPTERS.label would move every rendered volume in the app."
    ],
    "owners": [
-    "task 8"
+    "task 8",
+    "phase 4"
    ]
   },
   {
@@ -2056,10 +2094,13 @@
     "components/tabs/__tests__/SettingsSystemTab.units.test.tsx"
    ],
    "findings": [
-    "events.card.milesBefore ('miles before') and events.card.milestonesDesc ('100k miles') are imperial-only copy rendered by EventNotificationsCard."
+    "events.card.milesBefore ('miles before') and events.card.milestonesDesc ('100k miles') are imperial-only copy rendered by EventNotificationsCard.",
+    "units.showBothDescription still frames show-both as \"imperial and metric\" with a fixed 25 MPG (9.4 L/100km) example, but counterparts are resolved PER QUANTITY by counterpartFor and the example is only what an mpg_us account sees. Same shape as R1 one notch down: an example rather than a claim about this account's units, and no comparison selects it so neither gate leg reports it. Deferred by task 2b rather than absorbed; the cheap honest fix is to stop naming the two systems (\"Display each value with its counterpart unit as well\") in all seven bundles, not to compose a second list.",
+    "For task 9's changelog entry: units.metricDescription's \"bar\" was ACCURATE when written. At v2.25.0 the app rendered `${bar.toFixed(2)} bar`; it became false at 6f04e53 when metric-canonical landed and the metric preset resolved kpa. The entry should describe it as drift from this workstream's own earlier phase, not as an original error."
    ],
    "owners": [
-    "task 6"
+    "task 6",
+    "task 9"
    ]
   },
   {
