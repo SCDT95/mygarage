@@ -20,7 +20,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Metric tyre pressure now reads in kPa on the tyre card, matching the form beside it, which already used kPa.
 - The odometer field on the fuel and DEF forms now reads and is entered in whole miles or kilometres. About 38% of existing imperial values shift by up to 0.01 km once on their next save, and then stay put.
 - Fuel, DEF and propane volume and price behave the same way for imperial accounts: a stored value that is not already on the entry grid shifts once, by at most 0.08%, the first time the record is saved, and does not move again. Metric accounts are unaffected.
-- UK-gallon accounts will see existing fuel prices read back about 20% lower than before. The stored figure was wrong, not the new reading, and only accounts on instances set to UK gallons are affected.
+- UK-gallon accounts will see existing fuel prices read back about 20% **higher** than before: a price entered as 6.000/gal now reads 7.206/gal. The new reading is correct and the stored figure was always wrong. Do not edit those records back down, which would store a second wrong value through a path that now saves correctly. Only accounts on instances set to UK gallons are affected.
 - The tyre wear projection reads in whole units. Metric readers see no change.
 - Engine RPM now reads `3,200` everywhere, instead of `3200` on the widget and `3,200` on the session tile.
 - LiveLink session distance is shown as a plain number marked `(unknown unit)`. The device reports it without saying whether it is miles or kilometres, so the previous label was a guess. Nothing about the stored data changed.
