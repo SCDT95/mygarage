@@ -158,6 +158,11 @@ const UNITS_MIGRATED_FILES = [
   'src/utils/publicUnitDefaults.ts',
   'src/utils/telemetryUnits.ts',
   'src/utils/unitFormat.ts',
+  // The corpus's own fixture path. `units_gate_corpus.py` creates this file,
+  // lints it, and deletes it; it is never committed. It is listed here because
+  // the rule is scoped by path, so a fixture outside the scope would prove
+  // nothing about the rule that actually runs.
+  'src/__units_corpus__.tsx',
 ]
 
 export default tseslint.config(
