@@ -60,18 +60,6 @@
   "count": 1
  },
  {
-  "file": "src/hooks/useUnitPreference.ts",
-  "kind": "compare",
-  "text": "stored === 'imperial'",
-  "count": 1
- },
- {
-  "file": "src/hooks/useUnitPreference.ts",
-  "kind": "compare",
-  "text": "stored === 'metric'",
-  "count": 1
- },
- {
   "file": "src/pages/Analytics.tsx",
   "kind": "compare",
   "text": "system === 'metric'",

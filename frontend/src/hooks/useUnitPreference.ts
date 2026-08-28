@@ -203,9 +203,16 @@ export function useUnitPreference(): UnitPreference {
  * exist. A key the app cannot read is noise rather than a recorded choice, so
  * it returns null and the caller falls through to the instance default.
  *
+ * The `units-exempt` marker below is deliberate and is not deferred work: there
+ * is no quantity here and nothing to convert, so `validate-units.ts` flags it
+ * only because it is fail-closed on an operand whose provenance it cannot see.
+ * The marker has to sit on the line directly above the comparison, which is why
+ * the reasoning lives up here and the one-line reason lives down there.
+ *
  * @returns The stored system, or null when the browser holds no usable choice.
  */
 function readStoredUnitSystem(): UnitSystem | null {
   const stored = localStorage.getItem('unit_preference');
+  // units-exempt: validating parse of a stored string, not a display conversion.
   return stored === 'imperial' || stored === 'metric' ? stored : null;
 }

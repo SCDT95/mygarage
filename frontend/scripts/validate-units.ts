@@ -52,6 +52,7 @@
  *   bun run scripts/validate-units.ts --report         # phase 3b work list
  *   bun run scripts/validate-units.ts --scan <file>    # JSON, one file (corpus)
  *   bun run scripts/validate-units.ts --baseline <p>   # use another baseline
+ *   bun run scripts/validate-units.ts --src <dir>      # walk another tree (selftest)
  * Exit code: 1 when any key's occurrence count exceeds its baseline.
  */
 
@@ -63,13 +64,32 @@ import { ROOT } from './translation-utils'
 /**
  * The real TypeScript compiler API, loaded the way Node's resolver would.
  *
- * A bare `import ts from 'typescript'` under Bun resolves to Bun's own built-in
- * shim, which exports `version` and `versionMajorMinor` and nothing else, so
- * `ts.createSourceFile` is `undefined` and every scan would silently find
- * zero comparisons. That is the exact failure mode this gate exists to prevent,
- * so the module is loaded through `createRequire` against the installed
- * package's own `main` field, and the API is verified before anything is
- * scanned.
+ * ★ The precise hazard, because the first version of this comment described it
+ * wrongly and a false rationale in a load-bearing comment is how the next
+ * person deletes the guard. From inside `frontend/` a bare
+ * `import ts from 'typescript'` resolves to the installed package and gives
+ * 2248 keys, `createSourceFile` a function, version 6.0.3. Resolution follows
+ * the importing file rather than the cwd, so that holds from any working
+ * directory. What it does NOT survive is running with no `node_modules` tree
+ * above the importing file at all: rather than failing, Bun answers the bare
+ * specifier from its auto-install cache stub
+ * (`~/.bun/install/cache/typescript@7.0.2@@@1/lib/version.cjs`), which exports
+ * exactly `version` and `versionMajorMinor`. `createSourceFile` is then
+ * `undefined` and every scan reports zero findings on a tree full of them.
+ *
+ * Both states were measured rather than assumed, because the first version of
+ * this comment named the wrong trigger:
+ *   - `node_modules` present, `typescript` missing from it: Bun throws
+ *     MODULE_NOT_FOUND, so that state is loud on its own.
+ *   - no `node_modules` at all (a CI job that skipped `bun install`, a script
+ *     run from outside the tree): the stub answers, silently.
+ * The second is not hypothetical. The Translations workflow deliberately
+ * skipped `bun install` until this commit.
+ *
+ * ★ And the sting: the stub reports 7.0.2, NEWER than the installed 6.0.3, so
+ * a version check would wave it through. Only an API check catches it. Hence
+ * both halves below: resolve through the package's own `main` field rather
+ * than the bare specifier, and assert the API before scanning anything.
  */
 interface TsNode {
   kind: number
@@ -86,8 +106,19 @@ interface TsNode {
   getStart: (source?: TsSourceFile) => number
 }
 
+interface TsDiagnostic {
+  messageText: string | { messageText: string }
+  start?: number
+}
+
 interface TsSourceFile extends TsNode {
   getLineAndCharacterOfPosition: (pos: number) => { line: number; character: number }
+  /**
+   * Internal to the compiler and absent from its public typings, which is why
+   * it is optional here and why `scanSource` treats "the property is missing"
+   * as a reason to refuse rather than as an empty list.
+   */
+  parseDiagnostics?: TsDiagnostic[]
 }
 
 interface TsApi {
@@ -126,14 +157,30 @@ const DEFAULT_BASELINE = join(ROOT, 'scripts', 'units.baseline.json')
 const SYSTEM_LITERALS = new Set(['imperial', 'metric'])
 
 /**
- * Type annotations that do NOT earn an operand its silence.
+ * Annotation NAMES that never earn an operand its silence.
  *
- * `UnitSystem` is obvious. `string`, `any` and `unknown` are here because
- * `UnitSystem` is assignable to all three, so annotating a unit system as a
- * plain string would otherwise be a one-word way to switch the gate off while
- * still type-checking. `displaySystem: string` is a real production spelling.
+ * `UnitSystem` is the canonical union. `string`, `any` and `unknown` are here
+ * because `UnitSystem` is assignable to all three, so annotating a unit system
+ * as a plain string would otherwise be a one-word way to switch the gate off
+ * while still type-checking. `displaySystem: string` is a real production
+ * spelling.
+ *
+ * This is only the NAME half. A denylist of names was the whole test in round
+ * 1, and `type Sys = 'imperial' | 'metric'` walked straight past it, which is
+ * the same hole R8 already found once: `supplyUnits.ts` had declared its own
+ * structurally identical copy of this union and `tsc` could not see the two
+ * drift apart. The alias half is `isForeignAnnotation` below.
  */
-const NON_EXEMPTING_ANNOTATION = /\b(UnitSystem|string|any|unknown)\b|'(imperial|metric)'/
+const NON_EXEMPTING_NAME = /\b(UnitSystem|string|any|unknown)\b/
+
+/**
+ * Every string literal the unit-system union has ever contained.
+ *
+ * `'custom'` is in here because phase 1 widened the API-level preference union
+ * to admit it, so `type Pref = 'imperial' | 'metric' | 'custom'` is a plausible
+ * phase 3b artifact and it is unambiguously a unit-system type.
+ */
+const UNIT_VOCABULARY = new Set(["'imperial'", "'metric'", "'custom'", '"imperial"', '"metric"', '"custom"'])
 
 const EQUALITY_KINDS = new Set([
   ts.SyntaxKind.EqualsEqualsEqualsToken,
@@ -180,8 +227,16 @@ function isSystemLiteral(node: TsNode | undefined): boolean {
  * shadowing `const theme: Theme` in one function silence a real unit-system
  * `theme` in another.
  */
-function indexDeclarations(source: TsSourceFile): Map<string, (string | null)[]> {
+interface FileIndex {
+  /** Declared name to every type annotation it is declared with, null when bare. */
+  declared: Map<string, (string | null)[]>
+  /** Local `type X = ...` aliases, so a named union can be resolved to members. */
+  aliases: Map<string, string>
+}
+
+function indexDeclarations(source: TsSourceFile): FileIndex {
   const declared = new Map<string, (string | null)[]>()
+  const aliases = new Map<string, string>()
   const DECL_KINDS = new Set([
     ts.SyntaxKind.VariableDeclaration,
     ts.SyntaxKind.Parameter,
@@ -195,10 +250,53 @@ function indexDeclarations(source: TsSourceFile): Map<string, (string | null)[]>
       const annotation = node.type ? node.type.getText(source) : null
       declared.set(name, [...(declared.get(name) ?? []), annotation])
     }
+    if (node.kind === ts.SyntaxKind.TypeAliasDeclaration && node.name && node.type) {
+      aliases.set(node.name.text ?? '', node.type.getText(source))
+    }
     ts.forEachChild(node, walk)
   }
   walk(source)
-  return declared
+  return { declared, aliases }
+}
+
+/**
+ * True when an annotation proves the operand is NOT a unit system.
+ *
+ * Three ways to fail to prove it, and all three are deliberate:
+ *
+ *  1. the annotation NAMES a type that is or contains a unit system
+ *     (`UnitSystem`), or a type a unit system is assignable to (`string`,
+ *     `any`, `unknown`);
+ *  2. the annotation is a bare identifier that does NOT resolve to a type alias
+ *     in this file. That is the fail-closed case, and it is what stops
+ *     `import type { BinarySystem } from './units'` being a rename away from
+ *     silence. It costs nothing real: an imported type that genuinely has no
+ *     overlap with `'imperial'` cannot be compared to it without `tsc`
+ *     objecting first;
+ *  3. every member of the resolved union is drawn from the unit vocabulary and
+ *     at least one is `'imperial'` or `'metric'`.
+ *
+ * `type Theme = 'light' | 'dark' | 'imperial'` resolves, carries members
+ * outside the vocabulary, and is therefore foreign. That is the case R3 says no
+ * `no-restricted-syntax` selector can distinguish, and distinguishing it is the
+ * entire reason this leg is a script.
+ */
+function isForeignAnnotation(annotation: string, aliases: Map<string, string>, depth = 0): boolean {
+  const text = annotation.trim()
+  if (NON_EXEMPTING_NAME.test(text)) return false
+  if (/^[A-Za-z_$][\w$]*$/.test(text)) {
+    const body = aliases.get(text)
+    // Fail-closed on an unresolvable name, and on an alias cycle.
+    if (body === undefined || depth >= 8) return false
+    return isForeignAnnotation(body, aliases, depth + 1)
+  }
+  const members = text
+    .split('|')
+    .map((m) => m.trim())
+    .filter((m) => m.length > 0)
+  const allVocabulary = members.length > 0 && members.every((m) => UNIT_VOCABULARY.has(m))
+  const namesASystem = members.some((m) => m === "'imperial'" || m === '"imperial"' || m === "'metric'" || m === '"metric"')
+  return !(allVocabulary && namesASystem)
 }
 
 /**
@@ -211,14 +309,11 @@ function indexDeclarations(source: TsSourceFile): Map<string, (string | null)[]>
  * cost of a spurious baseline entry is a line of review and the cost of a miss
  * is the defect class this whole phase exists to remove.
  */
-function hasForeignProvenance(
-  operand: TsNode,
-  declared: Map<string, (string | null)[]>,
-): boolean {
+function hasForeignProvenance(operand: TsNode, index: FileIndex): boolean {
   if (operand.kind !== ts.SyntaxKind.Identifier) return false
-  const annotations = declared.get(operand.text ?? '')
+  const annotations = index.declared.get(operand.text ?? '')
   if (annotations === undefined || annotations.length === 0) return false
-  return annotations.every((a) => a !== null && !NON_EXEMPTING_ANNOTATION.test(a))
+  return annotations.every((a) => a !== null && isForeignAnnotation(a, index.aliases))
 }
 
 /**
@@ -243,22 +338,65 @@ function normalize(text: string): string {
   return text.replace(/\s+/g, ' ').trim()
 }
 
+/**
+ * The escape hatch, and it must carry a reason.
+ *
+ * Round 1 tested `line.includes('units-exempt')`, so a bare marker with no
+ * justification silenced a finding while the docstring and the failure message
+ * both promised "with the reason". Requiring the comment introducer and a
+ * colon also stops the marker matching inside an ordinary string literal.
+ */
+const EXEMPT_PRAGMA = /(?:^|\s)\/\/\s*units-exempt:\s*\S/
+
+/**
+ * A source file thrown away by the parser is worse than a missing gate.
+ *
+ * Round 1 hardcoded `ScriptKind.TSX` for every file. `const x = <string>raw` is
+ * an angle-bracket type assertion: legal TypeScript in a `.ts` file, illegal in
+ * TSX. Under the wrong ScriptKind the parser dropped the enclosing subtree, the
+ * scan returned nothing for the file, the gate exited 0, and it printed
+ * "3 fixed, run --update to shrink the baseline", inviting the blindness to be
+ * baked into the baseline. Two halves to the fix and both are needed: choose
+ * the ScriptKind by extension, and REFUSE TO SCAN a file the parser complained
+ * about, rather than reporting the wreckage as a clean file. Same fail-loud
+ * posture as `loadTypeScript`, one layer in.
+ */
 export function scanSource(source: string, rel: string): Finding[] {
-  const sf = ts.createSourceFile(rel, source, ts.ScriptTarget.Latest, true, ts.ScriptKind.TSX)
+  const kind = rel.endsWith('.tsx') ? ts.ScriptKind.TSX : ts.ScriptKind.TS
+  const sf = ts.createSourceFile(rel, source, ts.ScriptTarget.Latest, true, kind)
+  const diagnostics = sf.parseDiagnostics
+  if (diagnostics === undefined) {
+    throw new Error(
+      `${rel}: this TypeScript build exposes no parseDiagnostics, so a file the ` +
+        'parser rejected would be indistinguishable from a clean one. Refusing to scan.',
+    )
+  }
+  if (diagnostics.length > 0) {
+    const first = diagnostics[0]
+    const message =
+      typeof first.messageText === 'string' ? first.messageText : first.messageText.messageText
+    const at =
+      first.start === undefined
+        ? ''
+        : ` (line ${sf.getLineAndCharacterOfPosition(first.start).line + 1})`
+    throw new Error(
+      `${rel}: parsed as ${rel.endsWith('.tsx') ? 'TSX' : 'TS'} with ` +
+        `${diagnostics.length} parse error(s)${at}: ${message}\n` +
+        'A file the parser rejects yields zero findings, which this gate would ' +
+        'otherwise report as migration progress. Fix the file, or fix the gate.',
+    )
+  }
   const lines = source.split('\n')
-  const declared = indexDeclarations(sf)
+  const index = indexDeclarations(sf)
   const findings: Finding[] = []
 
-  const record = (node: TsNode, kind: string, text: string): void => {
+  const record = (node: TsNode, kind_: string, text: string): void => {
     const line = sf.getLineAndCharacterOfPosition(node.getStart(sf)).line + 1
     // Escape hatch: the offending line or the line directly above it.
-    if (
-      (lines[line - 1] ?? '').includes('units-exempt') ||
-      (lines[line - 2] ?? '').includes('units-exempt')
-    ) {
+    if (EXEMPT_PRAGMA.test(lines[line - 1] ?? '') || EXEMPT_PRAGMA.test(lines[line - 2] ?? '')) {
       return
     }
-    findings.push({ file: rel, line, kind, text })
+    findings.push({ file: rel, line, kind: kind_, text })
   }
 
   const walk = (node: TsNode): void => {
@@ -270,7 +408,7 @@ export function scanSource(source: string, rel: string): Finding[] {
           // Yoda comparisons put the literal on the left; the operand is
           // whichever side is not the literal.
           const operand = (rightIsLiteral ? node.left : node.right) as TsNode
-          if (!hasForeignProvenance(operand, declared) && !isPlaceholderAttribute(node)) {
+          if (!hasForeignProvenance(operand, index) && !isPlaceholderAttribute(node)) {
             record(node, 'compare', normalize(node.getText(sf)))
           }
         }
@@ -373,7 +511,15 @@ function main(): void {
   const baseIdx = argv.indexOf('--baseline')
   const baselinePath = baseIdx === -1 ? DEFAULT_BASELINE : (argv[baseIdx + 1] ?? DEFAULT_BASELINE)
 
-  const findings = walkDir(SRC_DIR).flatMap(scanFile)
+  // `--src` exists so the selftest can walk a fixture tree it owns instead of
+  // this repo's `src`. Round 1's probes wrote fixtures INTO `src`, where an
+  // interrupted run left a file that failed validate-reachability.ts. A gate
+  // whose own tests can break the working tree is not one anybody will wire
+  // into CI, so the directory is a parameter.
+  const srcIdx = argv.indexOf('--src')
+  const srcDir = srcIdx === -1 ? SRC_DIR : (argv[srcIdx + 1] ?? SRC_DIR)
+
+  const findings = walkDir(srcDir).flatMap(scanFile)
   const observed = countByKey(findings)
 
   if (args.has('--update')) {
