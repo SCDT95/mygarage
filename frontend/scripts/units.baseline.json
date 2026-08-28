@@ -1,0 +1,116 @@
+[
+ {
+  "file": "src/components/DEFRecordList.tsx",
+  "kind": "compare",
+  "text": "system === 'imperial'",
+  "count": 1
+ },
+ {
+  "file": "src/components/LineItemEditor.tsx",
+  "kind": "compare",
+  "text": "system === 'imperial'",
+  "count": 4
+ },
+ {
+  "file": "src/components/OdometerRecordForm.tsx",
+  "kind": "compare",
+  "text": "system === 'imperial'",
+  "count": 1
+ },
+ {
+  "file": "src/components/PropaneRecordForm.tsx",
+  "kind": "compare",
+  "text": "system === 'imperial'",
+  "count": 4
+ },
+ {
+  "file": "src/components/ReminderForm.tsx",
+  "kind": "compare",
+  "text": "system === 'imperial'",
+  "count": 2
+ },
+ {
+  "file": "src/components/ServiceVisitForm.tsx",
+  "kind": "compare",
+  "text": "system === 'imperial'",
+  "count": 1
+ },
+ {
+  "file": "src/components/tabs/SettingsSystemTab.tsx",
+  "kind": "compare",
+  "text": "displaySystem === 'imperial'",
+  "count": 2
+ },
+ {
+  "file": "src/components/tabs/SettingsSystemTab.tsx",
+  "kind": "compare",
+  "text": "unitPreference === 'imperial'",
+  "count": 1
+ },
+ {
+  "file": "src/components/tabs/SettingsSystemTab.tsx",
+  "kind": "compare",
+  "text": "unitPreference === 'metric'",
+  "count": 1
+ },
+ {
+  "file": "src/components/WarrantyForm.tsx",
+  "kind": "compare",
+  "text": "system === 'imperial'",
+  "count": 1
+ },
+ {
+  "file": "src/hooks/useUnitPreference.ts",
+  "kind": "compare",
+  "text": "stored === 'imperial'",
+  "count": 1
+ },
+ {
+  "file": "src/hooks/useUnitPreference.ts",
+  "kind": "compare",
+  "text": "stored === 'metric'",
+  "count": 1
+ },
+ {
+  "file": "src/pages/Analytics.tsx",
+  "kind": "compare",
+  "text": "system === 'metric'",
+  "count": 2
+ },
+ {
+  "file": "src/pages/Calendar.tsx",
+  "kind": "compare",
+  "text": "system === 'imperial'",
+  "count": 1
+ },
+ {
+  "file": "src/utils/decimalSafe.ts",
+  "kind": "compare",
+  "text": "system === 'metric'",
+  "count": 3
+ },
+ {
+  "file": "src/utils/supplyUnits.ts",
+  "kind": "compare",
+  "text": "system === 'imperial'",
+  "count": 1
+ },
+ {
+  "file": "src/utils/supplyUnits.ts",
+  "kind": "compare",
+  "text": "system === 'metric'",
+  "count": 2
+ },
+ {
+  "file": "src/utils/units.ts",
+  "kind": "compare",
+  "text": "system === 'imperial'",
+  "count": 9
+ },
+ {
+  "file": "src/utils/units.ts",
+  "kind": "compare",
+  "text": "system === 'metric'",
+  "count": 7
+ }
+]
