@@ -162,12 +162,26 @@ const UNITS_MIGRATED_FILES = [
   // lints it, and deletes it; it is never committed. It is listed here because
   // the rule is scoped by path, so a fixture outside the scope would prove
   // nothing about the rule that actually runs.
-  'src/__units_corpus__.tsx',
+  //
+  // It lives under `scripts/` rather than `src/` on purpose. Round 1 put it in
+  // `src/`, where a run that died between the write and its `finally` left a
+  // file that made `validate-reachability.ts` fail. The rule is path-scoped, so
+  // a `scripts/` entry works identically and is outside every other gate's
+  // subject: `walkDir` in validate-units.ts and the reachability walk both stop
+  // at `src`.
+  'scripts/__units_corpus__.tsx',
 ]
 
 export default tseslint.config(
   {
-    ignores: ['dist', 'node_modules'],
+    // `*.mutant.generated.*` is the unit gate's selftest: it mutates COPIES of
+    // this file and of scripts/validate-units.ts rather than the originals, so
+    // a run that dies mid-way cannot leave a committed file modified. Ignored
+    // so a leaked copy cannot fail lint on rules its original already passes.
+    //
+    // The `mutant.` infix is load-bearing: a bare `*.generated.ts` would also
+    // swallow src/types/api.generated.ts, which IS linted today.
+    ignores: ['dist', 'node_modules', '**/*.mutant.generated.ts', '**/*.mutant.generated.js'],
   },
   {
     extends: [js.configs.recommended, ...tseslint.configs.recommended],

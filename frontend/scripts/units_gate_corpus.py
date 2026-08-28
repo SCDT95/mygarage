@@ -11,7 +11,18 @@ passes identically whether or not the rule exists is a case that pins nothing.
 ★ The fixtures are OWNED BY THIS FILE. Nothing here reads a production line, so
 no change under `frontend/src` can quietly leave a case unexercised the way
 `mutation_harness_selftest.py`'s first version did when the source line it
-patched was deleted by the very task it certified.
+patched was deleted by the very task it certified. Round 2 moved the ESLint
+fixture out of `src/` as well: a run that died between the write and its
+`finally` used to leave a file that failed `validate-reachability.ts`, so the
+gate's own tests could break the working tree.
+
+★ EVERY case names a mutation that flips it, and round 2 added twelve cases
+because a reviewer's independent matrix found eight surviving mutants that
+nothing here could kill. The structural reason is worth keeping in view:
+BASELINE MODE CAN ONLY KILL TIGHTENING MUTATIONS. The script leg fails when a
+count RISES and never when one falls, so every loosening of the gate reads as
+migration progress, and this corpus is the sole executioner for that entire
+direction.
 
 Legs, split by PROVENANCE-SENSITIVITY (ruling R3):
 
@@ -32,6 +43,7 @@ Exit code: 1 if any positive passes or any negative fails.
 from __future__ import annotations
 
 import json
+import re
 import subprocess
 import sys
 import tempfile
@@ -45,7 +57,11 @@ GATE = "scripts/validate-units.ts"
 # The ESLint leg is scoped by `files:` to migrated paths, so a corpus fixture has
 # to sit at a path that scope names. `eslint.config.js` lists this one for that
 # purpose; it exists only while this script runs.
-ESLINT_FIXTURE = FRONTEND / "src/__units_corpus__.tsx"
+#
+# Under `scripts/`, not `src/`: the rule is path-scoped so the location is free,
+# and `src/` is the subject of validate-reachability.ts and of validate-units.ts's
+# own tree walk. A leaked fixture there fails an unrelated gate.
+ESLINT_FIXTURE = FRONTEND / "scripts/__units_corpus__.tsx"
 
 
 @dataclass
@@ -64,6 +80,12 @@ class Case:
     #: names one: a case no mutation can flip is an assertion true at t=0, one
     #: level up.
     pinned_by: str = ""
+    #: fixture extension. `.ts` and `.tsx` are DIFFERENT languages to the
+    #: parser: `<string>raw` is a type assertion in one and a broken JSX tag in
+    #: the other, which is how round 1's gate went blind to whole files.
+    ext: str = ".tsx"
+    #: exact normalized text the single finding must carry. Pins normalize().
+    expect_text: str = ""
     tags: list[str] = field(default_factory=list)
 
 
@@ -201,6 +223,172 @@ SCRIPT_POSITIVE = [
         "the annotation exemption must not swallow the annotation that proves it",
         "M5-unitsystem-is-foreign",
     ),
+    Case(
+        "S-P12-ts-angle-assertion",
+        "const raw: unknown = null\n"
+        "export const asText = <string>raw\n"
+        "export function label(system: string): string {\n"
+        "  return system === 'imperial' ? 'mi' : 'km'\n"
+        "}\n",
+        1,
+        "compare",
+        "★ legal TS, illegal TSX: round 1 parsed every file as TSX and lost this whole file",
+        "M22-hardcode-tsx-scriptkind",
+        ext=".ts",
+    ),
+    Case(
+        "S-P13-unparseable",
+        "export const broken = (\n",
+        -1,
+        "parse error",
+        "★ a file the parser rejects must make the gate REFUSE, not report zero",
+        "M23-ignore-parse-diagnostics",
+        ext=".ts",
+    ),
+    Case(
+        "S-P14-alias-union",
+        "type Sys = 'imperial' | 'metric'\n"
+        "declare function getSys(): Sys\n"
+        "export function label(): string {\n"
+        "  const s: Sys = getSys()\n"
+        "  return s === 'imperial' ? 'mi' : 'km'\n"
+        "}\n",
+        1,
+        "compare",
+        "R8: this repo re-declares the union, and a name denylist walks straight past an alias",
+        "M24-drop-alias-expansion",
+    ),
+    Case(
+        "S-P15-imported-alias",
+        "import type { BinarySystem } from '@/utils/units'\n"
+        "export function label(s: BinarySystem): string {\n"
+        "  return s === 'imperial' ? 'mi' : 'km'\n"
+        "}\n",
+        1,
+        "compare",
+        "an annotation the gate cannot resolve earns no silence: a rename is not an escape hatch",
+        "M25-unresolvable-alias-is-foreign",
+    ),
+    Case(
+        "S-P16-widened-alias",
+        "type Pref = 'imperial' | 'metric' | 'custom'\n"
+        "declare function getPref(): Pref\n"
+        "export function label(): string {\n"
+        "  const p: Pref = getPref()\n"
+        "  return p === 'imperial' ? 'mi' : 'km'\n"
+        "}\n",
+        1,
+        "compare",
+        "phase 1 widened the union to admit 'custom'; it is still a unit system",
+        "M26-drop-custom-from-vocabulary",
+    ),
+    Case(
+        "S-P17-loose-equality",
+        HOOK_IMPORT + "export function label(): string {\n"
+        "  const { system } = useUnitPreference()\n"
+        "  return system == 'imperial' ? 'mi' : 'km'\n"
+        "}\n",
+        1,
+        "compare",
+        "nothing in this repo forbids ==, so the gate cannot assume === ",
+        "M27-drop-loose-equality",
+    ),
+    Case(
+        "S-P18-template-literal",
+        HOOK_IMPORT + "export function label(): string {\n"
+        "  const { system } = useUnitPreference()\n"
+        "  return system === `imperial` ? 'mi' : 'km'\n"
+        "}\n",
+        1,
+        "compare",
+        "a backtick literal is the same comparison with different punctuation",
+        "M28-drop-template-literal-kind",
+    ),
+    Case(
+        "S-P19-shadowed-name",
+        "type Theme = 'light' | 'dark' | 'imperial'\n"
+        "declare function resolveTheme(): Theme\n"
+        + HOOK_IMPORT
+        + "export function a(): string {\n"
+        "  const mode: Theme = resolveTheme()\n"
+        "  return mode === 'imperial' ? 'x' : 'y'\n"
+        "}\n"
+        "export function b(): string {\n"
+        "  const { system: mode } = useUnitPreference()\n"
+        "  return mode === 'imperial' ? 'mi' : 'km'\n"
+        "}\n",
+        2,
+        "compare",
+        "the flat index the docstring argues for: one foreign declaration must not "
+        "silence a bare one sharing the name",
+        "M29-any-declaration-exempts",
+    ),
+    Case(
+        "S-P20-multiline",
+        HOOK_IMPORT + "export function label(): string {\n"
+        "  const { system } = useUnitPreference()\n"
+        "  return (\n"
+        "    system ===\n"
+        "    'imperial'\n"
+        "      ? 'mi'\n"
+        "      : 'km'\n"
+        "  )\n"
+        "}\n",
+        1,
+        "compare",
+        "a wrapped comparison must key the same as a flat one or the baseline splits in two",
+        "M30-drop-normalize",
+        expect_text="system === 'imperial'",
+    ),
+    Case(
+        "S-P21-non-placeholder-attribute",
+        HOOK_IMPORT + "export function Field(): JSX.Element {\n"
+        "  const { system } = useUnitPreference()\n"
+        "  return <input title={system === 'imperial' ? 'miles' : 'kilometres'} />\n"
+        "}\n",
+        1,
+        "compare",
+        "★ R5 exempts `placeholder`, not JSX: widening it took the real gate 45 -> 37 and exit 0",
+        "M31-any-jsx-attribute-exempts",
+    ),
+    Case(
+        "S-P22-bare-pragma",
+        HOOK_IMPORT + "export function label(): string {\n"
+        "  const { system } = useUnitPreference()\n"
+        "  // units-exempt\n"
+        "  return system === 'imperial' ? 'mi' : 'km'\n"
+        "}\n",
+        1,
+        "compare",
+        "the docstring and the failure message both promise a reason, so a bare marker cannot silence",
+        "M32-pragma-without-reason",
+    ),
+    Case(
+        "S-P23-string-union",
+        "export function readStored(): string | null {\n"
+        "  const stored: string | null = localStorage.getItem('unit_preference')\n"
+        "  return stored === 'imperial' ? stored : null\n"
+        "}\n",
+        1,
+        "compare",
+        "the real shape at useUnitPreference.ts: a bare identifier is fail-closed "
+        "anyway, so `string` earns its place in the name list only through a union",
+        "M6-string-is-foreign",
+        ext=".ts",
+    ),
+    Case(
+        "S-P24-unitsystem-union",
+        "import type { UnitSystem } from '@/utils/units'\n"
+        "export function label(s: UnitSystem | null): string {\n"
+        "  return s === 'imperial' ? 'mi' : 'km'\n"
+        "}\n",
+        1,
+        "compare",
+        "same argument one name over: `UnitSystem | null` is a union, so only the "
+        "name list catches it",
+        "M5-unitsystem-and-unresolvable-are-foreign",
+        ext=".ts",
+    ),
 ]
 
 SCRIPT_NEGATIVE = [
@@ -324,6 +512,23 @@ ESLINT_POSITIVE = [
         "M14-drop-cf-idiom",
     ),
     Case(
+        "E-P9-uk-mpg-factor",
+        "export const UK_MPG_TO_L100KM = 282.481\n",
+        1,
+        "Raw unit-conversion constant",
+        "the one named factor round 1's corpus never exercised",
+        "M33-drop-uk-mpg-from-named-list",
+    ),
+    Case(
+        "E-P10-i18n-guard-survives-scoping",
+        "export const price = (amount: number): string => `$${amount}`\n",
+        1,
+        "Avoid raw $",
+        "the migrated block REPLACES the rule's options, so it must spread the "
+        "i18n guards back in; without a case here that regression is silent",
+        "M34-drop-i18n-spread",
+    ),
+    Case(
         "E-P8-c-to-f-decimal",
         "export const toF2 = (c: number): number => c * 1.8 + 32\n",
         1,
@@ -378,33 +583,51 @@ ESLINT_NEGATIVE = [
 # --------------------------------------------------------------------------
 # runners
 # --------------------------------------------------------------------------
-def run_script_leg(case: Case, tmpdir: Path) -> tuple[int, list[str]]:
-    """Scan one fixture with validate-units.ts and return (count, kinds)."""
-    path = tmpdir / f"{case.cid}.tsx"
+def _refusal(err: str) -> str:
+    """Canonicalise a refusal to its substantive message.
+
+    The raw stderr carries the gate's own path and a stack trace, so pointing
+    the runner at a mutated COPY changed this string for every mutation and made
+    S-P13 look as though it flipped 26 times over. Only the message matters.
+    """
+    m = re.search(r"parsed as (?:TS|TSX) with \d+ parse error\(s\)[^\n]*", err)
+    return f"parse error: {m.group(0) if m else err.strip()[-200:]}"
+
+
+def run_script_leg(case: Case, tmpdir: Path, gate: str = GATE) -> tuple[int, list[str]]:
+    """Scan one fixture with validate-units.ts and return (count, detail).
+
+    A count of -1 means the gate REFUSED, which for S-P13 is the correct answer
+    rather than an error: a file the parser rejects must not read as a clean one.
+    """
+    path = tmpdir / f"{case.cid}{case.ext}"
     path.write_text(case.body)
     p = subprocess.run(
-        ["bun", "run", GATE, "--scan", str(path)],
+        ["bun", "run", gate, "--scan", str(path)],
         cwd=FRONTEND,
         capture_output=True,
         text=True,
     )
     if p.returncode != 0:
         return -1, [
-            f"gate exited {p.returncode}: {(p.stderr or p.stdout).strip()[:200]}"
+            _refusal(p.stderr or p.stdout)
         ]
     try:
         payload = json.loads(p.stdout)
     except json.JSONDecodeError:
         return -1, [f"gate emitted non-JSON: {p.stdout.strip()[:200]}"]
     findings = payload["findings"]
-    return len(findings), [f["kind"] for f in findings]
+    return len(findings), [f"{f['kind']} {f['text']}" for f in findings]
 
 
-def run_eslint_leg(case: Case) -> tuple[int, list[str]]:
+def run_eslint_leg(case: Case, config: str | None = None) -> tuple[int, list[str]]:
     """Lint one fixture at the corpus path and return (count, messages)."""
     ESLINT_FIXTURE.write_text(case.body)
+    argv = ["bunx", "eslint", "--format", "json"]
+    if config is not None:
+        argv += ["--config", config]
     p = subprocess.run(
-        ["bunx", "eslint", "--format", "json", str(ESLINT_FIXTURE)],
+        [*argv, str(ESLINT_FIXTURE)],
         cwd=FRONTEND,
         capture_output=True,
         text=True,
@@ -425,13 +648,18 @@ def run_eslint_leg(case: Case) -> tuple[int, list[str]]:
 def check(case: Case, got: int, detail: list[str]) -> str | None:
     """Return a failure description, or None when the case behaved."""
     if got != case.expect:
-        return f"expected {case.expect} finding(s), got {got}: {detail}"
-    if case.expect and case.expect_kind:
+        return f"expected {case.expect} finding(s), got {got}: {[d[:160] for d in detail]}"
+    if case.expect != 0 and case.expect_kind:
         wrong = [d for d in detail if case.expect_kind not in d]
         if wrong:
             return (
-                f"*** WRONG RULE FIRED *** expected {case.expect_kind!r}, got {wrong}"
+                f"*** WRONG RULE FIRED *** expected {case.expect_kind!r}, "
+                f"got {[d[:160] for d in wrong]}"
             )
+    if case.expect_text:
+        texts = [d.split(" ", 1)[1] if " " in d else d for d in detail]
+        if texts != [case.expect_text]:
+            return f"*** WRONG TEXT *** expected {[case.expect_text]}, got {texts}"
     return None
 
 
