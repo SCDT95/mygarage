@@ -92,6 +92,20 @@ export class UnitConverter {
   // fifth. The two MUTABLE fields below stay private on purpose: they are
   // process-global state driven by the instance gallon setting, and an adapter
   // resolved from a user's own `UnitSet` must never read them.
+  //
+  // ★ THE ONLY PLACE IN THIS FILE THE RAW-CONSTANT RULE IS OFF, and it is these
+  // twelve lines rather than the whole module (plan 3b, task 2). Until now
+  // `eslint.config.js` silenced `no-restricted-syntax` for `utils/units.ts`
+  // outright, in a block meant for the i18n guards, and the entry in
+  // `UNITS_CONSTANT_EXEMPT` beside `unitAdapters.ts` and `supplyUnits.ts` was
+  // doing nothing: the later block won by ordering. Removing that whole-file
+  // silence turns up twelve findings, and ten of them are right here. This is
+  // the table the rule's own message tells every other file to move its
+  // constants INTO, so it is exempt for a reason nothing else in this module
+  // can borrow. The eleventh (a `c * 9 / 5 + 32` idiom) and the twelfth (a
+  // fourteenth copy of `1.60934`) were not in this table at all, and both are
+  // now gone rather than exempt.
+  /* eslint-disable no-restricted-syntax -- this IS the factor table */
   static readonly US_GALLONS_TO_LITERS = 3.78541;
   static readonly UK_GALLONS_TO_LITERS = 4.54609;
   private static gallonsToLitersFactor = UnitConverter.US_GALLONS_TO_LITERS;
@@ -104,6 +118,7 @@ export class UnitConverter {
   static readonly US_MPG_TO_L100KM = 235.214;
   static readonly UK_MPG_TO_L100KM = 282.481;
   private static mpgToL100kmFactor = UnitConverter.US_MPG_TO_L100KM;
+  /* eslint-enable no-restricted-syntax */
 
   // ── Resolved-set dispatch ────────────────────────────────────────────────
   //
@@ -307,32 +322,14 @@ export class UnitConverter {
   }
 
   // ========== TEMPERATURE CONVERSIONS ==========
-
-  /**
-   * Convert Fahrenheit to Celsius.
-   *
-   * Formula: C = (F - 32) × 5/9
-   */
-  static fahrenheitToCelsius(fahrenheit: Numeric): number | null {
-    if (fahrenheit === null || fahrenheit === undefined) {
-      return null;
-    }
-    const celsius = (fahrenheit - 32) * 5 / 9;
-    return this.roundResult(celsius, 1);
-  }
-
-  /**
-   * Convert Celsius to Fahrenheit.
-   *
-   * Formula: F = C × 9/5 + 32
-   */
-  static celsiusToFahrenheit(celsius: Numeric): number | null {
-    if (celsius === null || celsius === undefined) {
-      return null;
-    }
-    const fahrenheit = celsius * 9 / 5 + 32;
-    return this.roundResult(fahrenheit, 1);
-  }
+  //
+  // Gone, with `formatTemperature`, the only thing that called either of them.
+  // `celsiusToFahrenheit` held the `c * 9 / 5 + 32` idiom the ESLint leg
+  // matches STRUCTURALLY (there is no constant in it distinctive enough to
+  // list), so it was one of the twelve findings the whole-file exemption was
+  // covering. `UNIT_ADAPTERS.f` is the live implementation and always was the
+  // one with the offset spelled out; a dead second copy of a conversion is the
+  // shape defect L1 took.
 
   // ========== PRESSURE CONVERSIONS ==========
 
@@ -519,6 +516,32 @@ export class UnitConverter {
  *
  * All format* methods accept the value in canonical SI metric form.
  * For imperial-preferring users, the metric value is converted at render time.
+ *
+ * ★ THE NINE REMAINING `UnitSystem` METHODS ARE EXEMPT WITH AN EXPIRY, and this
+ * is the one place the scheme is written down (plan 3b, ruling R2).
+ *
+ * Each of them carries exactly one `system === '...'` comparison, which is why
+ * the units gate derives the same nine names from this class that its
+ * comparison leg counts in this file. The comparison is not the defect: the
+ * parameter IS the decision, already made by the caller. The defect is that
+ * `system` is collapsed from VOLUME (spec D8, `useUnitPreference.ts:98`), so a
+ * `{volume:'L', distance:'mi'}` user reaches `formatDistance` as `'metric'` and
+ * reads kilometres. That is a call-site decision, and the gate reports every
+ * one of these call sites under its `formatter-binary` leg; migrating them is
+ * task 6's work list (and task 3's, for `getWeightUnit`'s two in
+ * `PropaneRecordForm`).
+ *
+ * So each comparison carries `// units-exempt:` naming who owns its call sites.
+ * A reason-bearing pragma silences anything (`validate-units.ts:486`), so the
+ * exemptions do not rest on that prose:
+ * `utils/__tests__/unitsBinaryApiSurface.test.ts` derives this surface from the
+ * file and fails when a method outlives its last production caller. Seven
+ * methods failed it at t=0 and are gone. When task 6 migrates the last
+ * `formatDistance(km, system)` call site, the test fails again and the method
+ * has to follow.
+ *
+ * The resolved-set replacement already exists for all ten quantities:
+ * `useUnitFormat()` in a component, `makeUnitFormat(units)` outside one.
  */
 export class UnitFormatter {
   /**
@@ -574,6 +597,7 @@ export class UnitFormatter {
     const kmNum = typeof km === 'string' ? parseFloat(km) : km;
     if (isNaN(kmNum)) return 'N/A';
 
+    // units-exempt: binary display API; its 21 call sites are task 6's, and unitsBinaryApiSurface.test.ts deletes this method when the last one goes
     if (system === 'metric') {
       const primary = `${Math.round(kmNum).toLocaleString(getActiveLocale())} km`;
       if (showBoth) {
@@ -606,6 +630,7 @@ export class UnitFormatter {
     const lNum = typeof lPer100km === 'string' ? parseFloat(lPer100km) : lPer100km;
     if (isNaN(lNum) || lNum === 0) return 'N/A';
 
+    // units-exempt: binary display API; its 18 call sites are task 6's, and unitsBinaryApiSurface.test.ts deletes this method when the last one goes
     if (system === 'metric') {
       const primary = `${lNum.toFixed(1)} L/100km`;
       if (showBoth) {
@@ -651,6 +676,7 @@ export class UnitFormatter {
     const LITERS_PER_GALLON =
       UnitConverter.LITERS_PER_SECONDARY_GALLON[UnitConverter.getGallonStandard()];
 
+    // units-exempt: binary display API; its 4 call sites are task 6's, and unitsBinaryApiSurface.test.ts deletes this method when the last one goes
     if (system === 'metric') {
       const primary = `${lNum.toFixed(2)} L/hr`;
       if (showBoth) {
@@ -681,6 +707,7 @@ export class UnitFormatter {
    * Get distance unit label for input placeholders.
    */
   static getDistanceUnit(system: UnitSystem): string {
+    // units-exempt: label for the same binary decision; 15 call sites, task 6 and task 3, expiry enforced by unitsBinaryApiSurface.test.ts
     return system === 'imperial' ? 'mi' : 'km';
   }
 
@@ -688,6 +715,7 @@ export class UnitFormatter {
    * Get fuel economy unit label for input placeholders.
    */
   static getFuelEconomyUnit(system: UnitSystem): string {
+    // units-exempt: label for the same binary decision; 3 call sites, task 6, expiry enforced by unitsBinaryApiSurface.test.ts
     return system === 'imperial' ? 'MPG' : 'L/100km';
   }
 
@@ -695,6 +723,7 @@ export class UnitFormatter {
    * Get fuel-rate (engine-hours economy) unit label for input placeholders.
    */
   static getFuelRateUnit(system: UnitSystem): string {
+    // units-exempt: label for the same binary decision; 4 call sites, task 6, expiry enforced by unitsBinaryApiSurface.test.ts
     return system === 'imperial' ? 'GPH' : 'L/hr';
   }
 
@@ -702,6 +731,7 @@ export class UnitFormatter {
    * Get weight unit label for input placeholders.
    */
   static getWeightUnit(system: UnitSystem): string {
+    // units-exempt: known-wrong for a pounds-and-litres user; getMassUnit below is its replacement and task 3 owns PropaneRecordForm's 2 call sites
     return system === 'imperial' ? 'lbs' : 'kg';
   }
 
@@ -788,9 +818,15 @@ export class UnitFormatter {
     currencyCode: string = 'USD',
     locale: string = 'en-US'
   ): string {
+    // The mile factor was spelled `1.60934` here, a fourteenth copy of a
+    // constant this class declares two hundred lines up, and the whole-file
+    // ESLint exemption is why nobody saw it. The 1000 and the 100 are not
+    // conversion factors: they are how many of the user's distance units the
+    // cost is quoted over, and `getCostPerDistanceLabel` names them in prose.
+    // units-exempt: binary display API; 3 call sites in FuelRecordList and Analytics are task 6's, expiry enforced by unitsBinaryApiSurface.test.ts
     const value = system === 'imperial'
-      ? costPerKm * 1.60934 * 1000  // $/km → $/1000 mi
-      : costPerKm * 100;             // $/km → $/100 km
+      ? costPerKm * UnitConverter.MILES_TO_KM * 1000  // $/km -> $/1000 mi
+      : costPerKm * 100;                              // $/km -> $/100 km
     return new Intl.NumberFormat(locale, {
       style: 'currency',
       currency: currencyCode,
@@ -804,6 +840,7 @@ export class UnitFormatter {
    * Returns "Cost/1k Miles" or "Cost/100 km".
    */
   static getCostPerDistanceLabel(system: UnitSystem): string {
+    // units-exempt: label for the same binary decision; 3 call sites, task 6, expiry enforced by unitsBinaryApiSurface.test.ts
     return system === 'imperial' ? 'Cost/1k Miles' : 'Cost/100 km';
   }
 

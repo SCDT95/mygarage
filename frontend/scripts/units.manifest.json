@@ -2833,7 +2833,7 @@
   {
    "path": "src/utils/units.ts",
    "disposition": "audited",
-   "digest": "1540da8a241eeb001528e85a0037a3f4ba4a35211e6cc9f383eeb88425ce6d4e",
+   "digest": "8daba0c3d542b4637428b0e006c342aab8c4235e34707ebe8a62f1f66a544915",
    "reason": "gate-detectable unit decisions, recorded not asserted clean (plan 3b task 1 ordering)",
    "tests": [
     "utils/__tests__/unitFactorParity.test.ts",
@@ -2842,10 +2842,10 @@
     "utils/__tests__/unitsSummaryHelpers.test.ts"
    ],
    "findings": [
-    "compare x9 (units gate baseline)",
     "token-branch x7 (units gate baseline)",
-    "R2: 16 comparisons, migrate-or-exempt per occurrence. Seven are gone: formatTemperature, formatPressure, formatWeight, formatTorque, getTemperatureUnit, getPressureUnit and getTorqueUnit were binary UnitSystem APIs no production file called, and utils/__tests__/unitsBinaryApiSurface.test.ts now fails if another one outlives its last caller. The nine survivors are exempt only while task 6 (formatDistance, formatFuelEconomy, formatFuelRate, getDistanceUnit, getFuelEconomyUnit, getFuelRateUnit, formatCostPerDistance, getCostPerDistanceLabel) and task 3 (getWeightUnit, via PropaneRecordForm) still have call sites.",
-    "the 7 token branches are the resolved-set collapse (formatVolumePerDistance, getVolumePerDistanceLabel)"
+    "R2 CLOSED: all 16 comparisons decided per occurrence. Seven methods deleted (formatTemperature, formatPressure, formatWeight, formatTorque, getTemperatureUnit, getPressureUnit, getTorqueUnit) because no production file called them and a retained binary UnitSystem API is a trap. Nine exempt with an EXPIRY, each carrying `// units-exempt:` naming the owner of its call sites: task 6 holds formatDistance, formatFuelEconomy, formatFuelRate, getDistanceUnit, getFuelEconomyUnit, getFuelRateUnit, formatCostPerDistance and getCostPerDistanceLabel; task 3 holds getWeightUnit via PropaneRecordForm. The exemptions do not rest on the pragma prose: utils/__tests__/unitsBinaryApiSurface.test.ts derives the surface from the file and fails when a method outlives its last caller.",
+    "the 7 token branches are the resolved-set collapse (formatVolumePerDistance, getVolumePerDistanceLabel), owned by task 6",
+    "ESLint: units.ts is no longer silenced whole-file. It left both the i18n-utility `off` block and UNITS_CONSTANT_EXEMPT; the factor table carries a twelve-line eslint-disable and nothing else does. Of the 12 findings that silence was hiding, 10 are the table and 2 are fixed."
    ],
    "owners": [
     "task 2",
