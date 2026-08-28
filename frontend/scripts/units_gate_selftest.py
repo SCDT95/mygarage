@@ -785,59 +785,81 @@ def eslint_messages(path: Path, config: str | None = None) -> list[str]:
 
 
 def scope_proof() -> list[str]:
-    """T4-R6: the `files:` scope is real, both directions, and names real files."""
+    """T4-R6: the constant rule's scope is real, proved three ways.
+
+    ★ Rewritten for round 5. The rule used to be opt-in over a list of migrated
+    paths, and the whole-branch review measured what nobody had: running it over
+    the whole tree yields exactly two findings, both in files already named as
+    deliberate omissions. So the scope is now `src/**` minus three named files,
+    and the interesting question changed with it. It is no longer "does an
+    unmigrated path stay quiet"; it is "does a file that did not exist when the
+    list was written get seen", and "is each exemption real rather than a bare
+    omission".
+    """
     failures: list[str] = []
     SCOPE_FIXTURE.write_text("export const METRES_PER_MILE = 1609.34\n")
+    original = ESLINT_CFG.read_text()
     try:
         outside = eslint_messages(SCOPE_FIXTURE)
         if outside:
-            failures.append(f"scope: an UNSCOPED file was linted anyway: {outside}")
+            failures.append(f"scope: a path outside the scope was linted anyway: {outside}")
         print(
             f"  scope OUTSIDE  {'silent' if not outside else '*** LOUD ***'}"
-            "   an unmigrated path keeps its raw factor without failing CI"
+            "   scripts/ is outside src/**, so the corpus cannot self-trigger"
         )
 
-        anchor = "  'scripts/__units_corpus__.tsx',\n"
-        original = ESLINT_CFG.read_text()
+        anchor = "const UNITS_CONSTANT_SCOPE = ['src/**/*.{ts,tsx}', 'scripts/__units_corpus__.tsx']"
         if anchor not in original:
-            failures.append("scope: the corpus anchor is missing from eslint.config.js")
+            failures.append("scope: could not find UNITS_CONSTANT_SCOPE")
             return failures
         CFG_MUTANT.write_text(
             original.replace(
-                anchor, anchor + "  'scripts/__units_scope_probe__.tsx',\n"
+                anchor,
+                anchor.replace("]", ", 'scripts/__units_scope_probe__.tsx']"),
             )
         )
         inside = eslint_messages(SCOPE_FIXTURE, str(CFG_MUTANT.relative_to(FRONTEND)))
         if len(inside) != 1 or "Raw unit-conversion constant" not in inside[0]:
-            failures.append(f"scope: a SCOPED file was not flagged: {inside}")
+            failures.append(f"scope: a path INSIDE the scope was not flagged: {inside}")
         print(
             f"  scope INSIDE   {'fired' if inside else '*** SILENT ***'}"
-            f"     {inside[0][:60] if inside else 'nothing reported'}"
+            f"     {inside[0][:58] if inside else 'nothing reported'}"
         )
+        CFG_MUTANT.unlink(missing_ok=True)
 
-        # ESLint never warns about a `files:` entry that matches nothing, so a
-        # typo silently un-scopes one file. That is the T4-R6 defect one level
-        # down, and the fixture above cannot see it.
-        block = re.search(r"const UNITS_MIGRATED_FILES = \[(.*?)\n\]", original, re.S)
+        # Each exemption must be a real one: silent now, loud the moment it is
+        # taken off the list. unitAdapters.ts carries `IN32_TO_MM = 25.4 / 32`,
+        # a genuine factor, so it is the honest probe. units.ts is deliberately
+        # NOT used here: it stays silent either way through the i18n-utility
+        # exemption further down the config, which is itself worth knowing and
+        # is recorded in the config comment.
+        probe = FRONTEND / "src/utils/unitAdapters.ts"
+        before = eslint_messages(probe)
+        if before:
+            failures.append(f"scope: an exempt file was flagged: {before}")
+        CFG_MUTANT.write_text(original.replace("  'src/utils/unitAdapters.ts',\n", ""))
+        after = eslint_messages(probe, str(CFG_MUTANT.relative_to(FRONTEND)))
+        if len(after) != 1 or "Raw unit-conversion constant" not in after[0]:
+            failures.append(f"scope: un-exempting unitAdapters.ts did not flag it: {after}")
+        print(
+            f"  scope EXEMPT   {'real' if not before and after else '*** NOT REAL ***'}"
+            f"       silent while listed, {len(after)} finding(s) when un-listed"
+        )
+        CFG_MUTANT.unlink(missing_ok=True)
+
+        # A typo in an exemption path silently un-exempts a file, which fails
+        # loudly; a typo that names nothing at all is the quiet one.
+        block = re.search(r"const UNITS_CONSTANT_EXEMPT = \[(.*?)\n\]", original, re.S)
         if block is None:
-            failures.append("scope: could not read UNITS_MIGRATED_FILES")
+            failures.append("scope: could not read UNITS_CONSTANT_EXEMPT")
             return failures
-        # Only lines that are exactly `  'path',`. Matching every quoted run
-        # instead pulled apostrophes out of the comment prose above the array
-        # and reported "the corpus's own fixture path..." as a missing file.
         entries = re.findall(r"^\s*'([^']+)',\s*$", block.group(1), re.M)
-        missing = [
-            e
-            for e in entries
-            if e != "scripts/__units_corpus__.tsx" and not (FRONTEND / e).exists()
-        ]
+        missing = [e for e in entries if not (FRONTEND / e).exists()]
         if missing:
-            failures.append(
-                f"scope: {len(missing)} entry/entries name no file: {missing}"
-            )
+            failures.append(f"scope: {len(missing)} exemption(s) name no file: {missing}")
         print(
             f"  scope ENTRIES  {'all real' if not missing else '*** MISSING ***'}"
-            f"    {len(entries)} paths, {len(missing)} that name nothing"
+            f"    {len(entries)} exemptions, {len(missing)} that name nothing"
         )
     finally:
         SCOPE_FIXTURE.unlink(missing_ok=True)

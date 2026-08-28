@@ -99,19 +99,41 @@ const UNIT_CONSTANT_RESTRICTED = [
 ]
 
 /**
- * Files migrated onto the unit adapter in phase 3a, derived from
- * `git log 44c71ed..HEAD` and `frontend/scripts/inventory.py` rather than from
- * any prose list. Phase 3b appends to it as each remaining call site moves, and
- * at the end of 3b it collapses to `src/**` (that is 3b's exit criterion).
+ * Where the raw-constant rule applies: EVERY source file, minus a named few.
  *
- * ★ THREE DELIBERATE OMISSIONS, each with its reason, because a bare omission
- * is indistinguishable from an oversight:
+ * ★ This was an opt-in list of migrated paths until the whole-branch review,
+ * and the list was the wrong shape. R4 scoped this leg opt-in by analogy with
+ * the COMPARISON leg, whose ~60 legacy sites genuinely cannot be clean-room
+ * yet. Nobody measured whether the CONSTANT leg had the same debt. It does not:
+ * running the rule over the whole tree produces exactly two findings, both in
+ * files named below as deliberate omissions.
+ *
+ * What the opt-in list could never do is see a file that does not exist yet,
+ * and new code is the highest-risk vector for the pattern reappearing. A
+ * brand-new component carrying `const MI_PER_KM = 0.621371` passed `bun run
+ * lint`, `validate:units`, reachability and the corpus, and would have kept
+ * passing until 3b's exit criterion swept the tree months later.
+ *
+ * `scripts/__units_corpus__.tsx` is listed alongside `src/**` because the rule
+ * is path-scoped and the corpus fixture deliberately lives outside `src/`,
+ * where a leaked copy cannot break the reachability gate.
+ */
+const UNITS_CONSTANT_SCOPE = ['src/**/*.{ts,tsx}', 'scripts/__units_corpus__.tsx']
+
+/**
+ * The three files where a raw conversion factor is CORRECT, each with its
+ * reason, because a bare omission is indistinguishable from an oversight.
  *
  *   src/utils/units.ts         The centralized converter. It IS the factor
  *                              table (US_GALLONS_TO_LITERS, MILES_TO_KM, and
- *                              the rest), so the constants belong there and
- *                              nowhere else. Already exempted outright further
- *                              down for the i18n guards, same reasoning.
+ *                              the rest). Note it is ALSO silenced outright by
+ *                              the i18n-utility exemption further down, which
+ *                              wins by ordering: listing it here is honest
+ *                              documentation rather than the thing doing the
+ *                              work, and a reviewer measured that widening the
+ *                              glob produces zero findings from it despite five
+ *                              conversion factors. Deciding whether the factor
+ *                              table should stay silent is a phase 3b call.
  *   src/utils/unitAdapters.ts  Holds `IN32_TO_MM = 25.4 / 32`, the millimetre
  *                              factor the frontend did not have at all until
  *                              the adapter supplied it. Same role as units.ts.
@@ -119,57 +141,17 @@ const UNIT_CONSTANT_RESTRICTED = [
  *                              exempts supplies from the adapter's conversion
  *                              table, so this factor is correct where it is.
  *
- * NOT omitted, and worth stating because a reader will look for it:
+ * NOT exempt, and worth stating because a reader will look for it:
  * `PropaneRecordForm.tsx` keeps `KG_TO_LITERS = 1.968`. That is a physical
- * density, unit-system independent and CORRECT, and the selectors above are
- * written so it is not matched (three fractional digits, and not on the named
- * list). A gate that flagged it would be flagging correct code. The corpus pins
- * that (case E-N1) so a future widening of the precision threshold cannot
- * silently break it.
+ * density, unit-system independent and CORRECT, and the selectors are written
+ * so it is not matched (three fractional digits, and not on the named list).
+ * Corpus case E-N1 pins that, so a future widening of the precision threshold
+ * cannot silently break it.
  */
-const UNITS_MIGRATED_FILES = [
-  'src/App.tsx',
-  'src/components/DEFRecordForm.tsx',
-  'src/components/DEFRecordList.tsx',
-  'src/components/FuelRecordForm.tsx',
-  'src/components/FuelRecordList.tsx',
-  'src/components/MapDisplay.tsx',
-  'src/components/POICard.tsx',
-  'src/components/PropaneRecordForm.tsx',
-  'src/components/PropaneRecordList.tsx',
-  'src/components/SuppliesUsedTab.tsx',
-  'src/components/TireList.tsx',
-  'src/components/livelink/VehicleLiveLinkWidget.tsx',
-  'src/components/maps/LeafletMap.tsx',
-  'src/components/tabs/LiveLinkLiveTab.tsx',
-  'src/components/tabs/LiveLinkSessionsTab.tsx',
-  'src/components/tabs/LiveLinkTripsTab.tsx',
-  'src/components/vehicle-detail/VehicleEditDrawer.tsx',
-  'src/contexts/AuthContext.tsx',
-  'src/hooks/useGallonStandardSync.ts',
-  'src/hooks/useResolvedGallonSync.ts',
-  'src/hooks/useUnitFormat.ts',
-  'src/hooks/useUnitPreference.ts',
-  'src/pages/Analytics.tsx',
-  'src/pages/POIFinder.tsx',
-  'src/pages/ShopFinder.tsx',
-  'src/types/units.ts',
-  'src/utils/decimalSafe.ts',
-  'src/utils/publicUnitDefaults.ts',
-  'src/utils/telemetryUnits.ts',
-  'src/utils/unitFormat.ts',
-  // The corpus's own fixture path. `units_gate_corpus.py` creates this file,
-  // lints it, and deletes it; it is never committed. It is listed here because
-  // the rule is scoped by path, so a fixture outside the scope would prove
-  // nothing about the rule that actually runs.
-  //
-  // It lives under `scripts/` rather than `src/` on purpose. Round 1 put it in
-  // `src/`, where a run that died between the write and its `finally` left a
-  // file that made `validate-reachability.ts` fail. The rule is path-scoped, so
-  // a `scripts/` entry works identically and is outside every other gate's
-  // subject: `walkDir` in validate-units.ts and the reachability walk both stop
-  // at `src`.
-  'scripts/__units_corpus__.tsx',
+const UNITS_CONSTANT_EXEMPT = [
+  'src/utils/units.ts',
+  'src/utils/unitAdapters.ts',
+  'src/utils/supplyUnits.ts',
 ]
 
 export default tseslint.config(
@@ -218,14 +200,23 @@ export default tseslint.config(
       'no-restricted-syntax': ['warn', ...I18N_RESTRICTED],
     },
   },
-  // Unit gate, ESLint leg. Placed after the base block so it overrides that
-  // rule, and before the exemption blocks below so an exemption still wins:
-  // adding a file to UNITS_MIGRATED_FILES that is also exempted further down
-  // would turn the rule off for it, not on.
+  // Unit gate, ESLint leg. Ordering is load-bearing in both directions: this
+  // block comes after the base one so it overrides that rule, and the exempt
+  // block comes after this one so an exemption wins. Flat config replaces a
+  // rule's options rather than merging them, which is also why both blocks
+  // spread I18N_RESTRICTED back in.
   {
-    files: UNITS_MIGRATED_FILES,
+    files: UNITS_CONSTANT_SCOPE,
     rules: {
       'no-restricted-syntax': ['error', ...I18N_RESTRICTED, ...UNIT_CONSTANT_RESTRICTED],
+    },
+  },
+  // The three files where a factor belongs. They keep the i18n guards and lose
+  // only the constant rules, so exempting one cannot quietly drop the other.
+  {
+    files: UNITS_CONSTANT_EXEMPT,
+    rules: {
+      'no-restricted-syntax': ['warn', ...I18N_RESTRICTED],
     },
   },
   // openapi-typescript emits double-quoted strings and the file is regenerated
