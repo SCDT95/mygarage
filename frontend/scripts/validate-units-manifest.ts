@@ -51,18 +51,40 @@
  * from that gate rather than reimplemented here, because two copies of a walk
  * are two answers to "what is the universe" the first time one of them changes.
  *
+ * ★ AND WHAT THE DIGEST STILL DID NOT PIN, which a review found by mutating this
+ * file's subject rather than this file: the digest pins CONTENT, and nothing
+ * pinned the CONCLUSION. Downgrade every row to `no unit behaviour`, delete
+ * every finding, touch no source file, and the first version of this gate
+ * printed the permitted sentence and exited 0. The findings are the work list
+ * tasks 2 through 7 consume, so the cheapest path to a green row was to erase
+ * the finding rather than repair the file. Two rules close it:
+ *
+ *   [baseline]   `units.baseline.json` is a second, independently maintained
+ *                record of the same work for the 26 files the gate can see.
+ *                The two must agree, so an erasure in one fails against the
+ *                other.
+ *   [weakened]   a row whose digest is UNCHANGED may not lower its disposition
+ *                or lose a finding. A repair moves the digest; an erasure does
+ *                not. Residual, stated rather than implied: this pins that a
+ *                conclusion changed FOR A REASON, never that the reason was
+ *                good.
+ *
  * Usage:
  *   bun run scripts/validate-units-manifest.ts              # gate
  *   bun run scripts/validate-units-manifest.ts --update     # re-stamp digests
  *   bun run scripts/validate-units-manifest.ts --report     # disposition summary
  *   bun run scripts/validate-units-manifest.ts --root <dir> # another tree (selftest)
  *   bun run scripts/validate-units-manifest.ts --manifest <p>
- * Exit code: 1 on any parity, schema or digest failure.
+ *   bun run scripts/validate-units-manifest.ts --baseline <p>
+ *   bun run scripts/validate-units-manifest.ts --against-ref <ref>   # default HEAD
+ *   bun run scripts/validate-units-manifest.ts --against-file <p>
+ * Exit code: 1 on any parity, schema, digest, baseline or weakening failure.
  */
 
 import { createHash } from 'crypto'
+import { execFileSync } from 'child_process'
 import { existsSync, readdirSync, readFileSync, statSync, writeFileSync } from 'fs'
-import { join, relative, sep } from 'path'
+import { dirname, join, relative, sep } from 'path'
 import { ROOT } from './translation-utils'
 import { walkGraph } from './validate-reachability'
 
@@ -148,12 +170,37 @@ interface ManifestRow {
  * those apart: a checker that reported "something is wrong" would pass that
  * mutation test while checking the wrong thing.
  */
-type Tag = 'unlisted' | 'orphan' | 'duplicate' | 'schema' | 'digest'
+type Tag = 'unlisted' | 'orphan' | 'duplicate' | 'schema' | 'digest' | 'baseline' | 'weakened'
 
 interface Failure {
   tag: Tag
   path: string
   detail: string
+}
+
+/**
+ * How much work a disposition claims. Only the ORDER matters.
+ *
+ * `audited` is the only one that carries an obligation, so dropping to any other
+ * is a weakening. `unverifiable` and `domain exemption` rank together because
+ * both still assert that unit behaviour is present; `no unit behaviour` asserts
+ * there is nothing here at all, which is the cheapest thing a row can say and
+ * therefore the one an erasure reaches for.
+ */
+const DISPOSITION_RANK: Readonly<Record<string, number>> = {
+  audited: 3,
+  unverifiable: 2,
+  'domain exemption': 2,
+  'no unit behaviour': 1,
+}
+
+/** The shape a finding takes when it mirrors a `units.baseline.json` entry. */
+const BASELINE_FINDING = /^([a-z-]+) x(\d+) \(units gate baseline\)$/
+
+interface BaselineEntry {
+  file: string
+  kind: string
+  count: number
 }
 
 function sha256(path: string): string {
@@ -226,6 +273,157 @@ function loadManifest(path: string): ManifestRow[] {
 }
 
 /**
+ * The gate's own work list, keyed as the manifest records it.
+ *
+ * ★ WHY THIS CROSS-CHECK EXISTS, and it is the review finding this file was
+ * weakest on. The digest pins CONTENT. Nothing pinned the CONCLUSION. A reviewer
+ * downgraded all 83 non-trivial rows to `no unit behaviour` and deleted every
+ * finding, touched not one source file, and this gate printed
+ * "all 382 enumerated module(s) dispositioned at this reviewed snapshot" and
+ * exited 0. The findings are what tasks 2 through 7 consume, so the cheapest
+ * path to a green row was to erase the finding rather than repair the file.
+ *
+ * For the 26 files the gate can see, `units.baseline.json` is an independent
+ * record of the same work, maintained by a different program. Requiring the two
+ * to agree costs nothing (they already did, exactly, across every per-kind
+ * count) and means an erased finding fails here instead of passing quietly.
+ */
+function baselineWork(path: string): Map<string, Map<string, number>> {
+  let raw: string
+  try {
+    raw = readFileSync(path, 'utf-8')
+  } catch {
+    throw new Error(
+      `units baseline missing at ${path}. It is the second, independently maintained ` +
+        'record of the same work list, and without it a deleted finding is invisible. ' +
+        'Refusing to run. Pass --baseline to point at another one.',
+    )
+  }
+  const entries = JSON.parse(raw) as BaselineEntry[]
+  const work = new Map<string, Map<string, number>>()
+  for (const e of entries) {
+    const kinds = work.get(e.file) ?? new Map<string, number>()
+    kinds.set(e.kind, (kinds.get(e.kind) ?? 0) + e.count)
+    work.set(e.file, kinds)
+  }
+  return work
+}
+
+/** What a row's findings claim about the gate baseline, parsed back out. */
+function claimedWork(row: ManifestRow): Map<string, number> {
+  const claimed = new Map<string, number>()
+  for (const finding of row.findings ?? []) {
+    const m = BASELINE_FINDING.exec(finding)
+    if (m) claimed.set(m[1], (claimed.get(m[1]) ?? 0) + Number(m[2]))
+  }
+  return claimed
+}
+
+function sameCounts(a: Map<string, number>, b: Map<string, number>): boolean {
+  if (a.size !== b.size) return false
+  for (const [k, v] of a) if (b.get(k) !== v) return false
+  return true
+}
+
+function describe(counts: Map<string, number>): string {
+  return counts.size === 0
+    ? 'nothing'
+    : [...counts]
+        .sort()
+        .map(([k, n]) => `${k} x${n}`)
+        .join(', ')
+}
+
+/**
+ * The previous manifest, from a git ref or a file.
+ *
+ * Returns null when it cannot be read at all: no git, no such ref, or the
+ * manifest not yet committed. The caller REPORTS that rather than passing
+ * quietly, because "the drift check did not run" and "the drift check found
+ * nothing" are different sentences and only one of them is evidence.
+ */
+function previousManifest(
+  ref: string | null,
+  file: string | null,
+  manifestPath: string,
+): { rows: ManifestRow[]; from: string } | null {
+  if (file !== null) {
+    try {
+      return { rows: JSON.parse(readFileSync(file, 'utf-8')) as ManifestRow[], from: file }
+    } catch {
+      return null
+    }
+  }
+  if (ref === null) return null
+  const dir = dirname(manifestPath)
+  try {
+    const top = execFileSync('git', ['rev-parse', '--show-toplevel'], {
+      cwd: dir,
+      encoding: 'utf-8',
+      stdio: ['ignore', 'pipe', 'ignore'],
+    }).trim()
+    const relPath = relative(top, manifestPath).split(sep).join('/')
+    const text = execFileSync('git', ['show', `${ref}:${relPath}`], {
+      cwd: dir,
+      encoding: 'utf-8',
+      maxBuffer: 64 * 1024 * 1024,
+      stdio: ['ignore', 'pipe', 'ignore'],
+    })
+    return { rows: JSON.parse(text) as ManifestRow[], from: `${ref}:${relPath}` }
+  } catch {
+    return null
+  }
+}
+
+/**
+ * Conclusions may only weaken alongside a content change.
+ *
+ * ★ The rule, and the reason it is shaped this way: a LEGITIMATE downgrade always
+ * arrives with a content change, because you fixed the file, so its digest moved.
+ * An erasure touches only the manifest. So a row whose digest is unchanged may
+ * not lower its disposition or lose a finding.
+ *
+ * ★ AND THE RESIDUAL, stated rather than implied: this pins that a conclusion
+ * changed FOR A REASON. It cannot pin that the reason was good. Someone who
+ * genuinely re-concludes without touching the file must record the new
+ * conclusion in the file, which is a content change and shows up in the diff,
+ * and that is the most this mechanism can ask for.
+ */
+function conclusionDrift(before: ManifestRow[], after: ManifestRow[]): Failure[] {
+  const failures: Failure[] = []
+  const old = new Map(before.map((r) => [r.path, r]))
+  for (const row of after) {
+    const was = old.get(row.path)
+    if (was === undefined || was.digest !== row.digest) continue
+    const rankBefore = DISPOSITION_RANK[was.disposition] ?? 0
+    const rankAfter = DISPOSITION_RANK[row.disposition] ?? 0
+    if (rankAfter < rankBefore) {
+      failures.push({
+        tag: 'weakened',
+        path: row.path,
+        detail:
+          `disposition dropped from ${was.disposition} to ${row.disposition} while the ` +
+          'file did not change. A repair moves the digest; an erasure does not.',
+      })
+    }
+    const kept = new Set(row.findings ?? [])
+    for (const finding of was.findings ?? []) {
+      if (!kept.has(finding)) {
+        failures.push({
+          tag: 'weakened',
+          path: row.path,
+          detail:
+            `dropped a recorded finding while the file did not change: ` +
+            `${JSON.stringify(finding.slice(0, 90))}. Repair the file, or record the new ` +
+            'conclusion in it so the digest moves with the claim.',
+        })
+      }
+    }
+  }
+  return failures
+}
+
+/**
  * Everything wrong with the manifest, as tagged failures.
  *
  * Deliberately returns ALL of them rather than the first: this gate's own
@@ -233,7 +431,11 @@ function loadManifest(path: string): ManifestRow[] {
  * short-circuits on the first problem cannot distinguish "the digest caught it"
  * from "parity caught it and the digest was never reached".
  */
-export function checkManifest(root: string, rows: ManifestRow[]): Failure[] {
+export function checkManifest(
+  root: string,
+  rows: ManifestRow[],
+  baselinePath: string,
+): Failure[] {
   const failures: Failure[] = []
 
   const seen = new Set<string>()
@@ -373,6 +575,43 @@ export function checkManifest(root: string, rows: ManifestRow[]): Failure[] {
     }
   }
 
+  // The independent record of the same work, both directions.
+  const work = baselineWork(baselinePath)
+  const byPath = new Map(rows.filter((r) => typeof r?.path === 'string').map((r) => [r.path, r]))
+  for (const [file, kinds] of [...work].sort()) {
+    const row = byPath.get(file)
+    if (row === undefined) continue // parity already reported it
+    if (row.disposition !== 'audited') {
+      failures.push({
+        tag: 'baseline',
+        path: file,
+        detail:
+          `the units gate baselines ${describe(kinds)} here, so this row cannot be ` +
+          `${row.disposition}. Shrink the baseline by fixing the file, not the manifest.`,
+      })
+      continue
+    }
+    const claimed = claimedWork(row)
+    if (!sameCounts(claimed, kinds)) {
+      failures.push({
+        tag: 'baseline',
+        path: file,
+        detail: `records ${describe(claimed)}; the units gate baselines ${describe(kinds)}.`,
+      })
+    }
+  }
+  for (const row of rows) {
+    if (typeof row?.path !== 'string') continue
+    const claimed = claimedWork(row)
+    if (claimed.size > 0 && !work.has(row.path)) {
+      failures.push({
+        tag: 'baseline',
+        path: row.path,
+        detail: `records ${describe(claimed)} but the units gate baselines nothing here.`,
+      })
+    }
+  }
+
   return failures
 }
 
@@ -455,9 +694,40 @@ function main(): void {
     return
   }
 
+  const baselineIdx = argv.indexOf('--baseline')
+  const baselinePath =
+    baselineIdx === -1
+      ? join(root, 'scripts', 'units.baseline.json')
+      : (argv[baselineIdx + 1] ?? join(root, 'scripts', 'units.baseline.json'))
+
+  // Conclusion drift, against the last committed manifest by default. A worker
+  // erasing a finding locally fails before they can commit it; CI passes the
+  // merge base so the same erasure fails on the pull request.
+  const againstFileIdx = argv.indexOf('--against-file')
+  const againstRefIdx = argv.indexOf('--against-ref')
+  const againstFile = againstFileIdx === -1 ? null : (argv[againstFileIdx + 1] ?? null)
+  const againstRef =
+    againstFile !== null
+      ? null
+      : againstRefIdx === -1
+        ? 'HEAD'
+        : (argv[againstRefIdx + 1] ?? 'HEAD')
+
   const rows = loadManifest(manifestPath)
   if (args.has('--report')) report(rows)
-  const failures = checkManifest(root, rows)
+  const failures = checkManifest(root, rows, baselinePath)
+
+  const previous = previousManifest(againstRef, againstFile, manifestPath)
+  if (previous === null) {
+    // Said out loud, every run. "The drift check did not run" and "the drift
+    // check found nothing" are different sentences and only one is evidence.
+    console.log(
+      `  (conclusion drift NOT checked: no previous manifest at ` +
+        `${againstFile ?? againstRef ?? '<none>'})`,
+    )
+  } else {
+    failures.push(...conclusionDrift(previous.rows, rows))
+  }
 
   if (failures.length > 0) {
     const byTag = new Map<Tag, Failure[]>()
@@ -474,6 +744,13 @@ function main(): void {
         '  [orphan]     a row outlived its file. Delete the row.\n' +
         '  [duplicate]  two rows for one path: one disposition hides the other.\n' +
         '  [schema]     a row claims something it does not back up.\n' +
+        '  [baseline]   the manifest and units.baseline.json disagree about the\n' +
+        '               same work. They are maintained by different programs on\n' +
+        '               purpose, so a finding erased in one still fails here.\n' +
+        '  [weakened]   a conclusion got cheaper while the file stayed the same.\n' +
+        '               A repair moves the digest; an erasure does not. This\n' +
+        '               pins that a conclusion changed FOR A REASON, never that\n' +
+        '               the reason was good.\n' +
         '  [digest]     the file changed under a disposition made against older\n' +
         '               content. Re-read it, then `--update` to re-stamp. That\n' +
         '               re-stamp is an explicit re-acknowledgement; it is NOT\n' +
@@ -490,7 +767,8 @@ function main(): void {
     .join(', ')
   console.log(
     `✓ units manifest: all ${rows.length} enumerated module(s) dispositioned at this ` +
-      `reviewed snapshot (${summary}).`,
+      `reviewed snapshot (${summary})` +
+      `${previous === null ? '' : `, no conclusion weakened against ${previous.from}`}.`,
   )
 }
 

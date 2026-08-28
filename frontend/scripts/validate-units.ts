@@ -92,6 +92,7 @@
  *   bun run scripts/validate-units.ts --scan <file>    # JSON, one file (corpus)
  *   bun run scripts/validate-units.ts --baseline <p>   # use another baseline
  *   bun run scripts/validate-units.ts --src <dir>      # walk another tree (selftest)
+ *   bun run scripts/validate-units.ts --derived        # print the derived sets
  * Exit code: 1 when any key's occurrence count exceeds its baseline.
  */
 
@@ -946,6 +947,27 @@ function printReport(findings: Finding[]): void {
 function main(): void {
   const argv = process.argv.slice(2)
   const args = new Set(argv)
+
+  // ★ The derived sets, printable. The report for this change quoted them "from
+  // the gate's own constants" and there was no command that printed them: the
+  // block came from a scratchpad script, so a future reader could not reproduce
+  // it and the numbers would go stale exactly the way this file's own "the run
+  // prints it, prose goes stale" rule exists to prevent.
+  if (args.has('--derived')) {
+    console.log(
+      `BINARY_FORMATTER_METHODS (${BINARY_FORMATTER_METHODS.size}): ` +
+        [...BINARY_FORMATTER_METHODS].sort().join(', '),
+    )
+    console.log(
+      `BINARY_CONVERSION_HELPERS (${BINARY_CONVERSION_HELPERS.size}): ` +
+        [...BINARY_CONVERSION_HELPERS].sort().join(', '),
+    )
+    console.log(`QUANTITY_TOKENS (${QUANTITY_TOKENS.size}):`)
+    for (const [quantity, tokens] of [...QUANTITY_TOKENS].sort()) {
+      console.log(`   ${quantity.padEnd(14)}${[...tokens].sort().join(' ')}`)
+    }
+    return
+  }
 
   const scanIdx = argv.indexOf('--scan')
   if (scanIdx !== -1) {
