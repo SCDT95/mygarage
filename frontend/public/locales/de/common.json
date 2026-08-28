@@ -42,7 +42,9 @@
     "locationUnavailable": "Standortinformationen sind nicht verfügbar.",
     "locationTimeout": "Zeitüberschreitung bei der Standortabfrage.",
     "searchFailed": "Werkstattsuche fehlgeschlagen",
+    "searchAction": "Nach Werkstätten suchen",
     "saveFailed": "Werkstatt konnte nicht gespeichert werden",
+    "saveAction": "Werkstatt speichern",
     "savedToast": "{{name}} wurde im Adressbuch gespeichert!"
   },
   "success": "Erfolgreich",
@@ -83,7 +85,8 @@
     "registerLink": "Hier registrieren",
     "oidcSignIn": "Mit {{provider}} anmelden",
     "continueWithPassword": "Oder mit Passwort fortfahren",
-    "error": "Ungültiger Benutzername oder ungültiges Passwort"
+    "error": "Ungültiger Benutzername oder ungültiges Passwort",
+    "signInAction": "Anmelden"
   },
   "oidc": {
     "signingIn": "Anmeldung wird durchgeführt...",
@@ -132,11 +135,13 @@
     "gasStations": "Tankstellen",
     "gasStationsFilterHint": "Nur Tankstellen anzeigen, die aus Kraftstoffeinträgen erstellt wurden",
     "categoryRvPark": "Wohnmobilstellplatz",
+     "categoryGasStation": "Tankstelle",
     "categoryAll": "Alle",
-    "categoryGasStation": "Tankstelle",
-    "editContactNamed": "{{name}} bearbeiten",
     "filterByCategory": "Nach Kategorie filtern",
-    "saveChanges": "Änderungen speichern"
+    "editContactNamed": "{{name}} bearbeiten",
+    "saveChanges": "Änderungen speichern",
+    "saveAction": "Kontakt speichern",
+    "deleteAction": "Kontakt löschen"
   },
   "supplies": {
     "title": "Vorräte",
@@ -158,6 +163,11 @@
     "unitTypeCount": "Anzahl",
     "unitTypeImmutable": "Der Einheitentyp kann nach dem Erstellen eines Vorrats nicht mehr geändert werden.",
     "partNumber": "Teilenummer",
+    "barcode": "Barcode",
+    "scanBarcode": "Scannen",
+    "barcodeManualPrompt": "Das Scannen von Barcodes wird in diesem Browser nicht unterstützt. Gib den Barcode manuell ein:",
+    "barcodeNotFound": "In diesem Bild wurde kein Barcode gefunden",
+    "barcodeScanError": "Barcode konnte nicht gescannt werden",
     "category": "Kategorie",
     "vehicle": "Fahrzeug",
     "sharedAcrossVehicles": "Für alle Fahrzeuge freigegeben",
@@ -166,6 +176,7 @@
     "negativeWarning": "Der erfasste Verbrauch übersteigt die aufgezeichneten Einkäufe",
     "activeToggle": "Aktiv (Abwählen zum Archivieren)",
     "viewHistory": "Verlauf anzeigen",
+    "saveAction": "Lieferung speichern",
     "history": {
       "title": "Verlauf: {{name}}",
       "loading": "Verlauf wird geladen...",
@@ -204,7 +215,15 @@
       "receipt": "Beleg (optional)",
       "purchaseLogged": "Einkauf erfasst",
       "adjustmentLogged": "Anpassung erfasst",
-      "adjustmentHint": "Erfasst Bestandsabgänge außerhalb eines Serviceauftrags (z. B. Verschütten, verschenkt, entsorgt)."
+      "adjustmentHint": "Erfasst Bestandsabgänge außerhalb eines Serviceauftrags (z. B. Verschütten, verschenkt, entsorgt).",
+      "logPurchaseAction": "Kauf protokollieren",
+      "logAdjustmentAction": "Anpassung protokollieren",
+      "downloadAction": "Beleg herunterladen",
+      "purchaseDeleteAction": "Kauf löschen",
+      "receiptDeleteAction": "Beleg löschen",
+      "receiptUploadAction": "Beleg hochladen",
+      "adjustmentDeleteAction": "Anpassung löschen",
+      "loadAction": "Historie laden"
     },
     "usedTab": {
       "title": "Verwendete Vorräte",
@@ -213,8 +232,11 @@
       "loadError": "Verwendete Vorräte konnten nicht geladen werden",
       "empty": "Für dieses Fahrzeug wurden noch keine Vorräte erfasst.",
       "quantity": "Menge",
-      "viewVisit": "Servicebesuch anzeigen"
-    }
+      "viewVisit": "Servicebesuch anzeigen",
+      "loadAction": "Verbrauchte Materialien laden"
+    },
+    "deleteAction": "Material löschen",
+    "loadAction": "Materialien laden"
   },
   "poiFinder": {
     "title": "Points of Interest finden",
@@ -235,6 +257,7 @@
     "addressTooShort": "Gib eine Adresse ein (≥2 Zeichen)",
     "addressNotFound": "Keine Ergebnisse für diese Adresse",
     "geocodeFailed": "Geokodierung fehlgeschlagen",
+    "geocodeAction": "Adresse geokodieren",
     "categoryAutoShops": "Werkstätten",
     "categoryEvCharging": "E-Ladestationen",
     "categoryGasStations": "Tankstellen",
@@ -249,7 +272,9 @@
     "locationUnavailable": "Standortinformationen sind nicht verfügbar.",
     "locationTimeout": "Zeitüberschreitung bei der Standortabfrage.",
     "searchFailed": "Suche nach POIs fehlgeschlagen",
+    "searchAction": "Nach Points of Interest suchen",
     "saveFailed": "POI konnte nicht gespeichert werden",
+    "saveAction": "Point of Interest speichern",
     "savedToAddressBook": "{{name}} wurde im Adressbuch gespeichert!"
   },
   "about": {
@@ -308,6 +333,7 @@
   "deleting": "Wird gelöscht...",
   "enabled": "Aktiviert",
   "endDate": "Enddatum",
+  "engineHours": "Motorbetriebsstunden",
   "inactive": "Inaktiv",
   "installPrompt": {
     "title": "MyGarage installieren",
@@ -376,6 +402,7 @@
     "passwordRequirements": "Erforderlich: 8+ Zeichen, Großbuchstabe, Kleinbuchstabe, Zahl, Sonderzeichen (!@#$...)",
     "submitting": "Konto wird erstellt...",
     "failed": "Registrierung fehlgeschlagen. Bitte versuche es erneut.",
+    "createAccountAction": "Konto erstellen",
     "strength": {
       "weak": "Schwach",
       "medium": "Mittel",
@@ -397,7 +424,8 @@
     "returnToLogin": "Zurück zum Login",
     "missingToken": "Verknüpfungs-Token fehlt. Bitte starte den Login-Prozess neu.",
     "passwordRequired": "Passwort ist erforderlich",
-    "failed": "Konto konnte nicht verknüpft werden. Bitte versuche es erneut."
+    "failed": "Konto konnte nicht verknüpft werden. Bitte versuche es erneut.",
+    "linkAction": "Konto verknüpfen"
   },
   "protectedRoute": {
     "loadingAriaLabel": "Wird geladen"
@@ -432,7 +460,8 @@
     "cancel": "Abbrechen",
     "add": "Hinzufügen",
     "adding": "Wird hinzugefügt...",
-    "addFailed": "Eintrag konnte nicht hinzugefügt werden"
+    "addFailed": "Eintrag konnte nicht hinzugefügt werden",
+    "addAction": "Eintrag hinzufügen"
   },
   "addressBookAutocomplete": {
     "placeholder": "Tippen zum Suchen...",
@@ -501,6 +530,7 @@
       "nameTooLong": "Name zu lang",
       "unitTypeRequired": "Einheitentyp ist erforderlich",
       "partNumberTooLong": "Teilenummer zu lang",
+    "barcodeTooLong": "Barcode zu lang (max. 64 Zeichen)",
       "categoryTooLong": "Kategorie zu lang",
       "notesTooLong": "Notizen zu lang"
     },
@@ -511,27 +541,51 @@
     },
     "odometer": {
       "negative": "Kilometerstand kann nicht negativ sein",
-      "tooLarge": "Wert des Kilometerstands zu groß"
+      "tooLarge": "Wert des Kilometerstands zu groß",
+      "invalid": "Gib eine gültige Nummer ein",
+      "required": "Kilometerstand ist erforderlich"
+    },
+    "engineHours": {
+      "negative": "Motorbetriebsstunden können nicht negativ sein",
+      "tooLarge": "Wert der Motorbetriebsstunden ist zu groß",
+      "invalid": "Gib eine gültige Nummer ein",
+      "required": "Motorbetriebsstunden sind erforderlich"
     },
     "amount": {
       "negative": "Betrag kann nicht negativ sein",
-      "tooLarge": "Betrag zu groß"
+      "tooLarge": "Betrag zu groß",
+      "invalid": "Gib eine gültige Nummer ein",
+      "required": "Betrag ist erforderlich"
     },
     "volume": {
       "negative": "Volumen kann nicht negativ sein",
-      "tooLarge": "Volumen zu groß"
+      "tooLarge": "Volumen zu groß",
+      "invalid": "Gib eine gültige Nummer ein",
+      "required": "Menge ist erforderlich"
     },
     "price": {
       "negative": "Preis kann nicht negativ sein",
-      "tooLarge": "Preis zu groß"
+      "tooLarge": "Preis ist zu hoch",
+      "invalid": "Gib eine gültige Nummer ein",
+      "required": "Preis ist erforderlich"
     },
     "kwh": {
-      "negative": "kWh kann nicht negativ sein",
-      "tooLarge": "kWh zu groß"
+      "negative": "kWh können nicht negativ sein",
+      "tooLarge": "kWh-Wert ist zu groß",
+      "invalid": "Gib eine gültige Nummer ein"
     },
     "date": {
       "required": "Datum ist erforderlich",
       "invalidFormat": "Ungültiges Datumsformat"
+    },
+    "provider": {
+      "required": "Anbieter ist erforderlich"
+    },
+    "policyNumber": {
+      "required": "Versicherungsnummer ist erforderlich"
+    },
+    "policyType": {
+      "required": "Versicherungsart ist erforderlich"
     },
     "description": {
       "required": "Beschreibung ist erforderlich",
@@ -548,13 +602,16 @@
       "invalidFormat": "Ungültiges VIN-Format"
     },
     "spotRental": {
-      "nightlyRateNegative": "Der Preis pro Nacht kann nicht negativ sein",
-      "nightlyRateTooLarge": "Der Preis pro Nacht ist zu groß (maximal 9.999,99 $)",
-      "rateNegative": "Die Rate kann nicht negativ sein",
-      "rateTooLarge": "Die Rate ist zu groß (maximal 99.999,99 $)",
+      "nightlyRateNegative": "Übernachtungspreis kann nicht negativ sein",
+      "nightlyRateTooLarge": "Übernachtungspreis ist zu hoch (max. 9.999,99 $)",
+      "nightlyRateInvalid": "Gib eine gültige Nummer ein",
+      "rateNegative": "Tarif kann nicht negativ sein",
+      "rateTooLarge": "Tarif ist zu hoch (max. 99.999,99 $)",
+      "rateInvalid": "Gib eine gültige Nummer ein",
       "utilityNegative": "Nebenkosten können nicht negativ sein",
-      "utilityTooLarge": "Nebenkosten zu groß (maximal 9.999,99 $)",
-      "locationNameTooLong": "Standortname zu lang (maximal 100 Zeichen)"
+      "utilityTooLarge": "Nebenkosten sind zu hoch (max. 9.999,99 $)",
+      "utilityInvalid": "Gib eine gültige Nummer ein",
+      "locationNameTooLong": "Standortname ist zu lang (max. 100 Zeichen)"
     },
     "note": {
       "titleTooLong": "Titel zu lang (maximal 100 Zeichen)",
@@ -563,7 +620,29 @@
     },
     "def": {
       "fillLevelNegative": "Füllstand kann nicht negativ sein",
-      "fillLevelTooLarge": "Füllstand darf 100 % nicht überschreiten"
+      "fillLevelTooLarge": "Füllstand darf 100 % nicht überschreiten",
+      "fillLevelInvalid": "Gib eine gültige Nummer ein"
+    },
+    "tankQuantity": {
+      "negative": "Tankmenge muss größer als 0 sein",
+      "tooLarge": "Tankmenge ist zu groß",
+      "invalid": "Gib eine gültige Nummer ein",
+      "notWhole": "Tankmenge muss eine ganze Zahl sein"
+    },
+    "vehicle": {
+      "yearNotWhole": "Das Jahr muss eine ganze Zahl sein",
+      "yearTooEarly": "Das Jahr muss 1900 oder später sein",
+      "yearTooLate": "Das Jahr muss 2100 oder früher sein",
+      "yearInvalid": "Gib eine gültige Nummer ein",
+      "doorsNotWhole": "Die Anzahl der Türen muss eine ganze Zahl sein",
+      "doorsNegative": "Türen können nicht negativ sein",
+      "doorsTooLarge": "Wert für Türen ist zu groß",
+      "doorsInvalid": "Gib eine gültige Nummer ein",
+      "cylindersNotWhole": "Zylinder müssen eine ganze Zahl sein",
+      "cylindersNegative": "Zylinder können nicht negativ sein",
+      "cylindersTooLarge": "Wert für Zylinder ist zu groß",
+      "cylindersInvalid": "Gib eine gültige Nummer ein",
+      "purchasePriceInvalid": "Gib eine gültige Nummer ein"
     },
     "recall": {
       "campaignNumberTooLong": "Kampagnennummer zu lang (maximal 50 Zeichen)",
@@ -575,12 +654,11 @@
       "remedyTooLong": "Beschreibung der Abhilfe zu lang (maximal 2.000 Zeichen)"
     },
     "fuel": {
-      "fuelTypeTooLong": "Kraftstoffart zu lang",
-      "obcTripDurationFormat": "Verwende Sekunden (z. B. 8100), HH:MM (z. B. 2:15) oder HH:MM:SS"
-    },
-    "engineHours": {
-      "negative": "Motorstunden dürfen nicht negativ sein",
-      "tooLarge": "Wert für Motorstunden zu groß"
+      "fuelTypeTooLong": "Kraftstoffart ist zu lang",
+      "obcTripDurationFormat": "Verwende Sekunden (z. B. 8100), HH:MM (z. B. 2:15) oder HH:MM:SS",
+      "obcNegative": "Bordcomputer-Wert kann nicht negativ sein",
+      "obcTooLarge": "Bordcomputer-Wert ist zu groß",
+      "obcInvalid": "Gib eine gültige Nummer ein"
     }
   },
   "httpError": {
@@ -615,6 +693,5 @@
     "formSubmitFallback": "Ein Fehler ist aufgetreten",
     "actionFailed": "Fehler beim Ausführen von {{action}}. {{message}}",
     "actionFailedCheckInput": "Fehler beim Ausführen von {{action}}. Bitte überprüfe deine Eingabe."
-  },
-  "engineHours": "Motorstunden"
+  }
 }
