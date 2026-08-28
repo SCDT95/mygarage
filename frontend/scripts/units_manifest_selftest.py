@@ -75,9 +75,12 @@ LEGEND_SENTINEL = "The manifest is a REVIEWED SNAPSHOT"
 
 
 def build_tree(root: Path) -> None:
-    """A miniature frontend: an entry point, two modules, and both runtime roots."""
+    """A miniature frontend: an entry document, two modules, and the public tree."""
     (root / "src").mkdir(parents=True)
     (root / "public" / "locales" / "xx").mkdir(parents=True)
+    (root / "index.html").write_text("<!doctype html><title>t</title>\n")
+    (root / "public" / "offline.html").write_text("<p>offline</p>\n")
+    (root / "public" / "icon.png").write_bytes(b"\x89PNG\r\n\x1a\n")
     (root / "src" / "main.tsx").write_text("import './alpha'\nimport './beta'\n")
     (root / "src" / "alpha.ts").write_text("export const A = 1\n")
     # Named by the audited row below. Not imported from main.tsx, so it is not
@@ -136,9 +139,12 @@ def seed(root: Path, manifest: Path) -> None:
     rows = json.loads(manifest.read_text())
     for row in rows:
         if row["path"] == "src/alpha.ts":
-            # One audited row, so the schema rule below has something to bite.
+            # One audited row carrying both kinds of evidence, so every schema
+            # rule below has something to bite.
             row["disposition"] = "audited"
             row["tests"] = ["__tests__/alpha.test.ts"]
+            row["findings"] = ["a recorded finding"]
+            row["owners"] = ["task 6"]
         else:
             row["disposition"] = "no unit behaviour"
     manifest.write_text(json.dumps(rows, indent=1) + "\n")
@@ -300,11 +306,15 @@ def main() -> int:
         manifest.write_text(json.dumps(dup, indent=1) + "\n")
         check("duplicate-row", 1, {"duplicate"}, dup[0]["path"])
 
-        # An audited row backed by nothing.
+        # An audited row backed by nothing. BOTH kinds of evidence have to go:
+        # dropping only `tests` leaves `findings` standing, and the first version
+        # of this probe did exactly that and reported clean.
         bare = json.loads(pristine)
         for r in bare:
             if r["path"] == "src/alpha.ts":
                 r.pop("tests", None)
+                r.pop("findings", None)
+                r.pop("owners", None)
         manifest.write_text(json.dumps(bare, indent=1) + "\n")
         check("audited-without-evidence", 1, {"schema"}, "src/alpha.ts")
 
@@ -333,6 +343,30 @@ def main() -> int:
         manifest.write_text(json.dumps(phantom, indent=1) + "\n")
         check("test-id-names-nothing", 1, {"schema"}, "src/alpha.ts")
 
+        # An owner spelled a way nothing greps for.
+        misowned = json.loads(pristine)
+        for r in misowned:
+            if r["path"] == "src/alpha.ts":
+                r["owners"] = ["Task 6 (units)"]
+        manifest.write_text(json.dumps(misowned, indent=1) + "\n")
+        check("owner-not-in-the-enum", 1, {"schema"}, "src/alpha.ts")
+
+        # A finding nobody holds.
+        unowned = json.loads(pristine)
+        for r in unowned:
+            if r["path"] == "src/alpha.ts":
+                r.pop("owners", None)
+        manifest.write_text(json.dumps(unowned, indent=1) + "\n")
+        check("finding-without-an-owner", 1, {"schema"}, "src/alpha.ts")
+
+        # An owner holding nothing.
+        idle = json.loads(pristine)
+        for r in idle:
+            if r["path"] == "src/beta.ts":
+                r["owners"] = ["task 6"]
+        manifest.write_text(json.dumps(idle, indent=1) + "\n")
+        check("owner-without-a-finding", 1, {"schema"}, "src/beta.ts")
+
         # A disposition nobody defined.
         invented = json.loads(pristine)
         for r in invented:
@@ -350,8 +384,14 @@ def main() -> int:
         print("\nthe named runtime roots, which the import walker cannot reach")
         print("-" * 78)
         for label, path in (
+            ("entry document", root / "index.html"),
             ("service worker", root / "public" / "sw.js"),
             ("locale bundle", root / "public" / "locales" / "xx" / "common.json"),
+            ("offline page", root / "public" / "offline.html"),
+            # ★ A binary asset, on purpose. The universe rule has no extension
+            # filter, and this probe is what stops a future "just skip images"
+            # from putting a judgement back in the middle of the universe.
+            ("binary asset", root / "public" / "icon.png"),
         ):
             rows_now = json.loads(pristine)
             target = str(path.relative_to(root))
@@ -388,7 +428,7 @@ def main() -> int:
     print(
         "MANIFEST SELFTEST: the three R9 directions each fired, the digest one on its "
         "own tag; deleting the digest rule silenced it and deleting parity silenced the "
-        "other two; and both named runtime roots are enforced."
+        "other two; and every named runtime root is enforced, the entry document and a binary asset among them."
     )
     return 0
 

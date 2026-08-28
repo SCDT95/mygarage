@@ -32,20 +32,22 @@
  * appears in the diff, not that it is honest.
  *
  * ★ THE UNIVERSE IS STATED, NOT INFERRED. `validate-reachability.ts` walks
- * textual imports from `src/main.tsx`, and it CANNOT follow two things this
- * phase actually has to touch:
+ * textual imports from `src/main.tsx`, so it cannot see the document that loads
+ * `src/main.tsx`, nor anything served rather than imported:
  *
+ *   - `index.html`, the entry document;
  *   - the service worker, registered by URL (`main.tsx`);
- *   - the non-English locale resources, loaded by HTTP URL template (`i18n.ts`).
+ *   - the non-English locale resources, loaded by HTTP URL template (`i18n.ts`);
+ *   - `offline.html` and `manifest.json`, which `sw.js` precaches by name.
  *
- * The second is not academic. The settings screen tells a
+ * The locale bundles are not academic. The settings screen tells a
  * `{volume:'L', distance:'mi', pressure:'psi'}` user "Using metric units:
  * liters, kilometers, L/100km, °C, bar, kg, Nm" in SIX languages, and nothing
  * in the walker would have said those files existed.
  *
- * So the universe is: every file `validate-reachability.ts` recognises as
- * reachable, PLUS the explicitly named runtime roots. Anything outside that is
- * out of scope BY STATEMENT rather than by accident. `walkGraph` is imported
+ * So the universe is: every file `validate-reachability.ts` recognises, PLUS the
+ * entry document, PLUS everything shipped under `public/`. Anything outside that
+ * is out of scope BY STATEMENT rather than by accident. `walkGraph` is imported
  * from that gate rather than reimplemented here, because two copies of a walk
  * are two answers to "what is the universe" the first time one of them changes.
  *
@@ -67,16 +69,53 @@ import { walkGraph } from './validate-reachability'
 const DEFAULT_MANIFEST = join(ROOT, 'scripts', 'units.manifest.json')
 
 /**
- * Runtime roots the import walker cannot reach, named one by one.
+ * Runtime roots the import walker cannot reach.
  *
- * `sw.js` is a literal path because there is exactly one service worker and its
- * disappearance should be loud. The locale bundles are ENUMERATED rather than
- * listed, so a seventh language arrives in the universe on the day its
- * directory does, and a deleted one fails parity instead of silently shrinking
- * the snapshot.
+ * ★ THE RULE HAS NO SEMANTIC STEP, AND THAT IS THE SECOND REVISION OF IT.
+ * The first version named `public/sw.js` and enumerated `public/locales`, which
+ * is what R9 described. A review then found the universe was itself a floor in
+ * the shape of the previous nineteen: `index.html`, `public/offline.html` and
+ * `public/manifest.json` are all shipped and user-facing, `sw.js` precaches two
+ * of them by name, and none of the three was in scope. No unit text in them
+ * today, so no live defect, but they were out by OMISSION rather than by
+ * statement, and that distinction is the whole of R9's closing sentence.
+ *
+ * So the rule is now mechanical: the entry document, plus EVERY file under
+ * `public/`, with no extension filter. That deliberately includes the two PNG
+ * icons. Filtering to "files that can carry text" would put a judgement back in
+ * the middle of the universe, and a judgement is the thing that relocates: an
+ * SVG carries text, a JSON does, a `.txt` does, and the next person's list will
+ * not match this one's. A binary asset costs one cheap re-acknowledgement on the
+ * rare day it changes, which is a better trade than a filter nobody can audit.
  */
-const SERVICE_WORKER = join('public', 'sw.js')
-const LOCALES_DIR = join('public', 'locales')
+const ENTRY_DOCUMENT = 'index.html'
+const PUBLIC_DIR = 'public'
+
+/**
+ * Who repairs a recorded finding. An ENUM, not free text.
+ *
+ * The first version of this manifest put the owner inside the finding string,
+ * and 47 rows produced twelve different spellings of it ("task 6", "tasks 4, 6
+ * and 7", "task 2 (R1 composition)", "task 6, jointly with ..."). Tasks 2
+ * through 7 consume this list as their work list, so a spelling nobody greps
+ * for is an orphaned work item, and prose cannot be checked.
+ *
+ * `deferred` is a real member rather than an escape hatch: some recorded
+ * observations are genuinely outside this phase, and a row that says so
+ * explicitly is better than one that invents an owner to satisfy a schema.
+ */
+const OWNERS = new Set([
+  'task 2',
+  'task 3',
+  'task 4',
+  'task 5',
+  'task 6',
+  'task 7',
+  'task 8',
+  'task 9',
+  'phase 4',
+  'deferred',
+])
 
 /** The dispositions a row may carry. Anything else fails. */
 const DISPOSITIONS = new Set([
@@ -97,6 +136,7 @@ interface ManifestRow {
   reason?: string
   tests?: string[]
   findings?: string[]
+  owners?: string[]
 }
 
 /**
@@ -125,27 +165,27 @@ function rel(root: string, absolute: string): string {
   return relative(root, absolute).split(sep).join('/')
 }
 
-function localeBundles(root: string): string[] {
-  const dir = join(root, LOCALES_DIR)
-  if (!existsSync(dir)) {
+/** Every file shipped under `public/`, recursively. No filter, by design. */
+function shippedPublicFiles(root: string): string[] {
+  const base = join(root, PUBLIC_DIR)
+  if (!existsSync(base)) {
     throw new Error(
-      `${LOCALES_DIR} does not exist under ${root}. The locale bundles are a named ` +
-        'part of this manifest\'s universe, and a universe that silently loses a part ' +
-        'is the failure this file exists to prevent. Refusing to run.',
+      `${PUBLIC_DIR}/ does not exist under ${root}. Everything shipped there is a ` +
+        'named part of this manifest\'s universe, and a universe that silently loses ' +
+        'a part is the failure this file exists to prevent. Refusing to run.',
     )
   }
   const out: string[] = []
-  for (const lng of readdirSync(dir).sort()) {
-    const lngDir = join(dir, lng)
-    if (!statSync(lngDir).isDirectory()) continue
-    for (const file of readdirSync(lngDir).sort()) {
-      if (file.endsWith('.json')) out.push(rel(root, join(lngDir, file)))
+  const walk = (dir: string): void => {
+    for (const entry of readdirSync(dir).sort()) {
+      const full = join(dir, entry)
+      if (statSync(full).isDirectory()) walk(full)
+      else out.push(rel(root, full))
     }
   }
+  walk(base)
   if (out.length === 0) {
-    throw new Error(
-      `no locale bundles found under ${LOCALES_DIR}. See above: refusing to run.`,
-    )
+    throw new Error(`nothing found under ${PUBLIC_DIR}/. See above: refusing to run.`)
   }
   return out
 }
@@ -159,15 +199,16 @@ export function universeOf(root: string): string[] {
         'read as an orphan and an empty manifest would pass. Refusing to run.',
     )
   }
-  const sw = rel(root, join(root, SERVICE_WORKER))
-  if (!existsSync(join(root, SERVICE_WORKER))) {
+  if (!existsSync(join(root, ENTRY_DOCUMENT))) {
     throw new Error(
-      `${SERVICE_WORKER} is missing. It is a NAMED runtime root of this manifest ` +
-        '(registered by URL, so the walker cannot follow it), and dropping it here ' +
-        'would shrink the universe silently. Refusing to run.',
+      `${ENTRY_DOCUMENT} is missing. It is the document that loads the module graph, ` +
+        'so the walker starts one level below it and can never see it, and dropping ' +
+        'it here would shrink the universe silently. Refusing to run.',
     )
   }
-  return [...new Set([...walker, sw, ...localeBundles(root)])].sort()
+  return [
+    ...new Set([...walker, ENTRY_DOCUMENT, ...shippedPublicFiles(root)]),
+  ].sort()
 }
 
 function loadManifest(path: string): ManifestRow[] {
@@ -244,6 +285,36 @@ export function checkManifest(root: string, rows: ManifestRow[]): Failure[] {
     const reason = (row.reason ?? '').trim()
     const tests = row.tests ?? []
     const findings = row.findings ?? []
+    const owners = row.owners ?? []
+    // A finding with no owner is a work item nobody is holding; an owner with no
+    // finding is a name attached to no work. Both directions, because only
+    // checking one of them leaves the other free.
+    if (findings.length > 0 && owners.length === 0) {
+      failures.push({
+        tag: 'schema',
+        path: where,
+        detail: 'records findings but names no owner, so nothing holds the work item',
+      })
+    }
+    if (owners.length > 0 && findings.length === 0) {
+      failures.push({
+        tag: 'schema',
+        path: where,
+        detail: 'names an owner but records no finding for them to repair',
+      })
+    }
+    for (const owner of owners) {
+      if (!OWNERS.has(owner)) {
+        failures.push({
+          tag: 'schema',
+          path: where,
+          detail:
+            `owner ${JSON.stringify(owner)} is not one of ${[...OWNERS].join(', ')}. ` +
+            'Free-text owners produced twelve spellings across 47 rows, and a spelling ' +
+            'nobody greps for is an orphaned work item.',
+        })
+      }
+    }
     if ((row.disposition === 'domain exemption' || row.disposition === 'unverifiable') && !reason) {
       failures.push({
         tag: 'schema',
