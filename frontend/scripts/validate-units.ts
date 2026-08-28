@@ -26,8 +26,10 @@
  * yet. How many is deliberately not written here: `units.baseline.json` is the
  * measurement and `--report` prints it. An earlier version of this line said
  * "~53" while the baseline twelve lines away said 43, which is the same defect
- * this gate exists to prevent, one level up. It is modelled on `validate-hardcoded-strings.ts`, with one
- * deliberate difference: that script stores `(file, kind, text)` in a `Set`, so
+ * this gate exists to prevent, one level up.
+ *
+ * It is modelled on `validate-hardcoded-strings.ts`, with one deliberate
+ * difference: that script stores `(file, kind, text)` in a `Set`, so
  * adding a SECOND identical `system === 'metric'` to a file that already has
  * one yields the same key and passes. Every key here carries a COUNT and the
  * gate fails when the count RISES. Line numbers stay out of the key so that

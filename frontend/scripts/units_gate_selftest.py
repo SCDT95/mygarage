@@ -785,7 +785,7 @@ def eslint_messages(path: Path, config: str | None = None) -> list[str]:
 
 
 def scope_proof() -> list[str]:
-    """T4-R6: the constant rule's scope is real, proved three ways.
+    """T4-R6: the constant rule's scope is real, proved four ways.
 
     ★ Rewritten for round 5. The rule used to be opt-in over a list of migrated
     paths, and the whole-branch review measured what nobody had: running it over
@@ -837,7 +837,20 @@ def scope_proof() -> list[str]:
         before = eslint_messages(probe)
         if before:
             failures.append(f"scope: an exempt file was flagged: {before}")
-        CFG_MUTANT.write_text(original.replace("  'src/utils/unitAdapters.ts',\n", ""))
+        # Anchor 2 gets the same existence check anchor 1 has. Without it a
+        # rename here fails only as a downstream outcome, reported as
+        # "un-exempting did not flag it" when the un-exempting never happened:
+        # a misattributing message, which is worse than a loud one because it
+        # sends the reader to the wrong file. The PATTERN guard does not reach
+        # this function, so nothing else would catch it.
+        exempt_anchor = "  'src/utils/unitAdapters.ts',\n"
+        if exempt_anchor not in original:
+            failures.append(
+                f"scope: the exemption anchor {exempt_anchor.strip()!r} is missing "
+                "from eslint.config.js, so the EXEMPT check cannot run"
+            )
+            return failures
+        CFG_MUTANT.write_text(original.replace(exempt_anchor, ""))
         after = eslint_messages(probe, str(CFG_MUTANT.relative_to(FRONTEND)))
         if len(after) != 1 or "Raw unit-conversion constant" not in after[0]:
             failures.append(f"scope: un-exempting unitAdapters.ts did not flag it: {after}")
@@ -1115,7 +1128,7 @@ def main() -> int:
                 )
             )
 
-        print("\nT4-R6: the ESLint leg's files: scope, proved three ways")
+        print("\nT4-R6: the ESLint leg's files: scope, proved four ways")
         print("-" * 78)
         failures += scope_proof()
 

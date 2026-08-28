@@ -214,6 +214,12 @@ describe('FuelRecordForm — the gallon comes from the user, not the instance', 
   it('EDIT: an ordinary gal_uk record shifts ONCE onto the entry grid', async () => {
     UnitConverter.setGallonStandard('us')
     unitPrefMock.units = UK_IMPERIAL_UNITS
+    // ★ Named so the assertions below can say "this MOVED". Without that, the
+    // two tests in this pair are distinguished only by their fixtures, and
+    // swapping the fixtures leaves both green while they describe the same
+    // case: a survivor found by mutating the test rather than the code.
+    const STORED_LITERS = 22.712
+    const STORED_PRICE = 1.32
 
     render(
       <FuelRecordForm
@@ -222,8 +228,8 @@ describe('FuelRecordForm — the gallon comes from the user, not the instance', 
           id: 9,
           vin: VIN,
           date: '2026-02-10',
-          liters: 22.712,
-          price_per_unit: 1.32,
+          liters: STORED_LITERS,
+          price_per_unit: STORED_PRICE,
           price_basis: 'per_volume',
           cost: 30.01,
         } as never}
@@ -238,10 +244,15 @@ describe('FuelRecordForm — the gallon comes from the user, not the instance', 
     fireEvent.submit(drawerForm())
     await waitFor(() => expect(mockedApiPut).toHaveBeenCalled())
     const payload = mockedApiPut.mock.calls[0][1] as Record<string, unknown>
-    // NOT 22.712 and NOT 1.32. The once-only shift is asserted here rather than
+    // The fixture is deliberately NOT on the entry grid, so both values move.
+    expect(payload.liters).not.toBe(STORED_LITERS)
+    expect(payload.price_per_unit).not.toBe(STORED_PRICE)
+    // And they move to exactly here: the once-only shift asserted rather than
     // hidden behind a fixture chosen so it cannot appear.
     expect(payload.liters).toBe(22.73)
     expect(payload.price_per_unit).toBe(1.32003545904)
+    // Cost is recomputed from the two above, so it must be stated too.
+    expect(payload.cost).toBe(30.01)
   })
 
   it('EDIT: a gal_uk record already on the entry grid is a fixed point', async () => {
@@ -251,6 +262,13 @@ describe('FuelRecordForm — the gallon comes from the user, not the instance', 
     UnitConverter.setGallonStandard('us')
     unitPrefMock.units = UK_IMPERIAL_UNITS
 
+    // ★ The other half of the pin: this fixture IS on the entry grid, and the
+    // assertions say so by comparing against the stored values themselves.
+    // Swap these two fixtures and both tests fail, which is what stops the pair
+    // from silently collapsing into one case.
+    const STORED_LITERS = 22.73
+    const STORED_PRICE = 1.32003545904
+
     render(
       <FuelRecordForm
         {...DEFAULT_PROPS}
@@ -258,8 +276,8 @@ describe('FuelRecordForm — the gallon comes from the user, not the instance', 
           id: 9,
           vin: VIN,
           date: '2026-02-10',
-          liters: 22.73,
-          price_per_unit: 1.32003545904,
+          liters: STORED_LITERS,
+          price_per_unit: STORED_PRICE,
           price_basis: 'per_volume',
           cost: 30.01,
         } as never}
@@ -272,8 +290,9 @@ describe('FuelRecordForm — the gallon comes from the user, not the instance', 
     fireEvent.submit(drawerForm())
     await waitFor(() => expect(mockedApiPut).toHaveBeenCalled())
     const payload = mockedApiPut.mock.calls[0][1] as Record<string, unknown>
-    expect(payload.liters).toBe(22.73)
-    expect(payload.price_per_unit).toBe(1.32003545904)
+    expect(payload.liters).toBe(STORED_LITERS)
+    expect(payload.price_per_unit).toBe(STORED_PRICE)
+    expect(payload.cost).toBe(30.01)
   })
 
   it('the price-basis labels name the units the conversion actually uses', async () => {

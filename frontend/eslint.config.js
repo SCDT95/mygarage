@@ -128,12 +128,23 @@ const UNITS_CONSTANT_SCOPE = ['src/**/*.{ts,tsx}', 'scripts/__units_corpus__.tsx
  *                              table (US_GALLONS_TO_LITERS, MILES_TO_KM, and
  *                              the rest). Note it is ALSO silenced outright by
  *                              the i18n-utility exemption further down, which
- *                              wins by ordering: listing it here is honest
+ *                              wins by ordering, so listing it here is honest
  *                              documentation rather than the thing doing the
- *                              work, and a reviewer measured that widening the
- *                              glob produces zero findings from it despite five
- *                              conversion factors. Deciding whether the factor
- *                              table should stay silent is a phase 3b call.
+ *                              work: removing this entry alone changes nothing.
+ *
+ *                              ★ MEASURED, by removing BOTH exemptions and
+ *                              linting the file: 12 findings, not the 5 an
+ *                              earlier version of this note claimed from an
+ *                              unmeasured count of the constant table. Ten are
+ *                              the table itself (:95-:105), and the other two
+ *                              are the part that makes this a phase 3b decision
+ *                              rather than a formality: a `9/5 + 32` idiom at
+ *                              :333 and an inline `1.60934` at :943 in
+ *                              `formatCostPerDistance`, neither of which is a
+ *                              named constant anybody would find by reading the
+ *                              table. Whether the converter stays silent is
+ *                              3b's call; what it is silent ABOUT is now
+ *                              reproducible rather than asserted.
  *   src/utils/unitAdapters.ts  Holds `IN32_TO_MM = 25.4 / 32`, the millimetre
  *                              factor the frontend did not have at all until
  *                              the adapter supplied it. Same role as units.ts.
