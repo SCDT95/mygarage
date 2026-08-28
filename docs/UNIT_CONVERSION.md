@@ -100,7 +100,16 @@ User sees: 100 km
 #### UnitConverter Class
 Located in `frontend/src/utils/units.ts`
 
-Provides static methods for bidirectional conversion:
+Provides static methods for bidirectional conversion.
+
+> **This listing is stale beyond the two lines phase 3b task 2 corrected.** Six
+> of the names below have never existed under these spellings (`mpgToLPer100Km`,
+> `lPer100KmToMpg`, `psiToKpa`, `kpaToPsi`, `ftLbsToNm`, `nmToFtLbs`; the real
+> ones are `mpgToL100km`, `l100kmToMpg`, `psiToKPa`, `kPaToPsi`, `lbftToNm`,
+> `nmToLbft`), and nine of the methods listed have no caller left anywhere in the
+> frontend. The temperature pair was removed here because it went from misleading
+> to FALSE when task 2 deleted it; the rest predates that change and a full
+> rewrite of this document is deferred. Read `frontend/src/utils/units.ts`.
 
 ```typescript
 // Distance conversions
@@ -114,10 +123,6 @@ UnitConverter.litersToGallons(liters: number): number
 // Fuel economy conversions
 UnitConverter.mpgToLPer100Km(mpg: number): number
 UnitConverter.lPer100KmToMpg(lPer100Km: number): number
-
-// Temperature conversions
-UnitConverter.fahrenheitToCelsius(f: number): number
-UnitConverter.celsiusToFahrenheit(c: number): number
 
 // Pressure conversions
 UnitConverter.psiToBar(psi: number): number

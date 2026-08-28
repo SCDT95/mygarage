@@ -700,11 +700,13 @@
    "findings": [
     "binary-conversion x1 (units gate baseline)",
     "compare x4 (units gate baseline)",
-    "formatter-binary x2 (units gate baseline)"
+    "formatter-binary x2 (units gate baseline)",
+    "USER-VISIBLE LABEL CHANGE, pinned so it cannot ship silently: the tank-size field is labelled from UnitFormatter.getWeightUnit(system), which answers 'lbs', while getMassUnit and UNIT_ADAPTERS.lb both answer 'lb'. unitAdapters.ts records that its labels match the backend's table character for character precisely so a call-site migration is not a visible regression; 'lbs' is the one place the old binary API disagrees. Nothing pinned the string until task 2 added the assertion in components/__tests__/PropaneRecordForm.test.tsx, so task 3's migration would have changed it silently. Task 3 changes the assertion on purpose; task 9 puts the label change in the changelog."
    ],
    "owners": [
     "task 3",
-    "task 7"
+    "task 7",
+    "task 9"
    ]
   },
   {

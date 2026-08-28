@@ -908,6 +908,24 @@ def version_probe(root: Path, manifest: Path, tmp: Path) -> list[str]:
     return failures
 
 
+def preserved_fields() -> list[str]:
+    """The optional row fields the checker's `seed()` carries across `--update`.
+
+    Read from the checker rather than listed, because the whole point of the
+    round-trip probe is to catch a field somebody forgot, and a hand-written
+    list here would be one more place to forget it.
+    """
+    text = CHECKER_SRC.read_text()
+    body = re.search(
+        r"^function seed\(root: string, rows: ManifestRow\[\]\): ManifestRow\[\] \{(.*?)^\}",
+        text,
+        re.S | re.M,
+    )
+    if body is None:
+        raise SystemExit("could not read the checker's seed() to derive its preserved fields")
+    return sorted(set(re.findall(r"if \(existing\?\.(\w+)", body.group(1))))
+
+
 def round_trip_probe(root: Path, manifest: Path) -> list[str]:
     """`--update` must be a FIXED POINT on a fully dispositioned manifest.
 
@@ -916,11 +934,43 @@ def round_trip_probe(root: Path, manifest: Path) -> list[str]:
     That is nastier than its size: `--update` is the documented remedy for a
     [digest] failure, and the natural way to clear the schema errors it causes
     is to delete the findings, which [weakened] then holds shut. The remedy led
-    into a trap the guard kept closed. This probe catches the NEXT field
-    somebody forgets, not only that one.
+    into a trap the guard kept closed.
+
+    ★ AND IT CATCHES THE NEXT FIELD ONLY IF THE FIXTURE CARRIES IT. The byte
+    comparison cannot distinguish "reason survived" from "no row had a reason",
+    so for one revision this probe reported success for a field it never
+    exercised while the harness's closing sentence claimed the coverage. The
+    kept-field check below closes that: the preserved set is derived from the
+    checker's own `seed()`, and a field the fixture does not carry fails here
+    instead of passing quietly.
     """
     failures: list[str] = []
     before = manifest.read_text()
+
+    # ★ WHICH FIELDS THIS ACTUALLY EXERCISED, said out loud. The byte comparison
+    # below is silent about coverage: it passes identically whether the fixture
+    # carries `reason` or has never heard of it, so at exit 0 you cannot tell a
+    # probe that covered every field from one that covered three of four. That
+    # is the t=0 problem inside a probe, and it is exactly how `reason` sat
+    # uncovered behind a sentence claiming the opposite. A field the checker
+    # preserves and the fixture omits is now a FAILURE, not a silence.
+    preserved = preserved_fields()
+    carried = {key for row in rows_of(before) for key in row}
+    uncovered = [field for field in preserved if field not in carried]
+    print(
+        f"  {'the fixture carries every kept field':<38} "
+        + (
+            f"{len(preserved)} of {len(preserved)}: {', '.join(preserved)}"
+            if not uncovered
+            else f"*** uncovered: {uncovered} ***"
+        )
+    )
+    if uncovered:
+        failures.append(
+            f"round trip: the checker preserves {preserved} but the fixture carries "
+            f"none of {uncovered}, so this probe cannot see them dropped"
+        )
+
     subprocess.run(
         ["bun", "run", CHECKER, "--update", "--root", str(root), "--manifest", str(manifest)],
         cwd=FRONTEND,
@@ -1078,9 +1128,10 @@ def main() -> int:
         "against a real repository and says what it compared; every degraded comparison "
         "warns and claims nothing; a format migration stands down the erased-finding "
         "half ONLY, so a disposition lowered across a version bump is still caught and "
-        "so is an erasure inside one version; --update is a fixed point over every field "
-        "the fixture carries, `reason` among them; and every named runtime root is "
-        "enforced, the entry document and a binary asset among them."
+        "so is an erasure inside one version; --update is a fixed point, over a fixture "
+        "CHECKED to carry every field the checker preserves rather than assumed to; "
+        "and every named runtime root is enforced, the entry document and a binary "
+        "asset among them."
     )
     return 0
 

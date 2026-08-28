@@ -1,4 +1,5 @@
 import { describe, it, expect } from 'vitest'
+import { execFileSync } from 'node:child_process'
 import { readFileSync, readdirSync, statSync } from 'node:fs'
 import { join, relative, resolve } from 'node:path'
 import * as ts from 'typescript'
@@ -50,6 +51,50 @@ const FORMATTER_CLASS = 'UnitFormatter'
 
 /** The parameter annotation that makes a method a binary unit decision. */
 const BINARY_SYSTEM_TYPE = 'UnitSystem'
+
+/**
+ * The runtime to re-run the gate under.
+ *
+ * `bun run test:run` makes `process.execPath` the bun binary, which is the one
+ * CI uses; the bare name is the fallback for any other runner.
+ */
+const BUN = /(?:^|[\\/])bun(?:\.exe)?$/.test(process.execPath) ? process.execPath : 'bun'
+
+/**
+ * The same set, derived a second time by `scripts/validate-units.ts --derived`.
+ *
+ * ★ WHY PARITY AND NOT "DERIVE ONE FROM THE OTHER". This file walks the AST of
+ * `units.ts` and so does `validate-units.ts:deriveBinaryFormatterMethods`, in a
+ * different language, and two implementations of one rule with nothing tying
+ * them together is the shape this workstream has spent twenty-two instances
+ * learning to distrust. Consuming the gate's answer here would remove the
+ * duplication but also the independence: a change that narrowed the GATE's
+ * derivation would narrow this test in the same breath and nothing would say
+ * so. Asserting they AGREE catches drift in either direction, which is the
+ * property actually wanted, and the run costs 0.2 s.
+ *
+ * @returns The method names the gate derives, sorted.
+ */
+function gateDerivedMethods(): string[] {
+  const out = execFileSync(BUN, ['run', 'scripts/validate-units.ts', '--derived'], {
+    cwd: FRONTEND,
+    encoding: 'utf-8',
+  })
+  const line = /^BINARY_FORMATTER_METHODS \((\d+)\): (.*)$/m.exec(out)
+  if (line === null) {
+    // A silent zero here would make the parity assertion vacuously true, which
+    // is the failure this file exists one level down to prevent.
+    throw new Error(`could not read the gate's derived set from:\n${out}`)
+  }
+  const names = line[2]
+    .split(',')
+    .map((name) => name.trim())
+    .filter((name) => name.length > 0)
+  if (names.length !== Number(line[1])) {
+    throw new Error(`the gate said ${line[1]} methods and listed ${names.length}`)
+  }
+  return [...names].sort()
+}
 
 /**
  * Parse one file, refusing to report a file the parser choked on as clean.
@@ -152,6 +197,13 @@ function callersByMethod(methods: string[]): Map<string, string[]> {
 }
 
 describe('the binary UnitFormatter surface', () => {
+  it('derives the same set the units gate derives, in the other language', () => {
+    // The gate's `formatter-binary` leg only reports call sites for methods in
+    // ITS set. If the two derivations drift, one of them is reporting on a
+    // surface the other cannot see, and neither would say so.
+    expect(binaryFormatterMethods()).toEqual(gateDerivedMethods())
+  })
+
   it('derives the binary methods from units.ts rather than listing them', () => {
     // A derivation that silently found nothing would make the real assertion
     // below vacuously true, so the count is pinned. Nine is what plan 3b leaves
