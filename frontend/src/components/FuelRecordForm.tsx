@@ -198,6 +198,17 @@ export default function FuelRecordForm({ vin, record, onClose, onSuccess }: Fuel
    * computed once: an origin that moved on re-render would stop being an
    * origin. Volume and price are deliberately NOT here; they are react-hook-
    * form number fields whose own round trip Task 2 already made exact.
+   *
+   * ★ One assumption is worth stating rather than defending against.
+   * `canonicalFromUnitField` decides "the user did not touch this" by string
+   * comparison against `toInputValue`, i.e. `toFixed(precision)`. The
+   * temperature field HOLDS that string, so it compares like with like; the
+   * odometer is a react-hook-form NUMBER, so its submit can only offer
+   * `String(number)`. The two spellings agree exactly while `mi` and `km`
+   * carry no decimals, and would part company over a trailing zero if a
+   * distance unit were ever given one. That precision is pinned by a test
+   * rather than papered over here, because a normalising branch would be a
+   * guard no test in this repo can kill.
    */
   const [unitOrigins] = useState<{
     odometer_km: UnitFieldOrigin
@@ -553,9 +564,14 @@ export default function FuelRecordForm({ vin, record, onClose, onSuccess }: Fuel
         // canonical value it was seeded from rather than a re-conversion of a
         // rounded display. `readNumber` also absorbs `registerDecimal`'s
         // INVALID_NUMBER symbol, which throws on every implicit coercion.
+        // `?? ''` and not a separate undefined branch: an absent value then
+        // takes `canonicalFromUnitField`'s own blank path instead of arriving
+        // as the string "undefined" and reaching null by way of NaN. Same
+        // result either way, which is why no test can tell them apart, so the
+        // one that says what it means wins.
         odometer_km:
           canonicalFromUnitField(
-            odometerTyped === undefined ? '' : String(odometerTyped),
+            String(odometerTyped ?? ''),
             unitOrigins.odometer_km,
             u.distance
           ) ?? undefined,

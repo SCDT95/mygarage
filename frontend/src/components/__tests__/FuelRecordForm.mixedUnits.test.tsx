@@ -25,6 +25,7 @@ import { screen, waitFor, fireEvent } from '@testing-library/react'
 import { render } from '../../__tests__/test-utils'
 import { IMPERIAL_UNITS, METRIC_UNITS } from '../../__tests__/factories'
 import { binarySystemFor, type UnitSet } from '../../types/units'
+import { UNIT_ADAPTERS } from '../../utils/unitAdapters'
 import FuelRecordForm from '../FuelRecordForm'
 import type { Vehicle } from '../../types/vehicle'
 
@@ -271,6 +272,18 @@ describe('FuelRecordForm — odometer and temperature follow their own tokens', 
     const payload = mockedApiPut.mock.calls[0][1] as Record<string, unknown>
     expect(payload.odometer_km).toBe(72420.5)
     expect(payload.odometer_km).not.toBe(72420.3)
+
+    // ★ The assumption the mechanism above rests on, pinned rather than
+    // defended against. `canonicalFromUnitField` compares the field against
+    // `toInputValue`, which is `toFixed(precision)`; the odometer is a
+    // react-hook-form NUMBER, so the submit can only offer `String(number)`.
+    // Those two spellings agree exactly at zero decimals and would part
+    // company over a trailing zero ('45000.10' vs '45000.1'), silently
+    // re-converting every untouched save. Folded into this case rather than
+    // standing alone, because on its own it holds at t=0 and would assert
+    // nothing.
+    expect(UNIT_ADAPTERS.mi.precision).toBe(0)
+    expect(UNIT_ADAPTERS.km.precision).toBe(0)
   })
 
   it('★ EDIT: retyping the temperature exactly as shown does not shift the stored Celsius', async () => {
