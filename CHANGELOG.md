@@ -15,10 +15,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - All-records report CSV gains a `Volume (<unit>)` column, so a fill-up's quantity is a number a spreadsheet can sum (#152).
 
 ### Changed
-- Instances set to UK gallons store their imperial users as a custom unit set; displayed values are unchanged (migration 093).
+- Instances set to UK gallons store their imperial users as a custom unit set. The migration itself changed no displayed value; the unit changes listed below are separate.
 - Tyre tread now displays and is entered in the unit you use: thirty-seconds of an inch for imperial accounts, millimetres for metric. It was millimetres for everyone, and no conversion existed.
 - Metric tyre pressure now reads in kPa on the tyre card, matching the form beside it, which already used kPa.
 - The odometer field on the fuel and DEF forms now reads and is entered in whole miles or kilometres. About 38% of existing imperial values shift by up to 0.01 km once on their next save, and then stay put.
+- Fuel, DEF and propane volume and price behave the same way for imperial accounts: a stored value that is not already on the entry grid shifts once, by at most 0.08%, the first time the record is saved, and does not move again. Metric accounts are unaffected.
+- UK-gallon accounts will see existing fuel prices read back about 20% lower than before. The stored figure was wrong, not the new reading, and only accounts on instances set to UK gallons are affected.
 - The tyre wear projection reads in whole units. Metric readers see no change.
 - Engine RPM now reads `3,200` everywhere, instead of `3200` on the widget and `3,200` on the session tile.
 - LiveLink session distance is shown as a plain number marked `(unknown unit)`. The device reports it without saying whether it is miles or kilometres, so the previous label was a guess. Nothing about the stored data changed.
