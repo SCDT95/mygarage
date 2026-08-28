@@ -157,23 +157,6 @@ const DEFAULT_BASELINE = join(ROOT, 'scripts', 'units.baseline.json')
 const SYSTEM_LITERALS = new Set(['imperial', 'metric'])
 
 /**
- * Annotation NAMES that never earn an operand its silence.
- *
- * `UnitSystem` is the canonical union. `string`, `any` and `unknown` are here
- * because `UnitSystem` is assignable to all three, so annotating a unit system
- * as a plain string would otherwise be a one-word way to switch the gate off
- * while still type-checking. `displaySystem: string` is a real production
- * spelling.
- *
- * This is only the NAME half. A denylist of names was the whole test in round
- * 1, and `type Sys = 'imperial' | 'metric'` walked straight past it, which is
- * the same hole R8 already found once: `supplyUnits.ts` had declared its own
- * structurally identical copy of this union and `tsc` could not see the two
- * drift apart. The alias half is `isForeignAnnotation` below.
- */
-const NON_EXEMPTING_NAME = /\b(UnitSystem|string|any|unknown)\b/
-
-/**
  * Every string literal the unit-system union has ever contained.
  *
  * `'custom'` is in here because phase 1 widened the API-level preference union
@@ -181,6 +164,25 @@ const NON_EXEMPTING_NAME = /\b(UnitSystem|string|any|unknown)\b/
  * phase 3b artifact and it is unambiguously a unit-system type.
  */
 const UNIT_VOCABULARY = new Set(["'imperial'", "'metric'", "'custom'", '"imperial"', '"metric"', '"custom"'])
+
+/**
+ * Members that carry no value a unit comparison could be about.
+ *
+ * They are STRIPPED before the remaining members are judged, and that is the
+ * whole of round 2's F2 regression: `'imperial' | 'metric' | null` was read as
+ * "not every member is unit vocabulary, therefore foreign, therefore exempt",
+ * and `UnitSystem | null` is this codebase's own `readStoredUnitSystem` return
+ * type. A nullable unit system is a unit system.
+ */
+const NULLISH_MEMBERS = new Set(['null', 'undefined', 'void', 'never'])
+
+/** A round-1 denylist of NAMES (`UnitSystem|string|any|unknown`) used to sit
+ * here. It is gone, not moved: every one of those names is a bare identifier
+ * that resolves to no local type alias, and an unresolvable identifier is
+ * already classified UNKNOWN and refused an exemption. Keeping the list would
+ * have been a guard no mutation could kill, which this phase has now twice
+ * ruled is a survivor wearing a guard's name. Verified by corpus cases S-P9,
+ * S-P11, S-P12, S-P23 and S-P24, all of which still fail without it. */
 
 const EQUALITY_KINDS = new Set([
   ts.SyntaxKind.EqualsEqualsEqualsToken,
@@ -260,43 +262,145 @@ function indexDeclarations(source: TsSourceFile): FileIndex {
 }
 
 /**
- * True when an annotation proves the operand is NOT a unit system.
+ * Strip balanced surrounding parentheses, repeatedly.
  *
- * Three ways to fail to prove it, and all three are deliberate:
- *
- *  1. the annotation NAMES a type that is or contains a unit system
- *     (`UnitSystem`), or a type a unit system is assignable to (`string`,
- *     `any`, `unknown`);
- *  2. the annotation is a bare identifier that does NOT resolve to a type alias
- *     in this file. That is the fail-closed case, and it is what stops
- *     `import type { BinarySystem } from './units'` being a rename away from
- *     silence. It costs nothing real: an imported type that genuinely has no
- *     overlap with `'imperial'` cannot be compared to it without `tsc`
- *     objecting first;
- *  3. every member of the resolved union is drawn from the unit vocabulary and
- *     at least one is `'imperial'` or `'metric'`.
- *
- * `type Theme = 'light' | 'dark' | 'imperial'` resolves, carries members
- * outside the vocabulary, and is therefore foreign. That is the case R3 says no
- * `no-restricted-syntax` selector can distinguish, and distinguishing it is the
- * entire reason this leg is a script.
+ * `type Sys = ('imperial' | 'metric')` is one of the five shapes that walked
+ * past round 2. Only a paren that closes at the very end is stripped, so
+ * `(typeof SYSTEMS)[number]` keeps its shape and stays UNKNOWN rather than
+ * being mangled into something that looks resolvable.
  */
-function isForeignAnnotation(annotation: string, aliases: Map<string, string>, depth = 0): boolean {
-  const text = annotation.trim()
-  if (NON_EXEMPTING_NAME.test(text)) return false
-  if (/^[A-Za-z_$][\w$]*$/.test(text)) {
-    const body = aliases.get(text)
-    // Fail-closed on an unresolvable name, and on an alias cycle.
-    if (body === undefined || depth >= 8) return false
-    return isForeignAnnotation(body, aliases, depth + 1)
+function stripOuterParens(text: string): string {
+  let out = text.trim()
+  while (out.startsWith('(') && out.endsWith(')')) {
+    let depth = 0
+    let balanced = true
+    for (let i = 0; i < out.length; i += 1) {
+      if (out[i] === '(') depth += 1
+      else if (out[i] === ')') {
+        depth -= 1
+        if (depth === 0 && i !== out.length - 1) balanced = false
+      }
+    }
+    if (!balanced || depth !== 0) break
+    out = out.slice(1, -1).trim()
   }
-  const members = text
-    .split('|')
-    .map((m) => m.trim())
-    .filter((m) => m.length > 0)
-  const allVocabulary = members.length > 0 && members.every((m) => UNIT_VOCABULARY.has(m))
-  const namesASystem = members.some((m) => m === "'imperial'" || m === '"imperial"' || m === "'metric'" || m === '"metric"')
-  return !(allVocabulary && namesASystem)
+  return out
+}
+
+/**
+ * Split a union on TOP-LEVEL `|` only.
+ *
+ * A naive `text.split('|')` tears `Record<string, 'a' | 'b'>` in half and then
+ * judges the halves, so the nesting depth is tracked through `<`, `(`, `[`, `{`
+ * and both quote styles.
+ */
+function splitUnion(text: string): string[] {
+  const parts: string[] = []
+  let depth = 0
+  let quote = ''
+  let current = ''
+  for (const ch of text) {
+    if (quote) {
+      current += ch
+      if (ch === quote) quote = ''
+      continue
+    }
+    if (ch === "'" || ch === '"' || ch === '`') {
+      quote = ch
+      current += ch
+      continue
+    }
+    if ('<([{'.includes(ch)) depth += 1
+    else if ('>)]}'.includes(ch)) depth -= 1
+    if (ch === '|' && depth <= 0) {
+      parts.push(current)
+      current = ''
+      continue
+    }
+    current += ch
+  }
+  parts.push(current)
+  return parts.map((s) => s.trim()).filter((s) => s.length > 0)
+}
+
+/**
+ * What one type expression is, as far as this gate can tell.
+ *
+ * `unknown` is the fail-closed class and it is doing most of the work: an
+ * imported alias, `(typeof SYSTEMS)[number]`, a generic, or the bare word
+ * `string` all land here, and none of them earns an exemption.
+ */
+type MemberClass = 'unit' | 'foreign' | 'nullish' | 'unknown'
+
+const STRING_LITERAL_TYPE = /^(?:'[^']*'|"[^"]*"|`[^`]*`|-?\d+(?:\.\d+)?|true|false)$/
+const BARE_IDENTIFIER = /^[A-Za-z_$][\w$]*$/
+
+function classifyMember(
+  member: string,
+  aliases: Map<string, string>,
+  depth: number,
+): MemberClass {
+  const m = stripOuterParens(member)
+  if (UNIT_VOCABULARY.has(m)) return 'unit'
+  if (NULLISH_MEMBERS.has(m)) return 'nullish'
+  if (STRING_LITERAL_TYPE.test(m)) return 'foreign'
+  if (BARE_IDENTIFIER.test(m)) {
+    const body = aliases.get(m)
+    // Fail-closed on a name this file does not declare, and on an alias cycle.
+    if (body === undefined || depth >= 8) return 'unknown'
+    return classifyAnnotation(body, aliases, depth + 1)
+  }
+  return 'unknown'
+}
+
+/**
+ * Classify a whole annotation by classifying its members INDIVIDUALLY.
+ *
+ * ★ Round 2 judged the annotation's whole text and asked "are all members unit
+ * vocabulary?", so a single member outside the vocabulary made the entire
+ * annotation foreign, and foreign means exempt. Five shapes walked past,
+ * including `'imperial' | 'metric' | null`, which round 1 had caught. Deciding
+ * per member is the fix.
+ *
+ * The order of the three tests below is the whole rule:
+ *
+ *  1. any UNKNOWN member and the annotation earns nothing. That is what stops
+ *     an imported alias, an indexed access, or the bare word `string` being a
+ *     rename away from silence;
+ *  2. nullish members are dropped, because a nullable unit system is a unit
+ *     system;
+ *  3. of what remains, a member that is a literal OUTSIDE the vocabulary makes
+ *     the annotation foreign.
+ *
+ * ★ Test 3 is a DELIBERATE divergence from the reviewer's wording, which was
+ * "foreign only when NO member is a unit system". Taken literally that flags
+ * `type Theme = 'light' | 'dark' | 'imperial'`, and R2 requires that case to be
+ * ACCEPTED while R3 names it as the case this whole leg exists to distinguish.
+ * A type carrying members no unit system has ever contained is a different enum
+ * that happens to share a spelling. Every probe in the review's bypass table is
+ * still closed, and the control still fires; only Theme differs, and Theme is
+ * the corpus negative. Pinned from the other side by `M38-any-unit-member-flags`,
+ * which implements the literal reading and flips exactly that case.
+ */
+function classifyAnnotation(
+  text: string,
+  aliases: Map<string, string>,
+  depth = 0,
+): MemberClass {
+  const members = splitUnion(stripOuterParens(text))
+  if (members.length === 0) return 'unknown'
+  const classes = members.map((m) => classifyMember(m, aliases, depth))
+  if (classes.includes('unknown')) return 'unknown'
+  const significant = classes.filter((c) => c !== 'nullish')
+  if (significant.length === 0) return 'nullish'
+  if (significant.includes('foreign')) return 'foreign'
+  return 'unit'
+}
+
+/** True when an annotation proves the operand is NOT a unit system. */
+function isForeignAnnotation(annotation: string, aliases: Map<string, string>): boolean {
+  const verdict = classifyAnnotation(annotation, aliases)
+  return verdict === 'foreign' || verdict === 'nullish'
 }
 
 /**
