@@ -80,6 +80,10 @@ def build_tree(root: Path) -> None:
     (root / "public" / "locales" / "xx").mkdir(parents=True)
     (root / "src" / "main.tsx").write_text("import './alpha'\nimport './beta'\n")
     (root / "src" / "alpha.ts").write_text("export const A = 1\n")
+    # Named by the audited row below. Not imported from main.tsx, so it is not
+    # in the universe and needs no row of its own.
+    (root / "src" / "__tests__").mkdir()
+    (root / "src" / "__tests__" / "alpha.test.ts").write_text("export const T = 1\n")
     (root / "src" / "beta.ts").write_text("export const B = 2\n")
     (root / "public" / "sw.js").write_text(
         "self.addEventListener('install', () => {})\n"
@@ -111,8 +115,8 @@ def run(
     return p.returncode, {t for t, _ in pairs}, pairs, out
 
 
-def seed(root: Path, manifest: Path) -> list[dict]:
-    """Seed and disposition the fixture manifest, then return its rows."""
+def seed(root: Path, manifest: Path) -> None:
+    """Seed the fixture manifest and give every row a disposition."""
     subprocess.run(
         [
             "bun",
@@ -138,7 +142,6 @@ def seed(root: Path, manifest: Path) -> list[dict]:
         else:
             row["disposition"] = "no unit behaviour"
     manifest.write_text(json.dumps(rows, indent=1) + "\n")
-    return rows
 
 
 def write_checker_mutant(old: str, new: str) -> tuple[str, int]:
@@ -150,7 +153,7 @@ def write_checker_mutant(old: str, new: str) -> tuple[str, int]:
     return str(CHECKER_MUTANT.relative_to(FRONTEND)), n
 
 
-# (id, edit, un-edit) applied to a COPY of the checker.
+# id -> (find, replace), applied to a COPY of the checker. Never the original.
 CHECKER_MUTATIONS = {
     "M-D-drop-digest-comparison": (
         "    if (row.digest !== actual) {",
@@ -170,7 +173,10 @@ def main() -> int:
     manifest = tmp / "units.manifest.json"
     try:
         build_tree(root)
-        rows = seed(root, manifest)
+        seed(root, manifest)
+        # Every probe below mutates the manifest and restores from this, so it
+        # is the fixture's single source of truth rather than a saved copy of
+        # seed()'s return value.
         pristine = manifest.read_text()
 
         def check(
@@ -318,6 +324,14 @@ def main() -> int:
                 r["findings"] = ["renders canonical litres"]
         manifest.write_text(json.dumps(contradictory, indent=1) + "\n")
         check("no-unit-behaviour-with-finding", 1, {"schema"}, "src/beta.ts")
+
+        # A test id that names no file: the quiet one.
+        phantom = json.loads(pristine)
+        for r in phantom:
+            if r["path"] == "src/alpha.ts":
+                r["tests"] = ["__tests__/renamed.test.ts"]
+        manifest.write_text(json.dumps(phantom, indent=1) + "\n")
+        check("test-id-names-nothing", 1, {"schema"}, "src/alpha.ts")
 
         # A disposition nobody defined.
         invented = json.loads(pristine)

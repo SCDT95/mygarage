@@ -8,23 +8,29 @@ name: Unit Gate Selftest
 # scripts/validate-units.ts or of eslint.config.js, each of which must flip
 # exactly the corpus cases that name it, plus the tree-walk and baseline proofs.
 #
-# `manifest-selftest` is `units.manifest.json`'s. The manifest is a reviewed
-# snapshot over a stated universe, and the rule that put it here is the same one
-# that put the gate here: an artifact asserting something about every module has
-# to be shown FAILING, in each direction it claims to cover. It runs against a
-# throwaway tree in a tempdir, so it takes no shared fixture lock.
 # The count is deliberately not written here: the run prints it, and a number in
 # prose is a number that goes stale. An earlier version of this comment said 40
 # when the tables held 44.
 #
+# `manifest-selftest` is `units.manifest.json`'s. The manifest is a reviewed
+# snapshot over a stated universe, and the rule that put it here is the same one
+# that put the gate here: an artifact asserting something about every module has
+# to be shown FAILING, in each direction it claims to cover. It runs against a
+# throwaway tree in a tempdir, so it takes no shared fixture lock. MEASURED at
+# 0.4 s: it mutates a manifest and a five-file tree rather than re-running a
+# corpus, so it is here for tidiness and isolation, not for cost.
+#
 # Why it is a workflow of its own rather than a step in the main CI job:
 #
-#   * it re-runs a whole corpus leg per mutation. MEASURED at
-#     3 min 38 s, not the ~18 minutes an earlier version of this comment
-#     claimed. That figure was inferred from spaced polling rather than timed,
-#     and it was wrong by 5x in the direction that would have justified
-#     weakening the check. Keeping it off every PR's critical path is now a
-#     matter of tidiness rather than cost;
+#   * it re-runs a whole corpus leg per mutation, so its cost is
+#     cases x mutations and it moves whenever either grows. MEASURED at
+#     10 min 34 s and 10 min 59 s on two runs (66 cases, 60 scan mutations,
+#     3 walk mutations), up from a measured 3 min 38 s at 49 cases and 41
+#     mutations. Every figure here is from a timed run on the same host,
+#     because the one before them was INFERRED from spaced polling, said ~18
+#     minutes, and was wrong by 5x in the direction that would have justified
+#     weakening the check. Re-measure after any change to either table rather
+#     than reasoning about the delta;
 #   * the set of files that can change its result is small and knowable, so a
 #     `paths:` filter is exact rather than a guess: the gate, the corpus, this
 #     harness, eslint.config.js, translation-utils.ts (the gate imports ROOT
@@ -32,12 +38,12 @@ name: Unit Gate Selftest
 #     major genuinely can change what the mutations do. The dependency files
 #     were excluded while this job was believed to cost 18 minutes, with a
 #     manual "run it after a major" obligation standing in. At the measured
-#     3m38s that trade is gone, and an obligation nobody will remember after a
-#     major bump is worse than a job that runs on bumps;
+#     cost that trade is still gone, and an obligation nobody will remember
+#     after a major bump is worse than a job that runs on bumps;
 #   * SAMPLING IT IS NOT AN OPTION. Which mutant survives is not knowable in
 #     advance, which is the entire premise of a mutation harness, so a sampled
-#     run is how a survivor hides. At under four minutes there is no case for
-#     sampling anyway.
+#     run is how a survivor hides. At ten minutes on an advisory job with a
+#     45-minute timeout there is no case for sampling anyway.
 #
 # ★ Deliberately NOT a required check. A required check with a `paths:` filter
 # never reports on the PRs it filters out, which leaves those PRs wedged waiting

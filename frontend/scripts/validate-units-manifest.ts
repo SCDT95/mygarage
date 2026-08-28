@@ -263,6 +263,24 @@ export function checkManifest(root: string, rows: ManifestRow[]): Failure[] {
           'open against it. A bare "audited" is an assertion nothing can fail.',
       })
     }
+    // ★ A test id that names no file is the QUIET failure mode, and this repo
+    // has already learned it once: `units_gate_selftest.py`'s scope proof
+    // checks the same thing about ESLint exemption paths, because "a typo that
+    // silently un-exempts a file fails loudly; a typo that names nothing at all
+    // is the quiet one". An `audited` row is allowed to rest on `tests`, so a
+    // `tests` entry pointing at a renamed or deleted file is a row resting on
+    // nothing while still reading as covered.
+    for (const test of tests) {
+      if (!existsSync(join(root, 'src', test))) {
+        failures.push({
+          tag: 'schema',
+          path: where,
+          detail:
+            `names a test that does not exist: src/${test}. A row that rests on a ` +
+            'test id nobody can run is a row resting on nothing.',
+        })
+      }
+    }
     if (row.disposition === 'no unit behaviour' && findings.length > 0) {
       failures.push({
         tag: 'schema',

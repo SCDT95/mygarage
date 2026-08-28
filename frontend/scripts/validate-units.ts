@@ -69,12 +69,17 @@
  * re-enumerated by hand, which is how this workstream produced seventeen
  * inventories that were floors wearing an inventory's name.
  *
- * Proven against a two-sided corpus (`scripts/units_gate_corpus.py`): eleven
- * positives it must reject, including the destructuring rename and both real
- * production spellings, and five negatives it must accept. Every case names a
- * mutation in `scripts/units_gate_selftest.py` that flips it, because a corpus
- * case that passes identically whether or not the rule exists is an assertion
- * true at t=0 one level up. Run both after changing anything below.
+ * Proven against a two-sided corpus (`scripts/units_gate_corpus.py`): positives
+ * it must reject, including the destructuring rename and both real production
+ * spellings, and negatives it must accept, including a module-local
+ * `formatDistance` that is correct migrated code. How many of each is
+ * deliberately not written here, for the same reason the baseline count is not:
+ * the run prints it and a number in prose goes stale. This sentence used to say
+ * "eleven positives and five negatives" while the file held thirty-six and
+ * sixteen. Every case names a mutation in `scripts/units_gate_selftest.py` that
+ * flips it, because a corpus case that passes identically whether or not the
+ * rule exists is an assertion true at t=0 one level up. Run both after changing
+ * anything below.
  *
  * Escape hatch: `// units-exempt` on the offending line or the line above,
  * with a reason. Use it for a genuine non-display branch (parsing a stored
@@ -422,7 +427,9 @@ function deriveQuantityTokens(): Map<string, Set<string>> {
     ts.forEachChild(node, walk)
   }
   walk(source)
-  requireNonEmpty(new Set(tokens.keys()), 'quantity token vocabulary', SCHEMA_SOURCE)
+  // No requireNonEmpty here: `missing` subsumes it. An empty `tokens` means
+  // every quantity is missing, and this message names which, where a bare
+  // "derived nothing" would not.
   const missing = [...quantities].filter((q) => !tokens.has(q))
   if (missing.length > 0) {
     throw new Error(
