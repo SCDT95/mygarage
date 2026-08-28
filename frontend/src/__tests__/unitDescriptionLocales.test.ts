@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { existsSync, readdirSync, readFileSync, statSync } from 'node:fs'
+import { readdirSync, readFileSync, statSync } from 'node:fs'
 import { join, resolve } from 'node:path'
 import { SUPPORTED_LANGUAGES } from '@/constants/i18n'
 
@@ -106,9 +106,11 @@ describe('the composed unit description ships in every locale', () => {
   })
 
   it.each(LANGUAGES)('%s composes the description from the resolved set', (language) => {
+    // No `existsSync` guard: an absent bundle makes `readFileSync` throw an
+    // ENOENT that already names the path, so the guard could never fail while
+    // anything below it passed. An assertion that cannot fail on its own reads
+    // as coverage and is not.
     const path = bundlePathFor(language)
-    expect(existsSync(path), `${path} is missing`).toBe(true)
-
     const units = unitsBlockFor(language)
     const description = units[DESCRIPTION_KEY]
     expect(typeof description, `units.${DESCRIPTION_KEY} in ${path}`).toBe('string')

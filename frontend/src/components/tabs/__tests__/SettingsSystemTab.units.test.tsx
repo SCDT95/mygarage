@@ -227,18 +227,6 @@ describe('SettingsSystemTab — the description is composed from the resolved se
     )
   })
 
-  it('describes a preset imperial account in the units it renders', async () => {
-    h.user = makeUser({ unit_preference: 'imperial', resolved_units: IMPERIAL_UNITS })
-
-    renderTab()
-
-    expect(
-      await screen.findByText(
-        'Using these units: mi, mph, ft, gal, MPG, PSI, °F, lb, lb-ft, /32 in',
-      ),
-    ).toBeInTheDocument()
-  })
-
   it('describes a preset metric account with kPa, which the retired copy called bar', async () => {
     h.user = makeUser({ unit_preference: 'metric', resolved_units: METRIC_UNITS })
 
@@ -249,11 +237,15 @@ describe('SettingsSystemTab — the description is composed from the resolved se
     ).toBeInTheDocument()
   })
 
-  it('switches with the optimistic toggle rather than lagging refreshUser()', async () => {
-    // The account stays imperial for the whole test: `useAuth` is mocked with a
-    // fixed user and `refreshUser` is a no-op, so a description read from the
-    // hook alone would never move. The preset branch of `displayUnits` is what
-    // makes the copy follow the click.
+  it('rests on the imperial preset and switches with the optimistic toggle', async () => {
+    // Two assertions, both load bearing. The first is the imperial resting
+    // state; a standalone test for it was deleted because it set up exactly
+    // this account and asserted exactly this string, so it could not fail while
+    // this one passed. The second is the switch: the account stays imperial for
+    // the whole test (`useAuth` is mocked with a fixed user and `refreshUser`
+    // is a no-op), so a description read from the hook alone would never move.
+    // The preset branch of `displayUnits` is what makes the copy follow the
+    // click.
     h.user = makeUser({ unit_preference: 'imperial', resolved_units: IMPERIAL_UNITS })
 
     renderTab()
