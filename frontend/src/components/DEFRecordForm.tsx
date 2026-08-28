@@ -10,7 +10,9 @@ import { FormError } from './FormError'
 import { useCreateDEFRecord, useUpdateDEFRecord } from '../hooks/queries/useDEFRecords'
 import { useUnitPreference } from '../hooks/useUnitPreference'
 import { UnitConverter, UnitFormatter } from '../utils/units'
-import { toCanonicalKm, toCanonicalLiters, priceToDisplay, priceToCanonical, readNumber } from '../utils/decimalSafe'
+import { toCanonicalLiters, priceToDisplay, priceToCanonical, readNumber } from '../utils/decimalSafe'
+import { useUnitFormat } from '../hooks/useUnitFormat'
+import { canonicalFromUnitField, seedUnitField, type UnitFieldOrigin } from '../utils/unitFormat'
 import { useOnUserEdit } from '../hooks/useOnUserEdit'
 import { formatDateForInput } from '../utils/dateUtils'
 import CurrencyInputPrefix from './common/CurrencyInputPrefix'
@@ -61,12 +63,44 @@ export default function DEFRecordForm({
   const [error, setError] = useState<string | null>(null)
   const createMutation = useCreateDEFRecord(vin)
   const updateMutation = useUpdateDEFRecord(vin)
-  const { system, units } = useUnitPreference()
+  const { units } = useUnitPreference()
+  // Per-quantity adapters. The binary `system` is D8-collapsed from VOLUME,
+  // so it cannot answer for the odometer: a client resolving
+  // `{volume: 'L', distance: 'mi'}` reads 'metric' out of it for a distance
+  // they chose in miles, and the mirror client resolving gallons with
+  // kilometres had a stored kilometre reading converted INTO miles.
+  const u = useUnitFormat()
 
   // Zod bakes its messages in at construction, so the schema is rebuilt when
   // the language changes. Only the resolver depends on it — no fetch, no
   // reset() — so a rebuild can't discard what the user typed.
   const schema = useMemo(() => makeDefRecordSchema(t), [t])
+
+  /**
+   * The odometer's canonical origin.
+   *
+   * A display unit that only formats corrupts data (binding decision D2):
+   * 72420.5 km reads as 45000 mi, and 45000 mi converts back to 72420.3.
+   * `seedUnitField` records what the field was populated from so
+   * `canonicalFromUnitField` can hand that value straight back while the
+   * field still reads what it was seeded with, and a user who opens a record
+   * to fix the brand does not move the reading.
+   *
+   * Lazily seeded for the same reason `defaultValues` is computed once: an
+   * origin that moved on re-render would stop being an origin. Volume and
+   * price are deliberately NOT here; Task 2 made their round trip exact by
+   * other means.
+   *
+   * ★ One assumption, stated rather than defended against.
+   * `canonicalFromUnitField` compares against `toInputValue`, i.e.
+   * `toFixed(precision)`, while this react-hook-form NUMBER field can only
+   * offer `String(number)`. Those agree exactly while `mi` and `km` carry no
+   * decimals, and a normalising branch would be a guard no test could kill,
+   * so the precision is pinned by a test instead.
+   */
+  const [odometerOrigin] = useState<UnitFieldOrigin>(() =>
+    seedUnitField(readNumber(record?.odometer_km), u.distance)
+  )
 
   const {
     register,
@@ -80,11 +114,9 @@ export default function DEFRecordForm({
     resolver: zodResolver(schema) as Resolver<DefRecordFormData>,
     defaultValues: {
       date: formatDateForInput(record?.date),
-      odometer_km: (() => {
-        const stored = readNumber(record?.odometer_km)
-        if (stored === undefined) return undefined
-        return system === 'imperial' ? UnitConverter.kmToMiles(stored) ?? undefined : stored
-      })(),
+      // Seeded in `units.distance`, and the submit converts back through the
+      // SAME adapter. `readNumber('')` is undefined, which is the empty field.
+      odometer_km: readNumber(odometerOrigin.display),
       // Seeded and submitted through the same resolved set, so reopening a
       // record cannot re-convert its volume on a different gallon.
       liters: UnitConverter.litersToVolumeUnit(readNumber(record?.liters), units) ?? undefined,
@@ -117,7 +149,16 @@ export default function DEFRecordForm({
       const payload = {
         vin,
         date: data.date,
-        odometer_km: toCanonicalKm(data.odometer_km, system) ?? undefined,
+        // Back through `units.distance`. An untouched field returns the
+        // canonical value it was seeded from rather than a re-conversion of a
+        // rounded display, and `readNumber` absorbs `registerDecimal`'s
+        // INVALID_NUMBER symbol, which throws on every implicit coercion.
+        odometer_km:
+          canonicalFromUnitField(
+            String(readNumber(data.odometer_km) ?? ''),
+            odometerOrigin,
+            u.distance
+          ) ?? undefined,
         // ★ Volume and price convert through ONE resolved set (defect L1).
         liters: toCanonicalLiters(data.liters, units) ?? undefined,
         price_per_unit: priceToCanonical(data.price_per_unit, units, 'per_volume') ?? undefined,
@@ -184,7 +225,7 @@ export default function DEFRecordForm({
             <Field id="date" label={t('common:date')} required error={errors.date}>
               <Input type="date" id="date" {...register('date')} invalid={!!errors.date} disabled={isSubmitting} />
             </Field>
-            <Field id="odometer_km" label={t('common:mileage')} unit={UnitFormatter.getDistanceUnit(system)} error={errors.odometer_km}>
+            <Field id="odometer_km" label={t('common:mileage')} unit={u.distance.label} error={errors.odometer_km}>
               <NumberInput id="odometer_km" {...registerDecimal(register, 'odometer_km')} placeholder="55000" invalid={!!errors.odometer_km} disabled={isSubmitting} />
             </Field>
           </div>
