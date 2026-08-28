@@ -100,7 +100,15 @@ VALIDITY_PROBE = "export const OK = 'ok'\n"
 
 @dataclass
 class Mutation:
-    """One deliberate defect in a COPY of the gate, and the cases it must flip."""
+    """One deliberate defect in a COPY of the gate, and the cases it must flip.
+
+    `also` carries further simultaneous edits, because some guards are defended
+    twice and removing either one alone flips nothing. Round 2 hit that with `UnitSystem` (the name list
+    and the fail-closed identifier rule) and round 3 hits it again with
+    parenthesised aliases (paren stripping and the fail-closed UNKNOWN class).
+    A mutation that flips nothing is a survivor wearing a mutation's name, so
+    the honest fix is a mutation that removes every defence at once.
+    """
 
     mid: str
     target: str  # 'gate' or 'config'
@@ -109,6 +117,13 @@ class Mutation:
     leg: str
     flips: list[str] = field(default_factory=list)
     why: str = ""
+    #: further simultaneous edits, for a guard that is defended more than once.
+    also: list[tuple[str, str]] = field(default_factory=list)
+    #: what the validity probe must see. 'clean' is the default: the mutant runs
+    #: and reports nothing on an input with nothing in it. 'refuses' is for a
+    #: mutation whose whole point is that the gate now refuses everything, where
+    #: a clean probe would read as a broken mutant.
+    expect_probe: str = "clean"
 
 
 MUTATIONS = [
@@ -141,6 +156,10 @@ MUTATIONS = [
             "S-P22-bare-pragma",
             "S-P23-string-union",
             "S-P24-unitsystem-union",
+            "S-P25-nullable-unit-union",
+            "S-P26-parenthesised-alias",
+            "S-P27-indexed-access",
+            "S-P28-alias-or-undefined",
         ],
         "half the vocabulary is half the gate",
     ),
@@ -227,20 +246,13 @@ MUTATIONS = [
             "S-P19-shadowed-name",
             "S-P23-string-union",
             "S-P24-unitsystem-union",
+            "S-P25-nullable-unit-union",
+            "S-P26-parenthesised-alias",
+            "S-P27-indexed-access",
+            "S-P28-alias-or-undefined",
         ],
         "★ R2's forbidden implementation: it passes every case that spells the "
         "variable `system` and misses both spellings production actually uses",
-    ),
-    Mutation(
-        "M6-string-is-foreign",
-        "gate",
-        "/\\b(UnitSystem|string|any|unknown)\\b/",
-        "/\\b(UnitSystem)\\b/",
-        "script",
-        ["S-P23-string-union"],
-        "`string | null` is the shape localStorage hands you, and a union is the "
-        "only way `string` reaches the exemption at all: a bare identifier is "
-        "already fail-closed",
     ),
     Mutation(
         "M4-unresolved-is-exempt",
@@ -252,42 +264,37 @@ MUTATIONS = [
         "fail-open on an unresolvable operand is how a gate becomes a floor",
     ),
     Mutation(
-        "M5-unitsystem-and-unresolvable-are-foreign",
-        "gate",
-        "  if (NON_EXEMPTING_NAME.test(text)) return false\n"
-        "  if (/^[A-Za-z_$][\\w$]*$/.test(text)) {\n"
-        "    const body = aliases.get(text)\n"
-        "    // Fail-closed on an unresolvable name, and on an alias cycle.\n"
-        "    if (body === undefined || depth >= 8) return false",
-        "  if (/\\b(string|any|unknown)\\b/.test(text)) return false\n"
-        "  if (/^[A-Za-z_$][\\w$]*$/.test(text)) {\n"
-        "    const body = aliases.get(text)\n"
-        "    // Fail-closed on an unresolvable name, and on an alias cycle.\n"
-        "    if (body === undefined || depth >= 8) return true",
-        "script",
-        ["S-P11-annotated-unitsystem", "S-P15-imported-alias", "S-P24-unitsystem-union"],
-        "★ `UnitSystem` is defended twice, by the name list and by the fail-closed "
-        "bare-identifier rule, so only removing BOTH flips anything. A mutation "
-        "that flips nothing is a survivor wearing a mutation's name.",
-    ),
-    Mutation(
         "M24-drop-alias-expansion",
         "gate",
-        "    if (body === undefined || depth >= 8) return false\n"
-        "    return isForeignAnnotation(body, aliases, depth + 1)",
-        "    if (body === undefined || depth >= 8) return false\n    return true",
+        "    if (body === undefined || depth >= 8) return 'unknown'\n"
+        "    return classifyAnnotation(body, aliases, depth + 1)",
+        "    if (body === undefined || depth >= 8) return 'unknown'\n    return 'foreign'",
         "script",
-        ["S-P14-alias-union", "S-P16-widened-alias"],
+        [
+            "S-P14-alias-union",
+            "S-P16-widened-alias",
+            "S-P26-parenthesised-alias",
+            "S-P28-alias-or-undefined",
+        ],
         "★ R8's hole: a name denylist walks straight past `type Sys = 'imperial'|'metric'`",
     ),
     Mutation(
-        "M25-unresolvable-alias-is-foreign",
+        "M41a-unresolvable-name-is-foreign",
         "gate",
-        "    if (body === undefined || depth >= 8) return false",
-        "    if (body === undefined || depth >= 8) return true",
+        "    if (body === undefined || depth >= 8) return 'unknown'",
+        "    if (body === undefined || depth >= 8) return 'foreign'",
         "script",
-        ["S-P15-imported-alias"],
-        "an imported alias the gate cannot read is not evidence of innocence",
+        [
+            "S-P9-displaySystem",
+            "S-P11-annotated-unitsystem",
+            "S-P12-ts-angle-assertion",
+            "S-P15-imported-alias",
+            "S-P23-string-union",
+            "S-P24-unitsystem-union",
+        ],
+        "an imported alias the gate cannot read is not evidence of innocence, and "
+        "since round 3 deleted the redundant NAME denylist this one rule is also "
+        "what keeps `string`, `any`, `unknown` and `UnitSystem` non-exempt",
     ),
     Mutation(
         "M26-drop-custom-from-vocabulary",
@@ -336,6 +343,52 @@ MUTATIONS = [
         ["S-P13-unparseable"],
         "★ the other half of round 1's CRITICAL: a wrecked parse reported as a clean file",
     ),
+    Mutation(
+        "M39-nullish-member-is-foreign",
+        "gate",
+        "  if (NULLISH_MEMBERS.has(m)) return 'nullish'",
+        "  if (NULLISH_MEMBERS.has(m)) return 'foreign'",
+        "script",
+        ["S-P25-nullable-unit-union", "S-P28-alias-or-undefined"],
+        "★ round 2's F2 REGRESSION, reintroduced on purpose: treat `null` as an "
+        "ordinary foreign member and `'imperial' | 'metric' | null` becomes exempt, "
+        "which is exactly the shape round 1 caught and round 2 lost",
+    ),
+    Mutation(
+        "M41b-unreadable-type-is-foreign",
+        "gate",
+        "    return classifyAnnotation(body, aliases, depth + 1)\n  }\n  return 'unknown'\n}",
+        "    return classifyAnnotation(body, aliases, depth + 1)\n  }\n  return 'foreign'\n}",
+        "script",
+        ["S-P27-indexed-access"],
+        "a type expression the gate cannot parse must not be read as innocence",
+    ),
+    Mutation(
+        "M40b-parens-unread-then-exempt",
+        "gate",
+        "    return classifyAnnotation(body, aliases, depth + 1)\n  }\n  return 'unknown'\n}",
+        "    return classifyAnnotation(body, aliases, depth + 1)\n  }\n  return 'foreign'\n}",
+        "script",
+        ["S-P26-parenthesised-alias", "S-P27-indexed-access"],
+        "a parenthesised unit alias is defended twice, by paren stripping and by "
+        "the fail-closed UNKNOWN class, so only removing BOTH flips it",
+        also=[("  while (out.startsWith('(') && out.endsWith(')')) {", "  while (false) {")],
+    ),
+    Mutation(
+        "M42-no-parse-diagnostics-property",
+        "gate",
+        "  const diagnostics = sf.parseDiagnostics",
+        "  const diagnostics = undefined",
+        "script",
+        [],  # filled in below: every script case
+        "★ F1's other half, unpinned until now. `parseDiagnostics` is internal to "
+        "the compiler and absent from its public typings, so a build that stopped "
+        "exposing it would silently restore the blindness. The guard turns that "
+        "into a refusal on every file, which is why this mutation needs the "
+        "'refuses' probe: a clean probe would read a deliberate refusal as a "
+        "broken mutant.",
+        expect_probe="refuses",
+    ),
     # ---------------- script leg: what the detector must NOT catch -----------
     Mutation(
         "M7-drop-placeholder-exemption",
@@ -362,8 +415,10 @@ MUTATIONS = [
         "          if (!hasForeignProvenance(operand, index) && !isPlaceholderAttribute(node)) {",
         "          if (!isPlaceholderAttribute(node)) {",
         "script",
-        ["S-N2-foreign-provenance"],
-        "★ R3: without the binding lookup this leg is an ESLint selector again",
+        ["S-N2-foreign-provenance", "S-N6-parenthesised-foreign-alias"],
+        "★ R3: without the binding lookup this leg is an ESLint selector again. "
+        "Both Theme cases go, which is the point: the exemption is one rule, not "
+        "one case.",
     ),
     Mutation(
         "M9-literal-contains",
@@ -401,6 +456,28 @@ MUTATIONS = [
         "script",
         ["S-P22-bare-pragma"],
         "the docstring and the failure message both promise a reason",
+    ),
+    Mutation(
+        "M38-any-unit-member-flags",
+        "gate",
+        "  if (significant.includes('foreign')) return 'foreign'",
+        "  if (false) return 'foreign'",
+        "script",
+        ["S-N2-foreign-provenance", "S-N6-parenthesised-foreign-alias"],
+        "★ the reviewer's LITERAL rule, built and run: foreign only when no member "
+        "is a unit system. It flips `type Theme = 'light' | 'dark' | 'imperial'`, "
+        "which R2 requires to be accepted and R3 names as the case this leg exists "
+        "to distinguish. That is why the shipped rule rounds the other way.",
+    ),
+    Mutation(
+        "M40-drop-paren-stripping",
+        "gate",
+        "  while (out.startsWith('(') && out.endsWith(')')) {",
+        "  while (false) {",
+        "script",
+        ["S-N6-parenthesised-foreign-alias"],
+        "paren stripping can only be pinned from the NEGATIVE side: removing it "
+        "makes the gate stricter, so no positive can flip",
     ),
     Mutation(
         "M11-flag-every-equality",
@@ -526,6 +603,13 @@ MUTATIONS = [
     ),
 ]
 
+# M42 makes the gate refuse every file, so it flips every script case by
+# construction. Derived, never typed out: this phase has now twice been bitten by
+# a hardcoded expectation that went stale one argument over.
+for _m in MUTATIONS:
+    if _m.mid == "M42-no-parse-diagnostics-property":
+        _m.flips = [c.cid for c in C.SCRIPT_POSITIVE + C.SCRIPT_NEGATIVE]
+
 # Mutations of the tree WALK rather than the scan. `walkDir` is unreachable from
 # `--scan`, so the corpus cannot see these at all: they are scored against an
 # owned fixture tree via `--src`.
@@ -554,18 +638,32 @@ WALK_MUTATIONS = [
 ]
 
 
-def write_mutant(target: str, old: str, new: str) -> tuple[Path, int]:
-    """Write a mutated COPY and return (path, occurrences of `old` in the source)."""
+def write_mutant(
+    target: str, old: str, new: str, also: list[tuple[str, str]] | None = None
+) -> tuple[Path, int]:
+    """Write a mutated COPY and return (path, the WORST occurrence count seen).
+
+    Every edit must match exactly once. Returning the worst count rather than
+    the first keeps the PATTERN guard meaningful for multi-edit mutations: a
+    combined mutation whose second edit silently matched nothing would otherwise
+    be scored as though it had applied.
+    """
     src = GATE_SRC if target == "gate" else ESLINT_CFG
     dst = GATE_MUTANT if target == "gate" else CFG_MUTANT
     text = src.read_text()
-    n = text.count(old)
-    if n == 1:
-        dst.write_text(text.replace(old, new))
-    return dst, n
+    worst = 1
+    for a, b in [(old, new), *(also or [])]:
+        n = text.count(a)
+        if n != 1:
+            worst = n
+            break
+        text = text.replace(a, b)
+    if worst == 1:
+        dst.write_text(text)
+    return dst, worst
 
 
-def mutant_is_valid(target: str, tmpdir: Path) -> str | None:
+def mutant_is_valid(target: str, tmpdir: Path, expect_probe: str = "clean") -> str | None:
     """Prove the mutant still RUNS before its result is allowed to mean anything.
 
     Round 1 of the sibling mutation harness scored a syntax-broken mutant as a
@@ -587,6 +685,15 @@ def mutant_is_valid(target: str, tmpdir: Path) -> str | None:
             capture_output=True,
             text=True,
         )
+        if expect_probe == "refuses":
+            # The mutation's whole point is that the gate now refuses every
+            # file. It must still refuse with its OWN message rather than
+            # crashing, or it is broken rather than deliberately strict.
+            if p.returncode == 0:
+                return "mutant was expected to refuse and did not"
+            if "parseDiagnostics" not in (p.stderr or p.stdout):
+                return f"mutant crashed instead of refusing: {(p.stderr or p.stdout).strip()[-200:]}"
+            return None
         if p.returncode != 0:
             return f"mutant does not run: {(p.stderr or p.stdout).strip()[-200:]}"
         try:
@@ -923,7 +1030,7 @@ def main() -> int:
         print("mutations: each must RUN, then flip exactly the cases that name it")
         print("-" * 78)
         for mut in MUTATIONS:
-            dst, n = write_mutant(mut.target, mut.old, mut.new)
+            dst, n = write_mutant(mut.target, mut.old, mut.new, mut.also)
             if n != 1:
                 failures.append(f"{mut.mid}: PATTERN occurs {n} times, expected 1")
                 print(
@@ -931,7 +1038,7 @@ def main() -> int:
                 )
                 continue
             try:
-                bad = mutant_is_valid(mut.target, tmpdir)
+                bad = mutant_is_valid(mut.target, tmpdir, mut.expect_probe)
                 if bad:
                     failures.append(f"{mut.mid}: {bad}")
                     print(f"  {mut.mid:<32} *** MUTANT DID NOT RUN *** {bad}")

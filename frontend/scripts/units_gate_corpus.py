@@ -371,9 +371,10 @@ SCRIPT_POSITIVE = [
         "}\n",
         1,
         "compare",
-        "the real shape at useUnitPreference.ts: a bare identifier is fail-closed "
-        "anyway, so `string` earns its place in the name list only through a union",
-        "M6-string-is-foreign",
+        "the real shape at useUnitPreference.ts. Round 2 pinned this to a NAME-list "
+        "mutation and the name list turned out to be redundant, so the case passed "
+        "for a reason it did not name; `string` is UNKNOWN and fail-closed",
+        "M41-unknown-member-is-foreign",
         ext=".ts",
     ),
     Case(
@@ -384,9 +385,61 @@ SCRIPT_POSITIVE = [
         "}\n",
         1,
         "compare",
-        "same argument one name over: `UnitSystem | null` is a union, so only the "
-        "name list catches it",
-        "M5-unitsystem-and-unresolvable-are-foreign",
+        "★ this is `readStoredUnitSystem`'s own return type. Round 2 caught it only "
+        "because the NAME `UnitSystem` appeared in the text; spelled out or aliased "
+        "it walked past. Now it is an UNKNOWN member beside a stripped nullish one",
+        "M41-unknown-member-is-foreign",
+        ext=".ts",
+    ),
+    Case(
+        "S-P25-nullable-unit-union",
+        "export function label(s: 'imperial' | 'metric' | null): string {\n"
+        "  return s === 'imperial' ? 'mi' : 'km'\n"
+        "}\n",
+        1,
+        "compare",
+        "★ the F2 REGRESSION: round 1 caught this, round 2 read one non-vocabulary "
+        "member as proof the whole annotation was foreign. A nullable unit system "
+        "is a unit system, and this is the case that exercises the vocabulary half",
+        "M39-keep-nullish-members",
+        ext=".ts",
+    ),
+    Case(
+        "S-P26-parenthesised-alias",
+        "type Sys = ('imperial' | 'metric')\n"
+        "export function label(s: Sys): string {\n"
+        "  return s === 'imperial' ? 'mi' : 'km'\n"
+        "}\n",
+        1,
+        "compare",
+        "one pair of parentheses was a complete bypass. It is now defended twice, "
+        "by paren stripping and by the fail-closed UNKNOWN class, so only a "
+        "mutation removing BOTH flips it",
+        "M40b-parens-unread-then-exempt",
+        ext=".ts",
+    ),
+    Case(
+        "S-P27-indexed-access",
+        "const SYSTEMS = ['imperial', 'metric'] as const\n"
+        "export function label(s: (typeof SYSTEMS)[number]): string {\n"
+        "  return s === 'imperial' ? 'mi' : 'km'\n"
+        "}\n",
+        1,
+        "compare",
+        "a type expression the gate cannot read is not evidence of innocence",
+        "M41-unknown-member-is-foreign",
+        ext=".ts",
+    ),
+    Case(
+        "S-P28-alias-or-undefined",
+        "type Sys = 'imperial' | 'metric'\n"
+        "export function label(s: Sys | undefined): string {\n"
+        "  return s === 'imperial' ? 'mi' : 'km'\n"
+        "}\n",
+        1,
+        "compare",
+        "the alias must be resolved at MEMBER level, not only when it is the whole text",
+        "M39-keep-nullish-members",
         ext=".ts",
     ),
 ]
@@ -411,8 +464,24 @@ SCRIPT_NEGATIVE = [
         "  return theme === 'imperial' ? 'skin-imperial' : 'skin-plain'\n"
         "}\n",
         0,
-        why="R3: this is the case no no-restricted-syntax selector can tell apart",
-        pinned_by="M8-drop-annotation-exemption",
+        why="R3: the case no no-restricted-syntax selector can tell apart, and the "
+        "one that decides how per-member classification must round: a member no unit "
+        "system has ever contained means a different enum sharing a spelling",
+        pinned_by="M8-drop-annotation-exemption / M38-any-unit-member-flags",
+    ),
+    Case(
+        "S-N6-parenthesised-foreign-alias",
+        "type Theme = ('light' | 'dark' | 'imperial')\n"
+        "declare function resolveTheme(): Theme\n"
+        "export function themeClass(): string {\n"
+        "  const theme: Theme = resolveTheme()\n"
+        "  return theme === 'imperial' ? 'a' : 'b'\n"
+        "}\n",
+        0,
+        why="paren stripping can only be pinned from the NEGATIVE side: dropping it "
+        "makes the gate stricter, so no positive can flip, and this one goes 0 to 1",
+        pinned_by="M40-drop-paren-stripping",
+        ext=".ts",
     ),
     Case(
         "S-N3-near-miss-literal",
@@ -584,14 +653,36 @@ ESLINT_NEGATIVE = [
 # runners
 # --------------------------------------------------------------------------
 def _refusal(err: str) -> str:
-    """Canonicalise a refusal to its substantive message.
+    """Canonicalise ANY refusal to its substantive, path-free message.
 
     The raw stderr carries the gate's own path and a stack trace, so pointing
     the runner at a mutated COPY changed this string for every mutation and made
-    S-P13 look as though it flipped 26 times over. Only the message matters.
+    S-P13 look as though it flipped 26 times over.
+
+    ★ Round 2 canonicalised only the PARSE-ERROR refusal and left a raw
+    `stderr[-200:]` fallback. That fallback was unreachable at the time and
+    became reachable the moment `M42` was written: the one mutation that pins
+    the missing-parseDiagnostics guard makes every scan refuse with a DIFFERENT
+    message, so S-P13 counted as flipped while its behaviour was identical. A
+    canonicaliser with a path-bearing fallback is the bug it was written to fix,
+    holding its breath. Every message the gate can throw is matched here, and
+    anything unmatched has its paths and stack frames removed rather than being
+    passed through.
     """
-    m = re.search(r"parsed as (?:TS|TSX) with \d+ parse error\(s\)[^\n]*", err)
-    return f"parse error: {m.group(0) if m else err.strip()[-200:]}"
+    for rx in (
+        r"parsed as (?:TS|TSX) with \d+ parse error\(s\)[^\n]*",
+        r"this TypeScript build exposes no parseDiagnostics[^\n]*",
+        r"typescript did not expose createSourceFile[^\n]*",
+    ):
+        m = re.search(rx, err)
+        if m:
+            return f"refused: {m.group(0)}"
+    cleaned = [
+        re.sub(r"(?:/[\w.@+-]+)+", "<path>", line).strip()
+        for line in err.splitlines()
+        if line.strip() and not re.match(r"\s*at\s", line)
+    ]
+    return f"refused: {' | '.join(cleaned)[-200:] if cleaned else 'no message'}"
 
 
 def run_script_leg(case: Case, tmpdir: Path, gate: str = GATE) -> tuple[int, list[str]]:
