@@ -69,6 +69,17 @@
  *                conclusion changed FOR A REASON, never that the reason was
  *                good.
  *
+ * ★ AND THE TWO DO NOT REACH EQUALLY FAR, which belongs here and not only in a
+ * report. Only findings that MIRROR the units gate baseline
+ * (`<kind> xN (units gate baseline)`) are held by both. Every PROSE finding,
+ * which is most of the ones a human wrote, rests on `[weakened]` alone, and
+ * `[weakened]` compares against the last COMMITTED manifest: erase one and
+ * commit it in the same step and a local run has nothing to compare against.
+ * What catches that is CI passing `--against-ref <merge-base>`, and that job is
+ * advisory. The split is PRINTED on every successful run rather than written
+ * down here, because a number in prose goes stale and this one moves every time
+ * a task closes a finding.
+ *
  * Usage:
  *   bun run scripts/validate-units-manifest.ts              # gate
  *   bun run scripts/validate-units-manifest.ts --update     # re-stamp digests
@@ -566,7 +577,16 @@ export function checkManifest(
   const seen = new Set<string>()
   for (const row of rows) {
     if (typeof row?.path !== 'string' || row.path.length === 0) {
-      failures.push({ rule: 'schema.no-path', path: '<row>', detail: 'row has no `path`' })
+      // Spelled across four lines like every other emission on purpose: the
+      // sweep in `units_manifest_selftest.py` disables a rule by finding its
+      // own `failures.push({` / `rule: '<id>',` pair, and a one-line spelling
+      // was unreachable to that anchor. It was the one rule of eighteen with no
+      // deletion mutation, while the harness said "each rule in turn".
+      failures.push({
+        rule: 'schema.no-path',
+        path: '<row>',
+        detail: 'row has no `path`',
+      })
       continue
     }
     if (seen.has(row.path)) {
@@ -867,11 +887,26 @@ function main(): void {
         `${againstFile ?? againstRef ?? '<none>'})`,
     )
   } else if (previous.manifest.schemaVersion !== manifest.schemaVersion) {
+    // ★ A FORMAT MIGRATION STANDS DOWN THE FINDING HALF, NOT THE WHOLE
+    // DIRECTION. Moving 47 rows' owner text out of the finding string and into
+    // an `owners` array legitimately shrinks `findings` on files that never
+    // changed, so `weakened.finding` has to yield to it. Nothing about moving a
+    // field between columns LOWERS A DISPOSITION, though, and skipping both
+    // halves turned a version bump into a blanket amnesty: bump the version in
+    // the same commit that downgrades every row and this printed a reassuring
+    // sentence. Measured by forcing the real owner migration through the check:
+    // 49 `weakened.finding` and 0 `weakened.rank`, so keeping rank live costs a
+    // genuine migration nothing.
+    const rank = conclusionDrift(previous.manifest.rows, rows).filter(
+      (f) => f.rule === 'weakened.rank',
+    )
+    failures.push(...rank)
     console.log(
-      `  (conclusion drift NOT checked: ${previous.from} is schema version ` +
+      `  (erased-finding drift NOT checked: ${previous.from} is schema version ` +
         `${previous.manifest.schemaVersion} and this manifest is ` +
         `${manifest.schemaVersion}. A format migration moves fields between ` +
-        'columns, which is not a conclusion getting cheaper.)',
+        'columns, which is not a conclusion getting cheaper. Disposition drift WAS ' +
+        'checked across the bump, because a migration never lowers one.)',
     )
   } else {
     comparedAgainst = previous.from
@@ -911,6 +946,25 @@ function main(): void {
     process.exit(1)
   }
 
+  // The residual, MEASURED on every run rather than asserted in a comment. See
+  // the module docstring: the two erasure defences do not reach equally far, and
+  // which findings each one covers changes as tasks close them.
+  let mirrored = 0
+  let prose = 0
+  const mirroredRows = new Set<string>()
+  const proseRows = new Set<string>()
+  for (const row of rows) {
+    for (const finding of row.findings ?? []) {
+      if (BASELINE_FINDING.test(finding)) {
+        mirrored += 1
+        mirroredRows.add(row.path)
+      } else {
+        prose += 1
+        proseRows.add(row.path)
+      }
+    }
+  }
+
   const counts = new Map<string, number>()
   for (const r of rows) counts.set(r.disposition, (counts.get(r.disposition) ?? 0) + 1)
   const summary = [...counts]
@@ -921,6 +975,12 @@ function main(): void {
     `✓ units manifest: all ${rows.length} enumerated module(s) dispositioned at this ` +
       `reviewed snapshot (${summary})` +
       `${comparedAgainst === null ? '' : `, no conclusion weakened against ${comparedAgainst}`}.`,
+  )
+  console.log(
+    `  (${mirrored} finding(s) on ${mirroredRows.size} row(s) mirror the units gate ` +
+      `baseline and are held by two mechanisms; ${prose} on ${proseRows.size} row(s) are ` +
+      'prose and rest on the drift rule alone, so erasing one and committing it in the ' +
+      'same step is caught only by the merge-base run.)',
   )
 }
 

@@ -143,7 +143,24 @@ def build_tree(root: Path) -> None:
 
 
 def seed(root: Path, manifest: Path) -> None:
-    """Seed the fixture manifest and give every row a disposition."""
+    """Seed the fixture manifest and give every row a disposition AND a reason.
+
+    ★ EVERY ROW CARRIES A `reason`, and that is the point rather than realism.
+    The round-trip probe below exists because `--update` silently dropped all 50
+    `owners` arrays when that field was added to the row schema and not to the
+    checker's own `seed()`. It catches the NEXT field somebody forgets, but only
+    for fields the fixture uses, and no fixture row had a `reason`. All 387 rows
+    of the real manifest do, and `reason` is the per-row audit trail: losing it
+    through the documented remedy for a [digest] failure would strip 381 rows of
+    why anybody concluded anything. That is the `owners` defect one field over,
+    inside the probe written to prevent it.
+
+    Rows are rebuilt in the checker's own emission order (path, disposition,
+    digest, reason, tests, findings, owners) rather than mutated in place. A
+    dict that appends `reason` after `owners` round-trips to different BYTES for
+    a reason that has nothing to do with a dropped field, and the probe compares
+    bytes.
+    """
     subprocess.run(
         ["bun", "run", CHECKER, "--update", "--root", str(root), "--manifest", str(manifest)],
         cwd=FRONTEND,
@@ -152,22 +169,29 @@ def seed(root: Path, manifest: Path) -> None:
         check=True,
     )
     doc = json.loads(manifest.read_text())
+    rebuilt: list[dict] = []
     for row in doc["rows"]:
+        out: dict = {"path": row["path"], "disposition": "", "digest": row["digest"]}
         if row["path"] == "src/delta.ts":
-            row["disposition"] = "audited"
-            row["findings"] = ["compare x2 (units gate baseline)"]
-            row["owners"] = ["task 6"]
+            out["disposition"] = "audited"
+            out["reason"] = "the module units.baseline.json also records work for"
+            out["findings"] = ["compare x2 (units gate baseline)"]
+            out["owners"] = ["task 6"]
         elif row["path"] == "src/alpha.ts":
             # One audited row carrying every kind of evidence, and TWO findings
             # so a probe can drop one and leave the row valid. Isolating a rule
             # matters more than realism here: a probe that trips two rules at
             # once cannot tell which of them a mutation killed.
-            row["disposition"] = "audited"
-            row["tests"] = ["__tests__/alpha.test.ts"]
-            row["findings"] = ["a recorded finding", "a second recorded finding"]
-            row["owners"] = ["task 6"]
+            out["disposition"] = "audited"
+            out["reason"] = "one audited row carrying every kind of evidence"
+            out["tests"] = ["__tests__/alpha.test.ts"]
+            out["findings"] = ["a recorded finding", "a second recorded finding"]
+            out["owners"] = ["task 6"]
         else:
-            row["disposition"] = "no unit behaviour"
+            out["disposition"] = "no unit behaviour"
+            out["reason"] = "nothing here converts a quantity"
+        rebuilt.append(out)
+    doc["rows"] = rebuilt
     manifest.write_text(json.dumps(doc, indent=1) + "\n")
 
 
@@ -575,9 +599,15 @@ def _disable(rule: str, indent: int) -> tuple[str, str]:
     return body, f"{pad}if (false) failures.push({{\n{pad}  rule: '{rule}',"
 
 
-RULE_MUTATIONS = [
-    RuleMutation(f"drop-{rule}", *_disable(rule, indent), flips, why)
-    for rule, indent, flips, why in [
+# The table itself, named so `declared_rules()` can check it covers every rule
+# the checker declares. It was a bare comprehension and it covered 17 of 18:
+# `schema.no-path` was emitted in a ONE-LINE `failures.push({...})` that
+# `_disable`'s multi-line anchor could never match, so it was simply absent
+# rather than reported as unmatched, while this file's closing sentence said
+# "each rule in turn". `_disable`'s own docstring names that hazard for
+# indentation; this is the same hazard one level up, where the PATTERN guard
+# cannot reach because there is no pattern to guard.
+_RULE_TABLE: list[tuple[str, int, list[str], str]] = [
         ("unlisted", 6, ["D1-new-module", "D2-row-removed", "row-without-path"], "parity, the file side"),
         ("orphan", 6, ["orphan-row"], "parity, the row side"),
         ("duplicate", 6, ["duplicate-row"], "one disposition hiding another"),
@@ -595,8 +625,18 @@ RULE_MUTATIONS = [
         ("baseline.invented", 6, ["baseline-work-invented"], "and agree in both directions"),
         ("weakened.rank", 6, ["D4-disposition-downgraded", "D4-rename-launders"], "★ the third survivor"),
         ("weakened.finding", 8, ["D4-finding-erased", "D4-rename-launders"], "an erased finding"),
-    ]
+        ("schema.no-path", 6, ["row-without-path"], "a row that names no file at all"),
 ]
+
+RULE_MUTATIONS = [
+    RuleMutation(f"drop-{rule}", *_disable(rule, indent), flips, why)
+    for rule, indent, flips, why in _RULE_TABLE
+]
+
+#: Which rule ids the sweep above actually deletes. Compared against the
+#: checker's own `type Rule` union, so a rule added there without a mutation
+#: here fails this harness instead of quietly shrinking its coverage.
+RULE_COVERAGE = {rule for rule, _indent, _flips, _why in _RULE_TABLE}
 
 # Mechanisms rather than rules: deleting one silences several rules at once.
 RULE_MUTATIONS += [
@@ -625,6 +665,24 @@ RULE_MUTATIONS += [
         "reads as a survivor.",
     ),
 ]
+
+
+def declared_rules() -> list[str]:
+    """The rule ids the checker DECLARES, read from its `type Rule` union.
+
+    Derived rather than transcribed, for the same reason the checker derives the
+    manifest universe rather than keeping a list: a list I maintain is a floor.
+    A rule added to the union with no entry in `_RULE_TABLE` is a rule this
+    harness silently stops covering while still printing "each rule in turn".
+    """
+    text = CHECKER_SRC.read_text()
+    match = re.search(r"^type Rule =\n((?:\s*\|\s*'[\w.-]+'\n)+)", text, re.M)
+    if match is None:
+        raise SystemExit(
+            "could not read `type Rule` from the checker. The sweep's coverage claim "
+            "rests on this parse, so a silent zero here would be worse than a crash."
+        )
+    return re.findall(r"'([\w.-]+)'", match.group(1))
 
 
 def write_checker_mutant(old: str, new: str, also: list[tuple[str, str]] | None = None) -> tuple[str, int]:
@@ -764,13 +822,22 @@ def degradation_probe(root: Path, manifest: Path, tmp: Path) -> list[str]:
 
 
 def version_probe(root: Path, manifest: Path, tmp: Path) -> list[str]:
-    """A format migration is exempt by construction, and only a migration is.
+    """A format migration stands down the FINDING half, and only that half.
 
     ★ [weakened] forbids findings from shrinking while a digest holds still,
     which is right for an erasure and WRONG for a format migration: moving 47
     rows' owner text into an `owners` array shrank findings on 47 unchanged
     files. That was handled by ordering the commits, which worked locally and
     left an undocumented dependency on push granularity.
+
+    ★ BUT STANDING DOWN THE WHOLE DIRECTION MADE A VERSION BUMP AN AMNESTY.
+    Bump the version in the same commit that downgrades every row and the gate
+    printed a reassuring sentence. A migration moves fields between columns; it
+    never LOWERS a disposition, and forcing the real owner migration through the
+    rank half produced 49 `weakened.finding` and 0 `weakened.rank`. So rank
+    stays live across the bump, and the two probes below are the pair: the
+    erasure a migration legitimately causes is forgiven, the downgrade it never
+    causes is not.
     """
     failures: list[str] = []
     pristine = manifest.read_text()
@@ -785,17 +852,47 @@ def version_probe(root: Path, manifest: Path, tmp: Path) -> list[str]:
     try:
         write_manifest(manifest, erased)
         rc, rules, _pairs, out = run(root, manifest, against=old_format)
-        skipped = "is schema version 1 and this manifest is 2" in out
+        skipped = "erased-finding drift NOT checked" in out
         ok = rc == 0 and not rules and skipped and "no conclusion weakened against" not in out
         print(
-            f"  {'across a schema version':<38} "
-            + ("skipped, and says why" if ok else f"*** rc={rc} {sorted(rules)} skipped={skipped} ***")
+            f"  {'findings erased across a version':<38} "
+            + ("forgiven, and says why" if ok else f"*** rc={rc} {sorted(rules)} skipped={skipped} ***")
         )
         if not ok:
             failures.append(f"version probe: rc={rc} rules={sorted(rules)} skipped={skipped}")
 
+        # ...and the half a migration can never justify is STILL LIVE across the
+        # same bump. Findings and owners go with the downgrade so this trips the
+        # rank rule alone rather than the schema rules a bare downgrade would.
+        downgraded = rows_of(pristine)
+        for r in downgraded:
+            if r["path"] == "src/alpha.ts":
+                r["disposition"] = "no unit behaviour"
+                for key in ("tests", "findings", "owners"):
+                    r.pop(key, None)
+        write_manifest(manifest, downgraded)
+        rc, rules, pairs, out = run(root, manifest, against=old_format)
+        ok = (
+            rc == 1
+            and rules == {"weakened.rank"}
+            and "src/alpha.ts" in [path for _rule, path in pairs]
+        )
+        print(
+            f"  {'disposition lowered across a version':<38} "
+            + ("still caught" if ok else f"*** rc={rc} {sorted(rules)} ***")
+        )
+        if not ok:
+            failures.append(
+                f"version probe, rank across a bump: rc={rc} rules={sorted(rules)}"
+            )
+
         # ...and the same erasure WITHIN one version is still caught, or the
-        # version field is just a bypass with a nicer name.
+        # version field is just a bypass with a nicer name. The manifest is put
+        # back to the ERASURE first: the downgrade probe above left the
+        # disposition lowered too, and this check asserts the exact rule set, so
+        # it would otherwise see the rank rule fire for the previous probe's
+        # mutation rather than its own.
+        write_manifest(manifest, erased)
         same_format = tmp / "previous.v2.json"
         same_format.write_text(pristine)
         rc, rules, _pairs, _out = run(root, manifest, against=same_format)
@@ -885,6 +982,23 @@ def main() -> int:
 
         print("\nrule deletions: each must silence exactly the probes that name it")
         print("-" * 78)
+        declared = declared_rules()
+        uncovered = sorted(set(declared) - RULE_COVERAGE)
+        invented = sorted(RULE_COVERAGE - set(declared))
+        ok = not uncovered and not invented
+        print(
+            f"  {'the table covers the declared rules':<38} "
+            + (
+                f"{len(RULE_COVERAGE)} of {len(declared)}"
+                if ok
+                else f"*** uncovered={uncovered} invented={invented} ***"
+            )
+        )
+        if not ok:
+            failures.append(
+                f"rule coverage: declared {len(declared)}, table covers "
+                f"{len(RULE_COVERAGE)}; uncovered={uncovered} invented={invented}"
+            )
         for mut in RULE_MUTATIONS:
             mutant, n = write_checker_mutant(mut.old, mut.new, mut.also)
             if n != 1:
@@ -954,14 +1068,18 @@ def main() -> int:
             print("  " + f)
         return 1
     print(
-        f"MANIFEST SELFTEST: {len(PROBES)} probes trip exactly the rules they name, and "
-        f"all {len(RULE_MUTATIONS)} rule deletions silence exactly the probes that name "
-        "them, so no rule survives removal behind a sibling emitting the same tag. All "
+        f"MANIFEST SELFTEST: {len(PROBES)} probes trip exactly the rules they name; the "
+        f"table covers all {len(RULE_COVERAGE)} rule ids the checker DECLARES, derived "
+        "from its own `type Rule` union rather than transcribed; and all "
+        f"{len(RULE_MUTATIONS)} deletions silence exactly the probes that name them, so "
+        "no rule survives removal behind a sibling emitting the same tag. All "
         "four directions fire, the digest one alone; a repair makes the same erasure "
         "legitimate; a rename cannot launder a finding; the git default was driven "
         "against a real repository and says what it compared; every degraded comparison "
-        "warns and claims nothing; a format migration is exempt and an erasure inside "
-        "one version is not; --update is a fixed point; and every named runtime root is "
+        "warns and claims nothing; a format migration stands down the erased-finding "
+        "half ONLY, so a disposition lowered across a version bump is still caught and "
+        "so is an erasure inside one version; --update is a fixed point over every field "
+        "the fixture carries, `reason` among them; and every named runtime root is "
         "enforced, the entry document and a binary asset among them."
     )
     return 0
