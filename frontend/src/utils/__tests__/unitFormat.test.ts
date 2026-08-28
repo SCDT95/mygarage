@@ -13,6 +13,7 @@ import {
   canonicalFromUnitField,
   formatAtPrecision,
   makeUnitFormat,
+  resolvedUnitSummary,
   seedUnitField,
   type UnitFieldOrigin,
 } from '../unitFormat'
@@ -145,6 +146,37 @@ describe('toInputValue', () => {
 
   it('renders a reciprocal zero as empty rather than Infinity', () => {
     expect(makeUnitFormat(IMPERIAL).consumption.toInputValue(0)).toBe('')
+  })
+})
+
+describe('resolvedUnitSummary', () => {
+  it('lists the imperial preset, one label per quantity in declaration order', () => {
+    expect(resolvedUnitSummary(IMPERIAL)).toBe('mi, mph, ft, gal, MPG, PSI, °F, lb, lb-ft, /32 in')
+  })
+
+  it('lists the metric preset, whose pressure is kPa and never bar', () => {
+    // The fixed string this replaced said "bar", which no preset has ever
+    // resolved to: `presetUnitsFor('metric', ...)` names `kpa`.
+    expect(resolvedUnitSummary(METRIC)).toBe('km, km/h, m, L, L/100km, kPa, °C, kg, Nm, mm')
+  })
+
+  it('follows each quantity of a mixed set rather than collapsing from volume', () => {
+    // R1's example: litres, MILES and PSI. The settings screen used to collapse
+    // this to `metric` and tell the user they use kilometres and bar.
+    const mixed: UnitSet = { ...METRIC, distance: 'mi', pressure: 'psi' }
+    expect(resolvedUnitSummary(mixed)).toBe('mi, km/h, m, L, L/100km, PSI, °C, kg, Nm, mm')
+  })
+
+  it('follows a set that collapses to imperial but is metric in three quantities', () => {
+    const mixed: UnitSet = { ...IMPERIAL, temperature: 'c', torque: 'nm', tread: 'mm' }
+    expect(resolvedUnitSummary(mixed)).toBe('mi, mph, ft, gal, MPG, PSI, °C, lb, Nm, mm')
+  })
+
+  it('reads the consumption token rather than deriving it from volume', () => {
+    // `km_l` is the one consumption token no preset uses, so a summary that
+    // derived consumption from `units.volume` would say L/100km here.
+    const mixed: UnitSet = { ...METRIC, consumption: 'km_l' }
+    expect(resolvedUnitSummary(mixed)).toBe('km, km/h, m, L, km/L, kPa, °C, kg, Nm, mm')
   })
 })
 

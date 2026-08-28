@@ -58,16 +58,11 @@
   {
    "path": "public/locales/de/settings.json",
    "disposition": "audited",
-   "digest": "97f561f654e66321608dfa160c2983bee2cda103054d3858f4755fd476a430bb",
-   "reason": "units.gallonUs / units.gallonUk state literal conversion facts and units.showBothDescription is an example; neither is a converted quantity.",
+   "digest": "a3c0eeba414f5a029bd356f95158bf439c03e97779005cf42991e2bdbf7db861",
+   "reason": "units.resolvedDescription is COMPOSED from the resolved set, so it carries no unit names of its own: the labels are interpolated from UNIT_ADAPTERS, which is the same table every rendered quantity reads (plan 3b R1). units.gallonUs / units.gallonUk state literal conversion facts and units.showBothDescription is an example; none is a converted quantity.",
    "tests": [
+    "__tests__/unitDescriptionLocales.test.ts",
     "components/tabs/__tests__/SettingsSystemTab.units.test.tsx"
-   ],
-   "findings": [
-    "units.imperialDescription and units.metricDescription are two fixed strings selected by the collapsed binary system, so a {volume:'L', distance:'mi', pressure:'psi'} user is told they use kilometres and bar. R1: compose the description from the resolved set instead, which lands in every locale rather than only in `en`."
-   ],
-   "owners": [
-    "task 2"
    ]
   },
   {
@@ -121,16 +116,11 @@
   {
    "path": "public/locales/fr/settings.json",
    "disposition": "audited",
-   "digest": "5336141488a27e8afff545f7f535b7300aca04c4636bf476ae7b8023cb5e8dfb",
-   "reason": "units.gallonUs / units.gallonUk state literal conversion facts and units.showBothDescription is an example; neither is a converted quantity.",
+   "digest": "2dd255ba93576ea194727c7cbbff8c0c779a40baac408923800d1fa7f749bba8",
+   "reason": "units.resolvedDescription is COMPOSED from the resolved set, so it carries no unit names of its own: the labels are interpolated from UNIT_ADAPTERS, which is the same table every rendered quantity reads (plan 3b R1). units.gallonUs / units.gallonUk state literal conversion facts and units.showBothDescription is an example; none is a converted quantity.",
    "tests": [
+    "__tests__/unitDescriptionLocales.test.ts",
     "components/tabs/__tests__/SettingsSystemTab.units.test.tsx"
-   ],
-   "findings": [
-    "units.imperialDescription and units.metricDescription are two fixed strings selected by the collapsed binary system, so a {volume:'L', distance:'mi', pressure:'psi'} user is told they use kilometres and bar. R1: compose the description from the resolved set instead, which lands in every locale rather than only in `en`."
-   ],
-   "owners": [
-    "task 2"
    ]
   },
   {
@@ -172,16 +162,11 @@
   {
    "path": "public/locales/pl/settings.json",
    "disposition": "audited",
-   "digest": "23064830c72eb9dd11593accc6cedac945145d9d971d97c197e89a7b44cfdd7c",
-   "reason": "units.gallonUs / units.gallonUk state literal conversion facts and units.showBothDescription is an example; neither is a converted quantity.",
+   "digest": "6190358bfcf6bacc543acc111bf765e2346971e74bc740d7f4befe58fb86342f",
+   "reason": "units.resolvedDescription is COMPOSED from the resolved set, so it carries no unit names of its own: the labels are interpolated from UNIT_ADAPTERS, which is the same table every rendered quantity reads (plan 3b R1). units.gallonUs / units.gallonUk state literal conversion facts and units.showBothDescription is an example; none is a converted quantity.",
    "tests": [
+    "__tests__/unitDescriptionLocales.test.ts",
     "components/tabs/__tests__/SettingsSystemTab.units.test.tsx"
-   ],
-   "findings": [
-    "units.imperialDescription and units.metricDescription are two fixed strings selected by the collapsed binary system, so a {volume:'L', distance:'mi', pressure:'psi'} user is told they use kilometres and bar. R1: compose the description from the resolved set instead, which lands in every locale rather than only in `en`."
-   ],
-   "owners": [
-    "task 2"
    ]
   },
   {
@@ -217,16 +202,11 @@
   {
    "path": "public/locales/pt-BR/settings.json",
    "disposition": "audited",
-   "digest": "308f1713c12878ea496a1d68e8a3d80af65c1792c32a14c6ae2dc826651e0182",
-   "reason": "units.gallonUs / units.gallonUk state literal conversion facts and units.showBothDescription is an example; neither is a converted quantity.",
+   "digest": "5e5ed0632f41ffe67a929524a4c69e6cf9ade66112d03de68bfd77c8ad623803",
+   "reason": "units.resolvedDescription is COMPOSED from the resolved set, so it carries no unit names of its own: the labels are interpolated from UNIT_ADAPTERS, which is the same table every rendered quantity reads (plan 3b R1). units.gallonUs / units.gallonUk state literal conversion facts and units.showBothDescription is an example; none is a converted quantity.",
    "tests": [
+    "__tests__/unitDescriptionLocales.test.ts",
     "components/tabs/__tests__/SettingsSystemTab.units.test.tsx"
-   ],
-   "findings": [
-    "units.imperialDescription and units.metricDescription are two fixed strings selected by the collapsed binary system, so a {volume:'L', distance:'mi', pressure:'psi'} user is told they use kilometres and bar. R1: compose the description from the resolved set instead, which lands in every locale rather than only in `en`."
-   ],
-   "owners": [
-    "task 2"
    ]
   },
   {
@@ -268,16 +248,11 @@
   {
    "path": "public/locales/ru/settings.json",
    "disposition": "audited",
-   "digest": "17a82a39f5f2596855c70d2050743b63b2bd504fd43910e2392a49ed1331b6ab",
-   "reason": "units.gallonUs / units.gallonUk state literal conversion facts and units.showBothDescription is an example; neither is a converted quantity.",
+   "digest": "553cac09e7f04eb632b529a5619158e075cb3ad150681b28ff9e7dcdaca6e2bb",
+   "reason": "units.resolvedDescription is COMPOSED from the resolved set, so it carries no unit names of its own: the labels are interpolated from UNIT_ADAPTERS, which is the same table every rendered quantity reads (plan 3b R1). units.gallonUs / units.gallonUk state literal conversion facts and units.showBothDescription is an example; none is a converted quantity.",
    "tests": [
+    "__tests__/unitDescriptionLocales.test.ts",
     "components/tabs/__tests__/SettingsSystemTab.units.test.tsx"
-   ],
-   "findings": [
-    "units.imperialDescription and units.metricDescription are two fixed strings selected by the collapsed binary system, so a {volume:'L', distance:'mi', pressure:'psi'} user is told they use kilometres and bar. R1: compose the description from the resolved set instead, which lands in every locale rather than only in `en`."
-   ],
-   "owners": [
-    "task 2"
    ]
   },
   {
@@ -313,16 +288,11 @@
   {
    "path": "public/locales/uk/settings.json",
    "disposition": "audited",
-   "digest": "686ff8838a37984bfe8b4567d80553c7ff68996131be24b285822dcee5610623",
-   "reason": "units.gallonUs / units.gallonUk state literal conversion facts and units.showBothDescription is an example; neither is a converted quantity.",
+   "digest": "65b86d9dba967ce835b9416f1b6af5b8c26ab403d6877ee52ebb136ee5ffdc57",
+   "reason": "units.resolvedDescription is COMPOSED from the resolved set, so it carries no unit names of its own: the labels are interpolated from UNIT_ADAPTERS, which is the same table every rendered quantity reads (plan 3b R1). units.gallonUs / units.gallonUk state literal conversion facts and units.showBothDescription is an example; none is a converted quantity.",
    "tests": [
+    "__tests__/unitDescriptionLocales.test.ts",
     "components/tabs/__tests__/SettingsSystemTab.units.test.tsx"
-   ],
-   "findings": [
-    "units.imperialDescription and units.metricDescription are two fixed strings selected by the collapsed binary system, so a {volume:'L', distance:'mi', pressure:'psi'} user is told they use kilometres and bar. R1: compose the description from the resolved set instead, which lands in every locale rather than only in `en`."
-   ],
-   "owners": [
-    "task 2"
    ]
   },
   {
@@ -1419,17 +1389,17 @@
   {
    "path": "src/components/tabs/SettingsSystemTab.tsx",
    "disposition": "audited",
-   "digest": "268708a6642090dc5bf46a9cacc2061052e169fcb75e125ccc04d0dde830c701",
-   "reason": "gate-detectable unit decisions, recorded not asserted clean (plan 3b task 1 ordering)",
+   "digest": "6133d7833263f6b7143ccc1918e50cb40874f88de92b9559f74c54b6b36f6004",
+   "reason": "the unit description is COMPOSED from the resolved set (plan 3b R1), so the card no longer selects one of two fixed sentences on the volume-collapsed binary system. The three comparisons left are R1's structural exemptions, recorded not asserted clean until the task 8 gate flip.",
    "tests": [
     "components/tabs/__tests__/SettingsSystemTab.units.test.tsx"
    ],
    "findings": [
-    "compare x4 (units gate baseline)",
-    "R1: the description is selected from two fixed strings, so a {volume:'L', distance:'mi', pressure:'psi'} user is told they use kilometres and bar"
+    "compare x3 (units gate baseline)",
+    "R1's three structural exemptions: the two preset-selection controls (unitPreference === 'imperial' / 'metric') and the gallon-panel visibility (displaySystem === 'imperial'). Each is a choice BETWEEN units with no quantity to convert, so task 8 exempts them structurally or by exact match in the gate rather than with a reason-bearing pragma, which silences anything."
    ],
    "owners": [
-    "task 2"
+    "task 8"
    ]
   },
   {
@@ -2079,17 +2049,16 @@
   {
    "path": "src/locales/en/settings.json",
    "disposition": "audited",
-   "digest": "669001caaf16dbbbb00ca042e2b73eff413fe8ef684afbd2e1b21c6ef7705197",
-   "reason": "units.gallonUs / units.gallonUk state literal conversion facts and units.showBothDescription is an example; neither is a converted quantity.",
+   "digest": "032ab6d4c6be6de3dc3cbb7ca9ca0121c5d765fb818f9e62911eadede1bc32f9",
+   "reason": "units.resolvedDescription is COMPOSED from the resolved set, so it carries no unit names of its own: the labels are interpolated from UNIT_ADAPTERS, which is the same table every rendered quantity reads (plan 3b R1). units.gallonUs / units.gallonUk state literal conversion facts and units.showBothDescription is an example; none is a converted quantity.",
    "tests": [
+    "__tests__/unitDescriptionLocales.test.ts",
     "components/tabs/__tests__/SettingsSystemTab.units.test.tsx"
    ],
    "findings": [
-    "units.imperialDescription and units.metricDescription are two fixed strings selected by the collapsed binary system, so a {volume:'L', distance:'mi', pressure:'psi'} user is told they use kilometres and bar. R1: compose the description from the resolved set instead, which lands in every locale rather than only in `en`.",
     "events.card.milesBefore ('miles before') and events.card.milestonesDesc ('100k miles') are imperial-only copy rendered by EventNotificationsCard."
    ],
    "owners": [
-    "task 2",
     "task 6"
    ]
   },
@@ -2826,8 +2795,8 @@
   {
    "path": "src/utils/unitFormat.ts",
    "disposition": "audited",
-   "digest": "16724dd0e0ba2bae5e964c7c1e2c1dbb7c19da46f08ea35f548fd86dc3a0a828",
-   "reason": "makeUnitFormat plus the origin-preserving pair seedUnitField / canonicalFromUnitField",
+   "digest": "42a018ab5391c172b5e65758667eb712b59742f52f70214eca85a35731d33054",
+   "reason": "makeUnitFormat plus the origin-preserving pair seedUnitField / canonicalFromUnitField, and resolvedUnitSummary, which lists a resolved set's ten labels for the settings description (plan 3b R1)",
    "tests": [
     "utils/__tests__/unitFormat.test.ts"
    ]

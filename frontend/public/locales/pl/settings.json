@@ -26,8 +26,7 @@
     "label": "System jednostek",
     "imperial": "Imperialny",
     "metric": "Metryczny",
-    "imperialDescription": "Używane jednostki imperialne: galony, mile, MPG, °F, PSI, funty, funto-stopy",
-    "metricDescription": "Używane jednostki metryczne: litry, kilometry, l/100km, °C, bar, kg, Nm",
+    "resolvedDescription": "Używane jednostki: {{units}}",
     "showBoth": "Pokaż oba systemy",
     "showBothDescription": "Wyświetlaj wartości w jednostkach imperialnych i metrycznych (np. \"25 MPG (9.4 l/100km)\")"
   },

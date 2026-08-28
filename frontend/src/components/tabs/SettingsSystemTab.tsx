@@ -4,7 +4,7 @@ import { Server, CheckCircle, AlertCircle, Info, Shield, Users, AlertTriangle, K
 import { useAuth } from '@/contexts/AuthContext'
 import { useSettings } from '@/contexts/SettingsContext'
 import type { DashboardResponse } from '@/types/dashboard'
-import type { UnitPreference } from '@/types/units'
+import { binarySystemFor, presetUnitsFor, type UnitPreference, type UnitSet } from '@/types/units'
 import { asTimeFormat } from '@/hooks/useTimeFormat'
 import { useUnitPreference } from '@/hooks/useUnitPreference'
 import api from '@/services/api'
@@ -14,6 +14,7 @@ import {
   setGallonStandard as applyGallonStandard,
 } from '@/utils/gallonStandardStore'
 import { formatCurrency } from '@/utils/formatUtils'
+import { resolvedUnitSummary } from '@/utils/unitFormat'
 import { SUPPORTED_LANGUAGES, SUPPORTED_CURRENCIES, languageToLocale } from '@/constants/i18n'
 import OIDCModal from '@/components/modals/OIDCModal'
 import FamilyManagementModal from '@/components/modals/FamilyManagementModal'
@@ -69,17 +70,29 @@ export default function SettingsSystemTab() {
   const [gallonStandard, setGallonStandard] = useState<'us' | 'uk'>('us')
   const [gallonStandardSaving, setGallonStandardSaving] = useState(false)
 
-  // The binary system this account actually renders in. `unitPreference` can be
+  // The units this account actually renders in. `unitPreference` can be
   // 'custom' (migration 093 materialises a UK instance's imperial users that
   // way), which is neither 'imperial' nor 'metric', so branching on it directly
   // showed those users the metric description and hid the US/UK gallon panel
   // entirely — removing the only UI that changes their gallon flavour, on
   // exactly the instances this feature exists for. `useUnitPreference` already
-  // owns the custom -> binary mapping; the local state still wins for the two
-  // preset values so the copy switches with the optimistic toggle instead of
-  // lagging a refreshUser() round trip.
-  const { system: resolvedSystem } = useUnitPreference()
-  const displaySystem = unitPreference === 'custom' ? resolvedSystem : unitPreference
+  // owns the resolved set; the local state still wins for the two preset values
+  // so the copy switches with the optimistic toggle instead of lagging a
+  // refreshUser() round trip.
+  //
+  // ★ This is the resolved SET rather than the binary system, because the
+  // description below is composed from it (plan 3b R1). The gallon flavour is
+  // taken from the resolved set even when a preset wins, so the whole set is
+  // decided on one rung the way `useUnitPreference` decides its own.
+  // `displaySystem` is then derived FROM the set rather than alongside it: two
+  // parallel derivations are two answers to "what does this account render in",
+  // and the panel below and the sentence above must not be able to disagree.
+  const { units: resolvedUnits } = useUnitPreference()
+  const displayUnits: UnitSet =
+    unitPreference === 'custom'
+      ? resolvedUnits
+      : presetUnitsFor(unitPreference, resolvedUnits.secondary_gallon)
+  const displaySystem = binarySystemFor(displayUnits.volume)
   const [autoArchiveDays, setAutoArchiveDays] = useState('0')
   const [autoArchiveSaving, setAutoArchiveSaving] = useState(false)
 
@@ -712,10 +725,7 @@ export default function SettingsSystemTab() {
             </button>
           </div>
           <p className="mt-2 text-sm text-garage-text-muted">
-            {displaySystem === 'imperial'
-              ? t('units.imperialDescription')
-              : t('units.metricDescription')
-            }
+            {t('units.resolvedDescription', { units: resolvedUnitSummary(displayUnits) })}
           </p>
 
           {/* Show Both Units Toggle */}

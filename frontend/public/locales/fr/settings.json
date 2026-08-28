@@ -27,8 +27,7 @@
     "label": "Système d'unités",
     "imperial": "Impérial",
     "metric": "Métrique",
-    "imperialDescription": "Utilisation des unités impériales : gallons, miles, MPG, °F, PSI, lbs, lb-ft",
-    "metricDescription": "Utilisation des unités métriques : litres, kilomètres, L/100km, °C, bar, kg, Nm",
+    "resolvedDescription": "Unités utilisées : {{units}}",
     "showBoth": "Afficher les deux unités",
     "showBothDescription": "Afficher les valeurs en unités impériales et métriques (ex. : \"25 MPG (9.4 L/100km)\")"
   },

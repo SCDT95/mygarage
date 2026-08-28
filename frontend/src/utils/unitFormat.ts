@@ -191,6 +191,43 @@ export function makeUnitFormat(units: UnitSet, showBoth = false): UnitFormat {
 }
 
 /**
+ * Every quantity's unit label for a resolved set, as one comma-separated list.
+ *
+ * ★ WHY THIS EXISTS, and it is a correctness fix rather than a convenience.
+ * The settings screen used to choose between two fixed sentences, "Using
+ * imperial units: gallons, miles, MPG, °F, PSI, lbs, lb-ft" and "Using metric
+ * units: liters, kilometers, L/100km, °C, bar, kg, Nm", on the collapsed binary
+ * system. That system is derived from VOLUME (spec D8), so a
+ * `{volume:'L', distance:'mi', pressure:'psi'}` account was shown the metric
+ * sentence and TOLD IT USES KILOMETRES AND BAR. It uses miles and PSI. Plan 3b
+ * ruling R1: that is not explanatory copy needing an exemption, it is the app
+ * stating something false about the reader's own settings, so the sentence is
+ * composed from the resolved set instead of selected from two.
+ *
+ * ★ The labels come from `UNIT_ADAPTERS` through `adapterFor`, which is the same
+ * table every rendered quantity in the app reads its label from. A second table
+ * of prose unit names ("gallons", "kilometers") would be a fourth parallel unit
+ * vocabulary of exactly the kind this workstream has been unpicking, and it
+ * could drift from what the screens actually render. It also means the list
+ * needs no translation: these are symbols, not prose, and the surrounding
+ * sentence is the translated part.
+ *
+ * ★ It walks `UNIT_QUANTITIES` rather than a hand-picked list. The sentence it
+ * replaced named seven of the ten quantities, and a list maintained by hand is
+ * a floor: speed, length and tread were simply missing, so a user with imperial
+ * tread and metric everything else read a description that could not mention
+ * it. `UNIT_QUANTITIES` carries a compile-time completeness proof, so a
+ * quantity added later appears here without anybody remembering to add it.
+ *
+ * @param units The client's resolved unit set.
+ * @returns The ten labels, in `UNIT_QUANTITIES` order, e.g.
+ *   `'mi, mph, ft, gal, MPG, PSI, °F, lb, lb-ft, /32 in'`.
+ */
+export function resolvedUnitSummary(units: UnitSet): string {
+  return UNIT_QUANTITIES.map((quantity) => adapterFor(units, quantity).label).join(', ')
+}
+
+/**
  * Populate a unit-bearing form field, remembering where its value came from.
  *
  * @param canonical The stored canonical value, or null for an empty field.
