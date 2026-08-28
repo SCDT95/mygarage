@@ -1153,8 +1153,8 @@ def main() -> int:
         return 1
     print(
         f"SELFTEST: all {len(MUTATIONS)} scan mutations and {len(WALK_MUTATIONS)} walk "
-        "mutations ran and flipped exactly their own cases; the scope holds in "
-        "both directions and names only real files; the baseline counts; and both "
+        "mutations ran and flipped exactly their own cases; the scope is proved four "
+        "ways and names only real files; the baseline counts; and both "
         "positive controls stayed silent on correct code"
     )
     return 0

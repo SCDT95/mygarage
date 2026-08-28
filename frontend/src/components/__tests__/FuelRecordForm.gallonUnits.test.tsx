@@ -251,7 +251,9 @@ describe('FuelRecordForm — the gallon comes from the user, not the instance', 
     // hidden behind a fixture chosen so it cannot appear.
     expect(payload.liters).toBe(22.73)
     expect(payload.price_per_unit).toBe(1.32003545904)
-    // Cost is recomputed from the two above, so it must be stated too.
+    // Cost is PRESERVED verbatim on an untouched submit, not recomputed: the form
+    // deliberately keeps a stored total because a receipt may include unrelated items.
+    // Pinned so nobody "fixes" it into a recomputation.
     expect(payload.cost).toBe(30.01)
   })
 
