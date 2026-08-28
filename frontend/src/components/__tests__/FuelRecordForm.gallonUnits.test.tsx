@@ -188,9 +188,30 @@ describe('FuelRecordForm — the gallon comes from the user, not the instance', 
     expect(Math.abs(ratio - 1.20095)).toBeGreaterThan(0.1)
   })
 
-  it('EDIT: reopening a gal_uk record and saving it untouched changes neither half', async () => {
-    // Seeding on one gallon and submitting on another rewrites a record the
-    // user only looked at. Both directions go through the same resolved set.
+  /*
+   * ★ These two replace a single test called "saving it untouched changes
+   * neither half", whose fixture was `liters: 45.461` and
+   * `price_per_unit: 1.31981548979`. Those are `10 * 4.54609` and `6 / 4.54609`:
+   * hand-picked values that are already exact round-trip fixed points, so the
+   * name claimed a guarantee the body could not exercise. That is the defect
+   * this project has now recorded five times. Re-fixtured to an ordinary stored
+   * value the old assertion fails with `expected 22.73 to be 22.712`.
+   *
+   * What actually holds is a FIXED POINT AFTER ONE CYCLE, and both halves of it
+   * are tested below. Every expected value is hand-computed from the documented
+   * formulas, never read back from the code under test:
+   *
+   *   volume  22.712 / 4.54609 = 4.9959... -> roundResult(2)   -> 5
+   *           5 * 4.54609      = 22.73045  -> 3 wire decimals  -> 22.73
+   *   price   1.32 * 4.54609   = 6.00084   -> 3 display dp     -> 6.001
+   *           6.001 / 4.54609  = 1.32003545904 at 12 significant digits
+   *
+   * The shift is display-grid quantisation, it is strictly smaller than at
+   * `44c71ed` (which also truncated the canonical value to 2 dp), and putting
+   * these two fields on `seedUnitField` so even the FIRST save is a fixed point
+   * is a named phase 3b obligation.
+   */
+  it('EDIT: an ordinary gal_uk record shifts ONCE onto the entry grid', async () => {
     UnitConverter.setGallonStandard('us')
     unitPrefMock.units = UK_IMPERIAL_UNITS
 
@@ -201,24 +222,58 @@ describe('FuelRecordForm — the gallon comes from the user, not the instance', 
           id: 9,
           vin: VIN,
           date: '2026-02-10',
-          liters: 45.461,
-          price_per_unit: 1.31981548979,
+          liters: 22.712,
+          price_per_unit: 1.32,
           price_basis: 'per_volume',
-          cost: 60,
+          cost: 30.01,
         } as never}
       />
     )
     await waitFor(() => expect(mockedApiGet).toHaveBeenCalled())
-    // Seeded in the user's own gallon, not the instance's.
-    expect(field('liters').value).toBe('10')
-    expect(field('price_per_unit').value).toBe('6')
+    // Seeded in the user's own gallon, not the instance's, and quantised onto
+    // the grid the input accepts.
+    expect(field('liters').value).toBe('5')
+    expect(field('price_per_unit').value).toBe('6.001')
 
     fireEvent.submit(drawerForm())
     await waitFor(() => expect(mockedApiPut).toHaveBeenCalled())
     const payload = mockedApiPut.mock.calls[0][1] as Record<string, unknown>
-    expect(payload.liters).toBe(45.461)
-    expect(payload.price_per_unit).toBe(1.31981548979)
-    expect(payload.cost).toBe(60)
+    // NOT 22.712 and NOT 1.32. The once-only shift is asserted here rather than
+    // hidden behind a fixture chosen so it cannot appear.
+    expect(payload.liters).toBe(22.73)
+    expect(payload.price_per_unit).toBe(1.32003545904)
+  })
+
+  it('EDIT: a gal_uk record already on the entry grid is a fixed point', async () => {
+    // The property criterion 11 actually rests on. Feeding back exactly what
+    // the save above produced must change nothing, so the shift is once-only
+    // rather than a per-save drift.
+    UnitConverter.setGallonStandard('us')
+    unitPrefMock.units = UK_IMPERIAL_UNITS
+
+    render(
+      <FuelRecordForm
+        {...DEFAULT_PROPS}
+        record={{
+          id: 9,
+          vin: VIN,
+          date: '2026-02-10',
+          liters: 22.73,
+          price_per_unit: 1.32003545904,
+          price_basis: 'per_volume',
+          cost: 30.01,
+        } as never}
+      />
+    )
+    await waitFor(() => expect(mockedApiGet).toHaveBeenCalled())
+    expect(field('liters').value).toBe('5')
+    expect(field('price_per_unit').value).toBe('6.001')
+
+    fireEvent.submit(drawerForm())
+    await waitFor(() => expect(mockedApiPut).toHaveBeenCalled())
+    const payload = mockedApiPut.mock.calls[0][1] as Record<string, unknown>
+    expect(payload.liters).toBe(22.73)
+    expect(payload.price_per_unit).toBe(1.32003545904)
   })
 
   it('the price-basis labels name the units the conversion actually uses', async () => {

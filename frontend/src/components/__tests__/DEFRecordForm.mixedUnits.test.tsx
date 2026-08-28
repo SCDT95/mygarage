@@ -108,7 +108,12 @@ describe('DEFRecordForm — the odometer follows the distance token', () => {
     expect(binarySystemFor(units.volume)).toBe('metric')
   })
 
-  it('★ EDIT: saving that record untouched changes none of the three', async () => {
+  it('★ EDIT: the seedUnitField odometer survives an untouched save; volume and price are identity here', async () => {
+    // ★ NAMED FOR WHAT IT EXERCISES, for the same reason as the fuel form's
+    // sibling: this unit set's volume is `L`, so the volume and price
+    // assertions are identity by construction and only the odometer is
+    // evidence of anything. The converting case is in
+    // FuelRecordForm.gallonUnits.test.tsx.
     units = LITRES_MILES
 
     render(
@@ -125,6 +130,8 @@ describe('DEFRecordForm — the odometer follows the distance token', () => {
       />
     )
     expect(field('odometer_km').value).toBe('45000')
+    // Stated rather than assumed: this is WHY the two below cannot fail here.
+    expect(units.volume).toBe('L')
 
     fireEvent.submit(defForm())
     await waitFor(() => expect(updateMock).toHaveBeenCalled())

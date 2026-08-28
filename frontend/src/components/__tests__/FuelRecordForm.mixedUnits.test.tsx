@@ -208,12 +208,21 @@ describe('FuelRecordForm — odometer and temperature follow their own tokens', 
     expect(binarySystemFor(units.volume)).toBe('metric')
   })
 
-  it('★ EDIT: saving that record untouched changes none of the four', async () => {
+  it('★ EDIT: the two seedUnitField fields survive an untouched save; volume and price are identity here', async () => {
     // A seed in one unit and a submit in another rewrites a record the user
     // only opened. `seedUnitField` records the canonical origin so an untouched
     // field returns the stored value rather than a re-conversion of a rounded
     // display: 45000 mi converts back to 72420.3 km, but 72420.3 is what was
     // stored and 72420.3 is what must be posted.
+    //
+    // ★ NAMED FOR WHAT IT EXERCISES. This test used to be called "changes none
+    // of the four", which overclaimed: this unit set's volume is `L`, so
+    // `litersToVolumeUnit` returns the value untouched and the volume and price
+    // assertions below are identity by construction rather than evidence. The
+    // two that are real are the odometer and the temperature, which is exactly
+    // what `seedUnitField` exists for. The CONVERTING volume/price case lives in
+    // FuelRecordForm.gallonUnits.test.tsx, where it is a fixed point only after
+    // one cycle.
     units = LITRES_MILES_FAHRENHEIT
 
     render(
@@ -234,6 +243,8 @@ describe('FuelRecordForm — odometer and temperature follow their own tokens', 
     )
     await waitFor(() => expect(mockedApiGet).toHaveBeenCalled())
     await waitFor(() => expect(field('odometer_km').value).toBe('45000'))
+    // Stated rather than assumed: this is WHY the two below cannot fail here.
+    expect(units.volume).toBe('L')
 
     fireEvent.submit(drawerForm())
     await waitFor(() => expect(mockedApiPut).toHaveBeenCalled())
