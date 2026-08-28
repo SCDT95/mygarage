@@ -13,7 +13,7 @@
     "test:coverage": "vitest --coverage",
     "test:run": "vitest run",
     "type-check": "tsc --noEmit",
-    "validate:translations": "bun run scripts/validate-translations.ts && bun run scripts/validate-i18n-usage.ts && bun run scripts/validate-hardcoded-strings.ts && bun run scripts/validate-reachability.ts && bun run scripts/validate-units.ts",
+    "validate:translations": "bun run scripts/validate-translations.ts && bun run scripts/validate-i18n-usage.ts && bun run scripts/validate-hardcoded-strings.ts && bun run scripts/validate-reachability.ts && bun run scripts/validate-units.ts && bun run validate:units-corpus",
     "validate:reachability": "bun run scripts/validate-reachability.ts",
     "validate:i18n-usage": "bun run scripts/validate-i18n-usage.ts",
     "validate:hardcoded-strings": "bun run scripts/validate-hardcoded-strings.ts",

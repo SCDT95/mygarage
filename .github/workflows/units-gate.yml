@@ -1,0 +1,80 @@
+name: Unit Gate Selftest
+
+# The unit gate's mutation harness: 40 deliberate defects in a copy of
+# scripts/validate-units.ts or of eslint.config.js, each of which must flip
+# exactly the corpus cases that name it, plus the tree-walk and baseline proofs.
+#
+# Why it is a workflow of its own rather than a step in the main CI job:
+#
+#   * it takes ~18 minutes, because every mutation re-runs a whole corpus leg,
+#     and putting that on the critical path for every PR is not worth it;
+#   * it can only be affected by five files, so a `paths:` filter is exact
+#     rather than a guess. Four are obvious; the fifth is translation-utils.ts,
+#     which the gate imports for ROOT. package.json is deliberately NOT in the
+#     list: it changes on every dependency bump, and an 18-minute job on every
+#     bump is how a useful check gets turned off;
+#   * SAMPLING IT IS NOT AN OPTION. Which mutant survives is not knowable in
+#     advance, which is the entire premise of a mutation harness, so a sampled
+#     run is how a survivor hides. Exhaustive and occasional beats partial and
+#     frequent.
+#
+# ★ Deliberately NOT a required check. A required check with a `paths:` filter
+# never reports on the PRs it filters out, which leaves those PRs wedged waiting
+# for a status that will never arrive. Keep this out of branch protection and
+# that hazard does not apply. The corpus it mutates DOES run on every PR, inside
+# `validate:translations` in the required Frontend Tests job, so the loosening
+# direction is guarded continuously and only the harness proving the corpus is
+# occasional.
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'frontend/scripts/validate-units.ts'
+      - 'frontend/scripts/units_gate_corpus.py'
+      - 'frontend/scripts/units_gate_selftest.py'
+      - 'frontend/eslint.config.js'
+      - 'frontend/scripts/translation-utils.ts'
+      - '.github/workflows/units-gate.yml'
+  pull_request:
+    paths:
+      - 'frontend/scripts/validate-units.ts'
+      - 'frontend/scripts/units_gate_corpus.py'
+      - 'frontend/scripts/units_gate_selftest.py'
+      - 'frontend/eslint.config.js'
+      - 'frontend/scripts/translation-utils.ts'
+      - '.github/workflows/units-gate.yml'
+  workflow_dispatch:
+
+concurrency:
+  group: units-gate-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  selftest:
+    name: Unit Gate Selftest (advisory)
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+
+      - name: Set up Bun
+        uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2
+        with:
+          bun-version-file: '.bun-version'
+
+      # The gate loads the real TypeScript compiler out of node_modules to
+      # resolve what an identifier refers to, and the ESLint leg needs the
+      # plugin closure, so the install is not optional here.
+      - name: Install dependencies
+        run: cd frontend && bun install --frozen-lockfile
+
+      # Never piped: a pipe would mask the exit code, which is the only thing
+      # this job reports.
+      - name: Run the unit gate selftest
+        run: cd frontend && bun run validate:units-selftest
