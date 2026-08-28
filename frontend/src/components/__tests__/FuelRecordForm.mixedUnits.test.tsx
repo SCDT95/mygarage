@@ -244,6 +244,64 @@ describe('FuelRecordForm — odometer and temperature follow their own tokens', 
     expect(payload.price_per_unit).toBe(1.234)
   })
 
+  it('★ EDIT: an odometer BETWEEN two whole miles survives a save that never touched it', async () => {
+    // The case above round-trips exactly, so it cannot tell an origin from a
+    // re-conversion. This one can, and it is what makes `seedUnitField`
+    // load-bearing rather than decorative:
+    //
+    //   72420.5 km / 1.60934 = 45000.1242745 mi, shown as 45000 (mi has no
+    //                          decimals)
+    //   45000 mi x 1.60934   = 72420.3 km, which is NOT what was stored
+    //
+    // Re-converting the display would quietly move the reading 0.2 km every
+    // time the record was opened and saved.
+    units = LITRES_MILES_FAHRENHEIT
+
+    render(
+      <FuelRecordForm
+        {...DEFAULT_PROPS}
+        record={{ id: 11, vin: VIN, date: '2026-02-10', odometer_km: 72420.5 } as never}
+      />
+    )
+    await waitFor(() => expect(mockedApiGet).toHaveBeenCalled())
+    expect(field('odometer_km').value).toBe('45000')
+
+    fireEvent.submit(drawerForm())
+    await waitFor(() => expect(mockedApiPut).toHaveBeenCalled())
+    const payload = mockedApiPut.mock.calls[0][1] as Record<string, unknown>
+    expect(payload.odometer_km).toBe(72420.5)
+    expect(payload.odometer_km).not.toBe(72420.3)
+  })
+
+  it('★ EDIT: retyping the temperature exactly as shown does not shift the stored Celsius', async () => {
+    // The temperature's own lossy round trip, and the only path on which its
+    // origin can be observed: an untouched field never reaches `onChange` at
+    // all, so the drift shows up when a user types the reading, changes their
+    // mind, and types it back.
+    //
+    //   21.7 C x 9/5 + 32   = 71.06 F, shown as 71.1 (F carries one decimal)
+    //   (71.1 - 32) x 5/9   = 21.7222222222 C, which is NOT what was stored
+    units = LITRES_MILES_FAHRENHEIT
+
+    render(
+      <FuelRecordForm
+        {...DEFAULT_PROPS}
+        record={{ id: 12, vin: VIN, date: '2026-02-10', outside_temp_c: 21.7 } as never}
+      />
+    )
+    await waitFor(() => expect(mockedApiGet).toHaveBeenCalled())
+    expect(field('outside_temp_display').value).toBe('71.1')
+
+    fireEvent.change(field('outside_temp_display'), { target: { value: '70' } })
+    fireEvent.change(field('outside_temp_display'), { target: { value: '71.1' } })
+    fireEvent.submit(drawerForm())
+    await waitFor(() => expect(mockedApiPut).toHaveBeenCalled())
+
+    const payload = mockedApiPut.mock.calls[0][1] as Record<string, unknown>
+    expect(payload.outside_temp_c).toBe(21.7)
+    expect(payload.outside_temp_c).not.toBe(21.7222222222)
+  })
+
   it('CREATE: a typed mileage and a typed Fahrenheit temperature reach the API canonical', async () => {
     //   45000 mi x 1.60934 = 72420.3 km
     //   (68 - 32) x 5/9    = 20 C
