@@ -169,5 +169,9 @@ CLAUDE.md
 frontend/scripts/.units-gate.lock
 frontend/scripts/__units_corpus__.tsx
 frontend/scripts/__units_scope_probe__.tsx
+# mutation_harness_selftest.py's own fixtures, which land in src/ rather than
+# scripts/ because the harness it certifies walks src/.
+frontend/src/__selftest_fixture__.ts
+frontend/src/__tests__/__selftest_fixture__.test.ts
 *.mutant.generated.ts
 *.mutant.generated.js

@@ -1,23 +1,30 @@
 name: Unit Gate Selftest
 
-# The unit gate's mutation harness: 40 deliberate defects in a copy of
+# The unit gate's mutation harness: every deliberate defect in
+# units_gate_selftest.py's MUTATIONS and WALK_MUTATIONS tables, applied to a copy of
 # scripts/validate-units.ts or of eslint.config.js, each of which must flip
 # exactly the corpus cases that name it, plus the tree-walk and baseline proofs.
+# The count is deliberately not written here: the run prints it, and a number in
+# prose is a number that goes stale. An earlier version of this comment said 40
+# when the tables held 44.
 #
 # Why it is a workflow of its own rather than a step in the main CI job:
 #
-#   * it re-runs a whole corpus leg per mutation, 44 times. MEASURED at
+#   * it re-runs a whole corpus leg per mutation. MEASURED at
 #     3 min 38 s, not the ~18 minutes an earlier version of this comment
 #     claimed. That figure was inferred from spaced polling rather than timed,
 #     and it was wrong by 5x in the direction that would have justified
 #     weakening the check. Keeping it off every PR's critical path is now a
 #     matter of tidiness rather than cost;
-#   * it can only be affected by five files, so a `paths:` filter is exact
-#     rather than a guess. Four are obvious; the fifth is translation-utils.ts,
-#     which the gate imports for ROOT. package.json is deliberately NOT in the
-#     list: it changes on every dependency bump, and 3b's standing obligation is
-#     to run this by hand after a TypeScript or ESLint major, which is the one
-#     dependency change that can alter the result;
+#   * the set of files that can change its result is small and knowable, so a
+#     `paths:` filter is exact rather than a guess: the gate, the corpus, this
+#     harness, eslint.config.js, translation-utils.ts (the gate imports ROOT
+#     from it), and package.json plus bun.lock, because a TypeScript or ESLint
+#     major genuinely can change what the mutations do. The dependency files
+#     were excluded while this job was believed to cost 18 minutes, with a
+#     manual "run it after a major" obligation standing in. At the measured
+#     3m38s that trade is gone, and an obligation nobody will remember after a
+#     major bump is worse than a job that runs on bumps;
 #   * SAMPLING IT IS NOT AN OPTION. Which mutant survives is not knowable in
 #     advance, which is the entire premise of a mutation harness, so a sampled
 #     run is how a survivor hides. At under four minutes there is no case for
@@ -40,6 +47,8 @@ on:
       - 'frontend/scripts/units_gate_selftest.py'
       - 'frontend/eslint.config.js'
       - 'frontend/scripts/translation-utils.ts'
+      - 'frontend/package.json'
+      - 'frontend/bun.lock'
       - '.github/workflows/units-gate.yml'
   pull_request:
     paths:
@@ -48,6 +57,8 @@ on:
       - 'frontend/scripts/units_gate_selftest.py'
       - 'frontend/eslint.config.js'
       - 'frontend/scripts/translation-utils.ts'
+      - 'frontend/package.json'
+      - 'frontend/bun.lock'
       - '.github/workflows/units-gate.yml'
   workflow_dispatch:
 

@@ -79,9 +79,18 @@ type UnitPreferenceFields = Pick<
  *
  * Migration 093 materialises per-quantity users as `unit_preference='custom'`,
  * a value `UnitSystem` does not contain. This is the single chokepoint where it
- * becomes 'imperial' or 'metric': ~70 files branch on `system === 'imperial'`,
- * and 'custom' answers "no" to every one of them, so a UK user would have seen
- * imperial numbers rendered under metric labels.
+ * becomes 'imperial' or 'metric': the files that still branch on
+ * `system === 'imperial'` are exactly the ones `scripts/units.baseline.json`
+ * records, and 'custom' answers "no" to every one of them, so a UK user would
+ * have seen imperial numbers rendered under metric labels.
+ *
+ * ★ This line used to say "~70 files", a number wrong by 4.6x read as files and
+ * named in the phase 3 plan as its twelfth floor. The deferral's own stated
+ * precondition was "fix it in 3b when the number it describes actually
+ * changes"; it changed in phase 3a, so it is fixed here, and fixed by pointing
+ * at the artifact that measures it rather than by writing a fresher number that
+ * would go stale the same way. `bun run validate:units -- --report` prints the
+ * current list grouped by file.
  *
  * @param user The authenticated account's preference fields.
  * @returns The binary unit system to render with.
