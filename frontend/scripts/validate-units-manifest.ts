@@ -151,6 +151,36 @@ const DISPOSITIONS = new Set([
   'unverifiable',
 ])
 
+/**
+ * The manifest's on-disk format, carried in the file AND in this constant.
+ *
+ * ★ WHY A VERSION AT ALL, and it is not decoration. `[weakened]` forbids a row's
+ * findings from shrinking while its digest holds still, which is right for an
+ * erasure and WRONG for a format migration: moving 47 rows' owner text out of
+ * `findings` into an `owners` array shrank findings on 47 unchanged files, so
+ * the rule would have failed on its own introduction. That was handled by
+ * ordering the commits, which worked locally and left an undocumented
+ * dependency on push granularity: a single push of both commits makes the CI
+ * merge base the PRE-migration commit and the advisory job goes red on the very
+ * change that introduces the rule.
+ *
+ * So a format migration is now exempt BY CONSTRUCTION rather than by discipline:
+ * bump this constant and the file's `schemaVersion` together, and the drift
+ * check announces a migration instead of reporting phantom weakenings.
+ *
+ * ★ It is deliberately a TWO-FILE change. The constant lives in code and the
+ * version lives in data, and they must agree or the gate refuses to run. Bumping
+ * it to dodge a guard is therefore a code change in the diff, held to the same
+ * "explicit re-acknowledgement" standard as re-stamping a digest, rather than a
+ * free escape hatch anybody can reach by editing JSON.
+ */
+const MANIFEST_SCHEMA_VERSION = 2
+
+interface Manifest {
+  schemaVersion: number
+  rows: ManifestRow[]
+}
+
 interface ManifestRow {
   path: string
   disposition: string
@@ -162,18 +192,46 @@ interface ManifestRow {
 }
 
 /**
- * One failure, tagged so a caller can assert WHICH check fired.
+ * One failure, identified by the RULE that produced it.
  *
- * The tags are load bearing for this gate's own mutation tests. R9 requires the
- * "edit a `no unit behaviour` module" mutation to fail SPECIFICALLY on the
- * digest mismatch rather than incidentally, and a bare exit code cannot tell
- * those apart: a checker that reported "something is wrong" would pass that
- * mutation test while checking the wrong thing.
+ * ★ WHY A RULE ID AND NOT JUST A TAG, which is the second revision of this type.
+ * The tags were already load bearing: R9 requires the "edit a `no unit
+ * behaviour` module" mutation to fail SPECIFICALLY on the digest mismatch, and
+ * a bare exit code cannot tell that from "something is wrong". But a review
+ * then deleted each rule one at a time and found THREE that survived, every one
+ * of them masked by a SIBLING RULE EMITTING THE SAME TAG: delete the
+ * disposition-rank half of `weakened` and the finding-dropped half still says
+ * `weakened`; delete "a `no unit behaviour` row may not carry a finding" and
+ * "a finding must name an owner" still says `schema`.
+ *
+ * The instance of that shape had already been found once, for M-O, and fixed as
+ * an instance. This is the class: every rule now carries an id, every probe in
+ * `units_manifest_selftest.py` asserts the exact RULE set, and a sweep deletes
+ * each rule in turn and requires it to flip a named probe. A rule whose removal
+ * changes nothing is untested, whatever its siblings emit.
  */
-type Tag = 'unlisted' | 'orphan' | 'duplicate' | 'schema' | 'digest' | 'baseline' | 'weakened'
+type Rule =
+  | 'unlisted'
+  | 'orphan'
+  | 'duplicate'
+  | 'schema.no-path'
+  | 'schema.disposition'
+  | 'schema.reason'
+  | 'schema.evidence'
+  | 'schema.nub-finding'
+  | 'schema.test-missing'
+  | 'schema.finding-unowned'
+  | 'schema.owner-idle'
+  | 'schema.owner-enum'
+  | 'digest'
+  | 'baseline.not-audited'
+  | 'baseline.counts'
+  | 'baseline.invented'
+  | 'weakened.rank'
+  | 'weakened.finding'
 
 interface Failure {
-  tag: Tag
+  rule: Rule
   path: string
   detail: string
 }
@@ -258,18 +316,38 @@ export function universeOf(root: string): string[] {
   ].sort()
 }
 
-function loadManifest(path: string): ManifestRow[] {
+/** Parse a manifest in either format. A bare array is the pre-version shape. */
+function parseManifest(raw: string): Manifest {
+  const parsed: unknown = JSON.parse(raw)
+  if (Array.isArray(parsed)) return { schemaVersion: 1, rows: parsed as ManifestRow[] }
+  const obj = parsed as Partial<Manifest>
+  if (typeof obj?.schemaVersion !== 'number' || !Array.isArray(obj.rows)) {
+    throw new Error('not a units manifest: expected { schemaVersion, rows }.')
+  }
+  return { schemaVersion: obj.schemaVersion, rows: obj.rows }
+}
+
+function loadManifest(path: string): Manifest {
   let raw: string
   try {
     raw = readFileSync(path, 'utf-8')
   } catch {
     throw new Error(`units manifest missing at ${path}. Run --update to seed it.`)
   }
-  const parsed: unknown = JSON.parse(raw)
-  if (!Array.isArray(parsed)) {
-    throw new Error(`${path} is not a JSON array of rows.`)
+  let manifest: Manifest
+  try {
+    manifest = parseManifest(raw)
+  } catch (err) {
+    throw new Error(`${path}: ${(err as Error).message}`, { cause: err })
   }
-  return parsed as ManifestRow[]
+  if (manifest.schemaVersion !== MANIFEST_SCHEMA_VERSION) {
+    throw new Error(
+      `${path} is schema version ${manifest.schemaVersion}, this checker is ` +
+        `${MANIFEST_SCHEMA_VERSION}. The two must agree, so a format migration is a ` +
+        'change to both the data and the code and is visible in the diff. Refusing to run.',
+    )
+  }
+  return manifest
 }
 
 /**
@@ -346,10 +424,26 @@ function previousManifest(
   ref: string | null,
   file: string | null,
   manifestPath: string,
-): { rows: ManifestRow[]; from: string } | null {
+): { manifest: Manifest; from: string } | null {
+  // ★ An EMPTY previous manifest is not a comparison. Every other degraded path
+  // (missing file, unparseable JSON, a ref git does not know, no repository, no
+  // git at all) already returned null and printed the warning; a file holding
+  // `[]` slipped through and printed the affirmative "no conclusion weakened"
+  // clause, which is the one thing a degraded path must never do. Nothing can
+  // weaken against nothing, so saying nothing did is vacuously true and reads
+  // as evidence.
+  const accept = (raw: string, from: string): { manifest: Manifest; from: string } | null => {
+    let manifest: Manifest
+    try {
+      manifest = parseManifest(raw)
+    } catch {
+      return null
+    }
+    return manifest.rows.length === 0 ? null : { manifest, from }
+  }
   if (file !== null) {
     try {
-      return { rows: JSON.parse(readFileSync(file, 'utf-8')) as ManifestRow[], from: file }
+      return accept(readFileSync(file, 'utf-8'), file)
     } catch {
       return null
     }
@@ -369,10 +463,19 @@ function previousManifest(
       maxBuffer: 64 * 1024 * 1024,
       stdio: ['ignore', 'pipe', 'ignore'],
     })
-    return { rows: JSON.parse(text) as ManifestRow[], from: `${ref}:${relPath}` }
+    return accept(text, `${ref}:${relPath}`)
   } catch {
     return null
   }
+}
+
+/** Digest to row, but only for digests that appear exactly once. */
+function uniqueByDigest(rows: ManifestRow[]): Map<string, ManifestRow> {
+  const seen = new Map<string, ManifestRow | null>()
+  for (const row of rows) seen.set(row.digest, seen.has(row.digest) ? null : row)
+  const unique = new Map<string, ManifestRow>()
+  for (const [digest, row] of seen) if (row !== null) unique.set(digest, row)
+  return unique
 }
 
 /**
@@ -392,25 +495,47 @@ function previousManifest(
 function conclusionDrift(before: ManifestRow[], after: ManifestRow[]): Failure[] {
   const failures: Failure[] = []
   const old = new Map(before.map((r) => [r.path, r]))
+
+  // ★ PATH IS NOT THE IDENTITY. Keying drift on path alone let a RENAME launder
+  // a conclusion: move a file with its bytes untouched, give the new path a
+  // clean row, delete the old one, and the gate exited 0 with no tags while
+  // printing "no conclusion weakened". Parity is satisfied (both paths are
+  // accounted for), the digest is satisfied (the content never changed), and
+  // the finding is simply gone.
+  //
+  // So a row whose path vanished is looked up by DIGEST instead. Only when the
+  // digest is unique on BOTH sides: identical files are ordinary (four empty
+  // `nav.json` bundles would collide), and a wrong pairing invents a weakening
+  // that never happened, which is a worse failure than missing one. Fail-open
+  // on the PAIRING, never on the rule.
+  const survivingPaths = new Set(after.map((r) => r.path))
+  const uniqueBefore = uniqueByDigest(before.filter((r) => !survivingPaths.has(r.path)))
+  const previousPaths = new Set(before.map((r) => r.path))
+  const uniqueAfter = uniqueByDigest(after.filter((r) => !previousPaths.has(r.path)))
+
   for (const row of after) {
-    const was = old.get(row.path)
+    let was = old.get(row.path)
+    if (was === undefined && uniqueAfter.get(row.digest)?.path === row.path) {
+      was = uniqueBefore.get(row.digest)
+    }
     if (was === undefined || was.digest !== row.digest) continue
     const rankBefore = DISPOSITION_RANK[was.disposition] ?? 0
     const rankAfter = DISPOSITION_RANK[row.disposition] ?? 0
     if (rankAfter < rankBefore) {
       failures.push({
-        tag: 'weakened',
+        rule: 'weakened.rank',
         path: row.path,
         detail:
           `disposition dropped from ${was.disposition} to ${row.disposition} while the ` +
-          'file did not change. A repair moves the digest; an erasure does not.',
+          `file did not change${was.path === row.path ? '' : ` (renamed from ${was.path})`}. ` +
+          'A repair moves the digest; an erasure does not.',
       })
     }
     const kept = new Set(row.findings ?? [])
     for (const finding of was.findings ?? []) {
       if (!kept.has(finding)) {
         failures.push({
-          tag: 'weakened',
+          rule: 'weakened.finding',
           path: row.path,
           detail:
             `dropped a recorded finding while the file did not change: ` +
@@ -441,12 +566,12 @@ export function checkManifest(
   const seen = new Set<string>()
   for (const row of rows) {
     if (typeof row?.path !== 'string' || row.path.length === 0) {
-      failures.push({ tag: 'schema', path: '<row>', detail: 'row has no `path`' })
+      failures.push({ rule: 'schema.no-path', path: '<row>', detail: 'row has no `path`' })
       continue
     }
     if (seen.has(row.path)) {
       failures.push({
-        tag: 'duplicate',
+        rule: 'duplicate',
         path: row.path,
         detail: 'listed more than once, so one row\'s disposition hides the other',
       })
@@ -458,7 +583,7 @@ export function checkManifest(
   for (const path of [...universe].sort()) {
     if (!seen.has(path)) {
       failures.push({
-        tag: 'unlisted',
+        rule: 'unlisted',
         path,
         detail: 'in the universe but not dispositioned',
       })
@@ -467,7 +592,7 @@ export function checkManifest(
   for (const path of [...seen].sort()) {
     if (!universe.has(path)) {
       failures.push({
-        tag: 'orphan',
+        rule: 'orphan',
         path,
         detail: 'dispositioned but no longer in the universe',
       })
@@ -479,7 +604,7 @@ export function checkManifest(
     const where = row.path
     if (!DISPOSITIONS.has(row.disposition)) {
       failures.push({
-        tag: 'schema',
+        rule: 'schema.disposition',
         path: where,
         detail: `disposition ${JSON.stringify(row.disposition)} is not one of ${[...DISPOSITIONS].join(', ')}`,
       })
@@ -493,14 +618,14 @@ export function checkManifest(
     // checking one of them leaves the other free.
     if (findings.length > 0 && owners.length === 0) {
       failures.push({
-        tag: 'schema',
+        rule: 'schema.finding-unowned',
         path: where,
         detail: 'records findings but names no owner, so nothing holds the work item',
       })
     }
     if (owners.length > 0 && findings.length === 0) {
       failures.push({
-        tag: 'schema',
+        rule: 'schema.owner-idle',
         path: where,
         detail: 'names an owner but records no finding for them to repair',
       })
@@ -508,7 +633,7 @@ export function checkManifest(
     for (const owner of owners) {
       if (!OWNERS.has(owner)) {
         failures.push({
-          tag: 'schema',
+          rule: 'schema.owner-enum',
           path: where,
           detail:
             `owner ${JSON.stringify(owner)} is not one of ${[...OWNERS].join(', ')}. ` +
@@ -519,7 +644,7 @@ export function checkManifest(
     }
     if ((row.disposition === 'domain exemption' || row.disposition === 'unverifiable') && !reason) {
       failures.push({
-        tag: 'schema',
+        rule: 'schema.reason',
         path: where,
         detail:
           row.disposition === 'unverifiable'
@@ -529,7 +654,7 @@ export function checkManifest(
     }
     if (row.disposition === 'audited' && tests.length === 0 && findings.length === 0) {
       failures.push({
-        tag: 'schema',
+        rule: 'schema.evidence',
         path: where,
         detail:
           'an audited row must name the tests that cover it or the findings still ' +
@@ -546,7 +671,7 @@ export function checkManifest(
     for (const test of tests) {
       if (!existsSync(join(root, 'src', test))) {
         failures.push({
-          tag: 'schema',
+          rule: 'schema.test-missing',
           path: where,
           detail:
             `names a test that does not exist: src/${test}. A row that rests on a ` +
@@ -556,7 +681,7 @@ export function checkManifest(
     }
     if (row.disposition === 'no unit behaviour' && findings.length > 0) {
       failures.push({
-        tag: 'schema',
+        rule: 'schema.nub-finding',
         path: where,
         detail: 'a row with no unit behaviour cannot also record a unit finding',
       })
@@ -565,7 +690,7 @@ export function checkManifest(
     const actual = sha256(join(root, where))
     if (row.digest !== actual) {
       failures.push({
-        tag: 'digest',
+        rule: 'digest',
         path: where,
         detail:
           `digest ${String(row.digest).slice(0, 12)} recorded, ${actual.slice(0, 12)} on disk. ` +
@@ -583,7 +708,7 @@ export function checkManifest(
     if (row === undefined) continue // parity already reported it
     if (row.disposition !== 'audited') {
       failures.push({
-        tag: 'baseline',
+        rule: 'baseline.not-audited',
         path: file,
         detail:
           `the units gate baselines ${describe(kinds)} here, so this row cannot be ` +
@@ -594,7 +719,7 @@ export function checkManifest(
     const claimed = claimedWork(row)
     if (!sameCounts(claimed, kinds)) {
       failures.push({
-        tag: 'baseline',
+        rule: 'baseline.counts',
         path: file,
         detail: `records ${describe(claimed)}; the units gate baselines ${describe(kinds)}.`,
       })
@@ -605,7 +730,7 @@ export function checkManifest(
     const claimed = claimedWork(row)
     if (claimed.size > 0 && !work.has(row.path)) {
       failures.push({
-        tag: 'baseline',
+        rule: 'baseline.invented',
         path: row.path,
         detail: `records ${describe(claimed)} but the units gate baselines nothing here.`,
       })
@@ -631,6 +756,17 @@ function seed(root: string, rows: ManifestRow[]): ManifestRow[] {
     if (existing?.reason) row.reason = existing.reason
     if (existing?.tests?.length) row.tests = existing.tests
     if (existing?.findings?.length) row.findings = existing.findings
+    // ★ `owners` was added to the row schema and NOT added here, so `--update`
+    // silently dropped all 50 of them and the next run reported 50 schema
+    // failures. That is nastier than its size: `--update` is the documented
+    // remedy for a [digest] failure, and the natural way to clear the schema
+    // errors it then causes is to delete the findings, which [weakened] holds
+    // shut. The remedy led into a trap the guard kept closed.
+    //
+    // The round-trip probe in units_manifest_selftest.py is the real fix: it
+    // asserts `--update` is a FIXED POINT on a fully dispositioned manifest, so
+    // the next field somebody forgets fails there rather than in production.
+    if (existing?.owners?.length) row.owners = existing.owners
     return row
   })
 }
@@ -668,7 +804,7 @@ function main(): void {
   if (args.has('--update')) {
     let existing: ManifestRow[]
     try {
-      existing = loadManifest(manifestPath)
+      existing = loadManifest(manifestPath).rows
     } catch {
       // No manifest yet, or an unreadable one. Seeding from nothing is the
       // bootstrap case; every row it writes is undispositioned and fails.
@@ -676,7 +812,10 @@ function main(): void {
     }
     const before = new Map(existing.map((r) => [r.path, r.digest]))
     const rows = seed(root, existing)
-    writeFileSync(manifestPath, `${JSON.stringify(rows, null, 1)}\n`)
+    writeFileSync(
+      manifestPath,
+      `${JSON.stringify({ schemaVersion: MANIFEST_SCHEMA_VERSION, rows }, null, 1)}\n`,
+    )
     const restamped = rows.filter((r) => before.has(r.path) && before.get(r.path) !== r.digest)
     const added = rows.filter((r) => !before.has(r.path))
     console.log(`✓ units manifest written: ${rows.length} row(s)`)
@@ -713,28 +852,38 @@ function main(): void {
         ? 'HEAD'
         : (argv[againstRefIdx + 1] ?? 'HEAD')
 
-  const rows = loadManifest(manifestPath)
+  const manifest = loadManifest(manifestPath)
+  const rows = manifest.rows
   if (args.has('--report')) report(rows)
   const failures = checkManifest(root, rows, baselinePath)
 
+  // Said out loud, every run. "The drift check did not run" and "the drift check
+  // found nothing" are different sentences and only one of them is evidence.
   const previous = previousManifest(againstRef, againstFile, manifestPath)
+  let comparedAgainst: string | null = null
   if (previous === null) {
-    // Said out loud, every run. "The drift check did not run" and "the drift
-    // check found nothing" are different sentences and only one is evidence.
     console.log(
-      `  (conclusion drift NOT checked: no previous manifest at ` +
+      `  (conclusion drift NOT checked: no usable previous manifest at ` +
         `${againstFile ?? againstRef ?? '<none>'})`,
     )
+  } else if (previous.manifest.schemaVersion !== manifest.schemaVersion) {
+    console.log(
+      `  (conclusion drift NOT checked: ${previous.from} is schema version ` +
+        `${previous.manifest.schemaVersion} and this manifest is ` +
+        `${manifest.schemaVersion}. A format migration moves fields between ` +
+        'columns, which is not a conclusion getting cheaper.)',
+    )
   } else {
-    failures.push(...conclusionDrift(previous.rows, rows))
+    comparedAgainst = previous.from
+    failures.push(...conclusionDrift(previous.manifest.rows, rows))
   }
 
   if (failures.length > 0) {
-    const byTag = new Map<Tag, Failure[]>()
-    for (const f of failures) byTag.set(f.tag, [...(byTag.get(f.tag) ?? []), f])
+    const byRule = new Map<Rule, Failure[]>()
+    for (const f of failures) byRule.set(f.rule, [...(byRule.get(f.rule) ?? []), f])
     console.error(`\n✗ ${failures.length} unit-manifest failure(s):\n`)
-    for (const [tag, group] of [...byTag].sort()) {
-      for (const f of group) console.error(`  [${tag}]  ${f.path}\n      ${f.detail}`)
+    for (const [rule, group] of [...byRule].sort()) {
+      for (const f of group) console.error(`  [${rule}]  ${f.path}\n      ${f.detail}`)
     }
     console.error(
       '\nThe manifest is a REVIEWED SNAPSHOT over a stated universe, not a\n' +
@@ -743,11 +892,14 @@ function main(): void {
         '  [unlisted]   a file entered the universe. Review it and add a row.\n' +
         '  [orphan]     a row outlived its file. Delete the row.\n' +
         '  [duplicate]  two rows for one path: one disposition hides the other.\n' +
-        '  [schema]     a row claims something it does not back up.\n' +
-        '  [baseline]   the manifest and units.baseline.json disagree about the\n' +
+        '  [schema.*]   a row claims something it does not back up. The suffix\n' +
+        '               names WHICH rule, because three rules once survived\n' +
+        '               deletion by hiding behind a sibling with the same tag.\n' +
+        '  [baseline.*] the manifest and units.baseline.json disagree about the\n' +
         '               same work. They are maintained by different programs on\n' +
         '               purpose, so a finding erased in one still fails here.\n' +
-        '  [weakened]   a conclusion got cheaper while the file stayed the same.\n' +
+        '  [weakened.*] a conclusion got cheaper while the file stayed the same,\n' +
+        '               under the same path or under a rename.\n' +
         '               A repair moves the digest; an erasure does not. This\n' +
         '               pins that a conclusion changed FOR A REASON, never that\n' +
         '               the reason was good.\n' +
@@ -768,7 +920,7 @@ function main(): void {
   console.log(
     `✓ units manifest: all ${rows.length} enumerated module(s) dispositioned at this ` +
       `reviewed snapshot (${summary})` +
-      `${previous === null ? '' : `, no conclusion weakened against ${previous.from}`}.`,
+      `${comparedAgainst === null ? '' : `, no conclusion weakened against ${comparedAgainst}`}.`,
   )
 }
 

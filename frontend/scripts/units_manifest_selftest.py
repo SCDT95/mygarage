@@ -6,29 +6,43 @@ something about every module in a stated universe, and this workstream's
 standing rule is that any artifact asserting completeness must ITSELF be
 mutation-tested against what it claims. A manifest whose checker cannot fail is
 a name list wearing a guarantee's name, and this phase has now shipped that
-exact shape once at each of three different levels.
+exact shape once at each of four different levels.
 
-★ THE THIRD DIRECTION IS THE POINT. Plan ruling R9 came out of a review that
-killed the previous design: a manifest proving parity between module NAMES and
-rows cannot see unit behaviour ADDED to a module already dispositioned
-`no unit behaviour`. Drop `` `${draft.liters} L` `` into such a file and the
-name set does not change, so nothing fires. Binding each disposition to a
-content digest closes that, and R9 asks for the proof to be specific:
+★ THE DIRECTIONS, and each was added because the previous set was not enough.
 
-    editing a `no unit behaviour` module must fail SPECIFICALLY on the digest
-    mismatch, not incidentally.
+  1. a module enters the universe and is not dispositioned;
+  2. a row is removed while its file stays;
+  3. a module dispositioned `no unit behaviour` is EDITED. R9 came out of a
+     review that killed the name-parity design: drop `` `${draft.liters} L` ``
+     into such a file and the name set does not change, so nothing fires. The
+     digest closes it, and R9 asks for the proof to be specific, "SPECIFICALLY
+     on the digest mismatch, not incidentally";
+  4. a CONCLUSION gets cheaper while the file stays the same. Directions 1 to 3
+     all pin content. A later review downgraded every row and deleted every
+     finding, touched no source file, and the gate exited 0 while printing the
+     permitted sentence.
 
-So the checker tags every failure and this file asserts on the exact TAG SET,
-not on the exit code. "Something was wrong" is not the same claim as "the digest
-caught it", and an exit code cannot tell them apart. That distinction is the
-whole reason `checkManifest` collects every failure instead of returning the
-first one.
+★ ASSERTIONS ARE ON RULE IDS, NOT TAGS, and that is this file's third revision.
+Asserting the exit code cannot tell "something was wrong" from "the digest
+caught it". Asserting the TAG fixed that one level up and left a level below it:
+a review deleted each rule one at a time and found THREE that survived, every
+one masked by a SIBLING RULE EMITTING THE SAME TAG. Delete the disposition-rank
+half of `weakened` and the finding-dropped half still says `weakened`; delete
+"a `no unit behaviour` row may not carry a finding" and "a finding must name an
+owner" still says `schema`.
 
-★ AND THE CHECKER IS MUTATED TOO, not only the tree and the manifest. A
+That shape had already been found once here, for M-O, and fixed as an INSTANCE.
+This is the class fix, and it has two halves:
+
+  * every failure carries a stable rule id and every probe below asserts the
+    exact RULE set;
+  * `RULE_MUTATIONS` deletes each rule in turn and names the probes it must
+    flip, so a rule whose removal changes nothing fails this harness instead of
+    passing it.
+
+★ AND THE CHECKER IS MUTATED, not only the tree and the manifest. A
 tree-and-manifest mutation proves the CURRENT checker fires; it says nothing
-about whether the digest comparison is what fired. M-D and M-E delete the two
-rules and show the corresponding mutations go quiet, which is what makes the
-first three mean anything.
+about WHICH rule fired.
 
 ★ NO SHARED LOCK, DELIBERATELY. `units_gate_corpus.py` and
 `units_gate_selftest.py` share a fixture path under `scripts/` and take an
@@ -43,7 +57,7 @@ Usage::
 
     python3 frontend/scripts/units_manifest_selftest.py
 
-Exit code: 1 if any mutation fails to produce exactly the failure it names.
+Exit code: 1 if any probe or mutation does not behave exactly as it says.
 """
 
 from __future__ import annotations
@@ -55,7 +69,9 @@ import shutil
 import subprocess
 import sys
 import tempfile
+from dataclasses import dataclass, field
 from pathlib import Path
+from typing import Callable
 
 FRONTEND = Path(__file__).resolve().parents[1]
 CHECKER = "scripts/validate-units-manifest.ts"
@@ -66,29 +82,49 @@ CHECKER_MUTANT = FRONTEND / "scripts/units-manifest.mutant.generated.ts"
 
 # re.M is load bearing: without it `^` anchors to the start of the whole
 # capture and every failure line reads as no failure at all, which made the
-# first run of this file report "tags=[]" for nine checks that had in fact
+# first run of this file report "rules=[]" for nine checks that had in fact
 # fired. A parser that cannot see the gate firing is this phase's signature
 # defect one more level up.
-FAILURE_LINE = re.compile(r"^\s+\[(\w+)\]\s+(\S+)", re.M)
+FAILURE_LINE = re.compile(r"^\s+\[([\w.-]+)\]\s+(\S+)", re.M)
 
-# Everything after this line is the advice paragraph, not findings.
+# Everything after this line is the advice paragraph, not findings. It explains
+# each rule in the SAME `  [rule]  text` shape, so a whole-output scan reports
+# every rule on every run and no assertion here could ever fail.
 LEGEND_SENTINEL = "The manifest is a REVIEWED SNAPSHOT"
 
+SCHEMA_VERSION = 2
 
+
+# ---------------------------------------------------------------------------
+# the fixture
+# ---------------------------------------------------------------------------
 def build_tree(root: Path) -> None:
-    """A miniature frontend: an entry document, two modules, and the public tree."""
+    """A miniature frontend: an entry document, three modules, the public tree."""
     (root / "src").mkdir(parents=True)
     (root / "public" / "locales" / "xx").mkdir(parents=True)
     (root / "index.html").write_text("<!doctype html><title>t</title>\n")
     (root / "public" / "offline.html").write_text("<p>offline</p>\n")
+    # ★ A binary asset, on purpose. The universe rule has no extension filter,
+    # and this is what stops a future "just skip images" from putting a
+    # judgement back in the middle of the universe.
     (root / "public" / "icon.png").write_bytes(b"\x89PNG\r\n\x1a\n")
     (root / "src" / "main.tsx").write_text(
         "import './alpha'\nimport './beta'\nimport './delta'\n"
     )
     (root / "src" / "alpha.ts").write_text("export const A = 1\n")
+    (root / "src" / "beta.ts").write_text("export const B = 2\n")
     # The baselined module. `units.baseline.json` records the same work from a
-    # different program, which is what makes an erased finding detectable.
+    # different program, which is what makes an erased finding detectable even
+    # when no drift comparison is available at all.
     (root / "src" / "delta.ts").write_text("export const D = 4\n")
+    # Named by the audited row below. Not imported from main.tsx, so it is not
+    # in the universe and needs no row of its own.
+    (root / "src" / "__tests__").mkdir()
+    (root / "src" / "__tests__" / "alpha.test.ts").write_text("export const T = 1\n")
+    (root / "public" / "sw.js").write_text(
+        "self.addEventListener('install', () => {})\n"
+    )
+    (root / "public" / "locales" / "xx" / "common.json").write_text('{"a": "b"}\n')
     (root / "scripts").mkdir()
     (root / "scripts" / "units.baseline.json").write_text(
         json.dumps(
@@ -104,15 +140,49 @@ def build_tree(root: Path) -> None:
         )
         + "\n"
     )
-    # Named by the audited row below. Not imported from main.tsx, so it is not
-    # in the universe and needs no row of its own.
-    (root / "src" / "__tests__").mkdir()
-    (root / "src" / "__tests__" / "alpha.test.ts").write_text("export const T = 1\n")
-    (root / "src" / "beta.ts").write_text("export const B = 2\n")
-    (root / "public" / "sw.js").write_text(
-        "self.addEventListener('install', () => {})\n"
+
+
+def seed(root: Path, manifest: Path) -> None:
+    """Seed the fixture manifest and give every row a disposition."""
+    subprocess.run(
+        ["bun", "run", CHECKER, "--update", "--root", str(root), "--manifest", str(manifest)],
+        cwd=FRONTEND,
+        capture_output=True,
+        text=True,
+        check=True,
     )
-    (root / "public" / "locales" / "xx" / "common.json").write_text('{"a": "b"}\n')
+    doc = json.loads(manifest.read_text())
+    for row in doc["rows"]:
+        if row["path"] == "src/delta.ts":
+            row["disposition"] = "audited"
+            row["findings"] = ["compare x2 (units gate baseline)"]
+            row["owners"] = ["task 6"]
+        elif row["path"] == "src/alpha.ts":
+            # One audited row carrying every kind of evidence, and TWO findings
+            # so a probe can drop one and leave the row valid. Isolating a rule
+            # matters more than realism here: a probe that trips two rules at
+            # once cannot tell which of them a mutation killed.
+            row["disposition"] = "audited"
+            row["tests"] = ["__tests__/alpha.test.ts"]
+            row["findings"] = ["a recorded finding", "a second recorded finding"]
+            row["owners"] = ["task 6"]
+        else:
+            row["disposition"] = "no unit behaviour"
+    manifest.write_text(json.dumps(doc, indent=1) + "\n")
+
+
+def write_manifest(manifest: Path, rows: list[dict]) -> None:
+    manifest.write_text(
+        json.dumps({"schemaVersion": SCHEMA_VERSION, "rows": rows}, indent=1) + "\n"
+    )
+
+
+def rows_of(text: str) -> list[dict]:
+    return json.loads(text)["rows"]
+
+
+def digest_of(path: Path) -> str:
+    return hashlib.sha256(path.read_bytes()).hexdigest()
 
 
 def run(
@@ -121,7 +191,7 @@ def run(
     checker: str = CHECKER,
     against: Path | None = None,
 ) -> tuple[int, set[str], list[tuple[str, str]], str]:
-    """Run the checker and return (rc, tag set, (tag, path) pairs, output).
+    """Run the checker and return (rc, rule set, (rule, path) pairs, output).
 
     With no `against`, the checker falls back to `--against-ref HEAD`, finds no
     git repository under a tempdir, and says so. That is what every probe which
@@ -134,75 +204,466 @@ def run(
         argv += ["--against-file", str(against)]
     p = subprocess.run(argv, cwd=FRONTEND, capture_output=True, text=True)
     out = p.stdout + p.stderr
-    # ★ Parse only the failure block. The advice paragraph below it explains
-    # each tag in the SAME `  [tag]  text` shape, so a whole-output scan reports
-    # every tag on every run and no assertion here can ever fail. That is the
-    # third time in this workstream a checker's own reader has been the thing
-    # that could not see a failure; hence the sentinel rather than a cleverer
-    # regex.
     pairs = [
         (m.group(1), m.group(2))
         for m in FAILURE_LINE.finditer(out.split(LEGEND_SENTINEL)[0])
     ]
-    return p.returncode, {t for t, _ in pairs}, pairs, out
+    return p.returncode, {r for r, _ in pairs}, pairs, out
 
 
-def seed(root: Path, manifest: Path) -> None:
-    """Seed the fixture manifest and give every row a disposition."""
-    subprocess.run(
-        [
-            "bun",
-            "run",
-            CHECKER,
-            "--update",
-            "--root",
-            str(root),
-            "--manifest",
-            str(manifest),
-        ],
-        cwd=FRONTEND,
-        capture_output=True,
-        text=True,
-        check=True,
+# ---------------------------------------------------------------------------
+# probes: one manifest (and sometimes tree) state, one expected rule set
+# ---------------------------------------------------------------------------
+@dataclass
+class Probe:
+    """One state of the fixture, and exactly which rules it must trip."""
+
+    label: str
+    #: rewrite the pristine rows in place
+    rows: Callable[[list[dict], Path], list[dict]]
+    #: rule ids, exactly. Not tags: three rules once survived deletion by
+    #: hiding behind a sibling that emitted the same tag.
+    expect: set[str] = field(default_factory=set)
+    #: compare against the pristine manifest, i.e. exercise the drift rules
+    against: bool = False
+    #: change the tree, and put it back
+    setup: Callable[[Path], None] | None = None
+    teardown: Callable[[Path], None] | None = None
+    why: str = ""
+
+
+def _find(rows: list[dict], path: str) -> dict:
+    return next(r for r in rows if r["path"] == path)
+
+
+def _drop(rows: list[dict], path: str) -> list[dict]:
+    return [r for r in rows if r["path"] != path]
+
+
+def _add_gamma(root: Path) -> None:
+    (root / "src" / "gamma.ts").write_text("export const G = 3\n")
+    (root / "src" / "main.tsx").write_text(
+        "import './alpha'\nimport './beta'\nimport './delta'\nimport './gamma'\n"
     )
-    rows = json.loads(manifest.read_text())
-    for row in rows:
-        if row["path"] == "src/delta.ts":
-            row["disposition"] = "audited"
-            row["findings"] = ["compare x2 (units gate baseline)"]
-            row["owners"] = ["task 6"]
-        elif row["path"] == "src/alpha.ts":
-            # One audited row carrying both kinds of evidence, so every schema
-            # rule below has something to bite.
-            row["disposition"] = "audited"
-            row["tests"] = ["__tests__/alpha.test.ts"]
-            row["findings"] = ["a recorded finding"]
-            row["owners"] = ["task 6"]
-        else:
-            row["disposition"] = "no unit behaviour"
-    manifest.write_text(json.dumps(rows, indent=1) + "\n")
 
 
-def write_checker_mutant(old: str, new: str) -> tuple[str, int]:
+def _remove_gamma(root: Path) -> None:
+    (root / "src" / "gamma.ts").unlink()
+    (root / "src" / "main.tsx").write_text(
+        "import './alpha'\nimport './beta'\nimport './delta'\n"
+    )
+
+
+def _edit_beta(root: Path) -> None:
+    (root / "src" / "beta.ts").write_text(
+        "export const B = 2\nexport const label = `${B} L`\n"
+    )
+
+
+def _restore_beta(root: Path) -> None:
+    (root / "src" / "beta.ts").write_text("export const B = 2\n")
+
+
+def _repair_alpha(root: Path) -> None:
+    (root / "src" / "alpha.ts").write_text(
+        "export const A = 1\nexport const repaired = true\n"
+    )
+
+
+def _restore_alpha(root: Path) -> None:
+    (root / "src" / "alpha.ts").write_text("export const A = 1\n")
+
+
+def _rename_alpha(root: Path) -> None:
+    (root / "src" / "alpha.ts").rename(root / "src" / "epsilon.ts")
+    (root / "src" / "main.tsx").write_text(
+        "import './epsilon'\nimport './beta'\nimport './delta'\n"
+    )
+
+
+def _unrename_alpha(root: Path) -> None:
+    (root / "src" / "epsilon.ts").rename(root / "src" / "alpha.ts")
+    (root / "src" / "main.tsx").write_text(
+        "import './alpha'\nimport './beta'\nimport './delta'\n"
+    )
+
+
+def _launder(rows: list[dict], root: Path) -> list[dict]:
+    """The rename that used to launder a finding: same bytes, a clean new row."""
+    alpha = _find(rows, "src/alpha.ts")
+    out = _drop(rows, "src/alpha.ts")
+    for r in out:
+        if r["path"] == "src/main.tsx":
+            r["digest"] = digest_of(root / "src" / "main.tsx")
+    out.append(
+        {
+            "path": "src/epsilon.ts",
+            "disposition": "no unit behaviour",
+            "digest": alpha["digest"],
+            "reason": "nothing to see here",
+        }
+    )
+    return sorted(out, key=lambda r: r["path"])
+
+
+def _erase_with_repair(rows: list[dict], root: Path) -> list[dict]:
+    alpha = _find(rows, "src/alpha.ts")
+    alpha["findings"] = []
+    alpha.pop("owners", None)
+    alpha["digest"] = digest_of(root / "src" / "alpha.ts")
+    return rows
+
+
+PROBES: list[Probe] = [
+    Probe("pristine", lambda rows, root: rows, set(), why="the control"),
+    # ---- the three R9 directions ----------------------------------------
+    Probe(
+        "D1-new-module",
+        lambda rows, root: rows,
+        {"unlisted", "digest"},
+        setup=_add_gamma,
+        teardown=_remove_gamma,
+        why="a module entered the universe. The digest on main.tsx is the "
+        "mechanism working, not noise: the file that gained an import changed.",
+    ),
+    Probe(
+        "D2-row-removed",
+        lambda rows, root: _drop(rows, "src/beta.ts"),
+        {"unlisted"},
+        why="a row left the manifest while its file stayed",
+    ),
+    Probe(
+        "D3-module-edited",
+        lambda rows, root: rows,
+        {"digest"},
+        setup=_edit_beta,
+        teardown=_restore_beta,
+        why="★ R9's own direction: a `no unit behaviour` module gains unit "
+        "behaviour. The NAME set does not change, so only the digest can see it, "
+        "and this must fail on the digest rule ALONE.",
+    ),
+    # ---- the fourth direction -------------------------------------------
+    Probe(
+        "D4-disposition-downgraded",
+        lambda rows, root: [
+            {**r, "disposition": "unverifiable", "reason": "a stated reason"}
+            if r["path"] == "src/alpha.ts"
+            else r
+            for r in rows
+        ],
+        {"weakened.rank"},
+        against=True,
+        why="the conclusion got cheaper and the file did not move. Findings are "
+        "kept so this trips the RANK rule alone.",
+    ),
+    Probe(
+        "D4-finding-erased",
+        lambda rows, root: [
+            {**r, "findings": ["a recorded finding"]} if r["path"] == "src/alpha.ts" else r
+            for r in rows
+        ],
+        {"weakened.finding"},
+        against=True,
+        why="one finding quietly disappears, disposition untouched",
+    ),
+    Probe(
+        "D4-erased-WITH-a-repair",
+        _erase_with_repair,
+        set(),
+        against=True,
+        setup=_repair_alpha,
+        teardown=_restore_alpha,
+        why="★ the legitimate direction. The SAME erasure with the file actually "
+        "repaired must stay silent, or the rule blocks the work it protects.",
+    ),
+    Probe(
+        "D4-finding-added",
+        lambda rows, root: [
+            {**r, "findings": [*r["findings"], "a third"]}
+            if r["path"] == "src/alpha.ts"
+            else r
+            for r in rows
+        ],
+        set(),
+        against=True,
+        why="strengthening is always allowed",
+    ),
+    Probe(
+        "D4-rename-launders",
+        _launder,
+        {"weakened.rank", "weakened.finding"},
+        against=True,
+        setup=_rename_alpha,
+        teardown=_unrename_alpha,
+        why="★ PATH IS NOT THE IDENTITY. Move a file with its bytes untouched, "
+        "give the new path a clean row, delete the old one: parity is satisfied, "
+        "the digest is satisfied, and the finding is simply gone.",
+    ),
+    # ---- the schema rules, each isolated --------------------------------
+    Probe(
+        "orphan-row",
+        lambda rows, root: [
+            *rows,
+            {"path": "src/deleted.ts", "disposition": "no unit behaviour", "digest": "0" * 64},
+        ],
+        {"orphan"},
+        why="a row outlived its file",
+    ),
+    Probe(
+        "duplicate-row",
+        lambda rows, root: [*rows, dict(rows[0])],
+        {"duplicate"},
+        why="two rows for one path: one disposition hides the other",
+    ),
+    Probe(
+        "row-without-path",
+        lambda rows, root: [*_drop(rows, "src/beta.ts"), {"disposition": "no unit behaviour"}],
+        {"schema.no-path", "unlisted"},
+        why="a row that names no file at all",
+    ),
+    Probe(
+        "audited-without-evidence",
+        lambda rows, root: [
+            {k: v for k, v in r.items() if k not in ("tests", "findings", "owners")}
+            if r["path"] == "src/alpha.ts"
+            else r
+            for r in rows
+        ],
+        {"schema.evidence"},
+        why="BOTH kinds of evidence have to go: dropping only `tests` leaves "
+        "`findings` standing, and the first version of this probe did exactly "
+        "that and reported clean.",
+    ),
+    Probe(
+        "unverifiable-without-reason",
+        lambda rows, root: [
+            {"path": r["path"], "disposition": "unverifiable", "digest": r["digest"]}
+            if r["path"] == "src/beta.ts"
+            else r
+            for r in rows
+        ],
+        {"schema.reason"},
+        why="an unverifiable row that does not say what would settle it",
+    ),
+    Probe(
+        "nub-with-finding",
+        lambda rows, root: [
+            {**r, "findings": ["renders canonical litres"], "owners": ["task 6"]}
+            if r["path"] == "src/beta.ts"
+            else r
+            for r in rows
+        ],
+        {"schema.nub-finding"},
+        why="a `no unit behaviour` row recording a unit finding. Owners are "
+        "supplied so this trips one rule rather than two.",
+    ),
+    Probe(
+        "test-id-names-nothing",
+        lambda rows, root: [
+            {**r, "tests": ["__tests__/renamed.test.ts"]} if r["path"] == "src/alpha.ts" else r
+            for r in rows
+        ],
+        {"schema.test-missing"},
+        why="★ the QUIET failure mode, and this repo learned it once already in "
+        "the ESLint scope proof: a typo that un-exempts a file fails loudly, a "
+        "typo that names nothing at all does not.",
+    ),
+    Probe(
+        "owner-not-in-the-enum",
+        lambda rows, root: [
+            {**r, "owners": ["Task 6 (units)"]} if r["path"] == "src/alpha.ts" else r
+            for r in rows
+        ],
+        {"schema.owner-enum"},
+        why="free-text owners produced twelve spellings across 47 rows",
+    ),
+    Probe(
+        "finding-without-an-owner",
+        lambda rows, root: [
+            {k: v for k, v in r.items() if k != "owners"} if r["path"] == "src/alpha.ts" else r
+            for r in rows
+        ],
+        {"schema.finding-unowned"},
+        why="a work item nobody holds",
+    ),
+    Probe(
+        "owner-without-a-finding",
+        lambda rows, root: [
+            {**r, "owners": ["task 6"]} if r["path"] == "src/beta.ts" else r for r in rows
+        ],
+        {"schema.owner-idle"},
+        why="a name attached to no work",
+    ),
+    Probe(
+        "invented-disposition",
+        lambda rows, root: [
+            {**r, "disposition": "probably fine"} if r["path"] == "src/beta.ts" else r
+            for r in rows
+        ],
+        {"schema.disposition"},
+        why="a disposition nobody defined",
+    ),
+    # ---- the second, independent record ---------------------------------
+    Probe(
+        "baseline-count-misreported",
+        lambda rows, root: [
+            {**r, "findings": ["compare x1 (units gate baseline)"]}
+            if r["path"] == "src/delta.ts"
+            else r
+            for r in rows
+        ],
+        {"baseline.counts"},
+        why="the row and units.baseline.json disagree about the same work",
+    ),
+    Probe(
+        "baselined-row-downgraded",
+        lambda rows, root: [
+            {"path": r["path"], "disposition": "no unit behaviour", "digest": r["digest"]}
+            if r["path"] == "src/delta.ts"
+            else r
+            for r in rows
+        ],
+        {"baseline.not-audited"},
+        why="★ the erasure the cross-check exists for, with NO drift comparison "
+        "available at all. It still fails.",
+    ),
+    Probe(
+        "baseline-work-invented",
+        lambda rows, root: [
+            {**r, "findings": ["token-branch x9 (units gate baseline)"]}
+            if r["path"] == "src/alpha.ts"
+            else r
+            for r in rows
+        ],
+        {"baseline.invented"},
+        why="a finding claiming baseline work the baseline does not have",
+    ),
+]
+
+
+# ---------------------------------------------------------------------------
+# rule mutations: delete one rule, name the probes it must flip
+# ---------------------------------------------------------------------------
+@dataclass
+class RuleMutation:
+    """One rule removed from a COPY of the checker, and what must go quiet."""
+
+    mid: str
+    old: str
+    new: str
+    flips: list[str]
+    why: str = ""
+    also: list[tuple[str, str]] = field(default_factory=list)
+
+
+# ★ Every rule is deleted by disabling ITS OWN `failures.push(...)`, found by the
+# rule id it carries. The table is BUILT from a list of (rule, probes, why)
+# rather than written out eighteen times: near-identical hand-written blocks are
+# one typo away from a mutation that matches nothing, and while the PATTERN
+# guard would report that, nobody would notice a rule missing from the table
+# altogether.
+def _disable(rule: str, indent: int) -> tuple[str, str]:
+    """Disable one `failures.push` by its rule id.
+
+    The indent varies: two of the eighteen sit inside a nested loop, so a
+    fixed-indent anchor matched nothing for them and the PATTERN guard reported
+    it as "occurs 0 times". That guard doing its job on my own table is the
+    reason it exists.
+    """
+    pad = " " * indent
+    body = f"{pad}failures.push({{\n{pad}  rule: '{rule}',"
+    return body, f"{pad}if (false) failures.push({{\n{pad}  rule: '{rule}',"
+
+
+RULE_MUTATIONS = [
+    RuleMutation(f"drop-{rule}", *_disable(rule, indent), flips, why)
+    for rule, indent, flips, why in [
+        ("unlisted", 6, ["D1-new-module", "D2-row-removed", "row-without-path"], "parity, the file side"),
+        ("orphan", 6, ["orphan-row"], "parity, the row side"),
+        ("duplicate", 6, ["duplicate-row"], "one disposition hiding another"),
+        ("schema.disposition", 6, ["invented-disposition"], "the closed set of dispositions"),
+        ("schema.reason", 6, ["unverifiable-without-reason"], "an exemption must state its reason"),
+        ("schema.evidence", 6, ["audited-without-evidence"], "audited must rest on something"),
+        ("schema.nub-finding", 6, ["nub-with-finding"], "★ one of the three that survived a tag-level assertion"),
+        ("schema.test-missing", 8, ["test-id-names-nothing"], "a test id that names nothing"),
+        ("schema.finding-unowned", 6, ["finding-without-an-owner"], "work nobody holds"),
+        ("schema.owner-idle", 6, ["owner-without-a-finding"], "a name attached to no work"),
+        ("schema.owner-enum", 8, ["owner-not-in-the-enum"], "the closed set of owners"),
+        ("digest", 6, ["D1-new-module", "D3-module-edited"], "R9's own direction"),
+        ("baseline.not-audited", 6, ["baselined-row-downgraded"], "★ the second of the three survivors"),
+        ("baseline.counts", 6, ["baseline-count-misreported"], "the two records must agree"),
+        ("baseline.invented", 6, ["baseline-work-invented"], "and agree in both directions"),
+        ("weakened.rank", 6, ["D4-disposition-downgraded", "D4-rename-launders"], "★ the third survivor"),
+        ("weakened.finding", 8, ["D4-finding-erased", "D4-rename-launders"], "an erased finding"),
+    ]
+]
+
+# Mechanisms rather than rules: deleting one silences several rules at once.
+RULE_MUTATIONS += [
+    RuleMutation(
+        "drop-the-drift-rule",
+        "  const old = new Map(before.map((r) => [r.path, r]))",
+        "  if (before) return failures\n  const old = new Map(before.map((r) => [r.path, r]))",
+        ["D4-disposition-downgraded", "D4-finding-erased", "D4-rename-launders"],
+        "the whole fourth direction",
+    ),
+    RuleMutation(
+        "drop-the-rename-pairing",
+        "    if (was === undefined && uniqueAfter.get(row.digest)?.path === row.path) {\n      was = uniqueBefore.get(row.digest)\n    }",
+        "",
+        ["D4-rename-launders"],
+        "★ keying drift on PATH alone, which is how a rename laundered a finding",
+    ),
+    RuleMutation(
+        "drop-the-baseline-cross-check",
+        "  const work = baselineWork(baselinePath)",
+        "  if (baselinePath) return failures\n  const work = baselineWork(baselinePath)",
+        ["baseline-count-misreported", "baselined-row-downgraded", "baseline-work-invented"],
+        "★ BOTH directions at once. Emptying `work` alone silences the forward "
+        "check and leaves the reverse one firing, which is the rule being "
+        "defended twice: a mutation that removes one defence flips nothing and "
+        "reads as a survivor.",
+    ),
+]
+
+
+def write_checker_mutant(old: str, new: str, also: list[tuple[str, str]] | None = None) -> tuple[str, int]:
     """Write a mutated COPY of the checker. Never the original."""
     text = CHECKER_SRC.read_text()
-    n = text.count(old)
-    if n == 1:
-        CHECKER_MUTANT.write_text(text.replace(old, new))
-    return str(CHECKER_MUTANT.relative_to(FRONTEND)), n
+    worst = 1
+    for a, b in [(old, new), *(also or [])]:
+        n = text.count(a)
+        if n != 1:
+            worst = n
+            break
+        text = text.replace(a, b)
+    if worst == 1:
+        CHECKER_MUTANT.write_text(text)
+    return str(CHECKER_MUTANT.relative_to(FRONTEND)), worst
 
 
-# id -> (find, replace), applied to a COPY of the checker. Never the original.
-CHECKER_MUTATIONS = {
-    "M-D-drop-digest-comparison": (
-        "    if (row.digest !== actual) {",
-        "    if (false) {",
-    ),
-    "M-E-drop-parity": (
-        "  const universe = new Set(universeOf(root))",
-        "  const universe = new Set(universeOf(root))\n  if (universe.size >= 0) return failures",
-    ),
-}
+# ---------------------------------------------------------------------------
+# runners
+# ---------------------------------------------------------------------------
+def run_probes(
+    root: Path, manifest: Path, pristine: str, prev: Path, checker: str = CHECKER
+) -> dict[str, set[str]]:
+    """Every probe under one checker, returning {label: rule set}."""
+    out: dict[str, set[str]] = {}
+    for probe in PROBES:
+        if probe.setup is not None:
+            probe.setup(root)
+        try:
+            write_manifest(manifest, probe.rows(rows_of(pristine), root))
+            _rc, rules, _pairs, _text = run(
+                root, manifest, checker, prev if probe.against else None
+            )
+            out[probe.label] = rules
+        finally:
+            if probe.teardown is not None:
+                probe.teardown(root)
+            manifest.write_text(pristine)
+    return out
 
 
 def git(repo: Path, *args: str) -> None:
@@ -232,34 +693,159 @@ def git_probe(tmp: Path) -> list[str]:
         print("  git repository                         *** COULD NOT BUILD ***")
         return failures
 
-    rc, tags, _pairs, out = run(repo, manifest)
+    rc, rules, _pairs, out = run(repo, manifest)
     # The success line must NAME the ref, or the reader returned null and every
     # drift probe above proved nothing about production.
     compared = "no conclusion weakened against HEAD:" in out
-    ok = rc == 0 and not tags and compared
+    ok = rc == 0 and not rules and compared
     print(
         f"  {'git HEAD baseline':<38} "
         + ("clean, and it says what it compared" if ok else "*** " + out.strip()[:90] + " ***")
     )
     if not ok:
-        failures.append(f"git probe baseline: rc={rc} tags={sorted(tags)} compared={compared}")
+        failures.append(f"git probe baseline: rc={rc} rules={sorted(rules)} compared={compared}")
 
-    weakened = json.loads(pristine)
+    weakened = rows_of(pristine)
     for r in weakened:
         if r["path"] == "src/alpha.ts":
             r["disposition"] = "no unit behaviour"
-            r.pop("tests", None)
-            r.pop("findings", None)
-            r.pop("owners", None)
-    manifest.write_text(json.dumps(weakened, indent=1) + "\n")
-    rc, tags, pairs, out = run(repo, manifest)
-    ok = rc == 1 and tags == {"weakened"} and "src/alpha.ts" in [p for _, p in pairs]
+            for key in ("tests", "findings", "owners"):
+                r.pop(key, None)
+    write_manifest(manifest, weakened)
+    rc, rules, pairs, out = run(repo, manifest)
+    ok = rc == 1 and rules == {"weakened.rank", "weakened.finding"} and "src/alpha.ts" in [
+        p for _, p in pairs
+    ]
     print(
         f"  {'git HEAD weakening':<38} "
-        + ("fails on ['weakened']" if ok else "*** rc=" + str(rc) + " " + str(sorted(tags)) + " ***")
+        + ("fails on rank and finding" if ok else "*** rc=" + str(rc) + " " + str(sorted(rules)) + " ***")
     )
     if not ok:
-        failures.append(f"git probe weakening: rc={rc} tags={sorted(tags)}")
+        failures.append(f"git probe weakening: rc={rc} rules={sorted(rules)}")
+    manifest.write_text(pristine)
+    return failures
+
+
+def degradation_probe(root: Path, manifest: Path, tmp: Path) -> list[str]:
+    """Every degraded path must warn AND drop the affirmative clause.
+
+    ★ `--against-file` at a file holding `[]` used to print the affirmative
+    "no conclusion weakened against ..." while comparing against nothing.
+    Nothing can weaken against nothing, so the sentence is vacuously true and
+    reads as evidence, which is the one thing a degraded path must never do.
+    """
+    failures: list[str] = []
+    cases = {
+        "empty array": "[]\n",
+        "empty rows": '{"schemaVersion": 2, "rows": []}\n',
+        "not a manifest": '{"nope": true}\n',
+        "unparseable": "{oh no\n",
+    }
+    probe = tmp / "degraded.json"
+    for label, body in cases.items():
+        probe.write_text(body)
+        rc, rules, _pairs, out = run(root, manifest, against=probe)
+        warned = "conclusion drift NOT checked" in out
+        affirmed = "no conclusion weakened against" in out
+        ok = rc == 0 and not rules and warned and not affirmed
+        print(
+            f"  previous is {label:<26}"
+            + ("warns, and claims nothing" if ok else f"*** warned={warned} affirmed={affirmed} ***")
+        )
+        if not ok:
+            failures.append(f"degradation {label}: warned={warned} affirmed={affirmed} rc={rc}")
+    missing = tmp / "does-not-exist.json"
+    rc, _rules, _pairs, out = run(root, manifest, against=missing)
+    ok = rc == 0 and "conclusion drift NOT checked" in out and "no conclusion weakened against" not in out
+    print(f"  previous is {'missing entirely':<26}" + ("warns, and claims nothing" if ok else "*** wrong ***"))
+    if not ok:
+        failures.append("degradation missing file")
+    return failures
+
+
+def version_probe(root: Path, manifest: Path, tmp: Path) -> list[str]:
+    """A format migration is exempt by construction, and only a migration is.
+
+    ★ [weakened] forbids findings from shrinking while a digest holds still,
+    which is right for an erasure and WRONG for a format migration: moving 47
+    rows' owner text into an `owners` array shrank findings on 47 unchanged
+    files. That was handled by ordering the commits, which worked locally and
+    left an undocumented dependency on push granularity.
+    """
+    failures: list[str] = []
+    pristine = manifest.read_text()
+    old_format = tmp / "previous.v1.json"
+    # The pre-version shape: a bare array. Same rows, one field short.
+    old_format.write_text(json.dumps(rows_of(pristine), indent=1) + "\n")
+    erased = rows_of(pristine)
+    for r in erased:
+        if r["path"] == "src/alpha.ts":
+            r["findings"] = []
+            r.pop("owners", None)
+    try:
+        write_manifest(manifest, erased)
+        rc, rules, _pairs, out = run(root, manifest, against=old_format)
+        skipped = "is schema version 1 and this manifest is 2" in out
+        ok = rc == 0 and not rules and skipped and "no conclusion weakened against" not in out
+        print(
+            f"  {'across a schema version':<38} "
+            + ("skipped, and says why" if ok else f"*** rc={rc} {sorted(rules)} skipped={skipped} ***")
+        )
+        if not ok:
+            failures.append(f"version probe: rc={rc} rules={sorted(rules)} skipped={skipped}")
+
+        # ...and the same erasure WITHIN one version is still caught, or the
+        # version field is just a bypass with a nicer name.
+        same_format = tmp / "previous.v2.json"
+        same_format.write_text(pristine)
+        rc, rules, _pairs, _out = run(root, manifest, against=same_format)
+        ok = rc == 1 and rules == {"weakened.finding"}
+        print(
+            f"  {'within one schema version':<38} "
+            + ("still caught" if ok else f"*** rc={rc} {sorted(rules)} ***")
+        )
+        if not ok:
+            failures.append(f"version probe, same version: rc={rc} rules={sorted(rules)}")
+    finally:
+        manifest.write_text(pristine)
+    return failures
+
+
+def round_trip_probe(root: Path, manifest: Path) -> list[str]:
+    """`--update` must be a FIXED POINT on a fully dispositioned manifest.
+
+    ★ `seed()` was not updated when `owners` landed, so `--update` silently
+    dropped all 50 owner arrays and the next run reported 50 schema failures.
+    That is nastier than its size: `--update` is the documented remedy for a
+    [digest] failure, and the natural way to clear the schema errors it causes
+    is to delete the findings, which [weakened] then holds shut. The remedy led
+    into a trap the guard kept closed. This probe catches the NEXT field
+    somebody forgets, not only that one.
+    """
+    failures: list[str] = []
+    before = manifest.read_text()
+    subprocess.run(
+        ["bun", "run", CHECKER, "--update", "--root", str(root), "--manifest", str(manifest)],
+        cwd=FRONTEND,
+        capture_output=True,
+        text=True,
+        check=True,
+    )
+    after = manifest.read_text()
+    ok = before == after
+    print(
+        f"  {'--update on a dispositioned manifest':<38} "
+        + ("byte-identical" if ok else "*** REWROTE THE FILE ***")
+    )
+    if not ok:
+        lost = {
+            k
+            for b, a in zip(rows_of(before), rows_of(after))
+            for k in b
+            if k not in a
+        }
+        failures.append(f"round trip: --update dropped field(s) {sorted(lost)}")
+        manifest.write_text(before)
     return failures
 
 
@@ -268,343 +854,72 @@ def main() -> int:
     tmp = Path(tempfile.mkdtemp(prefix="units-manifest-selftest-"))
     root = tmp / "tree"
     manifest = tmp / "units.manifest.json"
+    prev = tmp / "previous.manifest.json"
     try:
         build_tree(root)
         seed(root, manifest)
-        # Every probe below mutates the manifest and restores from this, so it
-        # is the fixture's single source of truth rather than a saved copy of
-        # seed()'s return value.
         pristine = manifest.read_text()
-
-        def check(
-            label: str,
-            expect_rc: int,
-            expect_tags: set[str],
-            expect_path: str | None,
-            checker: str = CHECKER,
-            against: Path | None = None,
-        ) -> None:
-            rc, tags, pairs, out = run(root, manifest, checker, against)
-            bad = []
-            if rc != expect_rc:
-                bad.append(f"rc={rc}, expected {expect_rc}")
-            if tags != expect_tags:
-                bad.append(f"tags={sorted(tags)}, expected {sorted(expect_tags)}")
-            if expect_path is not None and expect_path not in [p for _, p in pairs]:
-                bad.append(f"no failure named {expect_path}: {pairs}")
-            mark = (
-                "*** FAILED ***"
-                if bad
-                else ("clean" if expect_rc == 0 else f"fails on {sorted(tags)}")
-            )
-            print(f"  {label:<38} {mark}")
-            if bad:
-                failures.append(f"{label}: {'; '.join(bad)}")
-                print(f"      {out.strip()[:600]}")
-
-        print("baseline: a seeded, fully dispositioned manifest must pass")
-        print("-" * 78)
-        check("baseline", 0, set(), None)
-
-        print("\nthe three directions R9 requires, each shown firing")
-        print("-" * 78)
-
-        # 1. A module enters the universe. The tree changes, the manifest does not.
-        (root / "src" / "gamma.ts").write_text("export const G = 3\n")
-        (root / "src" / "main.tsx").write_text(
-            "import './alpha'\nimport './beta'\nimport './delta'\nimport './gamma'\n"
-        )
-        check(
-            "M-A-new-module-undispositioned", 1, {"unlisted", "digest"}, "src/gamma.ts"
-        )
-        # main.tsx's own digest moved too, which is the mechanism working: the
-        # file that gained an import is itself a file that changed.
-        (root / "src" / "main.tsx").write_text(
-            "import './alpha'\nimport './beta'\nimport './delta'\n"
-        )
-        (root / "src" / "gamma.ts").unlink()
-        check("M-A-reverted", 0, set(), None)
-
-        # 2. A row is deleted from the manifest. The tree is untouched.
-        manifest.write_text(
-            json.dumps(
-                [r for r in json.loads(pristine) if r["path"] != "src/beta.ts"],
-                indent=1,
-            )
-            + "\n"
-        )
-        check("M-B-row-removed", 1, {"unlisted"}, "src/beta.ts")
-        manifest.write_text(pristine)
-
-        # 3. ★ The one round 5 exists for: a `no unit behaviour` module gains
-        #    unit behaviour. Nothing about the NAME set changes, so only the
-        #    digest can see it, and the assertion below is on the tag rather
-        #    than the exit code precisely so "something failed" cannot pass.
-        beta = root / "src" / "beta.ts"
-        original_beta = beta.read_text()
-        beta.write_text("export const B = 2\nexport const label = `${B} L`\n")
-        check("M-C-dispositioned-module-edited", 1, {"digest"}, "src/beta.ts")
-
-        print("\nand the checker itself, so the three above mean something")
-        print("-" * 78)
-        for mid, (old, new) in CHECKER_MUTATIONS.items():
-            mutant, n = write_checker_mutant(old, new)
-            if n != 1:
-                failures.append(f"{mid}: PATTERN occurs {n} times, expected 1")
-                print(
-                    f"  {mid:<38} *** NOT A VALID MUTANT *** pattern occurs {n} times"
-                )
-                continue
-            try:
-                if mid == "M-D-drop-digest-comparison":
-                    # beta.ts is still edited: with the digest rule gone, the
-                    # mutation above goes silent.
-                    check(f"{mid} -> M-C goes quiet", 0, set(), None, mutant)
-                else:
-                    beta.write_text(original_beta)
-                    manifest.write_text(
-                        json.dumps(
-                            [
-                                r
-                                for r in json.loads(pristine)
-                                if r["path"] != "src/beta.ts"
-                            ],
-                            indent=1,
-                        )
-                        + "\n"
-                    )
-                    check(f"{mid} -> M-B goes quiet", 0, set(), None, mutant)
-                    manifest.write_text(pristine)
-            finally:
-                CHECKER_MUTANT.unlink(missing_ok=True)
-        beta.write_text(original_beta)
-        manifest.write_text(pristine)
-
-        print("\nthe remaining rules, each pinned from the side that can fail")
-        print("-" * 78)
-
-        # A row that outlived its file.
-        extra = json.loads(pristine) + [
-            {
-                "path": "src/deleted.ts",
-                "disposition": "no unit behaviour",
-                "digest": "0" * 64,
-            }
-        ]
-        manifest.write_text(json.dumps(extra, indent=1) + "\n")
-        check("orphan-row", 1, {"orphan"}, "src/deleted.ts")
-
-        # Two rows for one path: one disposition hides the other.
-        dup = json.loads(pristine)
-        dup.append(dict(dup[0]))
-        manifest.write_text(json.dumps(dup, indent=1) + "\n")
-        check("duplicate-row", 1, {"duplicate"}, dup[0]["path"])
-
-        # An audited row backed by nothing. BOTH kinds of evidence have to go:
-        # dropping only `tests` leaves `findings` standing, and the first version
-        # of this probe did exactly that and reported clean.
-        bare = json.loads(pristine)
-        for r in bare:
-            if r["path"] == "src/alpha.ts":
-                r.pop("tests", None)
-                r.pop("findings", None)
-                r.pop("owners", None)
-        manifest.write_text(json.dumps(bare, indent=1) + "\n")
-        check("audited-without-evidence", 1, {"schema"}, "src/alpha.ts")
-
-        # An unverifiable row that does not say what would settle it.
-        vague = json.loads(pristine)
-        for r in vague:
-            if r["path"] == "src/alpha.ts":
-                r.pop("tests", None)
-                r["disposition"] = "unverifiable"
-        manifest.write_text(json.dumps(vague, indent=1) + "\n")
-        check("unverifiable-without-reason", 1, {"schema"}, "src/alpha.ts")
-
-        # A `no unit behaviour` row that records a unit finding anyway.
-        contradictory = json.loads(pristine)
-        for r in contradictory:
-            if r["path"] == "src/beta.ts":
-                r["findings"] = ["renders canonical litres"]
-        manifest.write_text(json.dumps(contradictory, indent=1) + "\n")
-        check("no-unit-behaviour-with-finding", 1, {"schema"}, "src/beta.ts")
-
-        # A test id that names no file: the quiet one.
-        phantom = json.loads(pristine)
-        for r in phantom:
-            if r["path"] == "src/alpha.ts":
-                r["tests"] = ["__tests__/renamed.test.ts"]
-        manifest.write_text(json.dumps(phantom, indent=1) + "\n")
-        check("test-id-names-nothing", 1, {"schema"}, "src/alpha.ts")
-
-        # An owner spelled a way nothing greps for.
-        misowned = json.loads(pristine)
-        for r in misowned:
-            if r["path"] == "src/alpha.ts":
-                r["owners"] = ["Task 6 (units)"]
-        manifest.write_text(json.dumps(misowned, indent=1) + "\n")
-        check("owner-not-in-the-enum", 1, {"schema"}, "src/alpha.ts")
-
-        # A finding nobody holds.
-        unowned = json.loads(pristine)
-        for r in unowned:
-            if r["path"] == "src/alpha.ts":
-                r.pop("owners", None)
-        manifest.write_text(json.dumps(unowned, indent=1) + "\n")
-        check("finding-without-an-owner", 1, {"schema"}, "src/alpha.ts")
-
-        # An owner holding nothing.
-        idle = json.loads(pristine)
-        for r in idle:
-            if r["path"] == "src/beta.ts":
-                r["owners"] = ["task 6"]
-        manifest.write_text(json.dumps(idle, indent=1) + "\n")
-        check("owner-without-a-finding", 1, {"schema"}, "src/beta.ts")
-
-        # ---- THE FOURTH DIRECTION -------------------------------------
-        # ★ The digest pins CONTENT. Until this section existed, nothing pinned
-        # the CONCLUSION: a reviewer downgraded all 83 non-trivial rows and
-        # deleted every finding, touched not one source file, and the gate
-        # printed the permitted sentence and exited 0. The findings ARE the work
-        # list tasks 2 through 7 consume, so the cheapest path to a green row was
-        # to erase the finding rather than repair the file.
-        print("\n★ the fourth direction: a conclusion may only weaken with the file")
-        print("-" * 78)
-
-        prev = tmp / "previous.manifest.json"
         prev.write_text(pristine)
 
-        # M-H: the disposition gets cheaper, the file does not move.
-        downgraded = json.loads(pristine)
-        for r in downgraded:
-            if r["path"] == "src/alpha.ts":
-                r["disposition"] = "no unit behaviour"
-                r.pop("tests", None)
-                r.pop("findings", None)
-                r.pop("owners", None)
-        manifest.write_text(json.dumps(downgraded, indent=1) + "\n")
-        check("M-H-disposition-downgraded", 1, {"weakened"}, "src/alpha.ts", against=prev)
-
-        # M-I: one finding quietly disappears.
-        erased = json.loads(pristine)
-        for r in erased:
-            if r["path"] == "src/alpha.ts":
-                r["findings"] = []
-                r.pop("owners", None)
-        manifest.write_text(json.dumps(erased, indent=1) + "\n")
-        check("M-I-finding-erased", 1, {"weakened"}, "src/alpha.ts", against=prev)
-
-        # ★ M-J: the SAME erasure, with the file actually repaired. This is the
-        # legitimate direction and it must stay silent, or the rule blocks the
-        # work it exists to protect.
-        alpha = root / "src" / "alpha.ts"
-        original_alpha = alpha.read_text()
-        alpha.write_text("export const A = 1\nexport const repaired = true\n")
-        repaired = json.loads(pristine)
-        for r in repaired:
-            if r["path"] == "src/alpha.ts":
-                r["findings"] = []
-                r.pop("owners", None)
-                r["digest"] = hashlib.sha256(alpha.read_bytes()).hexdigest()
-        manifest.write_text(json.dumps(repaired, indent=1) + "\n")
-        check("M-J-erased-WITH-a-repair", 0, set(), None, against=prev)
-        alpha.write_text(original_alpha)
-
-        # M-K: strengthening is always allowed.
-        stronger = json.loads(pristine)
-        for r in stronger:
-            if r["path"] == "src/alpha.ts":
-                r["findings"] = [*r["findings"], "a second recorded finding"]
-        manifest.write_text(json.dumps(stronger, indent=1) + "\n")
-        check("M-K-finding-added", 0, set(), None, against=prev)
-
-        # M-L mutates the CHECKER: without the rule, M-H goes quiet.
-        mutant, n = write_checker_mutant(
-            "    const rankBefore = DISPOSITION_RANK[was.disposition] ?? 0",
-            "    if (was) return failures",
-        )
-        if n != 1:
-            failures.append(f"M-L-drop-the-drift-rule: PATTERN occurs {n} times")
-            print(f"  {'M-L-drop-the-drift-rule':<38} *** NOT A VALID MUTANT ***")
-        else:
-            manifest.write_text(json.dumps(downgraded, indent=1) + "\n")
-            check("M-L-drop-drift-rule -> M-H quiet", 0, set(), None, mutant, prev)
-            CHECKER_MUTANT.unlink(missing_ok=True)
-        manifest.write_text(pristine)
-
-        print("\nthe second, independent record of the same work")
+        print("probes: each state trips exactly the RULES it names")
         print("-" * 78)
+        reference = run_probes(root, manifest, pristine, prev)
+        for probe in PROBES:
+            got = reference[probe.label]
+            ok = got == probe.expect
+            mark = (
+                "clean"
+                if ok and not probe.expect
+                else (f"trips {','.join(sorted(got))}" if ok else f"*** {sorted(got)} ***")
+            )
+            print(f"  {probe.label:<38} {mark}")
+            if not ok:
+                failures.append(
+                    f"{probe.label}: expected {sorted(probe.expect)}, got {sorted(got)}"
+                )
+        if failures:
+            print("\nthe probes are not green, so no mutation result would mean anything:")
+            for f in failures:
+                print("  " + f)
+            return 1
 
-        # M-N: the row misreports what the gate baseline holds.
-        miscounted = json.loads(pristine)
-        for r in miscounted:
-            if r["path"] == "src/delta.ts":
-                r["findings"] = ["compare x1 (units gate baseline)"]
-        manifest.write_text(json.dumps(miscounted, indent=1) + "\n")
-        check("M-N-baseline-count-misreported", 1, {"baseline"}, "src/delta.ts")
+        print("\nrule deletions: each must silence exactly the probes that name it")
+        print("-" * 78)
+        for mut in RULE_MUTATIONS:
+            mutant, n = write_checker_mutant(mut.old, mut.new, mut.also)
+            if n != 1:
+                failures.append(f"{mut.mid}: PATTERN occurs {n} times, expected 1")
+                print(f"  {mut.mid:<38} *** NOT A VALID MUTANT *** pattern occurs {n} times")
+                continue
+            try:
+                got = run_probes(root, manifest, pristine, prev, mutant)
+            finally:
+                CHECKER_MUTANT.unlink(missing_ok=True)
+            flipped = sorted(k for k, v in got.items() if v != reference[k])
+            expected = sorted(mut.flips)
+            ok = flipped == expected
+            print(
+                f"  {mut.mid:<38} "
+                + (f"silences {len(expected)}: {','.join(expected)}" if ok else f"*** WRONG PROBES FLIPPED *** {flipped}")
+            )
+            if not ok:
+                failures.append(f"{mut.mid}: expected to flip {expected}, flipped {flipped}")
 
-        # ...and the erasure the cross-check exists for: no drift comparison
-        # available at all, and it still fails.
-        dropped = json.loads(pristine)
-        for r in dropped:
-            if r["path"] == "src/delta.ts":
-                r["disposition"] = "no unit behaviour"
-                r.pop("findings", None)
-                r.pop("owners", None)
-        manifest.write_text(json.dumps(dropped, indent=1) + "\n")
-        check("M-N2-baselined-row-downgraded", 1, {"baseline"}, "src/delta.ts")
-
-        # A finding claiming baseline work the baseline does not have.
-        invented_work = json.loads(pristine)
-        for r in invented_work:
-            if r["path"] == "src/alpha.ts":
-                r["findings"] = ["token-branch x9 (units gate baseline)"]
-        manifest.write_text(json.dumps(invented_work, indent=1) + "\n")
-        check("M-N3-baseline-work-invented", 1, {"baseline"}, "src/alpha.ts")
-
-        # M-O mutates the CHECKER: without the rule, M-N goes quiet.
-        # ★ Both DIRECTIONS at once. Emptying `work` alone silences the
-        # forward check and leaves the reverse one ("records work the baseline
-        # does not have") firing, which is the rule being defended twice: a
-        # mutation that removes one defence flips nothing and reads as a
-        # survivor. The early return drops the whole cross-check.
-        mutant, n = write_checker_mutant(
-            "  const work = baselineWork(baselinePath)",
-            "  if (baselinePath) return failures\n  const work = baselineWork(baselinePath)",
-        )
-        if n != 1:
-            failures.append(f"M-O-drop-the-baseline-rule: PATTERN occurs {n} times")
-            print(f"  {'M-O-drop-the-baseline-rule':<38} *** NOT A VALID MUTANT ***")
-        else:
-            manifest.write_text(json.dumps(miscounted, indent=1) + "\n")
-            check("M-O-drop-baseline-rule -> M-N quiet", 0, set(), None, mutant)
-            CHECKER_MUTANT.unlink(missing_ok=True)
-        manifest.write_text(pristine)
-
-        # A disposition nobody defined.
-        invented = json.loads(pristine)
-        for r in invented:
-            if r["path"] == "src/beta.ts":
-                r["disposition"] = "probably fine"
-        manifest.write_text(json.dumps(invented, indent=1) + "\n")
-        check("invented-disposition", 1, {"schema"}, "src/beta.ts")
-
-        manifest.write_text(pristine)
-        check("restored", 0, set(), None)
-
-        # The named runtime roots the import walker cannot reach. Without these
-        # the universe would be "whatever the walker found", which is the exact
-        # description round 5 proved false.
-        # ★ The GIT default, exercised for real. Everything above drives the
-        # drift rule through `--against-file`, which tests the RULE and not the
-        # plumbing that finds the previous manifest in production. A reader of
-        # `--against-ref HEAD` that silently returned null would pass every probe
-        # above while checking nothing, which is this phase's signature defect
-        # wearing yet another costume. So: a throwaway repository, a real commit,
-        # and an assertion that the success line NAMES what it compared against.
         print("\nthe git default (--against-ref HEAD), against a real repository")
         print("-" * 78)
         failures += git_probe(tmp)
+
+        print("\nevery degraded comparison warns and claims nothing")
+        print("-" * 78)
+        failures += degradation_probe(root, manifest, tmp)
+
+        print("\na format migration is exempt by construction, and only a migration")
+        print("-" * 78)
+        failures += version_probe(root, manifest, tmp)
+
+        print("\n--update is a fixed point")
+        print("-" * 78)
+        failures += round_trip_probe(root, manifest)
 
         print("\nthe named runtime roots, which the import walker cannot reach")
         print("-" * 78)
@@ -613,32 +928,20 @@ def main() -> int:
             ("service worker", root / "public" / "sw.js"),
             ("locale bundle", root / "public" / "locales" / "xx" / "common.json"),
             ("offline page", root / "public" / "offline.html"),
-            # ★ A binary asset, on purpose. The universe rule has no extension
-            # filter, and this probe is what stops a future "just skip images"
-            # from putting a judgement back in the middle of the universe.
             ("binary asset", root / "public" / "icon.png"),
         ):
-            rows_now = json.loads(pristine)
             target = str(path.relative_to(root))
-            present = any(r["path"] == target for r in rows_now)
-            manifest.write_text(
-                json.dumps([r for r in rows_now if r["path"] != target], indent=1)
-                + "\n"
-            )
-            rc, tags, pairs, out = run(root, manifest)
-            ok = (
-                present
-                and rc == 1
-                and tags == {"unlisted"}
-                and target in [p for _, p in pairs]
-            )
+            rows = rows_of(pristine)
+            present = any(r["path"] == target for r in rows)
+            write_manifest(manifest, [r for r in rows if r["path"] != target])
+            rc, rules, pairs, _out = run(root, manifest)
+            ok = present and rc == 1 and rules == {"unlisted"} and target in [p for _, p in pairs]
             print(
-                f"  {label:<38} {'in the universe and required' if ok else '*** NOT ENFORCED ***'}"
+                f"  {label:<38} "
+                + ("in the universe and required" if ok else "*** NOT ENFORCED ***")
             )
             if not ok:
-                failures.append(
-                    f"{label}: present={present} rc={rc} tags={sorted(tags)}"
-                )
+                failures.append(f"{label}: present={present} rc={rc} rules={sorted(rules)}")
             manifest.write_text(pristine)
     finally:
         CHECKER_MUTANT.unlink(missing_ok=True)
@@ -651,13 +954,14 @@ def main() -> int:
             print("  " + f)
         return 1
     print(
-        "MANIFEST SELFTEST: all FOUR directions fired. The three R9 asks (a new module, "
-        "a removed row, an edited dispositioned module) plus the fourth the review "
-        "added: a conclusion may only weaken alongside a content change. The digest one "
-        "fires on its own tag; deleting the digest rule, parity, the drift rule or the "
-        "baseline cross-check each silences exactly its own direction; repairing the "
-        "file makes the same erasure legitimate; the git default was driven against a "
-        "real repository and says what it compared; and every named runtime root is "
+        f"MANIFEST SELFTEST: {len(PROBES)} probes trip exactly the rules they name, and "
+        f"all {len(RULE_MUTATIONS)} rule deletions silence exactly the probes that name "
+        "them, so no rule survives removal behind a sibling emitting the same tag. All "
+        "four directions fire, the digest one alone; a repair makes the same erasure "
+        "legitimate; a rename cannot launder a finding; the git default was driven "
+        "against a real repository and says what it compared; every degraded comparison "
+        "warns and claims nothing; a format migration is exempt and an erasure inside "
+        "one version is not; --update is a fixed point; and every named runtime root is "
         "enforced, the entry document and a binary asset among them."
     )
     return 0
