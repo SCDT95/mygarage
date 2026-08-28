@@ -43,6 +43,7 @@ Exit code: 1 if any positive passes or any negative fails.
 from __future__ import annotations
 
 import json
+import os
 import re
 import subprocess
 import sys
@@ -62,6 +63,52 @@ GATE = "scripts/validate-units.ts"
 # and `src/` is the subject of validate-reachability.ts and of validate-units.ts's
 # own tree walk. A leaked fixture there fails an unrelated gate.
 ESLINT_FIXTURE = FRONTEND / "scripts/__units_corpus__.tsx"
+
+# Mutual exclusion between this script and units_gate_selftest.py.
+#
+# ★ Both scripts write the SAME fixture path, and until round 4 both deleted
+# leftovers at start. Two runs overlapping therefore destroyed each other's
+# fixture and could each report a result reflecting a file it did not write:
+# a FALSE RESULT, which is this phase's signature defect rather than a mere
+# inconvenience. The collision surface grew when the corpus joined
+# `validate:translations`, because every local `bin/ci-check --frontend` now
+# takes that path.
+#
+# So neither script cleans up at start any more. They refuse. The lock is taken
+# with O_EXCL, so the refusal is a real interlock rather than a check with a
+# race in the middle of it, and a stale lock after a kill is a loud manual
+# cleanup rather than a quiet wrong answer.
+LOCK = FRONTEND / "scripts/.units-gate.lock"
+
+
+def acquire_lock(owner: str, artifacts: list[Path]) -> str | None:
+    """Take the shared lock, or return the reason this run must not start."""
+    stale = [a for a in artifacts if a.exists()]
+    if stale:
+        return (
+            f"{owner}: refusing to start, these files already exist:\n"
+            + "\n".join(f"    {a.relative_to(FRONTEND)}" for a in stale)
+            + "\n  Either another unit-gate run is in progress, or one was killed"
+            "\n  before its cleanup. Deleting them here could destroy a running"
+            "\n  run's fixture and make BOTH results meaningless, so remove them"
+            "\n  by hand once you are sure nothing else is running."
+        )
+    try:
+        fd = os.open(LOCK, os.O_CREAT | os.O_EXCL | os.O_WRONLY)
+    except FileExistsError:
+        return (
+            f"{owner}: refusing to start, {LOCK.relative_to(FRONTEND)} is held.\n"
+            "  units_gate_corpus.py and units_gate_selftest.py share a fixture"
+            "\n  path and cannot run concurrently. Wait for the other run, or"
+            "\n  delete the lock if you are certain none is in progress."
+        )
+    os.write(fd, f"{owner} pid={os.getpid()}\n".encode())
+    os.close(fd)
+    return None
+
+
+def release_lock() -> None:
+    LOCK.unlink(missing_ok=True)
 
 
 @dataclass
@@ -442,6 +489,21 @@ SCRIPT_POSITIVE = [
         "M39-keep-nullish-members",
         ext=".ts",
     ),
+    Case(
+        "S-P29-backtick-vocabulary",
+        "type Sys = `imperial` | 'metric'\n"
+        "export function label(s: Sys): string {\n"
+        "  return s === 'imperial' ? 'mi' : 'km'\n"
+        "}\n",
+        1,
+        "compare",
+        "★ a FAIL-OPEN, not a miss: STRING_LITERAL_TYPE recognises a backtick "
+        "literal, so `imperial` was confidently classified foreign instead of "
+        "falling through to fail-closed unknown, and ONE such member exempted the "
+        "whole union. The all-backtick spelling is the same code path.",
+        "M43-drop-backtick-vocabulary",
+        ext=".ts",
+    ),
 ]
 
 SCRIPT_NEGATIVE = [
@@ -755,6 +817,10 @@ def check(case: Case, got: int, detail: list[str]) -> str | None:
 
 
 def main() -> int:
+    refusal = acquire_lock("units_gate_corpus.py", [ESLINT_FIXTURE])
+    if refusal:
+        print(refusal)
+        return 2
     failures: list[str] = []
     tmpdir = Path(tempfile.mkdtemp(prefix="units-corpus-"))
     try:
@@ -781,6 +847,7 @@ def main() -> int:
         for leftover in tmpdir.glob("*"):
             leftover.unlink()
         tmpdir.rmdir()
+        release_lock()
 
     total = (
         len(SCRIPT_POSITIVE)

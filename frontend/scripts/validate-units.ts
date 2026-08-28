@@ -163,7 +163,24 @@ const SYSTEM_LITERALS = new Set(['imperial', 'metric'])
  * to admit it, so `type Pref = 'imperial' | 'metric' | 'custom'` is a plausible
  * phase 3b artifact and it is unambiguously a unit-system type.
  */
-const UNIT_VOCABULARY = new Set(["'imperial'", "'metric'", "'custom'", '"imperial"', '"metric"', '"custom"'])
+const UNIT_VOCABULARY = new Set([
+  "'imperial'",
+  "'metric'",
+  "'custom'",
+  '"imperial"',
+  '"metric"',
+  '"custom"',
+  // Backticks are the third spelling, and leaving them out was a FAIL-OPEN.
+  // `type Sys = ` + '`imperial` | `metric`' + ` compiles clean under --strict and
+  // scored zero findings, because STRING_LITERAL_TYPE below RECOGNISES a
+  // backtick literal: the member was confidently classified `foreign` instead
+  // of falling through to fail-closed `unknown`. The confident
+  // misclassification was the bug, not the missing entry. One backtick member
+  // was enough to exempt an otherwise correctly-spelled union.
+  '`imperial`',
+  '`metric`',
+  '`custom`',
+])
 
 /**
  * Members that carry no value a unit comparison could be about.
@@ -377,7 +394,18 @@ function classifyMember(
  * `type Theme = 'light' | 'dark' | 'imperial'`, and R2 requires that case to be
  * ACCEPTED while R3 names it as the case this whole leg exists to distinguish.
  * A type carrying members no unit system has ever contained is a different enum
- * that happens to share a spelling. Every probe in the review's bypass table is
+ * that happens to share a spelling.
+ *
+ * ★ WHERE THAT BOUNDARY SITS, because it is wider than the Theme case and the
+ * next reader should not have to discover it: ANY recognised literal outside
+ * the vocabulary exempts the union, so `'imperial' | 'metric' | 0` is exempt
+ * too. That is the rounding working as designed rather than a second bypass:
+ * `0` is a literal type this scanner can read and no unit system has ever
+ * contained, so the union is treated as a different enum. The rule is
+ * "recognised non-vocabulary literal means foreign", not "string literal means
+ * foreign", and a member it CANNOT read is `unknown` and fail-closed instead.
+ * If that ever needs to change, change it here and expect S-N2 and S-N6 to
+ * flip, which is what `M38-any-unit-member-flags` measures. Every probe in the review's bypass table is
  * still closed, and the control still fires; only Theme differs, and Theme is
  * the corpus negative. Pinned from the other side by `M38-any-unit-member-flags`,
  * which implements the literal reading and flips exactly that case.

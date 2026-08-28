@@ -6,17 +6,22 @@ name: Unit Gate Selftest
 #
 # Why it is a workflow of its own rather than a step in the main CI job:
 #
-#   * it takes ~18 minutes, because every mutation re-runs a whole corpus leg,
-#     and putting that on the critical path for every PR is not worth it;
+#   * it re-runs a whole corpus leg per mutation, 44 times. MEASURED at
+#     3 min 38 s, not the ~18 minutes an earlier version of this comment
+#     claimed. That figure was inferred from spaced polling rather than timed,
+#     and it was wrong by 5x in the direction that would have justified
+#     weakening the check. Keeping it off every PR's critical path is now a
+#     matter of tidiness rather than cost;
 #   * it can only be affected by five files, so a `paths:` filter is exact
 #     rather than a guess. Four are obvious; the fifth is translation-utils.ts,
 #     which the gate imports for ROOT. package.json is deliberately NOT in the
-#     list: it changes on every dependency bump, and an 18-minute job on every
-#     bump is how a useful check gets turned off;
+#     list: it changes on every dependency bump, and 3b's standing obligation is
+#     to run this by hand after a TypeScript or ESLint major, which is the one
+#     dependency change that can alter the result;
 #   * SAMPLING IT IS NOT AN OPTION. Which mutant survives is not knowable in
 #     advance, which is the entire premise of a mutation harness, so a sampled
-#     run is how a survivor hides. Exhaustive and occasional beats partial and
-#     frequent.
+#     run is how a survivor hides. At under four minutes there is no case for
+#     sampling anyway.
 #
 # ★ Deliberately NOT a required check. A required check with a `paths:` filter
 # never reports on the PRs it filters out, which leaves those PRs wedged waiting

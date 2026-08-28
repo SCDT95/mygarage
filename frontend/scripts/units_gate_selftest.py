@@ -160,6 +160,7 @@ MUTATIONS = [
             "S-P26-parenthesised-alias",
             "S-P27-indexed-access",
             "S-P28-alias-or-undefined",
+            "S-P29-backtick-vocabulary",
         ],
         "half the vocabulary is half the gate",
     ),
@@ -250,6 +251,7 @@ MUTATIONS = [
             "S-P26-parenthesised-alias",
             "S-P27-indexed-access",
             "S-P28-alias-or-undefined",
+            "S-P29-backtick-vocabulary",
         ],
         "★ R2's forbidden implementation: it passes every case that spells the "
         "variable `system` and misses both spellings production actually uses",
@@ -275,6 +277,7 @@ MUTATIONS = [
             "S-P16-widened-alias",
             "S-P26-parenthesised-alias",
             "S-P28-alias-or-undefined",
+            "S-P29-backtick-vocabulary",
         ],
         "★ R8's hole: a name denylist walks straight past `type Sys = 'imperial'|'metric'`",
     ),
@@ -299,8 +302,12 @@ MUTATIONS = [
     Mutation(
         "M26-drop-custom-from-vocabulary",
         "gate",
-        "\"'custom'\", '\"imperial\"'",
-        "'\"imperial\"'",
+        # Anchored to the whole line, not to a fragment of a single-line set
+        # literal: round 4 reformatted UNIT_VOCABULARY across several lines and
+        # the old fragment anchor stopped matching. The PATTERN guard caught it
+        # as "occurs 0 times", which is the guard doing its job on my own edit.
+        "  \"'custom'\",\n",
+        "",
         "script",
         ["S-P16-widened-alias"],
         "phase 1 widened the union to admit 'custom' and it is still a unit system",
@@ -342,6 +349,18 @@ MUTATIONS = [
         "script",
         ["S-P13-unparseable"],
         "★ the other half of round 1's CRITICAL: a wrecked parse reported as a clean file",
+    ),
+    Mutation(
+        "M43-drop-backtick-vocabulary",
+        "gate",
+        "  '`imperial`',\n  '`metric`',\n  '`custom`',\n",
+        "",
+        "script",
+        ["S-P29-backtick-vocabulary"],
+        "★ the round-3 FAIL-OPEN: STRING_LITERAL_TYPE recognises a backtick "
+        "literal, so a missing vocabulary entry did not fall through to "
+        "fail-closed unknown, it was confidently classified foreign and exempted "
+        "the whole union. A gate with a known fail-open is not a gate.",
     ),
     Mutation(
         "M39-nullish-member-is-foreign",
@@ -996,11 +1015,21 @@ def walk_proof(tmpdir: Path) -> list[str]:
 
 
 def main() -> int:
+    # ★ Round 4 replaced a start-time CLEANUP with a start-time REFUSAL.
+    # Deleting leftovers meant a concurrent corpus run had its fixture removed
+    # underneath it, so each run could report a result reflecting a file it did
+    # not write. A wrong answer is worse than a manual cleanup, and the corpus
+    # now runs inside `validate:translations`, so every local
+    # `bin/ci-check --frontend` is a candidate for that collision.
+    refusal = C.acquire_lock(
+        "units_gate_selftest.py",
+        [GATE_MUTANT, CFG_MUTANT, SCOPE_FIXTURE, C.ESLINT_FIXTURE],
+    )
+    if refusal:
+        print(refusal)
+        return 2
     failures: list[str] = []
     tmpdir = Path(tempfile.mkdtemp(prefix="units-selftest-"))
-    # Defensive: a previous run that was killed outright cannot poison this one.
-    for leftover in (GATE_MUTANT, CFG_MUTANT, SCOPE_FIXTURE, C.ESLINT_FIXTURE):
-        leftover.unlink(missing_ok=True)
     try:
         print("deriving reference results from the unmutated gate")
         reference = {
@@ -1079,6 +1108,7 @@ def main() -> int:
         for leftover in (GATE_MUTANT, CFG_MUTANT, SCOPE_FIXTURE, C.ESLINT_FIXTURE):
             leftover.unlink(missing_ok=True)
         shutil.rmtree(tmpdir, ignore_errors=True)
+        C.release_lock()
 
     print()
     if failures:
