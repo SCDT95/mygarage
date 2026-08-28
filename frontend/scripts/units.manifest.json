@@ -886,7 +886,7 @@
   {
    "path": "src/components/TireList.tsx",
    "disposition": "audited",
-   "digest": "a61f375044a7d27b624305dbc2dc0dd3e4df5a970758d736c3af68c0f189f03b",
+   "digest": "930376031c38a1c98032e1207943b4dfe47bf23f88a55757c30f59d52bb7a14a",
    "reason": "tread and pressure through useUnitFormat with seeded origins",
    "tests": [
     "components/__tests__/TireList.metric.test.tsx",
@@ -2814,7 +2814,7 @@
   {
    "path": "src/utils/unitAdapters.ts",
    "disposition": "audited",
-   "digest": "42d1826dc9a5e0a573941a0d7f3cad349aa56945204aba6becb1a34e4787e3e5",
+   "digest": "0ccf0ffc0b75960f8ea08890279a8b88aaf9685a59c8d3c960bdc9bea78bfda6",
    "reason": "the ten resolved-set adapters; the destination every binary API migrates to",
    "tests": [
     "utils/__tests__/unitAdapters.test.ts",
@@ -2833,7 +2833,7 @@
   {
    "path": "src/utils/units.ts",
    "disposition": "audited",
-   "digest": "8daba0c3d542b4637428b0e006c342aab8c4235e34707ebe8a62f1f66a544915",
+   "digest": "ea5242b6b38594e909e4496e68f92c14fa2b9e7cb741f5f3d064a87d2f32d3d7",
    "reason": "gate-detectable unit decisions, recorded not asserted clean (plan 3b task 1 ordering)",
    "tests": [
     "utils/__tests__/unitFactorParity.test.ts",

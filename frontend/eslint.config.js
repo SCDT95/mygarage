@@ -150,7 +150,15 @@ const UNITS_CONSTANT_SCOPE = ['src/**/*.{ts,tsx}', 'scripts/__units_corpus__.tsx
  * Corpus case E-N1 pins that, so a future widening of the precision threshold
  * cannot silently break it.
  */
-const UNITS_CONSTANT_EXEMPT = ['src/utils/unitAdapters.ts', 'src/utils/supplyUnits.ts']
+// One entry per line, with the trailing comma. `units_gate_selftest.py` deletes
+// an entry from this list by exact text to prove each exemption is real, and
+// collapsing the array onto one line disabled that probe. Nothing in
+// `bin/ci-check --frontend` runs that selftest, so the break was silent through
+// lint, the corpus, the manifest checker and the suite.
+const UNITS_CONSTANT_EXEMPT = [
+  'src/utils/unitAdapters.ts',
+  'src/utils/supplyUnits.ts',
+]
 
 export default tseslint.config(
   {

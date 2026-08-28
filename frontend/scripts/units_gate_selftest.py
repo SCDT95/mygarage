@@ -1103,10 +1103,15 @@ def scope_proof() -> list[str]:
 
         # Each exemption must be a real one: silent now, loud the moment it is
         # taken off the list. unitAdapters.ts carries `IN32_TO_MM = 25.4 / 32`,
-        # a genuine factor, so it is the honest probe. units.ts is deliberately
-        # NOT used here: it stays silent either way through the i18n-utility
-        # exemption further down the config, which is itself worth knowing and
-        # is recorded in the config comment.
+        # a genuine factor, so it is the honest probe.
+        #
+        # units.ts is not a candidate, and the reason CHANGED in phase 3b task 2.
+        # It used to be on this list AND silenced outright by the i18n-utility
+        # `'off'` block further down, which wins by ordering, so un-listing it
+        # here proved nothing. It is now on NEITHER list: the factor table
+        # carries its own scoped `eslint-disable` and the rest of the file is
+        # linted like any other, which is why removing it from the list below
+        # was a real change rather than a no-op.
         probe = FRONTEND / "src/utils/unitAdapters.ts"
         before = eslint_messages(probe)
         if before:

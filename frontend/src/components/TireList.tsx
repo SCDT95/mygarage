@@ -407,10 +407,12 @@ export default function TireList({ vin }: TireListProps) {
                 {tire.tread_depth_mm != null ? u.tread.format(num(tire.tread_depth_mm)) : '—'}
               </dd>
               <dt className="text-text-mute">{t('tireList.pressure')}</dt>
-              {/* Through the adapter, not UnitFormatter.formatPressure: that
-                  renders BAR for a metric user while the form below it accepts
-                  kPa, a disagreement this file's own comment used to document.
-                  Binding decision D2 requires one unit for entry and display. */}
+              {/* Through the adapter. The binary `UnitFormatter.formatPressure`
+                  this replaced rendered BAR for a metric user while the form
+                  below it accepts kPa, a disagreement this file's own comment
+                  used to document; phase 3b task 2 deleted that method once
+                  this was its last would-be caller. Binding decision D2
+                  requires one unit for entry and display. */}
               <dd className="font-mono">
                 {tire.pressure_kpa != null ? u.pressure.format(num(tire.pressure_kpa)) : '—'}
               </dd>

@@ -14,7 +14,6 @@
  * - Distance: kilometers ↔ miles
  * - Fuel Economy: L/100km ↔ MPG
  * - Dimensions: meters ↔ feet
- * - Temperature: °C ↔ °F
  * - Pressure: kPa ↔ PSI (bar = kPa/100)
  * - Weight: kilograms ↔ pounds
  * - Torque: Nm ↔ lb-ft

@@ -168,9 +168,12 @@ function inverse(
  *
  * Labels and precisions match `unit_adapters.py`'s ADAPTERS table character for
  * character, with one exception: `c` and `f` carry the degree sign the UI has
- * always rendered (`UnitFormatter.getTemperatureUnit` still does), where the
- * backend's PDF labels are a bare `C` and `F`. Dropping it here would turn a
- * later call-site migration into a visible regression.
+ * always rendered, where the backend's PDF labels are a bare `C` and `F`.
+ * Dropping it here would turn a later call-site migration into a visible
+ * regression. (This used to cite `UnitFormatter.getTemperatureUnit` as the
+ * thing still rendering it. Phase 3b task 2 deleted that method along with the
+ * six other binary formatters no production file called, so these two labels
+ * are now the only place the degree sign is decided.)
  */
 export const UNIT_ADAPTERS: Readonly<Record<UnitToken, UnitAdapter>> = {
   // Distance

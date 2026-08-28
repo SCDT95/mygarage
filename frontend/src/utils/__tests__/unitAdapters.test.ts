@@ -26,10 +26,12 @@ import type { UnitSet } from '@/types/units'
  * this file forgets is a compile error rather than an untested adapter.
  *
  * The two temperature labels deliberately differ from the backend's bare `C`
- * and `F`: the UI has always rendered the degree sign (`UnitFormatter`'s
- * `getTemperatureUnit` still does), and dropping it here would make a phase-3b
- * call-site migration a visible regression for no gain. Every other label
- * matches the backend character for character.
+ * and `F`: the UI has always rendered the degree sign, and dropping it here
+ * would make a phase-3b call-site migration a visible regression for no gain.
+ * Every other label matches the backend character for character. (The cite for
+ * "has always rendered" used to be `UnitFormatter.getTemperatureUnit`; phase 3b
+ * task 2 deleted it as an uncalled binary API, so these labels are now the only
+ * place the degree sign is decided.)
  */
 const EXPECTED: Record<UnitToken, { label: string; precision: number }> = {
   km: { label: 'km', precision: 0 },
