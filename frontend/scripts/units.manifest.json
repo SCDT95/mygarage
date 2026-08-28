@@ -1,0 +1,2699 @@
+[
+ {
+  "path": "public/locales/de/analytics.json",
+  "disposition": "audited",
+  "digest": "a9d4b894ad554fcc51047fc40bb51c60992f11f450affe581d4a1a545ab39c4c",
+  "reason": "the MPG help copy is untranslated here and falls back to English; the digest forces a re-review when it is translated.",
+  "findings": [
+   "vehicle.totalLiters / vehicle.totalGallons are selected by a raw `units.volume === 'L'` branch in Analytics. owner: task 6."
+  ]
+ },
+ {
+  "path": "public/locales/de/common.json",
+  "disposition": "no unit behaviour",
+  "digest": "a0db91c5b935bee1b4a58080e0344fead0286daa9e6ab992bec9300fab3574e7",
+  "reason": "no unit behaviour: reviewed at this snapshot by a case-insensitive scan for every unit stem, token, quantity name and canonical field suffix this codebase uses, with every hit read in context. This file matched none, or matched only outside a unit context."
+ },
+ {
+  "path": "public/locales/de/forms.json",
+  "disposition": "audited",
+  "digest": "cd28f1b63a13c0f684d1ed6f213a75c590adf1fb3028aa78df740c3660305fa6",
+  "reason": "fuel.receiptTextPlaceholder is a plausible EXAMPLE receipt (ruling R5's exempt class): there is no canonical value behind it to convert.",
+  "findings": [
+   "fuel.mpgTip and fuel.electricTip name MPG and kWh/100mi unconditionally, and reminder.milesRequired says 'Miles until due' for every user. owner: task 6."
+  ]
+ },
+ {
+  "path": "public/locales/de/nav.json",
+  "disposition": "no unit behaviour",
+  "digest": "cdcb139a948b000be30acb6bd3127339fe225d0a01778e57f4c6b529502d67cf",
+  "reason": "no unit behaviour: reviewed at this snapshot by a case-insensitive scan for every unit stem, token, quantity name and canonical field suffix this codebase uses, with every hit read in context. This file matched none, or matched only outside a unit context."
+ },
+ {
+  "path": "public/locales/de/settings.json",
+  "disposition": "audited",
+  "digest": "97f561f654e66321608dfa160c2983bee2cda103054d3858f4755fd476a430bb",
+  "reason": "units.gallonUs / units.gallonUk state literal conversion facts and units.showBothDescription is an example; neither is a converted quantity.",
+  "tests": [
+   "components/tabs/__tests__/SettingsSystemTab.units.test.tsx"
+  ],
+  "findings": [
+   "units.imperialDescription and units.metricDescription are two fixed strings selected by the collapsed binary system, so a {volume:'L', distance:'mi', pressure:'psi'} user is told they use kilometres and bar. R1: compose the description from the resolved set instead. owner: task 2, and it lands in every locale."
+  ]
+ },
+ {
+  "path": "public/locales/de/vehicles.json",
+  "disposition": "audited",
+  "digest": "00141e2da7a928712320aa5c8cfdda2fab8f61d765fb65f22173c581b1690270",
+  "reason": "windowSticker.misc.fuelEconomyMpg and the warranty placeholders reproduce a US Monroney label verbatim and are exempt for the same reason as WindowStickerUpload. defList.gallons / propaneList.gallons are stale translations of keys `en` no longer has; they fall back and render nothing.",
+  "findings": [
+   "propaneList.totalGallons / propaneList.totalLiters (and vehicle.totalGallons / vehicle.totalLiters where present) are selected by a raw `units.volume === 'L'` branch in PropaneRecordList and Analytics. owner: task 6."
+  ]
+ },
+ {
+  "path": "public/locales/fr/analytics.json",
+  "disposition": "audited",
+  "digest": "a1147fc89c683d0dea83a649e236c40d456ea18f3a0c1ab8f26859a785d7b9ef",
+  "reason": "reviewed at this snapshot",
+  "findings": [
+   "vehicleHelp.costAnalysis.costPerMile* and vehicleHelp.fuelEconomy.*Mpg* are imperial-only help copy rendered unconditionally by AnalyticsHelpModal; vehicle.totalLiters / vehicle.totalGallons are selected by a raw `units.volume === 'L'` branch in Analytics. owner: task 6."
+  ]
+ },
+ {
+  "path": "public/locales/fr/common.json",
+  "disposition": "no unit behaviour",
+  "digest": "cbf32fcc6690e586d506ffd7652c35e5891d108eaa31adadfbc37dc6d72cea1a",
+  "reason": "no unit behaviour: reviewed at this snapshot by a case-insensitive scan for every unit stem, token, quantity name and canonical field suffix this codebase uses, with every hit read in context. This file matched none, or matched only outside a unit context."
+ },
+ {
+  "path": "public/locales/fr/forms.json",
+  "disposition": "audited",
+  "digest": "88dbc1c66a595fa886bc8472584d811a13c2f7ddffd7996636832fe60661738e",
+  "reason": "fuel.receiptTextPlaceholder is a plausible EXAMPLE receipt (ruling R5's exempt class): there is no canonical value behind it to convert.",
+  "findings": [
+   "fuel.mpgTip and fuel.electricTip name MPG and kWh/100mi unconditionally, and reminder.milesRequired says 'Miles until due' for every user. owner: task 6."
+  ]
+ },
+ {
+  "path": "public/locales/fr/nav.json",
+  "disposition": "no unit behaviour",
+  "digest": "9322c1c4a24d70c7fc7ec0ca2e3c41a95430b8f8b89623dc21b1be8045c7963e",
+  "reason": "no unit behaviour: reviewed at this snapshot by a case-insensitive scan for every unit stem, token, quantity name and canonical field suffix this codebase uses, with every hit read in context. This file matched none, or matched only outside a unit context."
+ },
+ {
+  "path": "public/locales/fr/settings.json",
+  "disposition": "audited",
+  "digest": "5336141488a27e8afff545f7f535b7300aca04c4636bf476ae7b8023cb5e8dfb",
+  "reason": "units.gallonUs / units.gallonUk state literal conversion facts and units.showBothDescription is an example; neither is a converted quantity.",
+  "tests": [
+   "components/tabs/__tests__/SettingsSystemTab.units.test.tsx"
+  ],
+  "findings": [
+   "units.imperialDescription and units.metricDescription are two fixed strings selected by the collapsed binary system, so a {volume:'L', distance:'mi', pressure:'psi'} user is told they use kilometres and bar. R1: compose the description from the resolved set instead. owner: task 2, and it lands in every locale."
+  ]
+ },
+ {
+  "path": "public/locales/fr/vehicles.json",
+  "disposition": "audited",
+  "digest": "5d5463d35502f296b2a0499780ad62726363fdb948fe9173edc86a0e183c4c22",
+  "reason": "windowSticker.misc.fuelEconomyMpg and the warranty placeholders reproduce a US Monroney label verbatim and are exempt for the same reason as WindowStickerUpload. defList.gallons / propaneList.gallons are stale translations of keys `en` no longer has; they fall back and render nothing.",
+  "findings": [
+   "propaneList.totalGallons / propaneList.totalLiters (and vehicle.totalGallons / vehicle.totalLiters where present) are selected by a raw `units.volume === 'L'` branch in PropaneRecordList and Analytics. owner: task 6."
+  ]
+ },
+ {
+  "path": "public/locales/pl/analytics.json",
+  "disposition": "no unit behaviour",
+  "digest": "c5ba860f6160c09610d367c9ff04d2766ea7b15a06f4088ae8eb13ca866c9180",
+  "reason": "no unit behaviour: reviewed at this snapshot by a case-insensitive scan for every unit stem, token, quantity name and canonical field suffix this codebase uses, with every hit read in context. This file matched none, or matched only outside a unit context."
+ },
+ {
+  "path": "public/locales/pl/common.json",
+  "disposition": "no unit behaviour",
+  "digest": "8deead56bd2b5e390fa0c8f519ea26fe38e47bd9e5df5e20c1105dd11a857257",
+  "reason": "no unit behaviour: reviewed at this snapshot by a case-insensitive scan for every unit stem, token, quantity name and canonical field suffix this codebase uses, with every hit read in context. This file matched none, or matched only outside a unit context."
+ },
+ {
+  "path": "public/locales/pl/forms.json",
+  "disposition": "no unit behaviour",
+  "digest": "cc1620d23122c504e53a1eaca2077b2423b9e69e5b77c68c9f581e921ea9a9b3",
+  "reason": "no unit behaviour: reviewed at this snapshot by a case-insensitive scan for every unit stem, token, quantity name and canonical field suffix this codebase uses, with every hit read in context. This file matched none, or matched only outside a unit context."
+ },
+ {
+  "path": "public/locales/pl/nav.json",
+  "disposition": "no unit behaviour",
+  "digest": "efeca3988f32faa7bdea94f122a6208b01fd5636061c791d694687b1b1760538",
+  "reason": "no unit behaviour: reviewed at this snapshot by a case-insensitive scan for every unit stem, token, quantity name and canonical field suffix this codebase uses, with every hit read in context. This file matched none, or matched only outside a unit context."
+ },
+ {
+  "path": "public/locales/pl/settings.json",
+  "disposition": "audited",
+  "digest": "23064830c72eb9dd11593accc6cedac945145d9d971d97c197e89a7b44cfdd7c",
+  "reason": "units.gallonUs / units.gallonUk state literal conversion facts and units.showBothDescription is an example; neither is a converted quantity.",
+  "tests": [
+   "components/tabs/__tests__/SettingsSystemTab.units.test.tsx"
+  ],
+  "findings": [
+   "units.imperialDescription and units.metricDescription are two fixed strings selected by the collapsed binary system, so a {volume:'L', distance:'mi', pressure:'psi'} user is told they use kilometres and bar. R1: compose the description from the resolved set instead. owner: task 2, and it lands in every locale."
+  ]
+ },
+ {
+  "path": "public/locales/pl/vehicles.json",
+  "disposition": "no unit behaviour",
+  "digest": "764c2d2373b3b8be6aec85249958ef32d9ff9f9346d852a44eb3dd84793fcd37",
+  "reason": "no unit behaviour: reviewed at this snapshot by a case-insensitive scan for every unit stem, token, quantity name and canonical field suffix this codebase uses, with every hit read in context. This file matched none, or matched only outside a unit context."
+ },
+ {
+  "path": "public/locales/pt-BR/analytics.json",
+  "disposition": "no unit behaviour",
+  "digest": "7fa8f2ea20dfbb03f997b69c3a7382edf4903277f5d17f3c6045e957ff0a8c5c",
+  "reason": "no unit behaviour: reviewed at this snapshot by a case-insensitive scan for every unit stem, token, quantity name and canonical field suffix this codebase uses, with every hit read in context. This file matched none, or matched only outside a unit context."
+ },
+ {
+  "path": "public/locales/pt-BR/common.json",
+  "disposition": "no unit behaviour",
+  "digest": "47dcd67788108ccab554c8af945046087bde68e2c9008b5283a692f6d01774b1",
+  "reason": "no unit behaviour: reviewed at this snapshot by a case-insensitive scan for every unit stem, token, quantity name and canonical field suffix this codebase uses, with every hit read in context. This file matched none, or matched only outside a unit context."
+ },
+ {
+  "path": "public/locales/pt-BR/forms.json",
+  "disposition": "no unit behaviour",
+  "digest": "fb77c3760362c5b6fdc694480439bae67eca0475ee7b4f7caaa59aa5a0a8d11c",
+  "reason": "no unit behaviour: reviewed at this snapshot by a case-insensitive scan for every unit stem, token, quantity name and canonical field suffix this codebase uses, with every hit read in context. This file matched none, or matched only outside a unit context."
+ },
+ {
+  "path": "public/locales/pt-BR/nav.json",
+  "disposition": "no unit behaviour",
+  "digest": "f58e32e9d64ea9f6aa08e9b104b6db3ce2fff27bc2a7f22b08d1ba9258517918",
+  "reason": "no unit behaviour: reviewed at this snapshot by a case-insensitive scan for every unit stem, token, quantity name and canonical field suffix this codebase uses, with every hit read in context. This file matched none, or matched only outside a unit context."
+ },
+ {
+  "path": "public/locales/pt-BR/settings.json",
+  "disposition": "audited",
+  "digest": "308f1713c12878ea496a1d68e8a3d80af65c1792c32a14c6ae2dc826651e0182",
+  "reason": "units.gallonUs / units.gallonUk state literal conversion facts and units.showBothDescription is an example; neither is a converted quantity.",
+  "tests": [
+   "components/tabs/__tests__/SettingsSystemTab.units.test.tsx"
+  ],
+  "findings": [
+   "units.imperialDescription and units.metricDescription are two fixed strings selected by the collapsed binary system, so a {volume:'L', distance:'mi', pressure:'psi'} user is told they use kilometres and bar. R1: compose the description from the resolved set instead. owner: task 2, and it lands in every locale."
+  ]
+ },
+ {
+  "path": "public/locales/pt-BR/vehicles.json",
+  "disposition": "audited",
+  "digest": "f264e06c0af81c6dab0e5852debd7d2ec4979f37c645169895981096ae594bc9",
+  "reason": "windowSticker.misc.fuelEconomyMpg and the warranty placeholders reproduce a US Monroney label verbatim and are exempt for the same reason as WindowStickerUpload. defList.gallons / propaneList.gallons are stale translations of keys `en` no longer has; they fall back and render nothing.",
+  "findings": [
+   "propaneList.totalGallons / propaneList.totalLiters (and vehicle.totalGallons / vehicle.totalLiters where present) are selected by a raw `units.volume === 'L'` branch in PropaneRecordList and Analytics. owner: task 6."
+  ]
+ },
+ {
+  "path": "public/locales/ru/analytics.json",
+  "disposition": "no unit behaviour",
+  "digest": "432010279b7144dad47a6e2e0e6100aaff737c1719bfe53bd65f1196acb7a231",
+  "reason": "no unit behaviour: reviewed at this snapshot by a case-insensitive scan for every unit stem, token, quantity name and canonical field suffix this codebase uses, with every hit read in context. This file matched none, or matched only outside a unit context."
+ },
+ {
+  "path": "public/locales/ru/common.json",
+  "disposition": "no unit behaviour",
+  "digest": "af408db5391256e1bcfe73bdf1a07d33a0c0a6b5edbb276d785cde28564022e3",
+  "reason": "no unit behaviour: reviewed at this snapshot by a case-insensitive scan for every unit stem, token, quantity name and canonical field suffix this codebase uses, with every hit read in context. This file matched none, or matched only outside a unit context."
+ },
+ {
+  "path": "public/locales/ru/forms.json",
+  "disposition": "no unit behaviour",
+  "digest": "3558403ce1c70f6b84fcce02a60f9ebaeee364c01b1891790f2b793ba70adf45",
+  "reason": "no unit behaviour: reviewed at this snapshot by a case-insensitive scan for every unit stem, token, quantity name and canonical field suffix this codebase uses, with every hit read in context. This file matched none, or matched only outside a unit context."
+ },
+ {
+  "path": "public/locales/ru/nav.json",
+  "disposition": "no unit behaviour",
+  "digest": "a5901f71d37984d21b63fe0b1d046dd16e2287b894eddff7d72ca8e03904ace1",
+  "reason": "no unit behaviour: reviewed at this snapshot by a case-insensitive scan for every unit stem, token, quantity name and canonical field suffix this codebase uses, with every hit read in context. This file matched none, or matched only outside a unit context."
+ },
+ {
+  "path": "public/locales/ru/settings.json",
+  "disposition": "audited",
+  "digest": "17a82a39f5f2596855c70d2050743b63b2bd504fd43910e2392a49ed1331b6ab",
+  "reason": "units.gallonUs / units.gallonUk state literal conversion facts and units.showBothDescription is an example; neither is a converted quantity.",
+  "tests": [
+   "components/tabs/__tests__/SettingsSystemTab.units.test.tsx"
+  ],
+  "findings": [
+   "units.imperialDescription and units.metricDescription are two fixed strings selected by the collapsed binary system, so a {volume:'L', distance:'mi', pressure:'psi'} user is told they use kilometres and bar. R1: compose the description from the resolved set instead. owner: task 2, and it lands in every locale."
+  ]
+ },
+ {
+  "path": "public/locales/ru/vehicles.json",
+  "disposition": "no unit behaviour",
+  "digest": "ea5316eed9b4821e5e15fa8420abdee3f24f120b322744a5f847a302c447a368",
+  "reason": "no unit behaviour: reviewed at this snapshot by a case-insensitive scan for every unit stem, token, quantity name and canonical field suffix this codebase uses, with every hit read in context. This file matched none, or matched only outside a unit context."
+ },
+ {
+  "path": "public/locales/uk/analytics.json",
+  "disposition": "no unit behaviour",
+  "digest": "3ffbbbebf8468cef83957d3f56a8bc2750d20b212c5c09f50931fad76892e2cf",
+  "reason": "no unit behaviour: reviewed at this snapshot by a case-insensitive scan for every unit stem, token, quantity name and canonical field suffix this codebase uses, with every hit read in context. This file matched none, or matched only outside a unit context."
+ },
+ {
+  "path": "public/locales/uk/common.json",
+  "disposition": "no unit behaviour",
+  "digest": "e31920a17cb38af5993abb80c5a9cd927947997abf092c1aa32724c1a01a8a4c",
+  "reason": "no unit behaviour: reviewed at this snapshot by a case-insensitive scan for every unit stem, token, quantity name and canonical field suffix this codebase uses, with every hit read in context. This file matched none, or matched only outside a unit context."
+ },
+ {
+  "path": "public/locales/uk/forms.json",
+  "disposition": "no unit behaviour",
+  "digest": "1812443125d30e2d02b010dc6593317ea5c769559a2df350364aea5e5e79e9d5",
+  "reason": "no unit behaviour: reviewed at this snapshot by a case-insensitive scan for every unit stem, token, quantity name and canonical field suffix this codebase uses, with every hit read in context. This file matched none, or matched only outside a unit context."
+ },
+ {
+  "path": "public/locales/uk/nav.json",
+  "disposition": "no unit behaviour",
+  "digest": "61b0c7979e67bcd1ccd121ba60ff6031df886889dc9c6292313bbf940f609f0e",
+  "reason": "no unit behaviour: reviewed at this snapshot by a case-insensitive scan for every unit stem, token, quantity name and canonical field suffix this codebase uses, with every hit read in context. This file matched none, or matched only outside a unit context."
+ },
+ {
+  "path": "public/locales/uk/settings.json",
+  "disposition": "audited",
+  "digest": "686ff8838a37984bfe8b4567d80553c7ff68996131be24b285822dcee5610623",
+  "reason": "units.gallonUs / units.gallonUk state literal conversion facts and units.showBothDescription is an example; neither is a converted quantity.",
+  "tests": [
+   "components/tabs/__tests__/SettingsSystemTab.units.test.tsx"
+  ],
+  "findings": [
+   "units.imperialDescription and units.metricDescription are two fixed strings selected by the collapsed binary system, so a {volume:'L', distance:'mi', pressure:'psi'} user is told they use kilometres and bar. R1: compose the description from the resolved set instead. owner: task 2, and it lands in every locale."
+  ]
+ },
+ {
+  "path": "public/locales/uk/vehicles.json",
+  "disposition": "no unit behaviour",
+  "digest": "b4eca11f1d931a0a9eee6849e8748ade51fcb00c44f7335b0c7c1709e669de73",
+  "reason": "no unit behaviour: reviewed at this snapshot by a case-insensitive scan for every unit stem, token, quantity name and canonical field suffix this codebase uses, with every hit read in context. This file matched none, or matched only outside a unit context."
+ },
+ {
+  "path": "public/sw.js",
+  "disposition": "no unit behaviour",
+  "digest": "2315de290a850cc3a9a2f217fac916cb6d6404b835588e34d67a6c0d61f1f695",
+  "reason": "no unit behaviour: reviewed at this snapshot by a case-insensitive scan for every unit stem, token, quantity name and canonical field suffix this codebase uses, with every hit read in context. This file matched none, or matched only outside a unit context."
+ },
+ {
+  "path": "src/App.tsx",
+  "disposition": "no unit behaviour",
+  "digest": "f4822388d5b8613cbc4b8910eb6a2485b117d27a049c1b40adbf42666b0e8d14",
+  "reason": "no unit behaviour: reviewed at this snapshot by a case-insensitive scan for every unit stem, token, quantity name and canonical field suffix this codebase uses, with every hit read in context. This file matched none, or matched only outside a unit context."
+ },
+ {
+  "path": "src/components/AddressBookAutocomplete.tsx",
+  "disposition": "no unit behaviour",
+  "digest": "193e76dbdc512203d58fd24f97415b89964df7710ab803b84f1d9c91eadbd4af",
+  "reason": "no unit behaviour: reviewed at this snapshot by a case-insensitive scan for every unit stem, token, quantity name and canonical field suffix this codebase uses, with every hit read in context. This file matched none, or matched only outside a unit context."
+ },
+ {
+  "path": "src/components/AddressBookQuickAddModal.tsx",
+  "disposition": "no unit behaviour",
+  "digest": "2f95cbcf342a451fdfbbcbcb6c3733752e25d0205035d8aa9297cbf3435c8dea",
+  "reason": "no unit behaviour: reviewed at this snapshot by a case-insensitive scan for every unit stem, token, quantity name and canonical field suffix this codebase uses, with every hit read in context. This file matched none, or matched only outside a unit context."
+ },
+ {
+  "path": "src/components/AnalyticsHelpModal.tsx",
+  "disposition": "audited",
+  "digest": "24cd2cd926a56be08d02f9e5b2d13721a39d1890e37d176d5ea8176ccf4d3d44",
+  "reason": "no unit conversion of its own; the defect is imperial-only help copy",
+  "findings": [
+   "renders vehicleHelp.costAnalysis.costPerMileLabel/Desc, vehicleHelp.fuelEconomy.{mpgCalc,averageMpg,recentMpg}Label and vehicleHelp.tips.includeMileage unconditionally, so a metric user reads 'Average MPG:' beside an L/100km figure. Same class as R1's settings copy, and NOT in the plan's inventory.",
+   "owner: task 6 (surfaced by task 1's manifest, not by either gate leg)"
+  ]
+ },
+ {
+  "path": "src/components/AppToaster.tsx",
+  "disposition": "no unit behaviour",
+  "digest": "4fffecf63daf6fbb890be0322a820784bfe4a34e235aac457addc7134eef3010",
+  "reason": "no unit behaviour: reviewed at this snapshot by a case-insensitive scan for every unit stem, token, quantity name and canonical field suffix this codebase uses, with every hit read in context. This file matched none, or matched only outside a unit context."
+ },
+ {
+  "path": "src/components/ArchivedVehiclesList.tsx",
+  "disposition": "no unit behaviour",
+  "digest": "0c20dda753230e89a84b893f586ec50a9b38706c2b89be18aa9cd20f0d65d4b0",
+  "reason": "no unit behaviour: reviewed at this snapshot by a case-insensitive scan for every unit stem, token, quantity name and canonical field suffix this codebase uses, with every hit read in context. This file matched none, or matched only outside a unit context."
+ },
+ {
+  "path": "src/components/AuthPageLayout.tsx",
+  "disposition": "no unit behaviour",
+  "digest": "0340bb6ca65ac4fead15c307a29b774f83c8024abe935c81888d246f14f040b1",
+  "reason": "no unit behaviour: reviewed at this snapshot by a case-insensitive scan for every unit stem, token, quantity name and canonical field suffix this codebase uses, with every hit read in context. This file matched none, or matched only outside a unit context."
+ },
+ {
+  "path": "src/components/BarcodeScanButton.tsx",
+  "disposition": "no unit behaviour",
+  "digest": "468a11e1f9feeac2ae8cdbf9d3faf6ca360faf42578fe5f59f9c3b2cfbe5f6ea",
+  "reason": "no unit behaviour: reviewed at this snapshot by a case-insensitive scan for every unit stem, token, quantity name and canonical field suffix this codebase uses, with every hit read in context. This file matched none, or matched only outside a unit context."
+ },
+ {
+  "path": "src/components/BillingEntryForm.tsx",
+  "disposition": "no unit behaviour",
+  "digest": "3babe0eda8cb942568fad151d0c859ac0b6a83dbad7596c6488fce9e7e40e0b3",
+  "reason": "no unit behaviour: reviewed at this snapshot by a case-insensitive scan for every unit stem, token, quantity name and canonical field suffix this codebase uses, with every hit read in context. This file matched none, or matched only outside a unit context."
+ },
+ {
+  "path": "src/components/DEFRecordForm.tsx",
+  "disposition": "audited",
+  "digest": "0e3a160a36f132f6107ac5cfd3a7e397b771412bc5bb4c2a6132fe4b1e8a0f69",
+  "reason": "odometer already seeds an origin; volume and price do not",
+  "tests": [
+   "components/__tests__/DEFRecordForm.mixedUnits.test.tsx",
+   "components/__tests__/DEFRecordForm.test.tsx"
+  ],
+  "findings": [
+   "R4: DEF volume and price still shift once on the first untouched save, bounded 0.08%; seedUnitField alone is half the protocol",
+   "owner: task 7"
+  ]
+ },
+ {
+  "path": "src/components/DEFRecordList.tsx",
+  "disposition": "audited",
+  "digest": "dd41161c7e6d123572883294169e4467cccc492af8d7b14b3300acba9577b97b",
+  "reason": "gate-detectable unit decisions, recorded not asserted clean (plan 3b task 1 ordering)",
+  "tests": [
+   "components/__tests__/DEFRecordList.test.tsx"
+  ],
+  "findings": [
+   "compare x1 (units gate baseline)",
+   "formatter-binary x2 (units gate baseline)",
+   "owner: task 6"
+  ]
+ },
+ {
+  "path": "src/components/DocumentList.tsx",
+  "disposition": "no unit behaviour",
+  "digest": "5acc42708b491c4bb8afecc0cfa159268b4b376edb06b872d24f1f364374e287",
+  "reason": "no unit behaviour: reviewed at this snapshot by a case-insensitive scan for every unit stem, token, quantity name and canonical field suffix this codebase uses, with every hit read in context. This file matched none, or matched only outside a unit context."
+ },
+ {
+  "path": "src/components/DocumentUpload.tsx",
+  "disposition": "no unit behaviour",
+  "digest": "1446ff0e363d7ae67d5135df70fb5e32780a2003dbe8d97dda7542d64441a663",
+  "reason": "no unit behaviour: reviewed at this snapshot by a case-insensitive scan for every unit stem, token, quantity name and canonical field suffix this codebase uses, with every hit read in context. This file matched none, or matched only outside a unit context."
+ },
+ {
+  "path": "src/components/ErrorBoundary.tsx",
+  "disposition": "no unit behaviour",
+  "digest": "74cac628c378ffddab992fcc9bc1e107d48e357ccf72725acf825c360296941d",
+  "reason": "no unit behaviour: reviewed at this snapshot by a case-insensitive scan for every unit stem, token, quantity name and canonical field suffix this codebase uses, with every hit read in context. This file matched none, or matched only outside a unit context."
+ },
+ {
+  "path": "src/components/ExportMenu.tsx",
+  "disposition": "no unit behaviour",
+  "digest": "ed2c09c1e1e4a26a9fc18a76bc80a3b3821ca36555ae59f362eca2cbef44a854",
+  "reason": "no unit behaviour: reviewed at this snapshot by a case-insensitive scan for every unit stem, token, quantity name and canonical field suffix this codebase uses, with every hit read in context. This file matched none, or matched only outside a unit context."
+ },
+ {
+  "path": "src/components/ExternalVehicleCard.tsx",
+  "disposition": "no unit behaviour",
+  "digest": "d33e2c52a20e4fa44363411f519a611ad69074eaa33819965606a9b4357f383d",
+  "reason": "no unit behaviour: reviewed at this snapshot by a case-insensitive scan for every unit stem, token, quantity name and canonical field suffix this codebase uses, with every hit read in context. This file matched none, or matched only outside a unit context."
+ },
+ {
+  "path": "src/components/FamilyMemberCard.tsx",
+  "disposition": "no unit behaviour",
+  "digest": "5a149e5e76187d03cec41729f288981257554fea0b7fb12d2b2a656292397854",
+  "reason": "no unit behaviour: reviewed at this snapshot by a case-insensitive scan for every unit stem, token, quantity name and canonical field suffix this codebase uses, with every hit read in context. This file matched none, or matched only outside a unit context."
+ },
+ {
+  "path": "src/components/FleetHealthStrip.tsx",
+  "disposition": "audited",
+  "digest": "fa474dbc3887f1e1576fd900283ecd71a2d33cda94c1f51bbcb7ac11a77453f5",
+  "reason": "gate-detectable unit decisions, recorded not asserted clean (plan 3b task 1 ordering)",
+  "tests": [
+   "components/__tests__/FleetHealthStrip.test.tsx"
+  ],
+  "findings": [
+   "formatter-binary x1 (units gate baseline)",
+   "owner: task 6"
+  ]
+ },
+ {
+  "path": "src/components/FormError.tsx",
+  "disposition": "no unit behaviour",
+  "digest": "621608a441d63fa8ef81bced840313be1a8c9a5b8ddf473bbcdd26095207e13a",
+  "reason": "no unit behaviour: reviewed at this snapshot by a case-insensitive scan for every unit stem, token, quantity name and canonical field suffix this codebase uses, with every hit read in context. This file matched none, or matched only outside a unit context."
+ },
+ {
+  "path": "src/components/FormModalWrapper.tsx",
+  "disposition": "no unit behaviour",
+  "digest": "2c83b89b9d97aec341414c909b512f6e8cffb5c8ec97b876bccf9d13dc0fd649",
+  "reason": "no unit behaviour: reviewed at this snapshot by a case-insensitive scan for every unit stem, token, quantity name and canonical field suffix this codebase uses, with every hit read in context. This file matched none, or matched only outside a unit context."
+ },
+ {
+  "path": "src/components/FuelRecordForm.tsx",
+  "disposition": "audited",
+  "digest": "4f2967529de33035ebc8e3db87d3ba438a7dedb8d3dba617ab5242fd7260fc6f",
+  "reason": "gate-detectable unit decisions, recorded not asserted clean (plan 3b task 1 ordering)",
+  "tests": [
+   "components/__tests__/FuelRecordForm.mixedUnits.test.tsx",
+   "components/__tests__/FuelRecordForm.gallonUnits.test.tsx"
+  ],
+  "findings": [
+   "token-branch x3 (units gate baseline)",
+   "R7: the OBC consumption and speed entry surface is canonical-only across five boundaries; the receipt preview renders canonical litres with no selector",
+   "owner: tasks 4, 6 and 7"
+  ]
+ },
+ {
+  "path": "src/components/FuelRecordList.tsx",
+  "disposition": "audited",
+  "digest": "7ce52274b8cf1005de3b78a9cf34b0430da02ac77c1700598d97bfa4e3a75c6c",
+  "reason": "gate-detectable unit decisions, recorded not asserted clean (plan 3b task 1 ordering)",
+  "tests": [
+   "components/__tests__/FuelRecordList.test.tsx"
+  ],
+  "findings": [
+   "formatter-binary x8 (units gate baseline)",
+   "owner: task 6"
+  ]
+ },
+ {
+  "path": "src/components/GarageAnalyticsHelpDrawer.tsx",
+  "disposition": "no unit behaviour",
+  "digest": "f263f2d4a2504d7b0b14fb44b08f9b7576f71fcf1e609ff33af45b8f5c361011",
+  "reason": "no unit behaviour: reviewed at this snapshot by a case-insensitive scan for every unit stem, token, quantity name and canonical field suffix this codebase uses, with every hit read in context. This file matched none, or matched only outside a unit context."
+ },
+ {
+  "path": "src/components/HoursRecordForm.tsx",
+  "disposition": "no unit behaviour",
+  "digest": "61c2b581925f758cd8b45661972692ee5e4a98106f20355f1bede0d985665993",
+  "reason": "no unit behaviour: reviewed at this snapshot by a case-insensitive scan for every unit stem, token, quantity name and canonical field suffix this codebase uses, with every hit read in context. This file matched none, or matched only outside a unit context."
+ },
+ {
+  "path": "src/components/HoursRecordList.tsx",
+  "disposition": "no unit behaviour",
+  "digest": "46dc280ac94c753238abed4d399b897ca8986139838a3b8282c437701b32e0df",
+  "reason": "no unit behaviour: reviewed at this snapshot by a case-insensitive scan for every unit stem, token, quantity name and canonical field suffix this codebase uses, with every hit read in context. This file matched none, or matched only outside a unit context."
+ },
+ {
+  "path": "src/components/InspectionResult.tsx",
+  "disposition": "no unit behaviour",
+  "digest": "b9ac627b4480481094b832846af6eae206d8f7015572c7277ba6d53a5cc9fdf1",
+  "reason": "no unit behaviour: reviewed at this snapshot by a case-insensitive scan for every unit stem, token, quantity name and canonical field suffix this codebase uses, with every hit read in context. This file matched none, or matched only outside a unit context."
+ },
+ {
+  "path": "src/components/InstallPrompt.tsx",
+  "disposition": "no unit behaviour",
+  "digest": "39443052a8f24fc970befe1a0fcb5004d4dbe4e567981217ec5437158e175159",
+  "reason": "no unit behaviour: reviewed at this snapshot by a case-insensitive scan for every unit stem, token, quantity name and canonical field suffix this codebase uses, with every hit read in context. This file matched none, or matched only outside a unit context."
+ },
+ {
+  "path": "src/components/InsuranceForm.tsx",
+  "disposition": "no unit behaviour",
+  "digest": "9997a34cf96f9d4de755dbf700b6728965aa1a518ba3a1930d1d46c23e61bbc1",
+  "reason": "no unit behaviour: reviewed at this snapshot by a case-insensitive scan for every unit stem, token, quantity name and canonical field suffix this codebase uses, with every hit read in context. This file matched none, or matched only outside a unit context."
+ },
+ {
+  "path": "src/components/InsuranceList.tsx",
+  "disposition": "no unit behaviour",
+  "digest": "94bb8f38323b2220ee459d71a29888934ecef3226cbfb9179d892176efa0c11e",
+  "reason": "no unit behaviour: reviewed at this snapshot by a case-insensitive scan for every unit stem, token, quantity name and canonical field suffix this codebase uses, with every hit read in context. This file matched none, or matched only outside a unit context."
+ },
+ {
+  "path": "src/components/InsurancePDFUpload.tsx",
+  "disposition": "no unit behaviour",
+  "digest": "44d0ca4647d09bd6a952c2bbb4fc6351f1eeb9948adbf93bc86a3f8e44d3c5c8",
+  "reason": "no unit behaviour: reviewed at this snapshot by a case-insensitive scan for every unit stem, token, quantity name and canonical field suffix this codebase uses, with every hit read in context. This file matched none, or matched only outside a unit context."
+ },
+ {
+  "path": "src/components/Layout.tsx",
+  "disposition": "no unit behaviour",
+  "digest": "b4acfd90c468ffd9883ef23ad6a0d3b7309e7310469701db08e8a80e54791aea",
+  "reason": "no unit behaviour: reviewed at this snapshot by a case-insensitive scan for every unit stem, token, quantity name and canonical field suffix this codebase uses, with every hit read in context. This file matched none, or matched only outside a unit context."
+ },
+ {
+  "path": "src/components/LineItemEditor.tsx",
+  "disposition": "audited",
+  "digest": "1da9ffb277eae62076539483477497f92232e316b94d628aa33d78d1c386c0dc",
+  "reason": "gate-detectable unit decisions, recorded not asserted clean (plan 3b task 1 ordering)",
+  "findings": [
+   "compare x4 (units gate baseline)",
+   "formatter-binary x3 (units gate baseline)",
+   "a 500-mile reminder stores 500 km",
+   "owner: task 3"
+  ]
+ },
+ {
+  "path": "src/components/MapDisplay.tsx",
+  "disposition": "no unit behaviour",
+  "digest": "63a95af4abc12f0d265d793cf4930ebb26a2b2991467f32722d97e6b8591928d",
+  "reason": "no unit behaviour: reviewed at this snapshot by a case-insensitive scan for every unit stem, token, quantity name and canonical field suffix this codebase uses, with every hit read in context. This file matched none, or matched only outside a unit context."
+ },
+ {
+  "path": "src/components/MobileQuickEntryGate.tsx",
+  "disposition": "no unit behaviour",
+  "digest": "32eee2268e46524455efed84fa99e1371f300ba0802eb2c6fcf369ae297847e7",
+  "reason": "no unit behaviour: reviewed at this snapshot by a case-insensitive scan for every unit stem, token, quantity name and canonical field suffix this codebase uses, with every hit read in context. This file matched none, or matched only outside a unit context."
+ },
+ {
+  "path": "src/components/NoteForm.tsx",
+  "disposition": "no unit behaviour",
+  "digest": "5b25e8deac89f7890231681542d87baf40eedb7c16cde18751b0a9a650d02b69",
+  "reason": "no unit behaviour: reviewed at this snapshot by a case-insensitive scan for every unit stem, token, quantity name and canonical field suffix this codebase uses, with every hit read in context. This file matched none, or matched only outside a unit context."
+ },
+ {
+  "path": "src/components/NoteList.tsx",
+  "disposition": "no unit behaviour",
+  "digest": "16331b520ac46c916df98906b845976d673093d853af8c945be013b9cbac96d1",
+  "reason": "no unit behaviour: reviewed at this snapshot by a case-insensitive scan for every unit stem, token, quantity name and canonical field suffix this codebase uses, with every hit read in context. This file matched none, or matched only outside a unit context."
+ },
+ {
+  "path": "src/components/OdometerRecordForm.tsx",
+  "disposition": "audited",
+  "digest": "bc3d9cf38cb6cfba81eb388ea93c706074a7b9ea52d969f54fec195b2d903710",
+  "reason": "gate-detectable unit decisions, recorded not asserted clean (plan 3b task 1 ordering)",
+  "tests": [
+   "components/__tests__/OdometerRecordForm.test.tsx"
+  ],
+  "findings": [
+   "binary-conversion x1 (units gate baseline)",
+   "compare x1 (units gate baseline)",
+   "formatter-binary x1 (units gate baseline)",
+   "owner: task 3"
+  ]
+ },
+ {
+  "path": "src/components/OdometerRecordList.tsx",
+  "disposition": "audited",
+  "digest": "bf1016951d4636e143505972f3c1bce6365ceef320cf54bc01f361eec83f4931",
+  "reason": "gate-detectable unit decisions, recorded not asserted clean (plan 3b task 1 ordering)",
+  "tests": [
+   "components/__tests__/OdometerRecordList.test.tsx"
+  ],
+  "findings": [
+   "formatter-binary x3 (units gate baseline)",
+   "owner: task 6"
+  ]
+ },
+ {
+  "path": "src/components/OfflineBanner.tsx",
+  "disposition": "no unit behaviour",
+  "digest": "7283feb750c2124c0a2d456ec86bf1ad1e017e129e416296a293f003383bfd3f",
+  "reason": "no unit behaviour: reviewed at this snapshot by a case-insensitive scan for every unit stem, token, quantity name and canonical field suffix this codebase uses, with every hit read in context. This file matched none, or matched only outside a unit context."
+ },
+ {
+  "path": "src/components/POICard.tsx",
+  "disposition": "audited",
+  "digest": "c6d7078f6c33218f59e01c68f327aeeec777312f451ae3fb1c1b84d9ea9fd1d0",
+  "reason": "formats metres through the resolved set with its own precision; the module-local formatDistance is correct code and is why the formatter leg requires a receiver",
+  "tests": [
+   "components/__tests__/POICard.distance.test.tsx"
+  ]
+ },
+ {
+  "path": "src/components/PhotoGallery.tsx",
+  "disposition": "no unit behaviour",
+  "digest": "4522bc3827afa5d8567398f6a786dc601f566d68329eb8ea7364e04117f5cf47",
+  "reason": "no unit behaviour: reviewed at this snapshot by a case-insensitive scan for every unit stem, token, quantity name and canonical field suffix this codebase uses, with every hit read in context. This file matched none, or matched only outside a unit context."
+ },
+ {
+  "path": "src/components/PhotoUpload.tsx",
+  "disposition": "no unit behaviour",
+  "digest": "ab798b8da85cc2d71e19cee61b62ece93d9735819649d83266cdeff62d840211",
+  "reason": "no unit behaviour: reviewed at this snapshot by a case-insensitive scan for every unit stem, token, quantity name and canonical field suffix this codebase uses, with every hit read in context. This file matched none, or matched only outside a unit context."
+ },
+ {
+  "path": "src/components/PropaneRecordForm.tsx",
+  "disposition": "audited",
+  "digest": "b096066698c2d6617bce59c4654c5acfe777ed137c9dd7e3457c52881126eae2",
+  "reason": "gate-detectable unit decisions, recorded not asserted clean (plan 3b task 1 ordering)",
+  "tests": [
+   "components/__tests__/PropaneRecordForm.test.tsx"
+  ],
+  "findings": [
+   "binary-conversion x1 (units gate baseline)",
+   "compare x4 (units gate baseline)",
+   "formatter-binary x2 (units gate baseline)",
+   "owner: tasks 3 and 7"
+  ]
+ },
+ {
+  "path": "src/components/PropaneRecordList.tsx",
+  "disposition": "audited",
+  "digest": "6ef9ca50a33beb75c4c6a146bd80f556c3f221fd278732f37825d4448d5e1cd7",
+  "reason": "gate-detectable unit decisions, recorded not asserted clean (plan 3b task 1 ordering)",
+  "tests": [
+   "components/__tests__/PropaneRecordList.test.tsx"
+  ],
+  "findings": [
+   "token-branch x1 (units gate baseline)",
+   "raw resolved-token branch selecting the total label",
+   "owner: task 6"
+  ]
+ },
+ {
+  "path": "src/components/ProtectedRoute.tsx",
+  "disposition": "no unit behaviour",
+  "digest": "bde83ba096ecbc1fbcce284132b263c0e46bdb59b953f62255bb0a36bde93d02",
+  "reason": "no unit behaviour: reviewed at this snapshot by a case-insensitive scan for every unit stem, token, quantity name and canonical field suffix this codebase uses, with every hit read in context. This file matched none, or matched only outside a unit context."
+ },
+ {
+  "path": "src/components/RecallForm.tsx",
+  "disposition": "no unit behaviour",
+  "digest": "6905c40e2b3dfae0e0b1a1116dc5460802a2c95d54a15d7934ecc11d67e0aa85",
+  "reason": "no unit behaviour: reviewed at this snapshot by a case-insensitive scan for every unit stem, token, quantity name and canonical field suffix this codebase uses, with every hit read in context. This file matched none, or matched only outside a unit context."
+ },
+ {
+  "path": "src/components/RecallList.tsx",
+  "disposition": "no unit behaviour",
+  "digest": "9c433b6cb845ac7c6e4cacbfb001c6c0a6201ab21ef4a3f66e1a4485837a06ee",
+  "reason": "no unit behaviour: reviewed at this snapshot by a case-insensitive scan for every unit stem, token, quantity name and canonical field suffix this codebase uses, with every hit read in context. This file matched none, or matched only outside a unit context."
+ },
+ {
+  "path": "src/components/ReminderForm.tsx",
+  "disposition": "audited",
+  "digest": "6ed6dae25e4b920bfa6dbe8d8d989e461233962c55badd16dbe2df530db717e9",
+  "reason": "gate-detectable unit decisions, recorded not asserted clean (plan 3b task 1 ordering)",
+  "tests": [
+   "components/__tests__/ReminderForm.test.tsx"
+  ],
+  "findings": [
+   "binary-conversion x2 (units gate baseline)",
+   "compare x2 (units gate baseline)",
+   "formatter-binary x5 (units gate baseline)",
+   "owner: task 3"
+  ]
+ },
+ {
+  "path": "src/components/ReminderList.tsx",
+  "disposition": "audited",
+  "digest": "af59b21ba68a50c31297efbb3196478e37983f61433cf7142a25c561b49c5729",
+  "reason": "gate-detectable unit decisions, recorded not asserted clean (plan 3b task 1 ordering)",
+  "tests": [
+   "components/__tests__/ReminderList.test.tsx"
+  ],
+  "findings": [
+   "formatter-binary x1 (units gate baseline)",
+   "owner: task 6"
+  ]
+ },
+ {
+  "path": "src/components/ReportsPanel.tsx",
+  "disposition": "no unit behaviour",
+  "digest": "e0c67cbeb956a103cf436e33262fe1290f31b7e02198c42769710643c93eed7d",
+  "reason": "no unit behaviour: reviewed at this snapshot by a case-insensitive scan for every unit stem, token, quantity name and canonical field suffix this codebase uses, with every hit read in context. This file matched none, or matched only outside a unit context."
+ },
+ {
+  "path": "src/components/ServiceVisitAttachmentList.tsx",
+  "disposition": "no unit behaviour",
+  "digest": "11abd57ca05f3d6c360e495245e4e87007a7f03bfbea90975f35f354dfa10259",
+  "reason": "no unit behaviour: reviewed at this snapshot by a case-insensitive scan for every unit stem, token, quantity name and canonical field suffix this codebase uses, with every hit read in context. This file matched none, or matched only outside a unit context."
+ },
+ {
+  "path": "src/components/ServiceVisitAttachmentUpload.tsx",
+  "disposition": "no unit behaviour",
+  "digest": "1fe6f0a9d00350bb70ff751d52999424a7bef75f0deb321b713826f2f3d813f7",
+  "reason": "no unit behaviour: reviewed at this snapshot by a case-insensitive scan for every unit stem, token, quantity name and canonical field suffix this codebase uses, with every hit read in context. This file matched none, or matched only outside a unit context."
+ },
+ {
+  "path": "src/components/ServiceVisitForm.tsx",
+  "disposition": "audited",
+  "digest": "c022aaff25d0510feb1c2275528f79627e480e2d6dee9d150dd70177bd1e9282",
+  "reason": "gate-detectable unit decisions, recorded not asserted clean (plan 3b task 1 ordering)",
+  "tests": [
+   "components/__tests__/ServiceVisitForm.test.tsx",
+   "components/__tests__/ServiceVisitForm.supplies.test.tsx"
+  ],
+  "findings": [
+   "binary-conversion x1 (units gate baseline)",
+   "compare x1 (units gate baseline)",
+   "formatter-binary x1 (units gate baseline)",
+   "owner: task 3"
+  ]
+ },
+ {
+  "path": "src/components/ServiceVisitList.tsx",
+  "disposition": "audited",
+  "digest": "f41522642792cd653df80b3903405e46c093a15156df8c623446952f233e9cbc",
+  "reason": "gate-detectable unit decisions, recorded not asserted clean (plan 3b task 1 ordering)",
+  "tests": [
+   "components/__tests__/ServiceVisitList.test.tsx"
+  ],
+  "findings": [
+   "formatter-binary x1 (units gate baseline)",
+   "owner: task 6"
+  ]
+ },
+ {
+  "path": "src/components/SpotRentalForm.tsx",
+  "disposition": "no unit behaviour",
+  "digest": "c50c7d55916cab20691b063cbbbbb8836ef48728c8cac7e932e32a06c9b51899",
+  "reason": "no unit behaviour: reviewed at this snapshot by a case-insensitive scan for every unit stem, token, quantity name and canonical field suffix this codebase uses, with every hit read in context. This file matched none, or matched only outside a unit context."
+ },
+ {
+  "path": "src/components/SpotRentalList.tsx",
+  "disposition": "no unit behaviour",
+  "digest": "1ff4a301064a8b6de71b0d0f34076a6e518d5f360e9ef1964694b9652f140770",
+  "reason": "no unit behaviour: reviewed at this snapshot by a case-insensitive scan for every unit stem, token, quantity name and canonical field suffix this codebase uses, with every hit read in context. This file matched none, or matched only outside a unit context."
+ },
+ {
+  "path": "src/components/SubTabNav.tsx",
+  "disposition": "no unit behaviour",
+  "digest": "4e0efcda99ee553cd4707fe855b15bde119b9e3d43ccdf19b0d24ef6f9a56d8a",
+  "reason": "no unit behaviour: reviewed at this snapshot by a case-insensitive scan for every unit stem, token, quantity name and canonical field suffix this codebase uses, with every hit read in context. This file matched none, or matched only outside a unit context."
+ },
+ {
+  "path": "src/components/SuppliesUsedTab.tsx",
+  "disposition": "audited",
+  "digest": "733f40f0f63d988e4941cc832744f70786a64a30eef57e73004fe00356076719",
+  "reason": "as SupplyHistoryModal",
+  "tests": [
+   "components/__tests__/SuppliesUsedTab.test.tsx",
+   "utils/__tests__/supplyUnits.test.ts"
+  ]
+ },
+ {
+  "path": "src/components/SupplyHistoryModal.tsx",
+  "disposition": "audited",
+  "digest": "23c3a95e0f4ec9d2f678aca3a2140a5d61f514a3d789c6be4939da0b28b59182",
+  "reason": "supply quantities through supplyUnits; inherits the D8 quarts decision recorded on utils/supplyUnits.ts",
+  "tests": [
+   "components/__tests__/SupplyHistoryModal.test.tsx",
+   "utils/__tests__/supplyUnits.test.ts"
+  ]
+ },
+ {
+  "path": "src/components/SupplyUsedPicker.tsx",
+  "disposition": "audited",
+  "digest": "d06cce9ca03b0bb5064fea347d93ef7e178c753170ab9b1b429a089006c2dd7b",
+  "reason": "renders supplyUnitLabel only; inherits the D8 quarts decision recorded on utils/supplyUnits.ts",
+  "tests": [
+   "utils/__tests__/supplyUnits.test.ts"
+  ]
+ },
+ {
+  "path": "src/components/TaxRecordForm.tsx",
+  "disposition": "no unit behaviour",
+  "digest": "f9716b5a5c165c59c079eb503408aa3c50ebc36b41e2dbe9e14034f58b0defcc",
+  "reason": "no unit behaviour: reviewed at this snapshot by a case-insensitive scan for every unit stem, token, quantity name and canonical field suffix this codebase uses, with every hit read in context. This file matched none, or matched only outside a unit context."
+ },
+ {
+  "path": "src/components/TaxRecordList.tsx",
+  "disposition": "no unit behaviour",
+  "digest": "1bbd0850596915dd77a929cc7b0736415677c9712ac7d8a64f8b845429b0d614",
+  "reason": "no unit behaviour: reviewed at this snapshot by a case-insensitive scan for every unit stem, token, quantity name and canonical field suffix this codebase uses, with every hit read in context. This file matched none, or matched only outside a unit context."
+ },
+ {
+  "path": "src/components/TireList.tsx",
+  "disposition": "audited",
+  "digest": "a61f375044a7d27b624305dbc2dc0dd3e4df5a970758d736c3af68c0f189f03b",
+  "reason": "tread and pressure through useUnitFormat with seeded origins",
+  "tests": [
+   "components/__tests__/TireList.metric.test.tsx",
+   "components/__tests__/TireList.test.tsx"
+  ]
+ },
+ {
+  "path": "src/components/TollTagForm.tsx",
+  "disposition": "no unit behaviour",
+  "digest": "5c56fcb78655fd86788f5ae2dbf0f0b9593a200c2700f26eea52e80ff0c7cc07",
+  "reason": "no unit behaviour: reviewed at this snapshot by a case-insensitive scan for every unit stem, token, quantity name and canonical field suffix this codebase uses, with every hit read in context. This file matched none, or matched only outside a unit context."
+ },
+ {
+  "path": "src/components/TollTagList.tsx",
+  "disposition": "no unit behaviour",
+  "digest": "d514ab883fa06925801140f759aee9c827747ec6de590009e707649b60bdc4b3",
+  "reason": "no unit behaviour: reviewed at this snapshot by a case-insensitive scan for every unit stem, token, quantity name and canonical field suffix this codebase uses, with every hit read in context. This file matched none, or matched only outside a unit context."
+ },
+ {
+  "path": "src/components/TollTransactionForm.tsx",
+  "disposition": "no unit behaviour",
+  "digest": "f8602ff30a7dda72c5553bcce51446b6edb7e8d35eaf44e0654defe38eb5ee07",
+  "reason": "no unit behaviour: reviewed at this snapshot by a case-insensitive scan for every unit stem, token, quantity name and canonical field suffix this codebase uses, with every hit read in context. This file matched none, or matched only outside a unit context."
+ },
+ {
+  "path": "src/components/TollTransactionList.tsx",
+  "disposition": "no unit behaviour",
+  "digest": "78b5b6fad96d8fb09649a657fde4f7fe1a4ffdb74b2298597926e7a4768a6c86",
+  "reason": "no unit behaviour: reviewed at this snapshot by a case-insensitive scan for every unit stem, token, quantity name and canonical field suffix this codebase uses, with every hit read in context. This file matched none, or matched only outside a unit context."
+ },
+ {
+  "path": "src/components/TransferHistorySection.tsx",
+  "disposition": "no unit behaviour",
+  "digest": "f9bc4943327aede871d2bc8af71191c7d0de1f241ec610a1b00b7274a78fc54c",
+  "reason": "no unit behaviour: reviewed at this snapshot by a case-insensitive scan for every unit stem, token, quantity name and canonical field suffix this codebase uses, with every hit read in context. This file matched none, or matched only outside a unit context."
+ },
+ {
+  "path": "src/components/VINInput.tsx",
+  "disposition": "no unit behaviour",
+  "digest": "8a0447a3949cfa3ed50e5a8d23dc95bc6738e25b5bd9841755cc364e7451a5bf",
+  "reason": "no unit behaviour: reviewed at this snapshot by a case-insensitive scan for every unit stem, token, quantity name and canonical field suffix this codebase uses, with every hit read in context. This file matched none, or matched only outside a unit context."
+ },
+ {
+  "path": "src/components/VehicleStatisticsCard.tsx",
+  "disposition": "audited",
+  "digest": "62449c943639240626648b41f2d925de32cf61e0e21ee22eb5b068af9f7866cc",
+  "reason": "gate-detectable unit decisions, recorded not asserted clean (plan 3b task 1 ordering)",
+  "tests": [
+   "components/__tests__/VehicleStatisticsCard.test.tsx"
+  ],
+  "findings": [
+   "formatter-binary x6 (units gate baseline)",
+   "owner: task 6"
+  ]
+ },
+ {
+  "path": "src/components/VehicleWizard.tsx",
+  "disposition": "no unit behaviour",
+  "digest": "fa55f4e6d0de563f988c0b005519f01312bffc3d58f177ed46ef669972a61f99",
+  "reason": "no unit behaviour: reviewed at this snapshot by a case-insensitive scan for every unit stem, token, quantity name and canonical field suffix this codebase uses, with every hit read in context. This file matched none, or matched only outside a unit context."
+ },
+ {
+  "path": "src/components/VendorSearch.tsx",
+  "disposition": "no unit behaviour",
+  "digest": "ba402aeb23caad893cca76b4853eece2d14079a17e187fa8e5459dbef3701008",
+  "reason": "no unit behaviour: reviewed at this snapshot by a case-insensitive scan for every unit stem, token, quantity name and canonical field suffix this codebase uses, with every hit read in context. This file matched none, or matched only outside a unit context."
+ },
+ {
+  "path": "src/components/WarrantyForm.tsx",
+  "disposition": "audited",
+  "digest": "70b7504fc08b3f1ed7b36e93e9ecb2d6c6a14563ebd04d43ee555501b4fd6630",
+  "reason": "gate-detectable unit decisions, recorded not asserted clean (plan 3b task 1 ordering)",
+  "tests": [
+   "components/__tests__/WarrantyForm.test.tsx"
+  ],
+  "findings": [
+   "binary-conversion x1 (units gate baseline)",
+   "compare x1 (units gate baseline)",
+   "formatter-binary x1 (units gate baseline)",
+   "owner: task 3"
+  ]
+ },
+ {
+  "path": "src/components/WarrantyList.tsx",
+  "disposition": "audited",
+  "digest": "c8184b9b4bf84c6ccee29a0a8259d81aa2b1d77b865f982716b85551196d02c1",
+  "reason": "gate-detectable unit decisions, recorded not asserted clean (plan 3b task 1 ordering)",
+  "tests": [
+   "components/__tests__/WarrantyList.test.tsx"
+  ],
+  "findings": [
+   "formatter-binary x1 (units gate baseline)",
+   "owner: task 6"
+  ]
+ },
+ {
+  "path": "src/components/WindowStickerUpload.tsx",
+  "disposition": "domain exemption",
+  "digest": "c55af63eb804674fe2ba55639127d6c3ef6c2cb8de7fcc0fe4253596e7d09aa1",
+  "reason": "the Monroney window sticker is a US regulatory document. Its 'Fuel Economy (MPG)' figure is TRANSCRIBED from the physical label, not converted from a canonical value, so converting it would misreport what the sticker says.",
+  "tests": [
+   "components/__tests__/WindowStickerUpload.test.tsx"
+  ]
+ },
+ {
+  "path": "src/components/common/CurrencyInputPrefix.tsx",
+  "disposition": "no unit behaviour",
+  "digest": "51895b0568c3f002d083c06cc14f8b6fa9a882a91b384eeb687ac4881f32a731",
+  "reason": "no unit behaviour: reviewed at this snapshot by a case-insensitive scan for every unit stem, token, quantity name and canonical field suffix this codebase uses, with every hit read in context. This file matched none, or matched only outside a unit context."
+ },
+ {
+  "path": "src/components/common/TimeInput24.tsx",
+  "disposition": "no unit behaviour",
+  "digest": "8d5367f989b05c98b118cba98d3a7dfcf6b505fb276b099be496171436ee0764",
+  "reason": "no unit behaviour: reviewed at this snapshot by a case-insensitive scan for every unit stem, token, quantity name and canonical field suffix this codebase uses, with every hit read in context. This file matched none, or matched only outside a unit context."
+ },
+ {
+  "path": "src/components/livelink/VehicleLiveLinkWidget.tsx",
+  "disposition": "audited",
+  "digest": "dcbc764d220ec45b03b8ced5666276a909a83592e8fbd8adda89a39c971e9d61",
+  "reason": "telemetry through convertTelemetryValue and the resolved set",
+  "tests": [
+   "components/livelink/__tests__/VehicleLiveLinkWidget.test.tsx"
+  ]
+ },
+ {
+  "path": "src/components/maps/LastLocationMap.tsx",
+  "disposition": "no unit behaviour",
+  "digest": "281a65750107e8e5ea3b3dae4e26e562791e6cd510db9d88c15903864bed63e0",
+  "reason": "no unit behaviour: reviewed at this snapshot by a case-insensitive scan for every unit stem, token, quantity name and canonical field suffix this codebase uses, with every hit read in context. This file matched none, or matched only outside a unit context."
+ },
+ {
+  "path": "src/components/maps/LeafletMap.tsx",
+  "disposition": "audited",
+  "digest": "3ab214651172fe919f3a2a8bceb2776454efc857cc2007d14a0dcd63c34a12b5",
+  "reason": "takes metres; the component deliberately cannot know the client's distance unit",
+  "tests": [
+   "components/maps/__tests__/LeafletMap.radius.test.tsx"
+  ]
+ },
+ {
+  "path": "src/components/maps/TripRouteMap.tsx",
+  "disposition": "no unit behaviour",
+  "digest": "d6dcdc33cc52e7943d033684c73a90ef169fc0a2788d2cea7fe3baac1710cee6",
+  "reason": "no unit behaviour: reviewed at this snapshot by a case-insensitive scan for every unit stem, token, quantity name and canonical field suffix this codebase uses, with every hit read in context. This file matched none, or matched only outside a unit context."
+ },
+ {
+  "path": "src/components/modals/AddEditUserModal.tsx",
+  "disposition": "no unit behaviour",
+  "digest": "57af63bc43d750b9bff16421e851e99cb1b081670e7a6703c277cefb129ac527",
+  "reason": "no unit behaviour: reviewed at this snapshot by a case-insensitive scan for every unit stem, token, quantity name and canonical field suffix this codebase uses, with every hit read in context. This file matched none, or matched only outside a unit context."
+ },
+ {
+  "path": "src/components/modals/AddProviderModal.tsx",
+  "disposition": "no unit behaviour",
+  "digest": "340686076bc5fe2779468a5a9bb43adb438a715f3151506c39f26b0832931093",
+  "reason": "no unit behaviour: reviewed at this snapshot by a case-insensitive scan for every unit stem, token, quantity name and canonical field suffix this codebase uses, with every hit read in context. This file matched none, or matched only outside a unit context."
+ },
+ {
+  "path": "src/components/modals/BulkArchiveModal.tsx",
+  "disposition": "no unit behaviour",
+  "digest": "3d1e9059afc9e7f09b7e4cfcd7841798de46dae9ee8592b54e7e1d31c02a2f1d",
+  "reason": "no unit behaviour: reviewed at this snapshot by a case-insensitive scan for every unit stem, token, quantity name and canonical field suffix this codebase uses, with every hit read in context. This file matched none, or matched only outside a unit context."
+ },
+ {
+  "path": "src/components/modals/CreateWidgetKeyModal.tsx",
+  "disposition": "no unit behaviour",
+  "digest": "22d0a32d0f3426d97e0eabcec28435b49fa4023b0dea501aba413f4b43be4644",
+  "reason": "no unit behaviour: reviewed at this snapshot by a case-insensitive scan for every unit stem, token, quantity name and canonical field suffix this codebase uses, with every hit read in context. This file matched none, or matched only outside a unit context."
+ },
+ {
+  "path": "src/components/modals/DeleteUserModal.tsx",
+  "disposition": "no unit behaviour",
+  "digest": "3035ac7969c5e3e58d93469f80745fff3fcdd5043975bc7e6b498a96a4cab655",
+  "reason": "no unit behaviour: reviewed at this snapshot by a case-insensitive scan for every unit stem, token, quantity name and canonical field suffix this codebase uses, with every hit read in context. This file matched none, or matched only outside a unit context."
+ },
+ {
+  "path": "src/components/modals/EditProviderModal.tsx",
+  "disposition": "no unit behaviour",
+  "digest": "19222a02b1f3217df7f41fe2d428b8e0aedc5d7ba92f6d11ac39f28a9401412c",
+  "reason": "no unit behaviour: reviewed at this snapshot by a case-insensitive scan for every unit stem, token, quantity name and canonical field suffix this codebase uses, with every hit read in context. This file matched none, or matched only outside a unit context."
+ },
+ {
+  "path": "src/components/modals/ExternalVehicleModal.tsx",
+  "disposition": "no unit behaviour",
+  "digest": "200b3a9a718d249adaeba81f337add6401bf5445ff11d3a5187dec8f6473f84c",
+  "reason": "no unit behaviour: reviewed at this snapshot by a case-insensitive scan for every unit stem, token, quantity name and canonical field suffix this codebase uses, with every hit read in context. This file matched none, or matched only outside a unit context."
+ },
+ {
+  "path": "src/components/modals/FamilyManagementModal.tsx",
+  "disposition": "no unit behaviour",
+  "digest": "dd5a3d4e6a99954f81d26bbe63dde3340348c40c751ebf976b8fd5cc271b5617",
+  "reason": "no unit behaviour: reviewed at this snapshot by a case-insensitive scan for every unit stem, token, quantity name and canonical field suffix this codebase uses, with every hit read in context. This file matched none, or matched only outside a unit context."
+ },
+ {
+  "path": "src/components/modals/LiveLinkSettingsModal.tsx",
+  "disposition": "no unit behaviour",
+  "digest": "132c4234d04059a18238240942223e0b574b2a276d70c0d41fb22fe64237c4c5",
+  "reason": "no unit behaviour: reviewed at this snapshot by a case-insensitive scan for every unit stem, token, quantity name and canonical field suffix this codebase uses, with every hit read in context. This file matched none, or matched only outside a unit context."
+ },
+ {
+  "path": "src/components/modals/LocalAuthModal.tsx",
+  "disposition": "no unit behaviour",
+  "digest": "0ef5ab929a609e63982c4bb55a183f08fda1ef460d271c1c1c983ee54faf6ea4",
+  "reason": "no unit behaviour: reviewed at this snapshot by a case-insensitive scan for every unit stem, token, quantity name and canonical field suffix this codebase uses, with every hit read in context. This file matched none, or matched only outside a unit context."
+ },
+ {
+  "path": "src/components/modals/OIDCModal.tsx",
+  "disposition": "no unit behaviour",
+  "digest": "500c887233012be562e486b8e6347694026ce41cf52581688988c3a2bed3a40a",
+  "reason": "no unit behaviour: reviewed at this snapshot by a case-insensitive scan for every unit stem, token, quantity name and canonical field suffix this codebase uses, with every hit read in context. This file matched none, or matched only outside a unit context."
+ },
+ {
+  "path": "src/components/modals/TorqueSourceModal.tsx",
+  "disposition": "no unit behaviour",
+  "digest": "fba3007329f028d0a520e90a90186e31cd3c5c60dcf2d2203ecaef16013f3a4a",
+  "reason": "no unit behaviour: reviewed at this snapshot by a case-insensitive scan for every unit stem, token, quantity name and canonical field suffix this codebase uses, with every hit read in context. This file matched none, or matched only outside a unit context."
+ },
+ {
+  "path": "src/components/modals/VINDecoderModal.tsx",
+  "disposition": "no unit behaviour",
+  "digest": "9c481ef7642b9c02903e5de9d8fbd3779a28aba0f51876090b6493f51dbef5c8",
+  "reason": "no unit behaviour: reviewed at this snapshot by a case-insensitive scan for every unit stem, token, quantity name and canonical field suffix this codebase uses, with every hit read in context. This file matched none, or matched only outside a unit context."
+ },
+ {
+  "path": "src/components/modals/VehicleRemoveModal.tsx",
+  "disposition": "no unit behaviour",
+  "digest": "5896a4ddccd1e1fd6d02160dea15e208f7fca1ac8ab96bf99f08d041a5f8bfc0",
+  "reason": "no unit behaviour: reviewed at this snapshot by a case-insensitive scan for every unit stem, token, quantity name and canonical field suffix this codebase uses, with every hit read in context. This file matched none, or matched only outside a unit context."
+ },
+ {
+  "path": "src/components/modals/VehicleSharingModal.tsx",
+  "disposition": "no unit behaviour",
+  "digest": "556e6d85f06a657d304d2a6da7d7ef29384c94971e88bc3e5fa78e105458cd3e",
+  "reason": "no unit behaviour: reviewed at this snapshot by a case-insensitive scan for every unit stem, token, quantity name and canonical field suffix this codebase uses, with every hit read in context. This file matched none, or matched only outside a unit context."
+ },
+ {
+  "path": "src/components/modals/VehicleTransferWizard.tsx",
+  "disposition": "no unit behaviour",
+  "digest": "0fcf6e877f592bf83fdd4a5b338a44292406f77b8acdb5dbe60f8eb7d98b8f69",
+  "reason": "no unit behaviour: reviewed at this snapshot by a case-insensitive scan for every unit stem, token, quantity name and canonical field suffix this codebase uses, with every hit read in context. This file matched none, or matched only outside a unit context."
+ },
+ {
+  "path": "src/components/notifications/DiscordConfig.tsx",
+  "disposition": "no unit behaviour",
+  "digest": "3a3517c90b55d6e632b138da590f10a1ccbe627ab5beb4d2e39d79eeff03f947",
+  "reason": "no unit behaviour: reviewed at this snapshot by a case-insensitive scan for every unit stem, token, quantity name and canonical field suffix this codebase uses, with every hit read in context. This file matched none, or matched only outside a unit context."
+ },
+ {
+  "path": "src/components/notifications/EmailConfig.tsx",
+  "disposition": "no unit behaviour",
+  "digest": "1dd214bdcb81f6aec546da35351502c4c86973f10e1be83222d4790e307f8663",
+  "reason": "no unit behaviour: reviewed at this snapshot by a case-insensitive scan for every unit stem, token, quantity name and canonical field suffix this codebase uses, with every hit read in context. This file matched none, or matched only outside a unit context."
+ },
+ {
+  "path": "src/components/notifications/EventNotificationsCard.tsx",
+  "disposition": "audited",
+  "digest": "9381d604e0f982258afdb94aca71849e83bdccd4f0ce5404ecd40531b0c802a8",
+  "reason": "the value itself is a backend notification threshold, not a converted display quantity",
+  "tests": [
+   "components/notifications/__tests__/EventNotificationsCard.test.tsx"
+  ],
+  "findings": [
+   "events.card.milesBefore renders 'miles before' as the suffix of notify_service_miles for every user, and events.card.milestonesDesc says '100k miles'. NOT in the plan's inventory.",
+   "owner: task 6"
+  ]
+ },
+ {
+  "path": "src/components/notifications/GotifyConfig.tsx",
+  "disposition": "no unit behaviour",
+  "digest": "9ad4c540083ddcf1f4cdf153b3b1931e6715e979e3eabef530a92210e94cbe32",
+  "reason": "no unit behaviour: reviewed at this snapshot by a case-insensitive scan for every unit stem, token, quantity name and canonical field suffix this codebase uses, with every hit read in context. This file matched none, or matched only outside a unit context."
+ },
+ {
+  "path": "src/components/notifications/MatrixConfig.tsx",
+  "disposition": "no unit behaviour",
+  "digest": "fed1663194ee94693e246ab9a889a900abd1eb7c481ec30598294f46ff1f9e04",
+  "reason": "no unit behaviour: reviewed at this snapshot by a case-insensitive scan for every unit stem, token, quantity name and canonical field suffix this codebase uses, with every hit read in context. This file matched none, or matched only outside a unit context."
+ },
+ {
+  "path": "src/components/notifications/NotificationSubTabs.tsx",
+  "disposition": "no unit behaviour",
+  "digest": "81728822940a8d7fc2fc3632a1f95204c0e15c51a75ea37ec4c62fd6c669a7c9",
+  "reason": "no unit behaviour: reviewed at this snapshot by a case-insensitive scan for every unit stem, token, quantity name and canonical field suffix this codebase uses, with every hit read in context. This file matched none, or matched only outside a unit context."
+ },
+ {
+  "path": "src/components/notifications/NtfyConfig.tsx",
+  "disposition": "no unit behaviour",
+  "digest": "9d4d802d23314f213c30d6d4e8d60c09e18a8e4f9637b9564b8a2dd2c924dffd",
+  "reason": "no unit behaviour: reviewed at this snapshot by a case-insensitive scan for every unit stem, token, quantity name and canonical field suffix this codebase uses, with every hit read in context. This file matched none, or matched only outside a unit context."
+ },
+ {
+  "path": "src/components/notifications/PushoverConfig.tsx",
+  "disposition": "no unit behaviour",
+  "digest": "a6529b8c561e8e618c3d0ea85415945d52ab84744b1a1893f18560b5016ab995",
+  "reason": "no unit behaviour: reviewed at this snapshot by a case-insensitive scan for every unit stem, token, quantity name and canonical field suffix this codebase uses, with every hit read in context. This file matched none, or matched only outside a unit context."
+ },
+ {
+  "path": "src/components/notifications/SlackConfig.tsx",
+  "disposition": "no unit behaviour",
+  "digest": "59a98554836fc0626a3f7292b801e8bd464fb17678db6c08731f704a961c1995",
+  "reason": "no unit behaviour: reviewed at this snapshot by a case-insensitive scan for every unit stem, token, quantity name and canonical field suffix this codebase uses, with every hit read in context. This file matched none, or matched only outside a unit context."
+ },
+ {
+  "path": "src/components/notifications/TelegramConfig.tsx",
+  "disposition": "no unit behaviour",
+  "digest": "d3e2d95d7026e60e0b78039cc9f2bf4ed5ee930dc17773822bd7b12d0bc67d11",
+  "reason": "no unit behaviour: reviewed at this snapshot by a case-insensitive scan for every unit stem, token, quantity name and canonical field suffix this codebase uses, with every hit read in context. This file matched none, or matched only outside a unit context."
+ },
+ {
+  "path": "src/components/notifications/index.ts",
+  "disposition": "no unit behaviour",
+  "digest": "7b28f894fc078236eb9efb8c433d45cb3feaedb3d63df01bcc009690839f7921",
+  "reason": "no unit behaviour: reviewed at this snapshot by a case-insensitive scan for every unit stem, token, quantity name and canonical field suffix this codebase uses, with every hit read in context. This file matched none, or matched only outside a unit context."
+ },
+ {
+  "path": "src/components/settings/WidgetKeysPanel.tsx",
+  "disposition": "no unit behaviour",
+  "digest": "9112cd4404f2f869c458b01f3e0d6ec69d2a0ae25597da24cdbc59c6c26aded7",
+  "reason": "no unit behaviour: reviewed at this snapshot by a case-insensitive scan for every unit stem, token, quantity name and canonical field suffix this codebase uses, with every hit read in context. This file matched none, or matched only outside a unit context."
+ },
+ {
+  "path": "src/components/shell/HamburgerPanel.tsx",
+  "disposition": "no unit behaviour",
+  "digest": "d480c0603a78ec6ff484bebd3e142c531ae2186d76fc2c4900ddd125687e61d5",
+  "reason": "no unit behaviour: reviewed at this snapshot by a case-insensitive scan for every unit stem, token, quantity name and canonical field suffix this codebase uses, with every hit read in context. This file matched none, or matched only outside a unit context."
+ },
+ {
+  "path": "src/components/shell/Logo.tsx",
+  "disposition": "no unit behaviour",
+  "digest": "7fd1da065c15791dee3ae150da890ace4c3605d4d00f8b2063ccf31e11dbd45c",
+  "reason": "no unit behaviour: reviewed at this snapshot by a case-insensitive scan for every unit stem, token, quantity name and canonical field suffix this codebase uses, with every hit read in context. This file matched none, or matched only outside a unit context."
+ },
+ {
+  "path": "src/components/shell/MobileTabBar.tsx",
+  "disposition": "no unit behaviour",
+  "digest": "9a755b421bd4b27b4fd22de232fdf273d977cb031a4a22287697a1aa80d64862",
+  "reason": "no unit behaviour: reviewed at this snapshot by a case-insensitive scan for every unit stem, token, quantity name and canonical field suffix this codebase uses, with every hit read in context. This file matched none, or matched only outside a unit context."
+ },
+ {
+  "path": "src/components/shell/NavSearch.tsx",
+  "disposition": "no unit behaviour",
+  "digest": "859245e30ec568f2aa3e1eed63b41ebab0dc002b72f7e19a1759c75e3049ac56",
+  "reason": "no unit behaviour: reviewed at this snapshot by a case-insensitive scan for every unit stem, token, quantity name and canonical field suffix this codebase uses, with every hit read in context. This file matched none, or matched only outside a unit context."
+ },
+ {
+  "path": "src/components/shell/NotificationBell.tsx",
+  "disposition": "no unit behaviour",
+  "digest": "a2be94262c75d7cb09191679759bd31c317ec9d8fbcd367ce6abbc51c6420af2",
+  "reason": "no unit behaviour: reviewed at this snapshot by a case-insensitive scan for every unit stem, token, quantity name and canonical field suffix this codebase uses, with every hit read in context. This file matched none, or matched only outside a unit context."
+ },
+ {
+  "path": "src/components/shell/QuickSettingsDrawer.tsx",
+  "disposition": "no unit behaviour",
+  "digest": "13fad02f83d8a616b8bd8a041125617d8a4c68dbf590afe44bde05531135cd01",
+  "reason": "no unit behaviour: reviewed at this snapshot by a case-insensitive scan for every unit stem, token, quantity name and canonical field suffix this codebase uses, with every hit read in context. This file matched none, or matched only outside a unit context."
+ },
+ {
+  "path": "src/components/shell/RightCluster.tsx",
+  "disposition": "no unit behaviour",
+  "digest": "e32e1308e297992b91923cb5cd3ca62d5eb1c817beb81a24eb65ef0f6552e96e",
+  "reason": "no unit behaviour: reviewed at this snapshot by a case-insensitive scan for every unit stem, token, quantity name and canonical field suffix this codebase uses, with every hit read in context. This file matched none, or matched only outside a unit context."
+ },
+ {
+  "path": "src/components/shell/TopNav.tsx",
+  "disposition": "no unit behaviour",
+  "digest": "8582c08082680fe1f090832d34371661490ccc6ad3d7e7616fa38843d9142424",
+  "reason": "no unit behaviour: reviewed at this snapshot by a case-insensitive scan for every unit stem, token, quantity name and canonical field suffix this codebase uses, with every hit read in context. This file matched none, or matched only outside a unit context."
+ },
+ {
+  "path": "src/components/shell/TopNavLink.tsx",
+  "disposition": "no unit behaviour",
+  "digest": "98720f39771f6da4553581b31c1b3a7cc873ea09dcea036278881946e5f20737",
+  "reason": "no unit behaviour: reviewed at this snapshot by a case-insensitive scan for every unit stem, token, quantity name and canonical field suffix this codebase uses, with every hit read in context. This file matched none, or matched only outside a unit context."
+ },
+ {
+  "path": "src/components/shell/navItems.ts",
+  "disposition": "no unit behaviour",
+  "digest": "8023ced98c50e9ca6792a77163d8cd4f9bc0187907fc4a1114dc0f789135f75b",
+  "reason": "no unit behaviour: reviewed at this snapshot by a case-insensitive scan for every unit stem, token, quantity name and canonical field suffix this codebase uses, with every hit read in context. This file matched none, or matched only outside a unit context."
+ },
+ {
+  "path": "src/components/tabs/DEFTab.tsx",
+  "disposition": "no unit behaviour",
+  "digest": "a9b433f5e46d649e7d3c8e4f167811bde8b01e22b0635e52a6a0892623b98627",
+  "reason": "no unit behaviour: reviewed at this snapshot by a case-insensitive scan for every unit stem, token, quantity name and canonical field suffix this codebase uses, with every hit read in context. This file matched none, or matched only outside a unit context."
+ },
+ {
+  "path": "src/components/tabs/DocumentsTab.tsx",
+  "disposition": "no unit behaviour",
+  "digest": "8e76979989016944926368985742d5e3d247b7db7264b4d8de2d28628a612efe",
+  "reason": "no unit behaviour: reviewed at this snapshot by a case-insensitive scan for every unit stem, token, quantity name and canonical field suffix this codebase uses, with every hit read in context. This file matched none, or matched only outside a unit context."
+ },
+ {
+  "path": "src/components/tabs/FuelTab.tsx",
+  "disposition": "no unit behaviour",
+  "digest": "99f04135f1f6eef0dea189c9864057d937e6b4318f14b2d9c898202a0125fdae",
+  "reason": "no unit behaviour: reviewed at this snapshot by a case-insensitive scan for every unit stem, token, quantity name and canonical field suffix this codebase uses, with every hit read in context. This file matched none, or matched only outside a unit context."
+ },
+ {
+  "path": "src/components/tabs/HoursTab.tsx",
+  "disposition": "no unit behaviour",
+  "digest": "036096e2acaa3d7781f840583d4f460a7a88f7fb0e1b27cccec8f58eb16ae381",
+  "reason": "no unit behaviour: reviewed at this snapshot by a case-insensitive scan for every unit stem, token, quantity name and canonical field suffix this codebase uses, with every hit read in context. This file matched none, or matched only outside a unit context."
+ },
+ {
+  "path": "src/components/tabs/InsuranceTab.tsx",
+  "disposition": "no unit behaviour",
+  "digest": "fa7e17fa51e843d77837d01e14070f620fa97e0ac61a453f8a74459d5a2fd519",
+  "reason": "no unit behaviour: reviewed at this snapshot by a case-insensitive scan for every unit stem, token, quantity name and canonical field suffix this codebase uses, with every hit read in context. This file matched none, or matched only outside a unit context."
+ },
+ {
+  "path": "src/components/tabs/LiveLinkChartsTab.tsx",
+  "disposition": "unverifiable",
+  "digest": "006f39e201017b86c8a532a2767b01289abd69384c212bf1ff34b22bcffd8558",
+  "reason": "L6: the drive-session and trip columns come from unit-AMBIGUOUS telemetry. The frontend conversion can be shown correct relative to the API contract; the real-world stored quantity cannot be, because nothing records which PID produced a value or whether it was normalised. WHAT WOULD SETTLE IT: the backend must record the source PID and a normalised flag per telemetry value, so a consumer can tell kilometres from an unnormalised custom-PID delta (design:129). Deferred beyond phase 4. renders param.unit verbatim from the device and its unit-conversion hook is commented out."
+ },
+ {
+  "path": "src/components/tabs/LiveLinkDTCsTab.tsx",
+  "disposition": "no unit behaviour",
+  "digest": "5e98b804a001142b5bfebb28f73b2ee8cd308579fad7a87f64696a0fe55185f0",
+  "reason": "no unit behaviour: reviewed at this snapshot by a case-insensitive scan for every unit stem, token, quantity name and canonical field suffix this codebase uses, with every hit read in context. This file matched none, or matched only outside a unit context."
+ },
+ {
+  "path": "src/components/tabs/LiveLinkLiveTab.tsx",
+  "disposition": "audited",
+  "digest": "d6c13d91b5b3639754abbc299f3edf56ec28144343ab532de5295b362ee3c218",
+  "reason": "telemetry through convertTelemetryValue and the resolved set",
+  "tests": [
+   "components/tabs/__tests__/LiveLinkLiveTab.units.test.tsx"
+  ]
+ },
+ {
+  "path": "src/components/tabs/LiveLinkSessionsTab.tsx",
+  "disposition": "unverifiable",
+  "digest": "d14d6ea05f6ec9d3b863a7f5fc62915931704a568ac0edffe0f0b49bfe696388",
+  "reason": "L6: the drive-session and trip columns come from unit-AMBIGUOUS telemetry. The frontend conversion can be shown correct relative to the API contract; the real-world stored quantity cannot be, because nothing records which PID produced a value or whether it was normalised. WHAT WOULD SETTLE IT: the backend must record the source PID and a normalised flag per telemetry value, so a consumer can tell kilometres from an unnormalised custom-PID delta (design:129). Deferred beyond phase 4. distance_km, start_odometer and end_odometer are unverified; speed and temperature ARE canonical and go through the adapter."
+ },
+ {
+  "path": "src/components/tabs/LiveLinkTripsTab.tsx",
+  "disposition": "unverifiable",
+  "digest": "863591f8523790f797593be9011951d142f0067d03c91384c725764b7acd3435",
+  "reason": "L6: the drive-session and trip columns come from unit-AMBIGUOUS telemetry. The frontend conversion can be shown correct relative to the API contract; the real-world stored quantity cannot be, because nothing records which PID produced a value or whether it was normalised. WHAT WOULD SETTLE IT: the backend must record the source PID and a normalised flag per telemetry value, so a consumer can tell kilometres from an unnormalised custom-PID delta (design:129). Deferred beyond phase 4. Trip.distance_km is DriveSession.distance_km verbatim."
+ },
+ {
+  "path": "src/components/tabs/NotesTab.tsx",
+  "disposition": "no unit behaviour",
+  "digest": "d4b7ccf01a94dde63cfe57de8d7d4f444defafb55eb11b95554faf1ec84b8d98",
+  "reason": "no unit behaviour: reviewed at this snapshot by a case-insensitive scan for every unit stem, token, quantity name and canonical field suffix this codebase uses, with every hit read in context. This file matched none, or matched only outside a unit context."
+ },
+ {
+  "path": "src/components/tabs/OdometerTab.tsx",
+  "disposition": "no unit behaviour",
+  "digest": "21e617f296b298bb9afba97bfa45f9e77dc35ca49532876b62180b90950846ba",
+  "reason": "no unit behaviour: reviewed at this snapshot by a case-insensitive scan for every unit stem, token, quantity name and canonical field suffix this codebase uses, with every hit read in context. This file matched none, or matched only outside a unit context."
+ },
+ {
+  "path": "src/components/tabs/PhotosTab.tsx",
+  "disposition": "no unit behaviour",
+  "digest": "f61302b73675adc109e61623de94c64d6c7ca73fbc3f2bed48be88e75fb740c0",
+  "reason": "no unit behaviour: reviewed at this snapshot by a case-insensitive scan for every unit stem, token, quantity name and canonical field suffix this codebase uses, with every hit read in context. This file matched none, or matched only outside a unit context."
+ },
+ {
+  "path": "src/components/tabs/PropaneTab.tsx",
+  "disposition": "no unit behaviour",
+  "digest": "32cfc057398a7af2cf55117c80e8b03494601d0adbc4f24fad38da7f0089dcc6",
+  "reason": "no unit behaviour: reviewed at this snapshot by a case-insensitive scan for every unit stem, token, quantity name and canonical field suffix this codebase uses, with every hit read in context. This file matched none, or matched only outside a unit context."
+ },
+ {
+  "path": "src/components/tabs/ReportsTab.tsx",
+  "disposition": "no unit behaviour",
+  "digest": "b64bca9211483f5b5347241354a1c19887307479fc88da0a6bad95ecfe8ac969",
+  "reason": "no unit behaviour: reviewed at this snapshot by a case-insensitive scan for every unit stem, token, quantity name and canonical field suffix this codebase uses, with every hit read in context. This file matched none, or matched only outside a unit context."
+ },
+ {
+  "path": "src/components/tabs/SafetyTab.tsx",
+  "disposition": "no unit behaviour",
+  "digest": "848c84583f8d53ba35a513d50b2d62519944773e65ff10985dcd44e7b26e05bf",
+  "reason": "no unit behaviour: reviewed at this snapshot by a case-insensitive scan for every unit stem, token, quantity name and canonical field suffix this codebase uses, with every hit read in context. This file matched none, or matched only outside a unit context."
+ },
+ {
+  "path": "src/components/tabs/ServiceTab.tsx",
+  "disposition": "no unit behaviour",
+  "digest": "0f93c0875ee59ae65c2410fe095bfbe81bd31c30a2e5a119c42854a2aba7061a",
+  "reason": "no unit behaviour: reviewed at this snapshot by a case-insensitive scan for every unit stem, token, quantity name and canonical field suffix this codebase uses, with every hit read in context. This file matched none, or matched only outside a unit context."
+ },
+ {
+  "path": "src/components/tabs/SettingsBackupTab.tsx",
+  "disposition": "no unit behaviour",
+  "digest": "74ff3d85c088674461d54e40fb1e97f29a98508aa61c17eb74e8c7c5cccf27a6",
+  "reason": "no unit behaviour: reviewed at this snapshot by a case-insensitive scan for every unit stem, token, quantity name and canonical field suffix this codebase uses, with every hit read in context. This file matched none, or matched only outside a unit context."
+ },
+ {
+  "path": "src/components/tabs/SettingsFilesTab.tsx",
+  "disposition": "no unit behaviour",
+  "digest": "79cecbc34c5024a9a984b1df5ad7151806ddd6f6bb26a43e46afdb55afdc24ba",
+  "reason": "no unit behaviour: reviewed at this snapshot by a case-insensitive scan for every unit stem, token, quantity name and canonical field suffix this codebase uses, with every hit read in context. This file matched none, or matched only outside a unit context."
+ },
+ {
+  "path": "src/components/tabs/SettingsIntegrationsTab.tsx",
+  "disposition": "no unit behaviour",
+  "digest": "e12ba4ad99e582f4a85131daa7ba7d092d2eac7c3285ad3c39cefd1976d93ffe",
+  "reason": "no unit behaviour: reviewed at this snapshot by a case-insensitive scan for every unit stem, token, quantity name and canonical field suffix this codebase uses, with every hit read in context. This file matched none, or matched only outside a unit context."
+ },
+ {
+  "path": "src/components/tabs/SettingsNotificationsTab.tsx",
+  "disposition": "audited",
+  "digest": "26f1b3e41a93a8f2240298bc5e0f60fe8f7ffbb84b66de03cd188d07b55a8eaf",
+  "reason": "reviewed at this snapshot",
+  "tests": [
+   "components/tabs/__tests__/SettingsNotificationsTab.test.tsx"
+  ],
+  "findings": [
+   "notify_service_miles defaults to '500' and is stored and compared in whatever unit the backend assumes; the field carries no unit selector",
+   "owner: task 6, jointly with EventNotificationsCard"
+  ]
+ },
+ {
+  "path": "src/components/tabs/SettingsSystemTab.tsx",
+  "disposition": "audited",
+  "digest": "268708a6642090dc5bf46a9cacc2061052e169fcb75e125ccc04d0dde830c701",
+  "reason": "gate-detectable unit decisions, recorded not asserted clean (plan 3b task 1 ordering)",
+  "tests": [
+   "components/tabs/__tests__/SettingsSystemTab.units.test.tsx"
+  ],
+  "findings": [
+   "compare x4 (units gate baseline)",
+   "R1: the description is selected from two fixed strings, so a {volume:'L', distance:'mi', pressure:'psi'} user is told they use kilometres and bar",
+   "owner: task 2 (R1 composition)"
+  ]
+ },
+ {
+  "path": "src/components/tabs/SpotRentalsTab.tsx",
+  "disposition": "no unit behaviour",
+  "digest": "6b091d4c833c61c0c50678684b14e0ebe2301dd994b04b1b8f161487babb877e",
+  "reason": "no unit behaviour: reviewed at this snapshot by a case-insensitive scan for every unit stem, token, quantity name and canonical field suffix this codebase uses, with every hit read in context. This file matched none, or matched only outside a unit context."
+ },
+ {
+  "path": "src/components/tabs/TollsTab.tsx",
+  "disposition": "no unit behaviour",
+  "digest": "3626dedecc99a815ef6938b051f11b04fccc572fd1532848a1c2bfd6f91bc4e1",
+  "reason": "no unit behaviour: reviewed at this snapshot by a case-insensitive scan for every unit stem, token, quantity name and canonical field suffix this codebase uses, with every hit read in context. This file matched none, or matched only outside a unit context."
+ },
+ {
+  "path": "src/components/tabs/WarrantiesTab.tsx",
+  "disposition": "no unit behaviour",
+  "digest": "62f4c36e3c49d158386d8d1b28a90da9d005adf452b26182b42e8a6d9a659c48",
+  "reason": "no unit behaviour: reviewed at this snapshot by a case-insensitive scan for every unit stem, token, quantity name and canonical field suffix this codebase uses, with every hit read in context. This file matched none, or matched only outside a unit context."
+ },
+ {
+  "path": "src/components/ui/Avatar.tsx",
+  "disposition": "no unit behaviour",
+  "digest": "48f11c3d4a576fdd38f9f30d4deda1f47212ec5c3861241c3dd4a6e244b84002",
+  "reason": "no unit behaviour: reviewed at this snapshot by a case-insensitive scan for every unit stem, token, quantity name and canonical field suffix this codebase uses, with every hit read in context. This file matched none, or matched only outside a unit context."
+ },
+ {
+  "path": "src/components/ui/Badge.tsx",
+  "disposition": "no unit behaviour",
+  "digest": "1a2ec1aa3f8aa690b814bbe483bf61ee607c15ca79558259398115e52b60cb74",
+  "reason": "no unit behaviour: reviewed at this snapshot by a case-insensitive scan for every unit stem, token, quantity name and canonical field suffix this codebase uses, with every hit read in context. This file matched none, or matched only outside a unit context."
+ },
+ {
+  "path": "src/components/ui/Button.tsx",
+  "disposition": "no unit behaviour",
+  "digest": "60424ee07f6739cd9310d7f98012227fca663d8e497850984a945a12004d304d",
+  "reason": "no unit behaviour: reviewed at this snapshot by a case-insensitive scan for every unit stem, token, quantity name and canonical field suffix this codebase uses, with every hit read in context. This file matched none, or matched only outside a unit context."
+ },
+ {
+  "path": "src/components/ui/Card.tsx",
+  "disposition": "no unit behaviour",
+  "digest": "8f5dab8fcae810bbcdae07caefc6880c789b73b464b91a0f8f212e849d464cbb",
+  "reason": "no unit behaviour: reviewed at this snapshot by a case-insensitive scan for every unit stem, token, quantity name and canonical field suffix this codebase uses, with every hit read in context. This file matched none, or matched only outside a unit context."
+ },
+ {
+  "path": "src/components/ui/CardHeader.tsx",
+  "disposition": "no unit behaviour",
+  "digest": "8b2ac5134a67bd8371319b1841363723fd4a74a25235b17dd299eae64016625e",
+  "reason": "no unit behaviour: reviewed at this snapshot by a case-insensitive scan for every unit stem, token, quantity name and canonical field suffix this codebase uses, with every hit read in context. This file matched none, or matched only outside a unit context."
+ },
+ {
+  "path": "src/components/ui/Checkbox.tsx",
+  "disposition": "no unit behaviour",
+  "digest": "2d0c66322e699610c45f6558e62dac70e6510f10c342ae06c07a386bed0cb337",
+  "reason": "no unit behaviour: reviewed at this snapshot by a case-insensitive scan for every unit stem, token, quantity name and canonical field suffix this codebase uses, with every hit read in context. This file matched none, or matched only outside a unit context."
+ },
+ {
+  "path": "src/components/ui/Chip.tsx",
+  "disposition": "no unit behaviour",
+  "digest": "5c1e1c4d42419d5276b2c880742423b138954c8ee3c8cc9b5866641d5c6f7ad1",
+  "reason": "no unit behaviour: reviewed at this snapshot by a case-insensitive scan for every unit stem, token, quantity name and canonical field suffix this codebase uses, with every hit read in context. This file matched none, or matched only outside a unit context."
+ },
+ {
+  "path": "src/components/ui/DataTable.tsx",
+  "disposition": "no unit behaviour",
+  "digest": "166cbfd2c81ffc319dd197f071f1d72c45ea1b846c108cb854f42fdfced424f9",
+  "reason": "no unit behaviour: reviewed at this snapshot by a case-insensitive scan for every unit stem, token, quantity name and canonical field suffix this codebase uses, with every hit read in context. This file matched none, or matched only outside a unit context."
+ },
+ {
+  "path": "src/components/ui/Drawer.tsx",
+  "disposition": "no unit behaviour",
+  "digest": "5a027fea03b057097ac04192339e317205326b0ba452e59ed18d90adcb65cecd",
+  "reason": "no unit behaviour: reviewed at this snapshot by a case-insensitive scan for every unit stem, token, quantity name and canonical field suffix this codebase uses, with every hit read in context. This file matched none, or matched only outside a unit context."
+ },
+ {
+  "path": "src/components/ui/Dropdown.tsx",
+  "disposition": "no unit behaviour",
+  "digest": "a95e93557940d98132444a36e97ab812612b6950817c46a4caba2fecc331ae75",
+  "reason": "no unit behaviour: reviewed at this snapshot by a case-insensitive scan for every unit stem, token, quantity name and canonical field suffix this codebase uses, with every hit read in context. This file matched none, or matched only outside a unit context."
+ },
+ {
+  "path": "src/components/ui/EmptyState.tsx",
+  "disposition": "no unit behaviour",
+  "digest": "ba69a8da66c4e83629b59de02731b31856d08aad6e68d00584d3e141d1f755a3",
+  "reason": "no unit behaviour: reviewed at this snapshot by a case-insensitive scan for every unit stem, token, quantity name and canonical field suffix this codebase uses, with every hit read in context. This file matched none, or matched only outside a unit context."
+ },
+ {
+  "path": "src/components/ui/Field.tsx",
+  "disposition": "no unit behaviour",
+  "digest": "0f542e427d637e87f9bc4154aa201413e72a5fa2bf75a4cd9ce16f0a8fbb2bc0",
+  "reason": "no unit behaviour: reviewed at this snapshot by a case-insensitive scan for every unit stem, token, quantity name and canonical field suffix this codebase uses, with every hit read in context. This file matched none, or matched only outside a unit context."
+ },
+ {
+  "path": "src/components/ui/IconButton.tsx",
+  "disposition": "no unit behaviour",
+  "digest": "2a23deaa10d79445963c9108fbc33530f64e798c39415988975a0391e117cf68",
+  "reason": "no unit behaviour: reviewed at this snapshot by a case-insensitive scan for every unit stem, token, quantity name and canonical field suffix this codebase uses, with every hit read in context. This file matched none, or matched only outside a unit context."
+ },
+ {
+  "path": "src/components/ui/Input.tsx",
+  "disposition": "no unit behaviour",
+  "digest": "96e44a5d1d27e37f92555ec03f1dc26b5848b90037115909dbcac0a0c55cbf31",
+  "reason": "no unit behaviour: reviewed at this snapshot by a case-insensitive scan for every unit stem, token, quantity name and canonical field suffix this codebase uses, with every hit read in context. This file matched none, or matched only outside a unit context."
+ },
+ {
+  "path": "src/components/ui/ListRow.tsx",
+  "disposition": "no unit behaviour",
+  "digest": "3b2652499b9f6cf5f006d76fbcab476f92f4406bfe37cc3ef7a60e4fe394db0b",
+  "reason": "no unit behaviour: reviewed at this snapshot by a case-insensitive scan for every unit stem, token, quantity name and canonical field suffix this codebase uses, with every hit read in context. This file matched none, or matched only outside a unit context."
+ },
+ {
+  "path": "src/components/ui/Mono.tsx",
+  "disposition": "no unit behaviour",
+  "digest": "3a8edeece2de6f11d58d5a85200158ee0c5ce8e2322694f0feb75ad4700eb8c7",
+  "reason": "no unit behaviour: reviewed at this snapshot by a case-insensitive scan for every unit stem, token, quantity name and canonical field suffix this codebase uses, with every hit read in context. This file matched none, or matched only outside a unit context."
+ },
+ {
+  "path": "src/components/ui/NumberInput.tsx",
+  "disposition": "no unit behaviour",
+  "digest": "c40c45d45609d601adb9e2cccca86397a84dd1bf38946efb1cbabcdf53668251",
+  "reason": "no unit behaviour: reviewed at this snapshot by a case-insensitive scan for every unit stem, token, quantity name and canonical field suffix this codebase uses, with every hit read in context. This file matched none, or matched only outside a unit context."
+ },
+ {
+  "path": "src/components/ui/PageContainer.tsx",
+  "disposition": "no unit behaviour",
+  "digest": "3341bf77cf5c280a85bd2096345baa3dce2facb920a97780832ce527d3eaee01",
+  "reason": "no unit behaviour: reviewed at this snapshot by a case-insensitive scan for every unit stem, token, quantity name and canonical field suffix this codebase uses, with every hit read in context. This file matched none, or matched only outside a unit context."
+ },
+ {
+  "path": "src/components/ui/PageHeader.tsx",
+  "disposition": "no unit behaviour",
+  "digest": "1a538a1ac8209766cdbf5e5e61fbe2e2025c4198bae5d608dec6b38b901a6a6d",
+  "reason": "no unit behaviour: reviewed at this snapshot by a case-insensitive scan for every unit stem, token, quantity name and canonical field suffix this codebase uses, with every hit read in context. This file matched none, or matched only outside a unit context."
+ },
+ {
+  "path": "src/components/ui/SearchField.tsx",
+  "disposition": "no unit behaviour",
+  "digest": "f2760676414f9e5ec9b6bb67ef146e509ffa2dc6270934825cf69eb7e0994398",
+  "reason": "no unit behaviour: reviewed at this snapshot by a case-insensitive scan for every unit stem, token, quantity name and canonical field suffix this codebase uses, with every hit read in context. This file matched none, or matched only outside a unit context."
+ },
+ {
+  "path": "src/components/ui/Select.tsx",
+  "disposition": "no unit behaviour",
+  "digest": "5b85cc37970b1875c9d7e520bf0eb8c2124a7a12350dd12ea9bd1802900b12e3",
+  "reason": "no unit behaviour: reviewed at this snapshot by a case-insensitive scan for every unit stem, token, quantity name and canonical field suffix this codebase uses, with every hit read in context. This file matched none, or matched only outside a unit context."
+ },
+ {
+  "path": "src/components/ui/ShareBar.tsx",
+  "disposition": "no unit behaviour",
+  "digest": "5027904291dd0d2f2a25fa8f99a40effa1edebe405eda483563ef5b6661c137a",
+  "reason": "no unit behaviour: reviewed at this snapshot by a case-insensitive scan for every unit stem, token, quantity name and canonical field suffix this codebase uses, with every hit read in context. This file matched none, or matched only outside a unit context."
+ },
+ {
+  "path": "src/components/ui/Stepper.tsx",
+  "disposition": "no unit behaviour",
+  "digest": "24a5465dbbc717facf014d2b1283431fcf8a2b9bfe874d32decf163480f5e6fa",
+  "reason": "no unit behaviour: reviewed at this snapshot by a case-insensitive scan for every unit stem, token, quantity name and canonical field suffix this codebase uses, with every hit read in context. This file matched none, or matched only outside a unit context."
+ },
+ {
+  "path": "src/components/ui/Tabs.tsx",
+  "disposition": "no unit behaviour",
+  "digest": "caead9b24d022beeb5454b30c15c8f1f8fd6b52700521852a8a527b031f18793",
+  "reason": "no unit behaviour: reviewed at this snapshot by a case-insensitive scan for every unit stem, token, quantity name and canonical field suffix this codebase uses, with every hit read in context. This file matched none, or matched only outside a unit context."
+ },
+ {
+  "path": "src/components/ui/Textarea.tsx",
+  "disposition": "no unit behaviour",
+  "digest": "5b71c1895dd1e9bac27dbad8f8dfa6fd7180bdb91133da1f4452e6881fe23c0b",
+  "reason": "no unit behaviour: reviewed at this snapshot by a case-insensitive scan for every unit stem, token, quantity name and canonical field suffix this codebase uses, with every hit read in context. This file matched none, or matched only outside a unit context."
+ },
+ {
+  "path": "src/components/ui/Tile.tsx",
+  "disposition": "no unit behaviour",
+  "digest": "fb1e0605dcbd4faa6b639ec4358f2671b4bf7e8aa5daa43beda1d8015d7db655",
+  "reason": "no unit behaviour: reviewed at this snapshot by a case-insensitive scan for every unit stem, token, quantity name and canonical field suffix this codebase uses, with every hit read in context. This file matched none, or matched only outside a unit context."
+ },
+ {
+  "path": "src/components/ui/Toggle.tsx",
+  "disposition": "no unit behaviour",
+  "digest": "427f83283cdf570d4dd2c77655c52807d993e61769f1273e773fadc092684806",
+  "reason": "no unit behaviour: reviewed at this snapshot by a case-insensitive scan for every unit stem, token, quantity name and canonical field suffix this codebase uses, with every hit read in context. This file matched none, or matched only outside a unit context."
+ },
+ {
+  "path": "src/components/ui/fieldContext.ts",
+  "disposition": "no unit behaviour",
+  "digest": "01ad3b33afeae980177da0843311c99e76df1022218b6a11127f48faa912c39e",
+  "reason": "no unit behaviour: reviewed at this snapshot by a case-insensitive scan for every unit stem, token, quantity name and canonical field suffix this codebase uses, with every hit read in context. This file matched none, or matched only outside a unit context."
+ },
+ {
+  "path": "src/components/ui/gallery/Gallery.tsx",
+  "disposition": "domain exemption",
+  "digest": "cd0222dedf10700f206ffb762446a14b1a8e19954a11b798752ec440c1ef65f2",
+  "reason": "the dev-only component gallery. Its '89,230 mi' and 'Litres' are static sample copy with no canonical value behind them, and Rollup strips the route from production. A unit decision needs a quantity to convert; this has none."
+ },
+ {
+  "path": "src/components/ui/gallery/Section.tsx",
+  "disposition": "no unit behaviour",
+  "digest": "47f383727170c37b201fffcdeefd5b30be925e09625c72d9ead035898ee2b881",
+  "reason": "no unit behaviour: reviewed at this snapshot by a case-insensitive scan for every unit stem, token, quantity name and canonical field suffix this codebase uses, with every hit read in context. This file matched none, or matched only outside a unit context."
+ },
+ {
+  "path": "src/components/ui/index.ts",
+  "disposition": "no unit behaviour",
+  "digest": "4f00fd23c57a0ff1dafc9a54afe8ce6ead33a2a45aa3450ccd5e1fc04859fbba",
+  "reason": "no unit behaviour: reviewed at this snapshot by a case-insensitive scan for every unit stem, token, quantity name and canonical field suffix this codebase uses, with every hit read in context. This file matched none, or matched only outside a unit context."
+ },
+ {
+  "path": "src/components/ui/types.ts",
+  "disposition": "no unit behaviour",
+  "digest": "63b99b294bca2338826cae4967481ed12ef3955f5e5c22f408d4952a17ceead8",
+  "reason": "no unit behaviour: reviewed at this snapshot by a case-insensitive scan for every unit stem, token, quantity name and canonical field suffix this codebase uses, with every hit read in context. This file matched none, or matched only outside a unit context."
+ },
+ {
+  "path": "src/components/vehicle-detail/CardEditOverlay.tsx",
+  "disposition": "no unit behaviour",
+  "digest": "16e31042f455b5e26aec599f5e9ee9fa21d337194a2daaca47336577f59abc5f",
+  "reason": "no unit behaviour: reviewed at this snapshot by a case-insensitive scan for every unit stem, token, quantity name and canonical field suffix this codebase uses, with every hit read in context. This file matched none, or matched only outside a unit context."
+ },
+ {
+  "path": "src/components/vehicle-detail/EquipmentDrawer.tsx",
+  "disposition": "no unit behaviour",
+  "digest": "5eb7b5976b4c6229a331f90516b43e49b39cd226fdcbcd2bb5b0dacd7d82d51c",
+  "reason": "no unit behaviour: reviewed at this snapshot by a case-insensitive scan for every unit stem, token, quantity name and canonical field suffix this codebase uses, with every hit read in context. This file matched none, or matched only outside a unit context."
+ },
+ {
+  "path": "src/components/vehicle-detail/PricingDrawer.tsx",
+  "disposition": "no unit behaviour",
+  "digest": "7ab255fe55ea69ad987b6255e9cc04f6ca3ec5f8878de74d9b14b1c1e52254ff",
+  "reason": "no unit behaviour: reviewed at this snapshot by a case-insensitive scan for every unit stem, token, quantity name and canonical field suffix this codebase uses, with every hit read in context. This file matched none, or matched only outside a unit context."
+ },
+ {
+  "path": "src/components/vehicle-detail/TrailerTowPanel.tsx",
+  "disposition": "no unit behaviour",
+  "digest": "e14237e6f64d11e3e7a414c48f3b9787747f788440774d891e1369688b6b69ff",
+  "reason": "no unit behaviour: reviewed at this snapshot by a case-insensitive scan for every unit stem, token, quantity name and canonical field suffix this codebase uses, with every hit read in context. This file matched none, or matched only outside a unit context."
+ },
+ {
+  "path": "src/components/vehicle-detail/VehicleActionsToolbar.tsx",
+  "disposition": "no unit behaviour",
+  "digest": "5791f6f19dd6e7fd6e7db2b886932e4fa4d39f17738618dd639e6249ad7f0d0c",
+  "reason": "no unit behaviour: reviewed at this snapshot by a case-insensitive scan for every unit stem, token, quantity name and canonical field suffix this codebase uses, with every hit read in context. This file matched none, or matched only outside a unit context."
+ },
+ {
+  "path": "src/components/vehicle-detail/VehicleEditDrawer.tsx",
+  "disposition": "audited",
+  "digest": "591b2180f39485aeb6abca4ab76de1e152233aeec98c36d4d43023821b3b542f",
+  "reason": "DEF tank capacity through toCanonicalLiters and the resolved volume label",
+  "tests": [
+   "components/vehicle-detail/__tests__/VehicleEditDrawer.test.tsx"
+  ]
+ },
+ {
+  "path": "src/components/vehicle-detail/VehicleFieldsDrawer.tsx",
+  "disposition": "no unit behaviour",
+  "digest": "c5a56aa1581c42f7ac8782a6f65fdef468dc99bb182c720f39e64352c5dce38b",
+  "reason": "no unit behaviour: reviewed at this snapshot by a case-insensitive scan for every unit stem, token, quantity name and canonical field suffix this codebase uses, with every hit read in context. This file matched none, or matched only outside a unit context."
+ },
+ {
+  "path": "src/components/vehicle-detail/VehicleHero.tsx",
+  "disposition": "audited",
+  "digest": "998d763be61f285a636881d70b9b63a979b829a1f52d87f2fe69f89b8c906f4d",
+  "reason": "gate-detectable unit decisions, recorded not asserted clean (plan 3b task 1 ordering)",
+  "tests": [
+   "components/vehicle-detail/__tests__/VehicleHero.test.tsx"
+  ],
+  "findings": [
+   "formatter-binary x2 (units gate baseline)",
+   "owner: task 6"
+  ]
+ },
+ {
+  "path": "src/components/vehicle-detail/VehicleKeyFacts.tsx",
+  "disposition": "no unit behaviour",
+  "digest": "9fb8031fb0c2968f1ca0e7dd089a93804b25476821f22fe2b864053e545b5a9e",
+  "reason": "no unit behaviour: reviewed at this snapshot by a case-insensitive scan for every unit stem, token, quantity name and canonical field suffix this codebase uses, with every hit read in context. This file matched none, or matched only outside a unit context."
+ },
+ {
+  "path": "src/components/vehicle-detail/VehicleMobileActionsSheet.tsx",
+  "disposition": "no unit behaviour",
+  "digest": "91c5e77f3fed13b2f2adb8b867a582b2106ba5e0f49b7d8233930edf72bc9f3e",
+  "reason": "no unit behaviour: reviewed at this snapshot by a case-insensitive scan for every unit stem, token, quantity name and canonical field suffix this codebase uses, with every hit read in context. This file matched none, or matched only outside a unit context."
+ },
+ {
+  "path": "src/components/vehicle-detail/VehicleOverviewTab.tsx",
+  "disposition": "audited",
+  "digest": "ea69f00586a6be7356fff86736689138b4344e885869f86b5770a43f9d9ce7ca",
+  "reason": "gate-detectable unit decisions, recorded not asserted clean (plan 3b task 1 ordering)",
+  "tests": [
+   "components/vehicle-detail/__tests__/VehicleOverviewTab.test.tsx"
+  ],
+  "findings": [
+   "formatter-binary x3 (units gate baseline)",
+   "owner: task 6"
+  ]
+ },
+ {
+  "path": "src/components/vehicle-detail/VehiclePrimaryTabs.tsx",
+  "disposition": "no unit behaviour",
+  "digest": "16f66929d3768d25b99b9d8646935569cb660b78b758e545bdcd145b9379271e",
+  "reason": "no unit behaviour: reviewed at this snapshot by a case-insensitive scan for every unit stem, token, quantity name and canonical field suffix this codebase uses, with every hit read in context. This file matched none, or matched only outside a unit context."
+ },
+ {
+  "path": "src/constants/accents.ts",
+  "disposition": "no unit behaviour",
+  "digest": "22e0e3921c2ff0a89d7354d99064d8c2065b2681222e6287879036f4e35696b4",
+  "reason": "no unit behaviour: reviewed at this snapshot by a case-insensitive scan for every unit stem, token, quantity name and canonical field suffix this codebase uses, with every hit read in context. This file matched none, or matched only outside a unit context."
+ },
+ {
+  "path": "src/constants/fuel.ts",
+  "disposition": "no unit behaviour",
+  "digest": "df6dd3836008bfeacb6da7fee232005b57f2026be652a5fd0bab4004c0ab223e",
+  "reason": "no unit behaviour: reviewed at this snapshot by a case-insensitive scan for every unit stem, token, quantity name and canonical field suffix this codebase uses, with every hit read in context. This file matched none, or matched only outside a unit context."
+ },
+ {
+  "path": "src/constants/i18n.ts",
+  "disposition": "no unit behaviour",
+  "digest": "d03648e7fdc7955337e89aa232691707604b28807d7567fe707914374eef6615",
+  "reason": "no unit behaviour: reviewed at this snapshot by a case-insensitive scan for every unit stem, token, quantity name and canonical field suffix this codebase uses, with every hit read in context. This file matched none, or matched only outside a unit context."
+ },
+ {
+  "path": "src/contexts/AccentContext.tsx",
+  "disposition": "no unit behaviour",
+  "digest": "2b953d031c6a4cd35fed7d01403ebd03c3129e3f217e8e2e642bcebb85bc6825",
+  "reason": "no unit behaviour: reviewed at this snapshot by a case-insensitive scan for every unit stem, token, quantity name and canonical field suffix this codebase uses, with every hit read in context. This file matched none, or matched only outside a unit context."
+ },
+ {
+  "path": "src/contexts/AuthContext.tsx",
+  "disposition": "audited",
+  "digest": "dcb3626ffd5f66c13fb31c96e57a6dd35b24d666d67c36586bcc659cb2ae03bb",
+  "reason": "carries the instance UnitSet default; makes no conversion of its own",
+  "tests": [
+   "contexts/__tests__/AuthContext.unitDefaults.test.tsx"
+  ]
+ },
+ {
+  "path": "src/contexts/SettingsContext.tsx",
+  "disposition": "no unit behaviour",
+  "digest": "dbf921a6e3489bd491158b40ff186b9e2d0814f9ca28eeb43787b393153dc0a7",
+  "reason": "no unit behaviour: reviewed at this snapshot by a case-insensitive scan for every unit stem, token, quantity name and canonical field suffix this codebase uses, with every hit read in context. This file matched none, or matched only outside a unit context."
+ },
+ {
+  "path": "src/contexts/ThemeContext.tsx",
+  "disposition": "no unit behaviour",
+  "digest": "2097752dad01cf5bc44dcf6b10e2ac3989516374bbc61b55cad47b435105d930",
+  "reason": "no unit behaviour: reviewed at this snapshot by a case-insensitive scan for every unit stem, token, quantity name and canonical field suffix this codebase uses, with every hit read in context. This file matched none, or matched only outside a unit context."
+ },
+ {
+  "path": "src/hooks/queries/useAddressBook.ts",
+  "disposition": "no unit behaviour",
+  "digest": "8daf4dcaa8a390d0f18394e7696f7e6d7907a2034d3be49b7eec1dc7b7df188a",
+  "reason": "no unit behaviour: reviewed at this snapshot by a case-insensitive scan for every unit stem, token, quantity name and canonical field suffix this codebase uses, with every hit read in context. This file matched none, or matched only outside a unit context."
+ },
+ {
+  "path": "src/hooks/queries/useDEFRecords.ts",
+  "disposition": "no unit behaviour",
+  "digest": "8699dcbc95ccd794a7b0cc64faab5ca819c6125c99b45eb7044e8f375c8ee631",
+  "reason": "no unit behaviour: reviewed at this snapshot by a case-insensitive scan for every unit stem, token, quantity name and canonical field suffix this codebase uses, with every hit read in context. This file matched none, or matched only outside a unit context."
+ },
+ {
+  "path": "src/hooks/queries/useDocuments.ts",
+  "disposition": "no unit behaviour",
+  "digest": "8f460363246cde54136363a6d3e16f6f1f3fe4e69f18fc6eaa454cfac5928b1c",
+  "reason": "no unit behaviour: reviewed at this snapshot by a case-insensitive scan for every unit stem, token, quantity name and canonical field suffix this codebase uses, with every hit read in context. This file matched none, or matched only outside a unit context."
+ },
+ {
+  "path": "src/hooks/queries/useFuelRecords.ts",
+  "disposition": "no unit behaviour",
+  "digest": "22f4d1238079bff51410c15dea704ac48145943ca0e754f19877442acad78837",
+  "reason": "no unit behaviour: reviewed at this snapshot by a case-insensitive scan for every unit stem, token, quantity name and canonical field suffix this codebase uses, with every hit read in context. This file matched none, or matched only outside a unit context."
+ },
+ {
+  "path": "src/hooks/queries/useHoursRecords.ts",
+  "disposition": "no unit behaviour",
+  "digest": "fb6fb8ac3b1c7a14e07710235cb2b6195a145cdabedb28e2edfb672066e037ea",
+  "reason": "no unit behaviour: reviewed at this snapshot by a case-insensitive scan for every unit stem, token, quantity name and canonical field suffix this codebase uses, with every hit read in context. This file matched none, or matched only outside a unit context."
+ },
+ {
+  "path": "src/hooks/queries/useInsuranceRecords.ts",
+  "disposition": "no unit behaviour",
+  "digest": "b3d7c65fa537e2df0fdf6c7bcc2e0eb356590e2a58346a68972a6dfafb7db2a2",
+  "reason": "no unit behaviour: reviewed at this snapshot by a case-insensitive scan for every unit stem, token, quantity name and canonical field suffix this codebase uses, with every hit read in context. This file matched none, or matched only outside a unit context."
+ },
+ {
+  "path": "src/hooks/queries/useNotes.ts",
+  "disposition": "no unit behaviour",
+  "digest": "e592310dd77e6b504fecc536b2ae620ca53f21350822abfbf89e42966ea00472",
+  "reason": "no unit behaviour: reviewed at this snapshot by a case-insensitive scan for every unit stem, token, quantity name and canonical field suffix this codebase uses, with every hit read in context. This file matched none, or matched only outside a unit context."
+ },
+ {
+  "path": "src/hooks/queries/useOdometerRecords.ts",
+  "disposition": "no unit behaviour",
+  "digest": "e20a7f3015832f1a693f6d5a7fd8cb36fd042682c6adcdfa9b7d9191c142ec3d",
+  "reason": "no unit behaviour: reviewed at this snapshot by a case-insensitive scan for every unit stem, token, quantity name and canonical field suffix this codebase uses, with every hit read in context. This file matched none, or matched only outside a unit context."
+ },
+ {
+  "path": "src/hooks/queries/usePropaneRecords.ts",
+  "disposition": "no unit behaviour",
+  "digest": "4ead5d2611f12e2a08a92c6d0f05a0ce24f6ee8b87770044a7780f191f7cf922",
+  "reason": "no unit behaviour: reviewed at this snapshot by a case-insensitive scan for every unit stem, token, quantity name and canonical field suffix this codebase uses, with every hit read in context. This file matched none, or matched only outside a unit context."
+ },
+ {
+  "path": "src/hooks/queries/useQuickEntryVehicles.ts",
+  "disposition": "no unit behaviour",
+  "digest": "778c195d78e9cbb50ca4c187d96f8170134792b82b8e0d353d4d40b9b47a7bf2",
+  "reason": "no unit behaviour: reviewed at this snapshot by a case-insensitive scan for every unit stem, token, quantity name and canonical field suffix this codebase uses, with every hit read in context. This file matched none, or matched only outside a unit context."
+ },
+ {
+  "path": "src/hooks/queries/useRecallRecords.ts",
+  "disposition": "no unit behaviour",
+  "digest": "3b8a432fb3049b11da658606bcc0944059095e44061c7945048e0dfdfd15c257",
+  "reason": "no unit behaviour: reviewed at this snapshot by a case-insensitive scan for every unit stem, token, quantity name and canonical field suffix this codebase uses, with every hit read in context. This file matched none, or matched only outside a unit context."
+ },
+ {
+  "path": "src/hooks/queries/useServiceVisits.ts",
+  "disposition": "no unit behaviour",
+  "digest": "e3e30a8f4d5212525c17c89c44d6a221740a0a11d721601fc4017eade1a8dd6b",
+  "reason": "no unit behaviour: reviewed at this snapshot by a case-insensitive scan for every unit stem, token, quantity name and canonical field suffix this codebase uses, with every hit read in context. This file matched none, or matched only outside a unit context."
+ },
+ {
+  "path": "src/hooks/queries/useSpotRentals.ts",
+  "disposition": "no unit behaviour",
+  "digest": "ba5d0512e6e62763747095b61694e7f9018963725f7155978c3aeeeacaf4ddd8",
+  "reason": "no unit behaviour: reviewed at this snapshot by a case-insensitive scan for every unit stem, token, quantity name and canonical field suffix this codebase uses, with every hit read in context. This file matched none, or matched only outside a unit context."
+ },
+ {
+  "path": "src/hooks/queries/useSupplies.ts",
+  "disposition": "no unit behaviour",
+  "digest": "7b52723c4c11347b7518fae1a71cf27f3bd33f780e3e487d08e20f55a9974c23",
+  "reason": "no unit behaviour: reviewed at this snapshot by a case-insensitive scan for every unit stem, token, quantity name and canonical field suffix this codebase uses, with every hit read in context. This file matched none, or matched only outside a unit context."
+ },
+ {
+  "path": "src/hooks/queries/useTaxRecords.ts",
+  "disposition": "no unit behaviour",
+  "digest": "c2a7d1c1816e97bb7bab9e273bbe0fe135299ccefddf3c5930bbb02ff73e54ba",
+  "reason": "no unit behaviour: reviewed at this snapshot by a case-insensitive scan for every unit stem, token, quantity name and canonical field suffix this codebase uses, with every hit read in context. This file matched none, or matched only outside a unit context."
+ },
+ {
+  "path": "src/hooks/queries/useTires.ts",
+  "disposition": "no unit behaviour",
+  "digest": "0557cdb632561aad4f7888f03ac132ab2c55919a057a6cdcfeff503cf20477b2",
+  "reason": "no unit behaviour: reviewed at this snapshot by a case-insensitive scan for every unit stem, token, quantity name and canonical field suffix this codebase uses, with every hit read in context. This file matched none, or matched only outside a unit context."
+ },
+ {
+  "path": "src/hooks/queries/useTollRecords.ts",
+  "disposition": "no unit behaviour",
+  "digest": "3f8cec0858fddab970700a85db11f563c77b470949aee73720ee589223149855",
+  "reason": "no unit behaviour: reviewed at this snapshot by a case-insensitive scan for every unit stem, token, quantity name and canonical field suffix this codebase uses, with every hit read in context. This file matched none, or matched only outside a unit context."
+ },
+ {
+  "path": "src/hooks/queries/useWarrantyRecords.ts",
+  "disposition": "no unit behaviour",
+  "digest": "20c86351e1499a6be1cea7cdee9d6fc772faa0c17b9e36688c45901847a54cc0",
+  "reason": "no unit behaviour: reviewed at this snapshot by a case-insensitive scan for every unit stem, token, quantity name and canonical field suffix this codebase uses, with every hit read in context. This file matched none, or matched only outside a unit context."
+ },
+ {
+  "path": "src/hooks/queries/useWidgetKeys.ts",
+  "disposition": "no unit behaviour",
+  "digest": "18e68f671c6d8a1843e6612bbc6b0768146c3c55dd7499693397fefe9e1a5bfb",
+  "reason": "no unit behaviour: reviewed at this snapshot by a case-insensitive scan for every unit stem, token, quantity name and canonical field suffix this codebase uses, with every hit read in context. This file matched none, or matched only outside a unit context."
+ },
+ {
+  "path": "src/hooks/useAccentSync.ts",
+  "disposition": "no unit behaviour",
+  "digest": "2729571c5e48efb01b102f4a3c4b4f0dec69289f548c5ef195f261c32d716acc",
+  "reason": "no unit behaviour: reviewed at this snapshot by a case-insensitive scan for every unit stem, token, quantity name and canonical field suffix this codebase uses, with every hit read in context. This file matched none, or matched only outside a unit context."
+ },
+ {
+  "path": "src/hooks/useApiFormErrors.ts",
+  "disposition": "no unit behaviour",
+  "digest": "2ba35d56cb15872e16911506c322d3e987fac129cba16330ad995ec6ecf53ce3",
+  "reason": "no unit behaviour: reviewed at this snapshot by a case-insensitive scan for every unit stem, token, quantity name and canonical field suffix this codebase uses, with every hit read in context. This file matched none, or matched only outside a unit context."
+ },
+ {
+  "path": "src/hooks/useAppVersion.ts",
+  "disposition": "no unit behaviour",
+  "digest": "5a367a9c9415d2c782496b454d781c3b4fdd1f7d8a04719805800c83aa403da3",
+  "reason": "no unit behaviour: reviewed at this snapshot by a case-insensitive scan for every unit stem, token, quantity name and canonical field suffix this codebase uses, with every hit read in context. This file matched none, or matched only outside a unit context."
+ },
+ {
+  "path": "src/hooks/useCurrencyPreference.ts",
+  "disposition": "no unit behaviour",
+  "digest": "3a5c8b9b10bc2541c5a80b4416a0957cd7df2a330b8e7b2be067f5759e58376e",
+  "reason": "no unit behaviour: reviewed at this snapshot by a case-insensitive scan for every unit stem, token, quantity name and canonical field suffix this codebase uses, with every hit read in context. This file matched none, or matched only outside a unit context."
+ },
+ {
+  "path": "src/hooks/useCurrencySymbol.ts",
+  "disposition": "no unit behaviour",
+  "digest": "4f30969131924ed444328ca9475224eea770746c1e2bdc69060b79617af1555e",
+  "reason": "no unit behaviour: reviewed at this snapshot by a case-insensitive scan for every unit stem, token, quantity name and canonical field suffix this codebase uses, with every hit read in context. This file matched none, or matched only outside a unit context."
+ },
+ {
+  "path": "src/hooks/useDateLocale.ts",
+  "disposition": "no unit behaviour",
+  "digest": "993d448e91c6b2ab487fa6628a5f79590eb9adc8bf25126f23f1ff7f609089e2",
+  "reason": "no unit behaviour: reviewed at this snapshot by a case-insensitive scan for every unit stem, token, quantity name and canonical field suffix this codebase uses, with every hit read in context. This file matched none, or matched only outside a unit context."
+ },
+ {
+  "path": "src/hooks/useFormSubmit.ts",
+  "disposition": "no unit behaviour",
+  "digest": "27e6ab8861219f71d89fa1e36244bdb2555cf1f006bf36275db6302d205ab109",
+  "reason": "no unit behaviour: reviewed at this snapshot by a case-insensitive scan for every unit stem, token, quantity name and canonical field suffix this codebase uses, with every hit read in context. This file matched none, or matched only outside a unit context."
+ },
+ {
+  "path": "src/hooks/useGallonStandardSync.ts",
+  "disposition": "audited",
+  "digest": "49a55c06bbb5e4ca929b34f066b99c04eeb0966f786a8648ddac965dc3f74329",
+  "reason": "instance gallon standard into UnitConverter",
+  "tests": [
+   "hooks/__tests__/useGallonStandardSync.test.tsx"
+  ]
+ },
+ {
+  "path": "src/hooks/useLanguageSync.ts",
+  "disposition": "no unit behaviour",
+  "digest": "0fc861b297e9ef2de74bc3ea29f4303f8d1af5a81f528a2748ab9a8e9582d057",
+  "reason": "no unit behaviour: reviewed at this snapshot by a case-insensitive scan for every unit stem, token, quantity name and canonical field suffix this codebase uses, with every hit read in context. This file matched none, or matched only outside a unit context."
+ },
+ {
+  "path": "src/hooks/useLatestHours.ts",
+  "disposition": "no unit behaviour",
+  "digest": "71f35c06f3ad3976bc5b60969cbbc854949bd31ef38ce92f2879b8efbf9f05a9",
+  "reason": "no unit behaviour: reviewed at this snapshot by a case-insensitive scan for every unit stem, token, quantity name and canonical field suffix this codebase uses, with every hit read in context. This file matched none, or matched only outside a unit context."
+ },
+ {
+  "path": "src/hooks/useLatestMileage.ts",
+  "disposition": "no unit behaviour",
+  "digest": "4e4dacf81c1fe9d8b9baa04e36bfc42edbf1bd682527445b0f53c0451ddd8b00",
+  "reason": "no unit behaviour: reviewed at this snapshot by a case-insensitive scan for every unit stem, token, quantity name and canonical field suffix this codebase uses, with every hit read in context. This file matched none, or matched only outside a unit context."
+ },
+ {
+  "path": "src/hooks/useOnUserEdit.ts",
+  "disposition": "no unit behaviour",
+  "digest": "f1d9f41de59a2c0e769ec44ac25dcf6bb0759e027cc91ccf6fe9ebf7567c5cdb",
+  "reason": "no unit behaviour: reviewed at this snapshot by a case-insensitive scan for every unit stem, token, quantity name and canonical field suffix this codebase uses, with every hit read in context. This file matched none, or matched only outside a unit context."
+ },
+ {
+  "path": "src/hooks/useOnlineStatus.ts",
+  "disposition": "no unit behaviour",
+  "digest": "00e88a59ee1dd7d536c2ff0b08889e575b8e4c91c2e71c0b692cf95f18b376f3",
+  "reason": "no unit behaviour: reviewed at this snapshot by a case-insensitive scan for every unit stem, token, quantity name and canonical field suffix this codebase uses, with every hit read in context. This file matched none, or matched only outside a unit context."
+ },
+ {
+  "path": "src/hooks/useReminders.ts",
+  "disposition": "no unit behaviour",
+  "digest": "0e29ccc80e664148bc9190222803334e0716a9aa7282fcd15a642734c8b64b61",
+  "reason": "no unit behaviour: reviewed at this snapshot by a case-insensitive scan for every unit stem, token, quantity name and canonical field suffix this codebase uses, with every hit read in context. This file matched none, or matched only outside a unit context."
+ },
+ {
+  "path": "src/hooks/useResolvedGallonSync.ts",
+  "disposition": "audited",
+  "digest": "e68dc4e1ad8e9c3f47dc80e319121c466de8b7bf191d95f97b4e52bb3d37f3c2",
+  "reason": "client gallon flavour into UnitConverter, with the repaint",
+  "tests": [
+   "hooks/__tests__/useResolvedGallonSync.test.tsx",
+   "hooks/__tests__/useResolvedGallonSync.repaint.test.tsx"
+  ]
+ },
+ {
+  "path": "src/hooks/useThemePreference.ts",
+  "disposition": "no unit behaviour",
+  "digest": "0a828f586d870ad1b9daf160e6c9d6d39a585da45ef411b83bcb85013e5b1d59",
+  "reason": "no unit behaviour: reviewed at this snapshot by a case-insensitive scan for every unit stem, token, quantity name and canonical field suffix this codebase uses, with every hit read in context. This file matched none, or matched only outside a unit context."
+ },
+ {
+  "path": "src/hooks/useThemeSync.ts",
+  "disposition": "no unit behaviour",
+  "digest": "e671d2d3266e2cb8ef1be9d375859cd01d9854a7bb70999e12d6795eea24e29b",
+  "reason": "no unit behaviour: reviewed at this snapshot by a case-insensitive scan for every unit stem, token, quantity name and canonical field suffix this codebase uses, with every hit read in context. This file matched none, or matched only outside a unit context."
+ },
+ {
+  "path": "src/hooks/useTimeFormat.ts",
+  "disposition": "no unit behaviour",
+  "digest": "28f826b121f131660c14372d25dd07482c7c785d0358aa2e36326af675c4469f",
+  "reason": "no unit behaviour: reviewed at this snapshot by a case-insensitive scan for every unit stem, token, quantity name and canonical field suffix this codebase uses, with every hit read in context. This file matched none, or matched only outside a unit context."
+ },
+ {
+  "path": "src/hooks/useUnitFormat.ts",
+  "disposition": "audited",
+  "digest": "6c12afadad647c485f5c204df4436c4f635b38d99b235bd7ccfe59efef8a7ce5",
+  "reason": "closes over the resolved set; the hook call sites should be using",
+  "tests": [
+   "hooks/__tests__/useUnitFormat.test.tsx"
+  ]
+ },
+ {
+  "path": "src/hooks/useUnitPreference.ts",
+  "disposition": "audited",
+  "digest": "e1330408c2f233161a8bd40f5fa9233b665f219ca2b3ec692e5e2cee5534ebb4",
+  "reason": "resolves the unit set; `system` is the collapsed binary this phase is migrating away from, which is the hook working as documented rather than a defect in it",
+  "tests": [
+   "hooks/__tests__/useUnitPreference.custom.test.tsx",
+   "hooks/__tests__/useUnitPreference.precedence.test.tsx"
+  ]
+ },
+ {
+  "path": "src/i18n.ts",
+  "disposition": "no unit behaviour",
+  "digest": "33e55bf26ec517cd53395f7a4c2e6e867bd810ce80ad2d1cc4872bd9029735bc",
+  "reason": "no unit behaviour: reviewed at this snapshot by a case-insensitive scan for every unit stem, token, quantity name and canonical field suffix this codebase uses, with every hit read in context. This file matched none, or matched only outside a unit context."
+ },
+ {
+  "path": "src/index.css",
+  "disposition": "no unit behaviour",
+  "digest": "068e87617a954601939a33df5eed331fe633332f2249cf3608482915657a55ee",
+  "reason": "no unit behaviour: reviewed at this snapshot by a case-insensitive scan for every unit stem, token, quantity name and canonical field suffix this codebase uses, with every hit read in context. This file matched none, or matched only outside a unit context."
+ },
+ {
+  "path": "src/locales/en/analytics.json",
+  "disposition": "audited",
+  "digest": "cf0ae700d136ca2179c92fa3009dfbb2dae32bce49c1891f7c72a90fc3546355",
+  "reason": "reviewed at this snapshot",
+  "findings": [
+   "vehicleHelp.costAnalysis.costPerMile* and vehicleHelp.fuelEconomy.*Mpg* are imperial-only help copy rendered unconditionally by AnalyticsHelpModal; vehicle.totalLiters / vehicle.totalGallons are selected by a raw `units.volume === 'L'` branch in Analytics. owner: task 6."
+  ]
+ },
+ {
+  "path": "src/locales/en/common.json",
+  "disposition": "no unit behaviour",
+  "digest": "f8a4933b6f4a01e2f98eadd7f5a094e293475f06e5a24f5060dffe9fce4b8658",
+  "reason": "no unit behaviour: reviewed at this snapshot by a case-insensitive scan for every unit stem, token, quantity name and canonical field suffix this codebase uses, with every hit read in context. This file matched none, or matched only outside a unit context."
+ },
+ {
+  "path": "src/locales/en/forms.json",
+  "disposition": "audited",
+  "digest": "d344abc42c905e9c9e831abf38b5292706a4ad9310470f5c2fb8d2deb5720b54",
+  "reason": "fuel.receiptTextPlaceholder is a plausible EXAMPLE receipt (ruling R5's exempt class): there is no canonical value behind it to convert.",
+  "findings": [
+   "fuel.mpgTip and fuel.electricTip name MPG and kWh/100mi unconditionally, and reminder.milesRequired says 'Miles until due' for every user. owner: task 6."
+  ]
+ },
+ {
+  "path": "src/locales/en/nav.json",
+  "disposition": "no unit behaviour",
+  "digest": "066b3364cf3f662c2f47f4093c68b209677a6d47b417ec0c192e5d5a499b03b3",
+  "reason": "no unit behaviour: reviewed at this snapshot by a case-insensitive scan for every unit stem, token, quantity name and canonical field suffix this codebase uses, with every hit read in context. This file matched none, or matched only outside a unit context."
+ },
+ {
+  "path": "src/locales/en/settings.json",
+  "disposition": "audited",
+  "digest": "669001caaf16dbbbb00ca042e2b73eff413fe8ef684afbd2e1b21c6ef7705197",
+  "reason": "units.gallonUs / units.gallonUk state literal conversion facts and units.showBothDescription is an example; neither is a converted quantity.",
+  "tests": [
+   "components/tabs/__tests__/SettingsSystemTab.units.test.tsx"
+  ],
+  "findings": [
+   "units.imperialDescription and units.metricDescription are two fixed strings selected by the collapsed binary system, so a {volume:'L', distance:'mi', pressure:'psi'} user is told they use kilometres and bar. R1: compose the description from the resolved set instead. owner: task 2, and it lands in every locale.",
+   "events.card.milesBefore ('miles before') and events.card.milestonesDesc ('100k miles') are imperial-only copy rendered by EventNotificationsCard. owner: task 6."
+  ]
+ },
+ {
+  "path": "src/locales/en/vehicles.json",
+  "disposition": "audited",
+  "digest": "dac564592c8e3f434a99ec3e5fb515f69aad9db46b0472b9f3d1b6147b7d440d",
+  "reason": "windowSticker.misc.fuelEconomyMpg and the warranty placeholders reproduce a US Monroney label verbatim and are exempt for the same reason as WindowStickerUpload. defList.gallons / propaneList.gallons are stale translations of keys `en` no longer has; they fall back and render nothing.",
+  "findings": [
+   "propaneList.totalGallons / propaneList.totalLiters (and vehicle.totalGallons / vehicle.totalLiters where present) are selected by a raw `units.volume === 'L'` branch in PropaneRecordList and Analytics. owner: task 6."
+  ]
+ },
+ {
+  "path": "src/main.tsx",
+  "disposition": "no unit behaviour",
+  "digest": "e5ffeba74ebaace68381d0ef5aedad73bb8e9eb9475788450e1a1d542d8c67ae",
+  "reason": "no unit behaviour: reviewed at this snapshot by a case-insensitive scan for every unit stem, token, quantity name and canonical field suffix this codebase uses, with every hit read in context. This file matched none, or matched only outside a unit context."
+ },
+ {
+  "path": "src/pages/About.tsx",
+  "disposition": "no unit behaviour",
+  "digest": "a44e3c56803f52a9e9e7cf60168668b336406d73964e530d228ff5103cfa321a",
+  "reason": "no unit behaviour: reviewed at this snapshot by a case-insensitive scan for every unit stem, token, quantity name and canonical field suffix this codebase uses, with every hit read in context. This file matched none, or matched only outside a unit context."
+ },
+ {
+  "path": "src/pages/AddressBook.tsx",
+  "disposition": "no unit behaviour",
+  "digest": "5d3e200ef5dffe6a9d1f08ca68279cbfee8249361fcbf4a90c216c164c2b362f",
+  "reason": "no unit behaviour: reviewed at this snapshot by a case-insensitive scan for every unit stem, token, quantity name and canonical field suffix this codebase uses, with every hit read in context. This file matched none, or matched only outside a unit context."
+ },
+ {
+  "path": "src/pages/Analytics.tsx",
+  "disposition": "audited",
+  "digest": "4c32189e7fe8764bd41deb10154c3089c82f6a98380bfbd94d34437b6decbd41",
+  "reason": "gate-detectable unit decisions, recorded not asserted clean (plan 3b task 1 ordering)",
+  "tests": [
+   "pages/__tests__/Analytics.anomalies.test.tsx",
+   "pages/__tests__/Analytics.hours.test.tsx"
+  ],
+  "findings": [
+   "compare x2 (units gate baseline)",
+   "formatter-binary x29 (units gate baseline)",
+   "token-branch x2 (units gate baseline)",
+   "raw resolved-token branches at the two volume-total labels",
+   "owner: task 6"
+  ]
+ },
+ {
+  "path": "src/pages/Calendar.tsx",
+  "disposition": "audited",
+  "digest": "137c9d05cf24ea5c884bcccb18156bdadae262dec69cde9b226b8153441d529d",
+  "reason": "gate-detectable unit decisions, recorded not asserted clean (plan 3b task 1 ordering)",
+  "findings": [
+   "compare x1 (units gate baseline)",
+   "formatter-binary x3 (units gate baseline)",
+   "owner: task 6"
+  ]
+ },
+ {
+  "path": "src/pages/Dashboard.tsx",
+  "disposition": "no unit behaviour",
+  "digest": "1bf5ca0b9a155632368f11533e746f359fe39bdee2745cfa427a1d897a2c3a96",
+  "reason": "no unit behaviour: reviewed at this snapshot by a case-insensitive scan for every unit stem, token, quantity name and canonical field suffix this codebase uses, with every hit read in context. This file matched none, or matched only outside a unit context."
+ },
+ {
+  "path": "src/pages/GarageAnalytics.tsx",
+  "disposition": "no unit behaviour",
+  "digest": "e133d549d63b2e8058f72b6e9a6a031b8369caa52b157c55816e94223d428a2a",
+  "reason": "no unit behaviour: reviewed at this snapshot by a case-insensitive scan for every unit stem, token, quantity name and canonical field suffix this codebase uses, with every hit read in context. This file matched none, or matched only outside a unit context."
+ },
+ {
+  "path": "src/pages/LinkAccount.tsx",
+  "disposition": "no unit behaviour",
+  "digest": "1647eac09388c7b3047b28ed8512191fac7e83f99954b63e21e39140489c7b90",
+  "reason": "no unit behaviour: reviewed at this snapshot by a case-insensitive scan for every unit stem, token, quantity name and canonical field suffix this codebase uses, with every hit read in context. This file matched none, or matched only outside a unit context."
+ },
+ {
+  "path": "src/pages/Login.tsx",
+  "disposition": "no unit behaviour",
+  "digest": "272f366e18e0d6f9554248c19210fc046f4e5769a58d1ebe3fffb7b75ded1cf6",
+  "reason": "no unit behaviour: reviewed at this snapshot by a case-insensitive scan for every unit stem, token, quantity name and canonical field suffix this codebase uses, with every hit read in context. This file matched none, or matched only outside a unit context."
+ },
+ {
+  "path": "src/pages/OIDCSuccess.tsx",
+  "disposition": "no unit behaviour",
+  "digest": "c7663a56c0415d657fb6db376854bfbfb45d3a01724eed1bd9517f9cb305eba4",
+  "reason": "no unit behaviour: reviewed at this snapshot by a case-insensitive scan for every unit stem, token, quantity name and canonical field suffix this codebase uses, with every hit read in context. This file matched none, or matched only outside a unit context."
+ },
+ {
+  "path": "src/pages/POIFinder.tsx",
+  "disposition": "audited",
+  "digest": "bd407f39649310428f12b81336665d03a64cfebeb53307ba78135af734f961b8",
+  "reason": "radius options keyed on units.distance",
+  "tests": [
+   "pages/__tests__/POIFinder.radius.test.tsx"
+  ]
+ },
+ {
+  "path": "src/pages/QuickEntry.tsx",
+  "disposition": "no unit behaviour",
+  "digest": "a084e3b306c8a4febbc1f38ec6d4c38add731a9d3b19fb0c8676d98b430f5be9",
+  "reason": "no unit behaviour: reviewed at this snapshot by a case-insensitive scan for every unit stem, token, quantity name and canonical field suffix this codebase uses, with every hit read in context. This file matched none, or matched only outside a unit context."
+ },
+ {
+  "path": "src/pages/Register.tsx",
+  "disposition": "no unit behaviour",
+  "digest": "16ffc254e00134f6708ce921e278dd5145c92aa0829208d17796802b659b9fb3",
+  "reason": "no unit behaviour: reviewed at this snapshot by a case-insensitive scan for every unit stem, token, quantity name and canonical field suffix this codebase uses, with every hit read in context. This file matched none, or matched only outside a unit context."
+ },
+ {
+  "path": "src/pages/Settings.tsx",
+  "disposition": "no unit behaviour",
+  "digest": "3b13c57bb2ea47f70bf1b0d7dc2d6e386124d9f0be2ec128a4f7bbea52ff810b",
+  "reason": "no unit behaviour: reviewed at this snapshot by a case-insensitive scan for every unit stem, token, quantity name and canonical field suffix this codebase uses, with every hit read in context. This file matched none, or matched only outside a unit context."
+ },
+ {
+  "path": "src/pages/ShopFinder.tsx",
+  "disposition": "audited",
+  "digest": "3d64fc5276af6a9ad6a9592108314a8ef2d7a81e57a83f3b4dd59de840526ab2",
+  "reason": "radius options keyed on units.distance",
+  "tests": [
+   "pages/__tests__/ShopFinder.radius.test.tsx"
+  ]
+ },
+ {
+  "path": "src/pages/Supplies.tsx",
+  "disposition": "audited",
+  "digest": "1328198a54e7aa2b4f0d29687cab5a9b9bb8a5bf74f6235e6a3184363e4b60ee",
+  "reason": "as SupplyHistoryModal",
+  "tests": [
+   "pages/__tests__/Supplies.test.tsx",
+   "utils/__tests__/supplyUnits.test.ts"
+  ]
+ },
+ {
+  "path": "src/pages/VehicleDetail.tsx",
+  "disposition": "no unit behaviour",
+  "digest": "4e3686facbc2cffc06eb90f06302e354a962e5527eff56729134914ac89b955f",
+  "reason": "no unit behaviour: reviewed at this snapshot by a case-insensitive scan for every unit stem, token, quantity name and canonical field suffix this codebase uses, with every hit read in context. This file matched none, or matched only outside a unit context."
+ },
+ {
+  "path": "src/pages/WindowStickerTest.tsx",
+  "disposition": "no unit behaviour",
+  "digest": "e45c0218f01cf93d64010f18ebc14dfabf20c069cbe85a15a3172811acb73c38",
+  "reason": "no unit behaviour: reviewed at this snapshot by a case-insensitive scan for every unit stem, token, quantity name and canonical field suffix this codebase uses, with every hit read in context. This file matched none, or matched only outside a unit context."
+ },
+ {
+  "path": "src/schemas/addressBook.ts",
+  "disposition": "no unit behaviour",
+  "digest": "67507e6404556afedb6e5844fe30c09c4af20bf44ad6d2ed8707059e5593c09b",
+  "reason": "no unit behaviour: reviewed at this snapshot by a case-insensitive scan for every unit stem, token, quantity name and canonical field suffix this codebase uses, with every hit read in context. This file matched none, or matched only outside a unit context."
+ },
+ {
+  "path": "src/schemas/auth.ts",
+  "disposition": "no unit behaviour",
+  "digest": "7e4f6530272bf7983e89a63a8bb4b45daaf6f5923c5bf6135d0e726ce9d3aecd",
+  "reason": "no unit behaviour: reviewed at this snapshot by a case-insensitive scan for every unit stem, token, quantity name and canonical field suffix this codebase uses, with every hit read in context. This file matched none, or matched only outside a unit context."
+ },
+ {
+  "path": "src/schemas/def.ts",
+  "disposition": "audited",
+  "digest": "a7ef2af46d0d764c0607f4630276a8485decb1bf40b49495047b3acef84f8d9e",
+  "reason": "as schemas/shared.ts",
+  "tests": [
+   "schemas/__tests__/def.test.ts"
+  ]
+ },
+ {
+  "path": "src/schemas/fuel.ts",
+  "disposition": "audited",
+  "digest": "5773d5dba1073f2697b95de1e5a4868761b5e0f2c44ba80ab97c9858fe33ff29",
+  "reason": "as schemas/shared.ts",
+  "tests": [
+   "schemas/__tests__/fuel.test.ts",
+   "schemas/__tests__/fuel.schema.test.ts"
+  ]
+ },
+ {
+  "path": "src/schemas/hours.ts",
+  "disposition": "no unit behaviour",
+  "digest": "d869a43cc9dd79ef477a818264c60b1696e0c39e34feea051af5e044c3e22769",
+  "reason": "no unit behaviour: reviewed at this snapshot by a case-insensitive scan for every unit stem, token, quantity name and canonical field suffix this codebase uses, with every hit read in context. This file matched none, or matched only outside a unit context."
+ },
+ {
+  "path": "src/schemas/insurance.ts",
+  "disposition": "audited",
+  "digest": "1795d2fa76d0bc3d489dc664982ce7cafd920e6fa534c7696991987d7f0cccf3",
+  "reason": "as schemas/shared.ts",
+  "tests": [
+   "schemas/__tests__/insurance.test.ts"
+  ]
+ },
+ {
+  "path": "src/schemas/note.ts",
+  "disposition": "no unit behaviour",
+  "digest": "5f33e70c797905ee3d84760998409e25360efbfa4816f581bb575297cccb6498",
+  "reason": "no unit behaviour: reviewed at this snapshot by a case-insensitive scan for every unit stem, token, quantity name and canonical field suffix this codebase uses, with every hit read in context. This file matched none, or matched only outside a unit context."
+ },
+ {
+  "path": "src/schemas/odometer.ts",
+  "disposition": "audited",
+  "digest": "3114527e52d98dc7e1646a56fbfc61bfc5732340376f094c672bf2832079c51b",
+  "reason": "as schemas/shared.ts",
+  "tests": [
+   "schemas/__tests__/odometer.test.ts"
+  ]
+ },
+ {
+  "path": "src/schemas/propane.ts",
+  "disposition": "audited",
+  "digest": "cf23b2d9520f6d32d831da419ec7678e9db41b349aefd21c1f12638838031b5c",
+  "reason": "as schemas/shared.ts",
+  "tests": [
+   "schemas/__tests__/propane.test.ts"
+  ]
+ },
+ {
+  "path": "src/schemas/recall.ts",
+  "disposition": "no unit behaviour",
+  "digest": "223fb359d101d2be55783a8614c500fb1e1ea09ec4a8caa38b2cc147fda3df9a",
+  "reason": "no unit behaviour: reviewed at this snapshot by a case-insensitive scan for every unit stem, token, quantity name and canonical field suffix this codebase uses, with every hit read in context. This file matched none, or matched only outside a unit context."
+ },
+ {
+  "path": "src/schemas/serviceVisit.ts",
+  "disposition": "audited",
+  "digest": "bee16c2941a45d6be66288a9c118188d49c09fb936431d8f74ef3bd643f7ec32",
+  "reason": "as schemas/shared.ts",
+  "tests": [
+   "schemas/__tests__/serviceVisit.test.ts"
+  ]
+ },
+ {
+  "path": "src/schemas/shared.ts",
+  "disposition": "audited",
+  "digest": "cea8a020a1314bd506cc76a61000d866069f93c01255b3f4d8267f72e86fa2e0",
+  "reason": "numeric field factories; the bounds are dimensionless ranges applied to a DISPLAY value and no conversion happens in the schema layer",
+  "tests": [
+   "schemas/__tests__/shared.test.ts"
+  ]
+ },
+ {
+  "path": "src/schemas/spotRental.ts",
+  "disposition": "no unit behaviour",
+  "digest": "ebc0a745d837646aaf092a5c55e30f724b669e8a067fcca347b6b09e2ee31b35",
+  "reason": "no unit behaviour: reviewed at this snapshot by a case-insensitive scan for every unit stem, token, quantity name and canonical field suffix this codebase uses, with every hit read in context. This file matched none, or matched only outside a unit context."
+ },
+ {
+  "path": "src/schemas/spotRentalBilling.ts",
+  "disposition": "no unit behaviour",
+  "digest": "826bcabf742d05e33065a4049198e311883b086996a925a106c8e6bb421db294",
+  "reason": "no unit behaviour: reviewed at this snapshot by a case-insensitive scan for every unit stem, token, quantity name and canonical field suffix this codebase uses, with every hit read in context. This file matched none, or matched only outside a unit context."
+ },
+ {
+  "path": "src/schemas/supplies.ts",
+  "disposition": "no unit behaviour",
+  "digest": "fe01cb29f90373696dd34e17dac6967b7cdef1d84e87413a304116aafdbaa28c",
+  "reason": "no unit behaviour: reviewed at this snapshot by a case-insensitive scan for every unit stem, token, quantity name and canonical field suffix this codebase uses, with every hit read in context. This file matched none, or matched only outside a unit context."
+ },
+ {
+  "path": "src/schemas/tax.ts",
+  "disposition": "no unit behaviour",
+  "digest": "2294888f28c99374629cdd9f77a0aefd09869eb9cf279b724ddebbb334f5a726",
+  "reason": "no unit behaviour: reviewed at this snapshot by a case-insensitive scan for every unit stem, token, quantity name and canonical field suffix this codebase uses, with every hit read in context. This file matched none, or matched only outside a unit context."
+ },
+ {
+  "path": "src/schemas/tollTag.ts",
+  "disposition": "no unit behaviour",
+  "digest": "aa678b71c0ba6d64eff5c0f2ee7cd050e79526f62ce6cb07154dcf6fb607c959",
+  "reason": "no unit behaviour: reviewed at this snapshot by a case-insensitive scan for every unit stem, token, quantity name and canonical field suffix this codebase uses, with every hit read in context. This file matched none, or matched only outside a unit context."
+ },
+ {
+  "path": "src/schemas/tollTransaction.ts",
+  "disposition": "audited",
+  "digest": "67cc4c0615abdc97c0ef27d6eb85654af7766dfddeedfbf28f1aef91b8c66cb7",
+  "reason": "as schemas/shared.ts",
+  "tests": [
+   "schemas/__tests__/tollTransaction.test.ts"
+  ]
+ },
+ {
+  "path": "src/schemas/vehicle.ts",
+  "disposition": "audited",
+  "digest": "8b25105d4aca3fb301e78c75746432f65a84dbc032531e9a35133b1f8b9e3075",
+  "reason": "as schemas/shared.ts",
+  "tests": [
+   "schemas/__tests__/vehicle.test.ts"
+  ]
+ },
+ {
+  "path": "src/schemas/warranty.ts",
+  "disposition": "audited",
+  "digest": "2ab7a7083064fd338800cd8ba237bba5609bf2b157ca1cf92b29a438054737fc",
+  "reason": "as schemas/shared.ts",
+  "tests": [
+   "schemas/__tests__/warranty.test.ts"
+  ]
+ },
+ {
+  "path": "src/services/api.ts",
+  "disposition": "no unit behaviour",
+  "digest": "5fe7fd32703f302bdfbd5a2390b2ee47c54f75bd0fcacce3f7c176a9adefef01",
+  "reason": "no unit behaviour: reviewed at this snapshot by a case-insensitive scan for every unit stem, token, quantity name and canonical field suffix this codebase uses, with every hit read in context. This file matched none, or matched only outside a unit context."
+ },
+ {
+  "path": "src/services/externalVehicleService.ts",
+  "disposition": "no unit behaviour",
+  "digest": "bf0d271b3e66c8ddffcb828e8fc3bcc332f728508f554a554343d50e29291468",
+  "reason": "no unit behaviour: reviewed at this snapshot by a case-insensitive scan for every unit stem, token, quantity name and canonical field suffix this codebase uses, with every hit read in context. This file matched none, or matched only outside a unit context."
+ },
+ {
+  "path": "src/services/familyService.ts",
+  "disposition": "no unit behaviour",
+  "digest": "51fb063805615e4da8a9694bf534e87f7266c17e2a07b631b127c67c11759749",
+  "reason": "no unit behaviour: reviewed at this snapshot by a case-insensitive scan for every unit stem, token, quantity name and canonical field suffix this codebase uses, with every hit read in context. This file matched none, or matched only outside a unit context."
+ },
+ {
+  "path": "src/services/livelinkService.ts",
+  "disposition": "no unit behaviour",
+  "digest": "291bbfb9136f3b5dbec67d89db82b11c05fa6ee5291a04586b1fba50783507f2",
+  "reason": "no unit behaviour: reviewed at this snapshot by a case-insensitive scan for every unit stem, token, quantity name and canonical field suffix this codebase uses, with every hit read in context. This file matched none, or matched only outside a unit context."
+ },
+ {
+  "path": "src/services/reminderService.ts",
+  "disposition": "no unit behaviour",
+  "digest": "1223515f526eae6fdf225d5eb06d726888c9b835ec5438f261b2074f6372ca68",
+  "reason": "no unit behaviour: reviewed at this snapshot by a case-insensitive scan for every unit stem, token, quantity name and canonical field suffix this codebase uses, with every hit read in context. This file matched none, or matched only outside a unit context."
+ },
+ {
+  "path": "src/services/vehicleService.ts",
+  "disposition": "no unit behaviour",
+  "digest": "e0c5ed9040130958e30e831dc93fbd4656c08774ecd751567ba88e6694307511",
+  "reason": "no unit behaviour: reviewed at this snapshot by a case-insensitive scan for every unit stem, token, quantity name and canonical field suffix this codebase uses, with every hit read in context. This file matched none, or matched only outside a unit context."
+ },
+ {
+  "path": "src/services/vinService.ts",
+  "disposition": "no unit behaviour",
+  "digest": "f88a3c3af805944a54f6066ebce353d3d3269c47ff650be46506b7028684763c",
+  "reason": "no unit behaviour: reviewed at this snapshot by a case-insensitive scan for every unit stem, token, quantity name and canonical field suffix this codebase uses, with every hit read in context. This file matched none, or matched only outside a unit context."
+ },
+ {
+  "path": "src/styles/fonts.css",
+  "disposition": "no unit behaviour",
+  "digest": "1c97f1355b49ddfe06e32c65e4329cff386e5dab9623255dab363f518ff29e2d",
+  "reason": "no unit behaviour: reviewed at this snapshot by a case-insensitive scan for every unit stem, token, quantity name and canonical field suffix this codebase uses, with every hit read in context. This file matched none, or matched only outside a unit context."
+ },
+ {
+  "path": "src/types/addressBook.ts",
+  "disposition": "no unit behaviour",
+  "digest": "1918864104071fdd0fcd1d06084b38f3d15e4aed103d20d324d0fe37778b03c2",
+  "reason": "no unit behaviour: reviewed at this snapshot by a case-insensitive scan for every unit stem, token, quantity name and canonical field suffix this codebase uses, with every hit read in context. This file matched none, or matched only outside a unit context."
+ },
+ {
+  "path": "src/types/analytics.ts",
+  "disposition": "no unit behaviour",
+  "digest": "214d1d56b5cc341c5f838d0c28b93cf058b08d1bfbb2b86675861bf037d81e3f",
+  "reason": "no unit behaviour: reviewed at this snapshot by a case-insensitive scan for every unit stem, token, quantity name and canonical field suffix this codebase uses, with every hit read in context. This file matched none, or matched only outside a unit context."
+ },
+ {
+  "path": "src/types/api.generated.ts",
+  "disposition": "no unit behaviour",
+  "digest": "bcfb1f3ea20ab1a953b64a8cbe6817038d93074c4f498cb686fa4e6fd7e75679",
+  "reason": "no unit behaviour: reviewed at this snapshot by a case-insensitive scan for every unit stem, token, quantity name and canonical field suffix this codebase uses, with every hit read in context. This file matched none, or matched only outside a unit context."
+ },
+ {
+  "path": "src/types/attachment.ts",
+  "disposition": "no unit behaviour",
+  "digest": "6554eecef9796aa55c04884579c03264cb759c1af01aa3c1f365dc4100a4f58b",
+  "reason": "no unit behaviour: reviewed at this snapshot by a case-insensitive scan for every unit stem, token, quantity name and canonical field suffix this codebase uses, with every hit read in context. This file matched none, or matched only outside a unit context."
+ },
+ {
+  "path": "src/types/calendar.ts",
+  "disposition": "no unit behaviour",
+  "digest": "1683e22bd531a13e8880b55ea4ecf390f181eeaa4539938cf48640d9defaabe0",
+  "reason": "no unit behaviour: reviewed at this snapshot by a case-insensitive scan for every unit stem, token, quantity name and canonical field suffix this codebase uses, with every hit read in context. This file matched none, or matched only outside a unit context."
+ },
+ {
+  "path": "src/types/dashboard.ts",
+  "disposition": "no unit behaviour",
+  "digest": "2e1307af07dde1e5176a5aa3416ef01cf0ee4f91a884f6ec21fddb72c4ed35d4",
+  "reason": "no unit behaviour: reviewed at this snapshot by a case-insensitive scan for every unit stem, token, quantity name and canonical field suffix this codebase uses, with every hit read in context. This file matched none, or matched only outside a unit context."
+ },
+ {
+  "path": "src/types/def.ts",
+  "disposition": "no unit behaviour",
+  "digest": "f548100704d7e5c56b35ce6e5cc8490166bc754a20e825026df654a5adb13e7d",
+  "reason": "no unit behaviour: reviewed at this snapshot by a case-insensitive scan for every unit stem, token, quantity name and canonical field suffix this codebase uses, with every hit read in context. This file matched none, or matched only outside a unit context."
+ },
+ {
+  "path": "src/types/document.ts",
+  "disposition": "no unit behaviour",
+  "digest": "6d03421ec3b03095e111ba73197f68088640c597ad7bdc7820ba08462722cb1a",
+  "reason": "no unit behaviour: reviewed at this snapshot by a case-insensitive scan for every unit stem, token, quantity name and canonical field suffix this codebase uses, with every hit read in context. This file matched none, or matched only outside a unit context."
+ },
+ {
+  "path": "src/types/externalVehicle.ts",
+  "disposition": "no unit behaviour",
+  "digest": "ee2bca3e58c1d76d8e88d5e19a2ab9639ed11385cfc696f874e6031ede9ce7c5",
+  "reason": "no unit behaviour: reviewed at this snapshot by a case-insensitive scan for every unit stem, token, quantity name and canonical field suffix this codebase uses, with every hit read in context. This file matched none, or matched only outside a unit context."
+ },
+ {
+  "path": "src/types/family.ts",
+  "disposition": "no unit behaviour",
+  "digest": "1a300b0e6bad976ab7135d74ceb749d4d3bf56a46bb56dabe1a8aa89929c224d",
+  "reason": "no unit behaviour: reviewed at this snapshot by a case-insensitive scan for every unit stem, token, quantity name and canonical field suffix this codebase uses, with every hit read in context. This file matched none, or matched only outside a unit context."
+ },
+ {
+  "path": "src/types/fuel.ts",
+  "disposition": "no unit behaviour",
+  "digest": "e0ea6a1d6340e2457fa2ad355df03183ff98f7962092c5cf8194eb20f853c260",
+  "reason": "no unit behaviour: reviewed at this snapshot by a case-insensitive scan for every unit stem, token, quantity name and canonical field suffix this codebase uses, with every hit read in context. This file matched none, or matched only outside a unit context."
+ },
+ {
+  "path": "src/types/hours.ts",
+  "disposition": "no unit behaviour",
+  "digest": "ac2094598e2c35d83f1ba5c0331624d2f15fe95e0cf28af5715be17a0af80227",
+  "reason": "no unit behaviour: reviewed at this snapshot by a case-insensitive scan for every unit stem, token, quantity name and canonical field suffix this codebase uses, with every hit read in context. This file matched none, or matched only outside a unit context."
+ },
+ {
+  "path": "src/types/insurance.ts",
+  "disposition": "no unit behaviour",
+  "digest": "737b9aaf4f96d2a6240ef6f7f5ebc95d66943d19d083011f629a28545aaffcd4",
+  "reason": "no unit behaviour: reviewed at this snapshot by a case-insensitive scan for every unit stem, token, quantity name and canonical field suffix this codebase uses, with every hit read in context. This file matched none, or matched only outside a unit context."
+ },
+ {
+  "path": "src/types/livelink.ts",
+  "disposition": "no unit behaviour",
+  "digest": "1754c2237d9d1657d0e35fd5e5b9e94a49f8b8adc5c930599f7aec30fea25b6b",
+  "reason": "no unit behaviour: reviewed at this snapshot by a case-insensitive scan for every unit stem, token, quantity name and canonical field suffix this codebase uses, with every hit read in context. This file matched none, or matched only outside a unit context."
+ },
+ {
+  "path": "src/types/note.ts",
+  "disposition": "no unit behaviour",
+  "digest": "ab7d5d79db20ef734aa910034744d61089e51d4d89ae5e943960589a3568618b",
+  "reason": "no unit behaviour: reviewed at this snapshot by a case-insensitive scan for every unit stem, token, quantity name and canonical field suffix this codebase uses, with every hit read in context. This file matched none, or matched only outside a unit context."
+ },
+ {
+  "path": "src/types/odometer.ts",
+  "disposition": "no unit behaviour",
+  "digest": "6897fc2ef7a397a015f18b8e34ec4095e13a0bf915be088ff1686e137dce4e4c",
+  "reason": "no unit behaviour: reviewed at this snapshot by a case-insensitive scan for every unit stem, token, quantity name and canonical field suffix this codebase uses, with every hit read in context. This file matched none, or matched only outside a unit context."
+ },
+ {
+  "path": "src/types/photo.ts",
+  "disposition": "no unit behaviour",
+  "digest": "58c396a657bb16a3562281e180c4f44cf44971fc55031bbd2ec00875f45e5d15",
+  "reason": "no unit behaviour: reviewed at this snapshot by a case-insensitive scan for every unit stem, token, quantity name and canonical field suffix this codebase uses, with every hit read in context. This file matched none, or matched only outside a unit context."
+ },
+ {
+  "path": "src/types/poi.ts",
+  "disposition": "no unit behaviour",
+  "digest": "e621bb4b7845de38273203b6b809969de7e2bb01d08817a170cb14ee3e9394c6",
+  "reason": "no unit behaviour: reviewed at this snapshot by a case-insensitive scan for every unit stem, token, quantity name and canonical field suffix this codebase uses, with every hit read in context. This file matched none, or matched only outside a unit context."
+ },
+ {
+  "path": "src/types/recall.ts",
+  "disposition": "no unit behaviour",
+  "digest": "9d7de2853ef34d72301e9cebf405467f953a6b3827624e282531f1f09c49b85d",
+  "reason": "no unit behaviour: reviewed at this snapshot by a case-insensitive scan for every unit stem, token, quantity name and canonical field suffix this codebase uses, with every hit read in context. This file matched none, or matched only outside a unit context."
+ },
+ {
+  "path": "src/types/reminder.ts",
+  "disposition": "no unit behaviour",
+  "digest": "c3f41d4504373857a86baa26473b560be4a9646d473aa6a96be4906ce04e996a",
+  "reason": "no unit behaviour: reviewed at this snapshot by a case-insensitive scan for every unit stem, token, quantity name and canonical field suffix this codebase uses, with every hit read in context. This file matched none, or matched only outside a unit context."
+ },
+ {
+  "path": "src/types/serviceVisit.ts",
+  "disposition": "no unit behaviour",
+  "digest": "bea51d3f51eff391e9a7bf4ae3fa09cb1fe719882e47f32700052a376cc65427",
+  "reason": "no unit behaviour: reviewed at this snapshot by a case-insensitive scan for every unit stem, token, quantity name and canonical field suffix this codebase uses, with every hit read in context. This file matched none, or matched only outside a unit context."
+ },
+ {
+  "path": "src/types/shopDiscovery.ts",
+  "disposition": "no unit behaviour",
+  "digest": "b5f0979f823a110722a270d6b4c8e3d7ec9d3df874e4fdfffecd448a3554847c",
+  "reason": "no unit behaviour: reviewed at this snapshot by a case-insensitive scan for every unit stem, token, quantity name and canonical field suffix this codebase uses, with every hit read in context. This file matched none, or matched only outside a unit context."
+ },
+ {
+  "path": "src/types/spotRental.ts",
+  "disposition": "no unit behaviour",
+  "digest": "97d6dc3b941aad4ccd0e499909c6081bcf0a50d139bec4c2e2e59de124cddbeb",
+  "reason": "no unit behaviour: reviewed at this snapshot by a case-insensitive scan for every unit stem, token, quantity name and canonical field suffix this codebase uses, with every hit read in context. This file matched none, or matched only outside a unit context."
+ },
+ {
+  "path": "src/types/supplies.ts",
+  "disposition": "no unit behaviour",
+  "digest": "81221eaaf925fa235f3461b91680ff538bcba03af36e4bdc8116c101ffd06fa0",
+  "reason": "no unit behaviour: reviewed at this snapshot by a case-insensitive scan for every unit stem, token, quantity name and canonical field suffix this codebase uses, with every hit read in context. This file matched none, or matched only outside a unit context."
+ },
+ {
+  "path": "src/types/tax.ts",
+  "disposition": "no unit behaviour",
+  "digest": "5de42f498ef318bca766296abe63e3d4132ec6ce9810af25f0a41d5e9a40c5df",
+  "reason": "no unit behaviour: reviewed at this snapshot by a case-insensitive scan for every unit stem, token, quantity name and canonical field suffix this codebase uses, with every hit read in context. This file matched none, or matched only outside a unit context."
+ },
+ {
+  "path": "src/types/tire.ts",
+  "disposition": "no unit behaviour",
+  "digest": "0cb084c541dd4d9a086f129339e12fc79bdb0da94902b12e34895b6e2d1340ed",
+  "reason": "no unit behaviour: reviewed at this snapshot by a case-insensitive scan for every unit stem, token, quantity name and canonical field suffix this codebase uses, with every hit read in context. This file matched none, or matched only outside a unit context."
+ },
+ {
+  "path": "src/types/toll.ts",
+  "disposition": "no unit behaviour",
+  "digest": "382b6a0ca9ed0ba778643441d87d980913cd69a18fa3b2a26ea247b77f98224a",
+  "reason": "no unit behaviour: reviewed at this snapshot by a case-insensitive scan for every unit stem, token, quantity name and canonical field suffix this codebase uses, with every hit read in context. This file matched none, or matched only outside a unit context."
+ },
+ {
+  "path": "src/types/trips.ts",
+  "disposition": "no unit behaviour",
+  "digest": "802ae60b63313909071414cd125dba1f83e92c655e8434bc57f4cec4411a4391",
+  "reason": "no unit behaviour: reviewed at this snapshot by a case-insensitive scan for every unit stem, token, quantity name and canonical field suffix this codebase uses, with every hit read in context. This file matched none, or matched only outside a unit context."
+ },
+ {
+  "path": "src/types/units.ts",
+  "disposition": "audited",
+  "digest": "a9c20385c6b3dce7161560e16cc17a12c3eaa226101d57bc7690bf2199388fec",
+  "reason": "gate-detectable unit decisions, recorded not asserted clean (plan 3b task 1 ordering)",
+  "tests": [
+   "types/__tests__/units.test.ts"
+  ],
+  "findings": [
+   "token-branch x1 (units gate baseline)",
+   "owner: task 6"
+  ]
+ },
+ {
+  "path": "src/types/user.ts",
+  "disposition": "no unit behaviour",
+  "digest": "852cb20a8f664feb1e6fc000ca8f2ea216a6f5491a5cbfbb4dc285f9fd5edf3a",
+  "reason": "no unit behaviour: reviewed at this snapshot by a case-insensitive scan for every unit stem, token, quantity name and canonical field suffix this codebase uses, with every hit read in context. This file matched none, or matched only outside a unit context."
+ },
+ {
+  "path": "src/types/vehicle.ts",
+  "disposition": "no unit behaviour",
+  "digest": "9b0af4c1fdf86c19b85e4acf542f6039df4ef6a3fe6d93ef55d8b84a2b07b837",
+  "reason": "no unit behaviour: reviewed at this snapshot by a case-insensitive scan for every unit stem, token, quantity name and canonical field suffix this codebase uses, with every hit read in context. This file matched none, or matched only outside a unit context."
+ },
+ {
+  "path": "src/types/vendor.ts",
+  "disposition": "no unit behaviour",
+  "digest": "9e5456ab99226cedd0d169889fdb64713e47bf535b293e861c9136e6b9d73d04",
+  "reason": "no unit behaviour: reviewed at this snapshot by a case-insensitive scan for every unit stem, token, quantity name and canonical field suffix this codebase uses, with every hit read in context. This file matched none, or matched only outside a unit context."
+ },
+ {
+  "path": "src/types/vin.ts",
+  "disposition": "no unit behaviour",
+  "digest": "8e4a2f5e53a6c11d42e9b369e52dc865a77453a6100899352c5984ea3426b780",
+  "reason": "no unit behaviour: reviewed at this snapshot by a case-insensitive scan for every unit stem, token, quantity name and canonical field suffix this codebase uses, with every hit read in context. This file matched none, or matched only outside a unit context."
+ },
+ {
+  "path": "src/types/warranty.ts",
+  "disposition": "no unit behaviour",
+  "digest": "b3344889799393bcf33c1f9a4d6d1d4b3a6234edf8786c25973877e3b6992886",
+  "reason": "no unit behaviour: reviewed at this snapshot by a case-insensitive scan for every unit stem, token, quantity name and canonical field suffix this codebase uses, with every hit read in context. This file matched none, or matched only outside a unit context."
+ },
+ {
+  "path": "src/types/widgetKey.ts",
+  "disposition": "no unit behaviour",
+  "digest": "3dad4dbd4c0d5b7f4517db6da7c096049b3a282c3e032537635f124994007af3",
+  "reason": "no unit behaviour: reviewed at this snapshot by a case-insensitive scan for every unit stem, token, quantity name and canonical field suffix this codebase uses, with every hit read in context. This file matched none, or matched only outside a unit context."
+ },
+ {
+  "path": "src/utils/apiValidation.ts",
+  "disposition": "no unit behaviour",
+  "digest": "064a163bb66267df5e8b936fe4e62888cb6a18d737744e54c9b0aa39523b7fab",
+  "reason": "no unit behaviour: reviewed at this snapshot by a case-insensitive scan for every unit stem, token, quantity name and canonical field suffix this codebase uses, with every hit read in context. This file matched none, or matched only outside a unit context."
+ },
+ {
+  "path": "src/utils/basePath.ts",
+  "disposition": "no unit behaviour",
+  "digest": "59a510e7fc79834e5394fedce538e6800fca47f8cac4ff2e279d24fa1469e232",
+  "reason": "no unit behaviour: reviewed at this snapshot by a case-insensitive scan for every unit stem, token, quantity name and canonical field suffix this codebase uses, with every hit read in context. This file matched none, or matched only outside a unit context."
+ },
+ {
+  "path": "src/utils/currency.ts",
+  "disposition": "no unit behaviour",
+  "digest": "d2d71d4d49a930f268685660d5d9dfe3a039363e9a6eea297ff6509c7ecfe558",
+  "reason": "no unit behaviour: reviewed at this snapshot by a case-insensitive scan for every unit stem, token, quantity name and canonical field suffix this codebase uses, with every hit read in context. This file matched none, or matched only outside a unit context."
+ },
+ {
+  "path": "src/utils/dateUtils.ts",
+  "disposition": "no unit behaviour",
+  "digest": "2380a524ebc4873b77062a6ab54658b44502feb98ac2222fdff7de6c41229ceb",
+  "reason": "no unit behaviour: reviewed at this snapshot by a case-insensitive scan for every unit stem, token, quantity name and canonical field suffix this codebase uses, with every hit read in context. This file matched none, or matched only outside a unit context."
+ },
+ {
+  "path": "src/utils/decimalInput.ts",
+  "disposition": "no unit behaviour",
+  "digest": "f4fff6ba76b3f0c4e1c345ef521e8fd22aa5436020a29dbfe48016ed8eb9f2f0",
+  "reason": "no unit behaviour: reviewed at this snapshot by a case-insensitive scan for every unit stem, token, quantity name and canonical field suffix this codebase uses, with every hit read in context. This file matched none, or matched only outside a unit context."
+ },
+ {
+  "path": "src/utils/decimalSafe.ts",
+  "disposition": "audited",
+  "digest": "2aeff33426492da80d8547c766faaa1f4be9c227fd200caf9555c2ea9c2808e5",
+  "reason": "gate-detectable unit decisions, recorded not asserted clean (plan 3b task 1 ordering)",
+  "tests": [
+   "utils/__tests__/decimalSafe.test.ts"
+  ],
+  "findings": [
+   "compare x3 (units gate baseline)",
+   "R8: toCanonicalKm / toCanonicalKg / toCanonicalMeters are binary APIs that WRITE canonical",
+   "owner: task 5"
+  ]
+ },
+ {
+  "path": "src/utils/formUtils.ts",
+  "disposition": "no unit behaviour",
+  "digest": "85cbb32c23248abfd68350197c5018007e1c56f7227e4aeebfc90df43b19721b",
+  "reason": "no unit behaviour: reviewed at this snapshot by a case-insensitive scan for every unit stem, token, quantity name and canonical field suffix this codebase uses, with every hit read in context. This file matched none, or matched only outside a unit context."
+ },
+ {
+  "path": "src/utils/formatUtils.ts",
+  "disposition": "no unit behaviour",
+  "digest": "78176e9487be99fce54f9d26309532ced94681143ab35b45a5101d10a86e8513",
+  "reason": "no unit behaviour: reviewed at this snapshot by a case-insensitive scan for every unit stem, token, quantity name and canonical field suffix this codebase uses, with every hit read in context. This file matched none, or matched only outside a unit context."
+ },
+ {
+  "path": "src/utils/gallonStandardStore.ts",
+  "disposition": "audited",
+  "digest": "630cbacc2fff38c943764efb7d46cb1b60495320b053388752d455ea2617a14e",
+  "reason": "persists the browser's gallon flavour and pushes it into UnitConverter's mutable statics",
+  "tests": [
+   "utils/__tests__/gallonStandardStore.test.ts"
+  ]
+ },
+ {
+  "path": "src/utils/httpErrorHandler.ts",
+  "disposition": "no unit behaviour",
+  "digest": "7c1cccd39e60bb5a52c6e5b8e92c3a64aab0a24a0e92db109fb4202f7b9bcd88",
+  "reason": "no unit behaviour: reviewed at this snapshot by a case-insensitive scan for every unit stem, token, quantity name and canonical field suffix this codebase uses, with every hit read in context. This file matched none, or matched only outside a unit context."
+ },
+ {
+  "path": "src/utils/mobile.ts",
+  "disposition": "no unit behaviour",
+  "digest": "b2a06e5a85b943e049c2d22bd6f56cf89d6139d3fd270a309a36457ecc1875aa",
+  "reason": "no unit behaviour: reviewed at this snapshot by a case-insensitive scan for every unit stem, token, quantity name and canonical field suffix this codebase uses, with every hit read in context. This file matched none, or matched only outside a unit context."
+ },
+ {
+  "path": "src/utils/parseAPITimestamp.ts",
+  "disposition": "no unit behaviour",
+  "digest": "e51dafab3da4a29f765cb13d4c193597a792d195072a5043cb42bf26364c3fdf",
+  "reason": "no unit behaviour: reviewed at this snapshot by a case-insensitive scan for every unit stem, token, quantity name and canonical field suffix this codebase uses, with every hit read in context. This file matched none, or matched only outside a unit context."
+ },
+ {
+  "path": "src/utils/postLoginRedirect.ts",
+  "disposition": "no unit behaviour",
+  "digest": "7d6250f08245e4a6c962448f8013b95c678c58fb08fe8e36ee76c813808f9102",
+  "reason": "no unit behaviour: reviewed at this snapshot by a case-insensitive scan for every unit stem, token, quantity name and canonical field suffix this codebase uses, with every hit read in context. This file matched none, or matched only outside a unit context."
+ },
+ {
+  "path": "src/utils/publicUnitDefaults.ts",
+  "disposition": "audited",
+  "digest": "a9966960fb4d244d60ff2c8b6b2dcda016aee07f9fecd426fadb530a3c282276",
+  "reason": "gate-detectable unit decisions, recorded not asserted clean (plan 3b task 1 ordering)",
+  "tests": [
+   "utils/__tests__/publicUnitDefaults.test.ts"
+  ],
+  "findings": [
+   "token-branch x2 (units gate baseline)",
+   "owner: task 6"
+  ]
+ },
+ {
+  "path": "src/utils/rollingAverage.ts",
+  "disposition": "no unit behaviour",
+  "digest": "fd29bbe134ebfbc9b02bd1b42d0bdd9c41dc9aba70b7ee3a7ef7b2990811d7ac",
+  "reason": "no unit behaviour: reviewed at this snapshot by a case-insensitive scan for every unit stem, token, quantity name and canonical field suffix this codebase uses, with every hit read in context. This file matched none, or matched only outside a unit context."
+ },
+ {
+  "path": "src/utils/supplyUnits.ts",
+  "disposition": "audited",
+  "digest": "4a291c8374130372998ed2eee58f25b22cf907ecc51ae88ca1b141e3f272a82d",
+  "reason": "gate-detectable unit decisions, recorded not asserted clean (plan 3b task 1 ordering)",
+  "tests": [
+   "utils/__tests__/supplyUnits.test.ts"
+  ],
+  "findings": [
+   "compare x3 (units gate baseline)",
+   "R3: D8 exempts supplies from the quarts conversion, which says nothing about the comparisons",
+   "owner: task 5"
+  ]
+ },
+ {
+  "path": "src/utils/telemetryUnits.ts",
+  "disposition": "unverifiable",
+  "digest": "a390068b16d20748abf5ed0900b8e389b902630b9d2a51e3b5c9213e030d4bf2",
+  "reason": "L6: the drive-session and trip columns come from unit-AMBIGUOUS telemetry. The frontend conversion can be shown correct relative to the API contract; the real-world stored quantity cannot be, because nothing records which PID produced a value or whether it was normalised. WHAT WOULD SETTLE IT: the backend must record the source PID and a normalised flag per telemetry value, so a consumer can tell kilometres from an unnormalised custom-PID delta (design:129). Deferred beyond phase 4. formatUnverifiedValue exists precisely because appending a unit here was wrong."
+ },
+ {
+  "path": "src/utils/unitAdapters.ts",
+  "disposition": "audited",
+  "digest": "42d1826dc9a5e0a573941a0d7f3cad349aa56945204aba6becb1a34e4787e3e5",
+  "reason": "the ten resolved-set adapters; the destination every binary API migrates to",
+  "tests": [
+   "utils/__tests__/unitAdapters.test.ts",
+   "utils/__tests__/unitFactorParity.test.ts"
+  ]
+ },
+ {
+  "path": "src/utils/unitFormat.ts",
+  "disposition": "audited",
+  "digest": "16724dd0e0ba2bae5e964c7c1e2c1dbb7c19da46f08ea35f548fd86dc3a0a828",
+  "reason": "makeUnitFormat plus the origin-preserving pair seedUnitField / canonicalFromUnitField",
+  "tests": [
+   "utils/__tests__/unitFormat.test.ts"
+  ]
+ },
+ {
+  "path": "src/utils/units.ts",
+  "disposition": "audited",
+  "digest": "86801fc6757e53482587be35de448327c7b7c17063443982c48d3b4be38d6526",
+  "reason": "gate-detectable unit decisions, recorded not asserted clean (plan 3b task 1 ordering)",
+  "tests": [
+   "utils/__tests__/unitsFuelRate.test.ts",
+   "utils/__tests__/unitsSummaryHelpers.test.ts",
+   "utils/__tests__/unitFactorParity.test.ts"
+  ],
+  "findings": [
+   "compare x16 (units gate baseline)",
+   "token-branch x7 (units gate baseline)",
+   "R2: 16 comparisons, migrate-or-exempt per occurrence; the 7 token branches are the resolved-set collapse (formatVolumePerDistance, getVolumePerDistanceLabel)",
+   "owner: tasks 2 and 6"
+  ]
+ },
+ {
+  "path": "src/utils/usageTracking.ts",
+  "disposition": "no unit behaviour",
+  "digest": "3a719f252d5dbafffa1db697a2ed10b859261f566abc7384a56e6408818b573a",
+  "reason": "no unit behaviour: reviewed at this snapshot by a case-insensitive scan for every unit stem, token, quantity name and canonical field suffix this codebase uses, with every hit read in context. This file matched none, or matched only outside a unit context."
+ },
+ {
+  "path": "src/utils/vehicleLabel.ts",
+  "disposition": "no unit behaviour",
+  "digest": "d269f84e17c7897a0e403f1a23f1dd2bc9f2b004c2f41c5118e03e5c19d750ef",
+  "reason": "no unit behaviour: reviewed at this snapshot by a case-insensitive scan for every unit stem, token, quantity name and canonical field suffix this codebase uses, with every hit read in context. This file matched none, or matched only outside a unit context."
+ }
+]

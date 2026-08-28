@@ -1,9 +1,18 @@
 name: Unit Gate Selftest
 
-# The unit gate's mutation harness: every deliberate defect in
+# Two mutation harnesses, one per artifact that asserts something this phase
+# relies on.
+#
+# `selftest` is the unit gate's: every deliberate defect in
 # units_gate_selftest.py's MUTATIONS and WALK_MUTATIONS tables, applied to a copy of
 # scripts/validate-units.ts or of eslint.config.js, each of which must flip
 # exactly the corpus cases that name it, plus the tree-walk and baseline proofs.
+#
+# `manifest-selftest` is `units.manifest.json`'s. The manifest is a reviewed
+# snapshot over a stated universe, and the rule that put it here is the same one
+# that put the gate here: an artifact asserting something about every module has
+# to be shown FAILING, in each direction it claims to cover. It runs against a
+# throwaway tree in a tempdir, so it takes no shared fixture lock.
 # The count is deliberately not written here: the run prints it, and a number in
 # prose is a number that goes stale. An earlier version of this comment said 40
 # when the tables held 44.
@@ -45,6 +54,9 @@ on:
       - 'frontend/scripts/validate-units.ts'
       - 'frontend/scripts/units_gate_corpus.py'
       - 'frontend/scripts/units_gate_selftest.py'
+      - 'frontend/scripts/validate-units-manifest.ts'
+      - 'frontend/scripts/units_manifest_selftest.py'
+      - 'frontend/scripts/validate-reachability.ts'
       - 'frontend/eslint.config.js'
       - 'frontend/scripts/translation-utils.ts'
       - 'frontend/package.json'
@@ -55,6 +67,9 @@ on:
       - 'frontend/scripts/validate-units.ts'
       - 'frontend/scripts/units_gate_corpus.py'
       - 'frontend/scripts/units_gate_selftest.py'
+      - 'frontend/scripts/validate-units-manifest.ts'
+      - 'frontend/scripts/units_manifest_selftest.py'
+      - 'frontend/scripts/validate-reachability.ts'
       - 'frontend/eslint.config.js'
       - 'frontend/scripts/translation-utils.ts'
       - 'frontend/package.json'
@@ -94,3 +109,29 @@ jobs:
       # this job reports.
       - name: Run the unit gate selftest
         run: cd frontend && bun run validate:units-selftest
+
+  manifest-selftest:
+    name: Unit Manifest Selftest (advisory)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+
+      - name: Set up Bun
+        uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2
+        with:
+          bun-version-file: '.bun-version'
+
+      # The checker needs no node_modules of its own, but `bun install` keeps
+      # this job's environment identical to the one above rather than subtly
+      # different in a way nobody would notice until it mattered.
+      - name: Install dependencies
+        run: cd frontend && bun install --frozen-lockfile
+
+      # Runs in its own tempdir tree, so unlike the gate corpus and gate
+      # selftest it takes no shared fixture lock and can run beside them.
+      # Never piped: a pipe would mask the exit code.
+      - name: Run the unit manifest selftest
+        run: cd frontend && bun run validate:units-manifest-selftest
