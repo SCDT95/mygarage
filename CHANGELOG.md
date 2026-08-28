@@ -16,6 +16,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 - Instances set to UK gallons store their imperial users as a custom unit set; displayed values are unchanged (migration 093).
+- Tyre tread now displays and is entered in the unit you use: thirty-seconds of an inch for imperial accounts, millimetres for metric. It was millimetres for everyone, and no conversion existed.
+- Metric tyre pressure now reads in kPa on the tyre card, matching the form beside it, which already used kPa.
+- The odometer field on the fuel and DEF forms now reads and is entered in whole miles or kilometres. About 38% of existing imperial values shift by up to 0.01 km once on their next save, and then stay put.
+- The tyre wear projection reads in whole units. Metric readers see no change.
+- Engine RPM now reads `3,200` everywhere, instead of `3200` on the widget and `3,200` on the session tile.
+- LiveLink session distance is shown as a plain number marked `(unknown unit)`. The device reports it without saying whether it is miles or kilometres, so the previous label was a guess. Nothing about the stored data changed.
 - Fuel and DEF CSV column headers change spelling for everyone, metric readers included: `Liters` is now `Volume (L)`, `Price Per Liter` is `Price Per Unit (L)`, `Outside Temp (C)` is `Outside Temp (c)`, `OBC L/100km` is `OBC Economy (l_100km)`, and `OBC Avg Speed (km/h)` is `OBC Avg Speed (kmh)`. A spreadsheet or script that reads these files by column name needs updating. Every older file still imports unchanged.
 - Exporting with `?units=imperial` now writes US gallons and marks the file `imperial`, even on an instance set to the UK gallon standard. Files already marked `imperial_uk` still import correctly and always will.
 - CSV import now refuses an ambiguous or self-contradictory file with HTTP 400 naming the cause, instead of guessing: an unknown unit token, a unit token for the wrong quantity, an unrecognised `unit_system` marker, two columns for the same quantity, and rows that disagree about `unit_system` or `units_version`.
@@ -33,6 +39,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - The US/UK gallon setting now follows the instance-wide default unit set rather than the standalone gallon setting. On an instance that has run the unit-preferences migration, changing it in Settings → System applies until the next reload, which then resets the stored value to the instance default; on an instance that has not, it still works as before.
 
 ### Fixed
+- UK-gallon accounts stored fuel, DEF and propane prices about 20% too high, and read them back with the same wrong factor so the form looked correct. Volume and price now use your own gallon (#152).
+- Anonymous visitors were shown imperial units regardless of the instance default, because the fallback was hardcoded rather than read from the configured default.
+- Fuel economy for UK-gallon accounts was calculated with US gallons, so MPG read about 20% low beside a correctly converted volume.
+- A metric account entering a volume with three decimals, such as `47.3176` litres, could not save the record at all.
+- The shop and POI map drew its search-radius circle at imperial scale for everyone, whatever the account's units.
+- DEF tank capacity entered in gallons was stored using the US gallon on instances set to UK gallons.
 - Logged-out visitors who have never picked a unit system now see the units the instance is configured for, instead of always imperial. A visitor who has picked one keeps that choice.
 - PSI-to-canonical conversion returned bar instead of kPa.
 - Exporting an imperial CSV backup and importing it again silently changed the data. Miles and gallons were written with two decimals, so 500.00 km came back as 500.01 and 40.000 L came back as 40.012, drifting further on every round trip. v6 writes enough decimals to be exact.
