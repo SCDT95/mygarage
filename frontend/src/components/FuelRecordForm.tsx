@@ -23,7 +23,9 @@ import { useCreateFuelRecord, useUpdateFuelRecord, useParseFuelReceipt, type Fue
 import { useUnitPreference } from '../hooks/useUnitPreference'
 import { useAuth } from '../contexts/AuthContext'
 import { UnitConverter, UnitFormatter } from '../utils/units'
-import { toCanonicalKm, toCanonicalLiters, priceToDisplay, priceToCanonical, readNumber } from '../utils/decimalSafe'
+import { toCanonicalLiters, priceToDisplay, priceToCanonical, readNumber } from '../utils/decimalSafe'
+import { useUnitFormat } from '../hooks/useUnitFormat'
+import { canonicalFromUnitField, seedUnitField, type UnitFieldOrigin } from '../utils/unitFormat'
 import { useOnUserEdit } from '../hooks/useOnUserEdit'
 import { getUsageTracking } from '../utils/usageTracking'
 import CurrencyInputPrefix from './common/CurrencyInputPrefix'
@@ -81,7 +83,13 @@ export default function FuelRecordForm({ vin, record, onClose, onSuccess }: Fuel
   // flash the wrong field before the vehicle fetch resolves.
   const [vehicleUsageUnit, setVehicleUsageUnit] = useState<string>('distance')
   const [vehicleSecondaryUsageEnabled, setVehicleSecondaryUsageEnabled] = useState<boolean>(false)
-  const { system, units } = useUnitPreference()
+  const { units } = useUnitPreference()
+  // Per-quantity adapters. The binary `system` is D8-collapsed from VOLUME, so
+  // it cannot answer for the odometer or the outside temperature: a client
+  // resolving `{volume: 'L', distance: 'mi'}` reads 'metric' out of it for a
+  // distance they chose in miles, and the field beside their litres was then
+  // seeded, labelled and STORED as kilometres.
+  const u = useUnitFormat()
   const { timeFormat } = useTimeFormat()
   const { user } = useAuth()
 
@@ -176,6 +184,29 @@ export default function FuelRecordForm({ vin, record, onClose, onSuccess }: Fuel
   // reset() — so a rebuild can't discard what the user typed.
   const schema = useMemo(() => makeFuelRecordSchema(t), [t])
 
+  /**
+   * The canonical origin of each unit-bearing field this form seeds.
+   *
+   * A display unit that only formats corrupts data (binding decision D2): a
+   * stored 72420.3 km reads as 45000 mi, and 45000 mi converts back to
+   * 72420.3 km only by luck of the rounding. `seedUnitField` records what each
+   * field was populated from so `canonicalFromUnitField` can hand that value
+   * straight back when the field still reads what it was seeded with, and a
+   * user who opens a record to change the notes does not rewrite the odometer.
+   *
+   * Seeded through a lazy `useState` for the same reason `defaultValues` is
+   * computed once: an origin that moved on re-render would stop being an
+   * origin. Volume and price are deliberately NOT here; they are react-hook-
+   * form number fields whose own round trip Task 2 already made exact.
+   */
+  const [unitOrigins] = useState<{
+    odometer_km: UnitFieldOrigin
+    outside_temp_c: UnitFieldOrigin
+  }>(() => ({
+    odometer_km: seedUnitField(readNumber(record?.odometer_km), u.distance),
+    outside_temp_c: seedUnitField(readNumber(record?.outside_temp_c), u.temperature),
+  }))
+
   const {
     register,
     handleSubmit,
@@ -192,9 +223,9 @@ export default function FuelRecordForm({ vin, record, onClose, onSuccess }: Fuel
       // Immediately overwritten by the sub-field mirror effect below once
       // filledTime seeds on mount — this is just the RHF key placeholder.
       filled_at: '',
-      odometer_km: system === 'imperial' && record?.odometer_km != null
-        ? UnitConverter.kmToMiles(readNumber(record.odometer_km)!) ?? undefined
-        : readNumber(record?.odometer_km),
+      // Seeded in `units.distance`, and the submit converts back through the
+      // SAME adapter. `readNumber('')` is undefined, which is the empty field.
+      odometer_km: readNumber(unitOrigins.odometer_km.display),
       // Engine hours are dimensionless — no unit conversion regardless of system.
       engine_hours: readNumber(record?.engine_hours),
       // Volume is seeded through the SAME resolved set the submit converts
@@ -234,7 +265,7 @@ export default function FuelRecordForm({ vin, record, onClose, onSuccess }: Fuel
       one_time_visit: !record?.station_address_book_id && !!record?.station_name_freetext,
       driver_user_id: readNumber(record?.driver_user_id),
       driver_name_freetext: record?.driver_name_freetext || '',
-      outside_temp_c: readNumber(record?.outside_temp_c),
+      outside_temp_c: unitOrigins.outside_temp_c.canonical ?? undefined,
       obc_l_per_100km: readNumber(record?.obc_l_per_100km),
       obc_avg_speed_kmh: readNumber(record?.obc_avg_speed_kmh),
       // Phase 3.7 — field accepts HH:MM or HH:MM:SS strings as well as
@@ -317,18 +348,14 @@ export default function FuelRecordForm({ vin, record, onClose, onSuccess }: Fuel
   const [quickAddOpen, setQuickAddOpen] = useState(false)
   const [quickAddName, setQuickAddName] = useState('')
 
-  // Phase 3.6 follow-up — outside temperature display state. Backend
-  // stores canonical Celsius (`outside_temp_c`); imperial users see and
-  // type Fahrenheit. The form's actual ``outside_temp_c`` field receives
-  // the converted canonical value via setValue. Initialized from the
-  // record's stored Celsius (converted to °F when imperial).
-  const [outsideTempDisplay, setOutsideTempDisplay] = useState<string>(() => {
-    if (record?.outside_temp_c == null) return ''
-    const c = Number(record.outside_temp_c)
-    if (Number.isNaN(c)) return ''
-    const display = system === 'imperial' ? (c * 9) / 5 + 32 : c
-    return String(Math.round(display * 10) / 10)
-  })
+  // Outside temperature display state. The backend stores canonical Celsius
+  // (`outside_temp_c`) and the form's own field holds that canonical value;
+  // this string is what the user reads and types, in `units.temperature`.
+  // Fahrenheit is the one AFFINE token in the set, so its conversion is the
+  // adapter's business and never a local `9/5 + 32`.
+  const [outsideTempDisplay, setOutsideTempDisplay] = useState<string>(
+    () => unitOrigins.outside_temp_c.display
+  )
   const filledAt = watch('filled_at')
   const isMultiFuel = !!vehicleFuelTypeSecondary
   const obcAvailable = !!filledAt && filledAt.length > 0
@@ -426,11 +453,13 @@ export default function FuelRecordForm({ vin, record, onClose, onSuccess }: Fuel
     if (!receiptDraft) return
     if (receiptDraft.date) setValue('date', receiptDraft.date, { shouldValidate: true })
     if (receiptDraft.odometer_km != null) {
-      const raw = Number(receiptDraft.odometer_km)
-      const display =
-        system === 'imperial' ? UnitConverter.kmToMiles(raw) : raw
-      if (display != null && !Number.isNaN(display)) {
-        setValue('odometer_km', Math.round(display * 10) / 10, { shouldValidate: true })
+      // Through the SAME adapter and the same presentation the seed uses, so
+      // an accepted draft lands the value a seeded field would have shown.
+      // This path has its own seed calls rather than the form's, which is
+      // where both of Task 2's surviving mutants lived.
+      const display = readNumber(u.distance.toInputValue(Number(receiptDraft.odometer_km)))
+      if (display !== undefined) {
+        setValue('odometer_km', display, { shouldValidate: true })
       }
     }
     if (receiptDraft.liters != null) {
@@ -512,13 +541,24 @@ export default function FuelRecordForm({ vin, record, onClose, onSuccess }: Fuel
       filledAtValue = normTime ? joinFilledAt(data.date, normTime) : null
     }
 
+    const odometerTyped = readNumber(data.odometer_km)
+
     try {
       // Convert user-entered values to canonical metric (SI) for the API.
       const payload: FuelRecordCreate | FuelRecordUpdate = {
         vin,
         date: data.date,
         filled_at: filledAtValue,
-        odometer_km: toCanonicalKm(data.odometer_km, system) ?? undefined,
+        // Back through `units.distance`, and an untouched field returns the
+        // canonical value it was seeded from rather than a re-conversion of a
+        // rounded display. `readNumber` also absorbs `registerDecimal`'s
+        // INVALID_NUMBER symbol, which throws on every implicit coercion.
+        odometer_km:
+          canonicalFromUnitField(
+            odometerTyped === undefined ? '' : String(odometerTyped),
+            unitOrigins.odometer_km,
+            u.distance
+          ) ?? undefined,
         // Dimensionless — submitted verbatim, no canonical conversion.
         engine_hours: data.engine_hours,
         // ★ Volume and price convert through ONE resolved set. Splitting them
@@ -758,11 +798,11 @@ export default function FuelRecordForm({ vin, record, onClose, onSuccess }: Fuel
               <Input type="date" id="date" {...register('date')} invalid={!!errors.date} disabled={isSubmitting} />
             </Field>
             {tracksDistance && (
-              <Field id="odometer_km" label={t('common:mileage')} unit={UnitFormatter.getDistanceUnit(system)} error={errors.odometer_km}>
+              <Field id="odometer_km" label={t('common:mileage')} unit={u.distance.label} error={errors.odometer_km}>
                 <NumberInput
                   id="odometer_km"
                   {...registerDecimal(register, 'odometer_km')}
-                  placeholder={system === 'imperial' ? '45000' : '72420'}
+                  placeholder={units.distance === 'mi' ? '45000' : '72420'}
                   invalid={!!errors.odometer_km}
                   disabled={isSubmitting}
                 />
@@ -787,7 +827,7 @@ export default function FuelRecordForm({ vin, record, onClose, onSuccess }: Fuel
           <div className="grid grid-cols-3 gap-4">
             {showGallons && (
               <Field id="liters" label={t('fuel.volume')} unit={UnitFormatter.getVolumeUnit(units)} error={errors.liters}>
-                <NumberInput id="liters" {...registerDecimal(register, 'liters')} placeholder={system === 'imperial' ? '12.500' : '47.318'} invalid={!!errors.liters} disabled={isSubmitting} />
+                <NumberInput id="liters" {...registerDecimal(register, 'liters')} placeholder={units.volume === 'L' ? '47.318' : '12.500'} invalid={!!errors.liters} disabled={isSubmitting} />
               </Field>
             )}
             {showKwh && (
@@ -806,7 +846,7 @@ export default function FuelRecordForm({ vin, record, onClose, onSuccess }: Fuel
                 <NumberInput
                   id="price_per_unit"
                   {...registerDecimal(register, 'price_per_unit')}
-                  placeholder={isElectric ? '0.130' : (system === 'imperial' ? '3.499' : '0.924')}
+                  placeholder={isElectric ? '0.130' : (units.volume === 'L' ? '0.924' : '3.499')}
                   invalid={!!errors.price_per_unit}
                   disabled={isSubmitting}
                   className="pl-7"
@@ -1071,14 +1111,15 @@ export default function FuelRecordForm({ vin, record, onClose, onSuccess }: Fuel
 
                 {/* Outside temp — controlled input (value/onChange). M1: compose <Input>
                     (it forwards value/onChange/step/id via ...rest). This IS a real
-                    display-boundary field: the label unit varies (°F/°C) AND onChange
-                    converts F→C to canonical — unchanged from today. */}
-                <Field id="outside_temp_display" label={t('fuel.outsideTemp')} unit={system === 'imperial' ? '°F' : '°C'} error={errors.outside_temp_c}>
+                    display-boundary field: the label, the step and the conversion all
+                    come from `units.temperature`, which is an independent choice from
+                    the volume `system` collapses. */}
+                <Field id="outside_temp_display" label={t('fuel.outsideTemp')} unit={u.temperature.label} error={errors.outside_temp_c}>
                   <Input
                     type="number"
                     id="outside_temp_display"
                     mono
-                    step="0.1"
+                    step={u.temperature.step}
                     value={outsideTempDisplay}
                     onChange={(e) => {
                       const raw = e.target.value
@@ -1087,10 +1128,18 @@ export default function FuelRecordForm({ vin, record, onClose, onSuccess }: Fuel
                         setValue('outside_temp_c', undefined as unknown as number)
                         return
                       }
-                      const num = parseFloat(raw)
-                      if (Number.isNaN(num)) return
-                      const canonical = system === 'imperial' ? ((num - 32) * 5) / 9 : num
-                      setValue('outside_temp_c', canonical, { shouldValidate: true })
+                      if (Number.isNaN(parseFloat(raw))) return
+                      // Re-typing the seeded reading is not an edit of the
+                      // quantity, so it returns the stored Celsius rather than
+                      // a value round-tripped through the display precision.
+                      const canonical = canonicalFromUnitField(
+                        raw,
+                        unitOrigins.outside_temp_c,
+                        u.temperature
+                      )
+                      setValue('outside_temp_c', canonical ?? (undefined as unknown as number), {
+                        shouldValidate: true,
+                      })
                     }}
                     invalid={!!errors.outside_temp_c}
                     disabled={isSubmitting}
