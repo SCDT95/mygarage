@@ -711,17 +711,24 @@ SCRIPT_NEGATIVE = [
     Case(
         "S-N8-local-format-distance",
         "import type { UnitSet } from '@/types/units'\n"
-        "function formatDistance(meters: number, units: UnitSet): string {\n"
-        "  return `${meters} ${units.distance}`\n"
+        "function formatFuelEconomy(l100km: number, units: UnitSet): string {\n"
+        "  return `${l100km} ${units.consumption}`\n"
         "}\n"
-        "export function cell(m: number, units: UnitSet): string {\n"
-        "  return formatDistance(m, units)\n"
+        "export function cell(v: number, units: UnitSet): string {\n"
+        "  return formatFuelEconomy(v, units)\n"
         "}\n",
         0,
         why="★ POICard's real shape, measured: matching the METHOD NAME alone "
         "flagged three module-local `formatDistance` helpers, and POICard's is "
         "correct migrated code taking a resolved set. A static method is only "
-        "reachable through a receiver, so requiring one separates them.",
+        "reachable through a receiver, so requiring one separates them. "
+        "★ IT SPELLED THAT HELPER `formatDistance` UNTIL TASK 6, and the rename "
+        "is the case working rather than the case bending: retiring "
+        "`UnitFormatter.formatDistance` took that name out of the DERIVED set, so "
+        "the fixture stopped colliding with anything and M52 became a survivor "
+        "flipping nothing. The selftest said so. The rule is unchanged and still "
+        "guards the six surviving binary names, so the fixture uses one of them; a "
+        "negative that can no longer be made positive is not a negative.",
         pinned_by="M52-formatter-name-without-receiver",
         ext=".ts",
     ),

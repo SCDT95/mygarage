@@ -1,5 +1,22 @@
 # Unit Conversion System
 
+> **STALE, and stale at the premise. Do not copy code from this document.**
+>
+> It describes a two-system model in which "All data is stored in Imperial
+> units". Storage has been metric-canonical since `6f04e53`, and units are
+> resolved PER QUANTITY rather than per system, so a reader can hold litres and
+> miles at once. Several APIs named below no longer exist:
+> `UnitFormatter.formatDistance`, `UnitFormatter.getDistanceUnit`,
+> `UnitConverter.kmToMiles` and `UnitConverter.milesToKm` were deleted once
+> their last call site moved onto the resolved token, along with
+> `formatVolumePerDistance` and `getVolumePerDistanceLabel`, which moved to
+> `frontend/src/utils/unitFormat.ts`.
+>
+> The live contract is `frontend/src/utils/unitAdapters.ts` (conversion),
+> `frontend/src/utils/unitFormat.ts` (composition) and `useUnitFormat()` in a
+> component. This banner is here because deleting an API without saying so
+> leaves a document people copy from; rewriting the document is its own task.
+
 MyGarage includes a comprehensive unit conversion system that allows users to view and enter data in either Imperial (US) or Metric units based on their preference.
 
 ## Overview

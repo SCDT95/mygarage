@@ -530,7 +530,7 @@ export class UnitConverter {
  * of these call sites under its `formatter-binary` leg.
  *
  * So each comparison carries `// units-exempt:` naming who owns its call sites.
- * A reason-bearing pragma silences anything (`validate-units.ts:486`), so the
+ * A reason-bearing pragma silences anything (`EXEMPT_PRAGMA` in `validate-units.ts`), so the
  * exemptions do not rest on that prose:
  * `utils/__tests__/unitsBinaryApiSurface.test.ts` derives this surface from the
  * file and fails when a method outlives its last production caller. Seven

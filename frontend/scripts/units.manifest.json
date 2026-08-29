@@ -515,11 +515,13 @@
     "components/__tests__/FuelRecordForm.gallonUnits.test.tsx"
    ],
    "findings": [
-    "token-branch x3 (units gate baseline)"
+    "token-branch x3 (units gate baseline)",
+    "USER-VISIBLE DISPLAY CHANGE, SHIPPED by task 6, for the changelog: the parsed-receipt preview shows the volume in the reader's own unit (\"12.50 gal\") rather than the canonical litres it had always printed (\"47.318 L\"), so it now agrees with the field that accepting it fills in."
    ],
    "owners": [
     "task 6",
-    "task 7"
+    "task 7",
+    "task 9"
    ]
   },
   {
@@ -2011,10 +2013,12 @@
    "digest": "3bf59066677cafac83b4e1425f5b4339b7c44117a978bd7d645046c4100dc9e0",
    "reason": "reviewed at this snapshot. Task 6 replaced the raw `units.volume === 'L'` prose selection with the same `{{unit}}` interpolation the volume COLUMN already used, so the two cannot disagree: totalLiters / totalGallons are gone and totalVolume takes getVolumeUnit(units).",
    "findings": [
-    "vehicleHelp.costAnalysis.costPerMile* and vehicleHelp.fuelEconomy.*Mpg* are imperial-only help copy rendered unconditionally by AnalyticsHelpModal."
+    "vehicleHelp.costAnalysis.costPerMile* and vehicleHelp.fuelEconomy.*Mpg* are imperial-only help copy rendered unconditionally by AnalyticsHelpModal.",
+    "USER-VISIBLE COPY CHANGE, SHIPPED by task 6, for the changelog: the propane and DEF volume-total captions read \"Total (L)\" / \"Total (gal)\" rather than \"Total Liters\" / \"Total Gallons\". One interpolating totalVolume key replaces the pair in all seven bundles, and the pair is deleted rather than left unreferenced."
    ],
    "owners": [
-    "task 6"
+    "task 6",
+    "task 9"
    ],
    "tests": [
     "__tests__/volumeTotalLabelLocales.test.ts"
@@ -2033,7 +2037,8 @@
    "reason": "fuel.receiptTextPlaceholder is a plausible EXAMPLE receipt (ruling R5's exempt class): there is no canonical value behind it to convert. Task 6 fixed the reminder distance copy: reminder.milesUntilDue / reminder.milesRequired are renamed to reminder.distanceUntilDue / reminder.distanceRequired and their prose no longer names a unit, so the unit comes only from u.distance.label. Covered by components/__tests__/ReminderForm.distanceCopy.test.tsx, which resolves this bundle and asserts the RENDERED prose rather than a key.",
    "findings": [
     "fuel.mpgTip and fuel.electricTip name MPG and kWh/100mi unconditionally.",
-    "USER-VISIBLE COPY CHANGE, SHIPPED: task 3 deleted four placeholder keys (mileageAbsolutePlaceholderImperial/Metric, lastDoneMileagePlaceholderImperial/Metric) across all seven forms.json files and added reminderForm.mileageExamplePlaceholder in their place. No orphaned key and no dangling reference remain. Task 3 fix round 1 LOW-4."
+    "USER-VISIBLE COPY CHANGE, SHIPPED: task 3 deleted four placeholder keys (mileageAbsolutePlaceholderImperial/Metric, lastDoneMileagePlaceholderImperial/Metric) across all seven forms.json files and added reminderForm.mileageExamplePlaceholder in their place. No orphaned key and no dangling reference remain. Task 3 fix round 1 LOW-4.",
+    "USER-VISIBLE COPY CHANGE, SHIPPED by task 6, for the changelog: the reminder mileage field is labelled \"Distance Until Due\" rather than \"Miles Until Due\", and its validation message follows. reminder.milesUntilDue / reminder.milesRequired are renamed to reminder.distanceUntilDue / reminder.distanceRequired in all seven bundles; six of the seven had prose naming a unit the suffix beside it could contradict."
    ],
    "owners": [
     "task 6",
@@ -2075,6 +2080,12 @@
    "reason": "windowSticker.misc.fuelEconomyMpg and the warranty placeholders reproduce a US Monroney label verbatim and are exempt for the same reason as WindowStickerUpload. defList.gallons and propaneList.gallons still EXIST in `en` and in these bundles; what changed is that no code reads them any more (both list headers moved to the `volumeUnit` interpolation, and their tests assert the old key is absent from the rendered header). Unreferenced keys, not stale translations: verified by grep, because the first version of this sentence said `en` had dropped them and `en` had not. Task 6 replaced the raw `units.volume === 'L'` prose selection with the same `{{unit}}` interpolation the volume COLUMN already used, so the two cannot disagree: totalLiters / totalGallons are gone and totalVolume takes getVolumeUnit(units).",
    "tests": [
     "__tests__/volumeTotalLabelLocales.test.ts"
+   ],
+   "findings": [
+    "USER-VISIBLE COPY CHANGE, SHIPPED by task 6, for the changelog: the propane and DEF volume-total captions read \"Total (L)\" / \"Total (gal)\" rather than \"Total Liters\" / \"Total Gallons\". One interpolating totalVolume key replaces the pair in all seven bundles, and the pair is deleted rather than left unreferenced."
+   ],
+   "owners": [
+    "task 9"
    ]
   },
   {
@@ -2795,7 +2806,7 @@
   {
    "path": "src/utils/units.ts",
    "disposition": "audited",
-   "digest": "b27026f33bc78d079c78c6f4fcee19029e75a578bd8899ff4a0124c8d16fe2e9",
+   "digest": "5f0f658627f2d74cb0fe0d3bb5cad8905e5c0ed3273f151deaa563a32021085f",
    "reason": "gate-detectable unit decisions, recorded not asserted clean (plan 3b task 1 ordering)",
    "tests": [
     "utils/__tests__/unitFactorParity.test.ts",
@@ -2806,12 +2817,14 @@
    "findings": [
     "token-branch x5 (units gate baseline)",
     "R2 CLOSED: every comparison decided per occurrence. Seven methods deleted by task 2 (formatTemperature, formatPressure, formatWeight, formatTorque, getTemperatureUnit, getPressureUnit, getTorqueUnit) because no production file called them and a retained binary UnitSystem API is a trap. getWeightUnit followed in task 3 when PropaneRecordForm moved onto the mass adapter, and formatDistance and getDistanceUnit followed in task 6 when its twenty-seven call sites moved onto the resolved distance token; the raw pair UnitConverter.kmToMiles / milesToKm went with them, having no caller left either. Each retirement was announced by utils/__tests__/unitsBinaryApiSurface.test.ts failing first, which is what the exemptions rest on rather than the pragma prose. What survives is the fuel-economy, fuel-rate and cost-per-distance surface, each `// units-exempt:` and each still with production callers; how many is printed by `validate-units.ts --derived` rather than written down.",
-    "the five remaining token branches are volume and mass dispatch INSIDE resolved-set methods (litersToVolumeUnit, formatVolume, getVolumeUnit, getMassUnit, formatVolumeShort), each reading the quantity it is about. The two that were NOT — formatVolumePerDistance and getVolumePerDistanceLabel, which derived a DISTANCE from units.volume — are gone from this file: task 6 moved them to utils/unitFormat.ts, where adapterFor supplies both halves.",
-    "ESLint: units.ts is no longer silenced whole-file. It left both the i18n-utility `off` block and UNITS_CONSTANT_EXEMPT; the factor table carries a twelve-line eslint-disable and nothing else does. Of the 12 findings that silence was hiding, 10 are the table and 2 are fixed."
+    "the five remaining token branches are volume and mass dispatch INSIDE resolved-set methods (litersToVolumeUnit, formatVolume, getVolumeUnit, getMassUnit, formatVolumeShort), each reading the quantity it is about. The two that were NOT (formatVolumePerDistance and getVolumePerDistanceLabel, which derived a DISTANCE from units.volume) are gone from this file: task 6 moved them to utils/unitFormat.ts, where adapterFor supplies both halves.",
+    "ESLint: units.ts is no longer silenced whole-file. It left both the i18n-utility `off` block and UNITS_CONSTANT_EXEMPT; the factor table carries a twelve-line eslint-disable and nothing else does. Of the 12 findings that silence was hiding, 10 are the table and 2 are fixed.",
+    "USER-VISIBLE DISPLAY CHANGE, SHIPPED by task 6, for the changelog: an imperial reader's distances lose two decimal places. The retired UnitFormatter.formatDistance converted through UnitConverter.kmToMiles, which rounds to 2, and then called toLocaleString, so 160000 km read \"99,419.27 mi\"; the resolved `mi` adapter carries precision 0 and reads \"99,419 mi\". Metric was already Math.round and does not move. It affects every migrated read site (odometer rows and heroes, due mileages, warranty limits, predicted service points, chart tooltips), and it makes the display agree with the entry fields, which phase 3a already pinned to whole miles."
    ],
    "owners": [
     "task 2",
-    "task 6"
+    "task 6",
+    "task 9"
    ]
   },
   {

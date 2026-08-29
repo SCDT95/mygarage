@@ -468,8 +468,11 @@ MUTATIONS = [
         "      if (true) {",
         "script",
         ["S-N8-local-format-distance"],
-        "the mirror of M49: dropping the receiver entirely flags three module-local "
-        "`formatDistance` helpers, one of which (POICard's) is correct migrated code",
+        "the mirror of M49: dropping the receiver entirely flags a module-local "
+        "helper whose NAME collides with a binary formatter. Three such helpers are "
+        "spelled `formatDistance` in production and POICard's is correct migrated "
+        "code; task 6 retired that method, so S-N8 now collides on a surviving name "
+        "instead. See its `why`.",
     ),
     Mutation(
         "M51-every-static-method-is-binary",
@@ -593,6 +596,54 @@ MUTATIONS = [
         "fire looks like from the outside, and it is why the guard is not "
         "defensive clutter.",
         also=[("  return requireNonEmpty(found, 'binary formatter method', UNITS_SOURCE)", '  return found')],
+    ),
+    Mutation(
+        "M63-rename-the-binary-type-refuses",
+        "gate",
+        "const BINARY_SYSTEM_TYPE = 'UnitSystem'",
+        "const BINARY_SYSTEM_TYPE = 'UnitSystemRenamed'",
+        "script",
+        [],  # filled in below: every script case, because the gate refuses them all
+        "★ THE ONE-WORD RENAME THAT EMPTIES EVERY VOCABULARY AT ONCE. Both derived "
+        "sets are matched by `takesBinarySystem`, which compares an annotation's "
+        "TEXT to this literal, so changing it makes the formatter leg and the "
+        "conversion leg blind in the same instant. `requireBinarySystemType` "
+        "refuses on it directly, and refuses FIRST, which is the point: the "
+        "accidental cover in `deriveBinaryFormatterMethods` only holds while the "
+        "formatter surface is non-empty, and that surface shrinks with every task "
+        "that migrates its call sites.",
+        expect_probe="refuses:declares no type named",
+    ),
+    Mutation(
+        "M64-renamed-type-with-no-direct-check",
+        "gate",
+        "const BINARY_SYSTEM_TYPE = 'UnitSystem'",
+        "const BINARY_SYSTEM_TYPE = 'UnitSystemRenamed'",
+        "script",
+        [
+            "S-P30-formatter-binary-call",
+            "S-P31-formatter-label-selector",
+            "S-P32-binary-conversion-call",
+            "S-P35-aliased-formatter-receiver",
+        ],
+        "★ and the SURVIVOR it prevents, built and run. Take away the direct check "
+        "AND the accidental cover (which is what retiring the last binary formatter "
+        "does to `requireNonEmpty`, exactly as it already did on the conversion "
+        "leg), and the same one-word rename is SILENT: three positives quietly stop "
+        "being reported, every other case including both positive controls still "
+        "passes, and the gate prints a tick. That is why the direct check is not "
+        "defensive clutter. ★ FOUR positives, not three: the FIRST run of this "
+        "mutation listed only the formatter cases and the harness reported the "
+        "extra one, which is the mutation teaching its own author something. "
+        "`takesBinarySystem` is shared, so the one-word rename blinds the "
+        "conversion leg in the same instant, and S-P32 goes quiet with them.",
+        also=[
+            ("requireBinarySystemType()\n", ""),
+            (
+                "  return requireNonEmpty(found, 'binary formatter method', UNITS_SOURCE)",
+                "  return found",
+            ),
+        ],
     ),
     # ---------------- script leg: the R6 carry, five of six ------------------
     Mutation(
@@ -890,6 +941,7 @@ for _m in MUTATIONS:
     if _m.mid in {
         "M42-no-parse-diagnostics-property",
         "M61-empty-formatter-derivation-refuses",
+        "M63-rename-the-binary-type-refuses",
     }:
         _m.flips = [c.cid for c in C.SCRIPT_POSITIVE + C.SCRIPT_NEGATIVE]
 

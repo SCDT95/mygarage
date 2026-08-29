@@ -29,7 +29,7 @@ import * as ts from 'typescript'
  * So the exemption carries a CONDITION, and this test is the condition. R1 asks
  * for exemptions that are structural rather than prose, because the gate's
  * `// units-exempt:` pragma accepts any reason-bearing comment
- * (`validate-units.ts:486`). The pragmas on the survivors say why; this says
+ * (`EXEMPT_PRAGMA` in `validate-units.ts`). The pragmas on the survivors say why; this says
  * when they expire. When task 6 migrates the last `formatDistance(km, system)`
  * call site, this test fails and the method has to go.
  *

@@ -140,6 +140,6 @@ describe('UnitFormatter summary card helpers', () => {
   // '4.7' under an 'L/1,000 km' label. Plan 3b task 6 moved both functions to
   // `utils/unitFormat.ts`, where `adapterFor` supplies BOTH halves from the
   // resolved set, and their cases moved with them into
-  // `utils/__tests__/unitFormat.test.ts` — including the two mixed sets, which
+  // `utils/__tests__/unitFormat.test.ts`, including the two mixed sets, which
   // the retired pair could not express at all.
 })

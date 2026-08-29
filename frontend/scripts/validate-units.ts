@@ -372,6 +372,53 @@ function takesBinarySystem(node: TsNode, source: TsSourceFile): boolean {
   return (node.parameters ?? []).some((p) => p.type?.getText(source).trim() === BINARY_SYSTEM_TYPE)
 }
 
+/**
+ * The binary type itself still exists, checked DIRECTLY rather than by accident.
+ *
+ * ★ THE HOLE THIS CLOSES, found in task 5's review and owned by nobody. Every
+ * vocabulary below is derived by `takesBinarySystem`, which compares an
+ * annotation's TEXT to the literal `'UnitSystem'`. Rename that type and all of
+ * them come back empty at once: the formatter leg loses its vocabulary, the
+ * conversion leg loses its, and both detectors then report zero findings on a
+ * tree full of them while this gate prints a tick.
+ *
+ * Today `deriveBinaryFormatterMethods` catches that as a SIDE EFFECT, because
+ * `requireNonEmpty` refuses when its own set comes back empty. That cover is
+ * temporary by construction. The formatter surface shrinks with every task that
+ * migrates its call sites (task 2 retired seven, task 3 one, task 6 two more),
+ * and on the day the last one goes, an empty set becomes the TRUTH rather than
+ * a symptom, `requireNonEmpty` has to go with it exactly as it already did for
+ * the conversion leg, and the rename becomes invisible. A task whose action
+ * removes a check supplies its replacement, so the replacement lands now rather
+ * than on the day the window opens.
+ *
+ * It costs one walk and it does not expire.
+ */
+function requireBinarySystemType(): void {
+  const source = parseForDerivation(UNITS_SOURCE)
+  let declared = false
+  const walk = (node: TsNode): void => {
+    if (
+      node.kind === ts.SyntaxKind.TypeAliasDeclaration &&
+      node.name?.text === BINARY_SYSTEM_TYPE
+    ) {
+      declared = true
+    }
+    ts.forEachChild(node, walk)
+  }
+  walk(source)
+  if (!declared) {
+    throw new Error(
+      `${relative(ROOT, UNITS_SOURCE)} declares no type named ${BINARY_SYSTEM_TYPE}. ` +
+        'Every vocabulary this gate derives is matched by that annotation, so all of ' +
+        'them would come back empty and every binary leg would report zero findings on ' +
+        'a tree full of them. Refusing to run. If the type was renamed, rename ' +
+        'BINARY_SYSTEM_TYPE with it; if it is gone, the binary legs are gone too and ' +
+        'should be deleted rather than left silently reporting nothing.',
+    )
+  }
+}
+
 /** Every static `UnitFormatter` method that decides on a binary `UnitSystem`. */
 function deriveBinaryFormatterMethods(): Set<string> {
   const source = parseForDerivation(UNITS_SOURCE)
@@ -425,12 +472,11 @@ function conversionHelpersIn(source: TsSourceFile): {
  * `binary`: the walk still has to come back holding the resolved-set converters
  * R8 kept, which is what a gutted file or a changed AST shape would fail.
  *
- * The other way `binary` could empty is `BINARY_SYSTEM_TYPE` ceasing to match,
- * and that is covered one function up: `deriveBinaryFormatterMethods` runs the
- * SAME `takesBinarySystem` against `units.ts` and still calls `requireNonEmpty`
- * on its result, so a renamed `UnitSystem` refuses the whole gate there. If
- * task 6 empties the formatter set too, that cover goes with it and this file
- * needs a direct check that the type still exists.
+ * The other way `binary` could empty is `BINARY_SYSTEM_TYPE` ceasing to match.
+ * That used to rest on a side effect one function up, and only for as long as
+ * the FORMATTER set stayed non-empty. It is checked directly by
+ * `requireBinarySystemType` now, which runs before either derivation and does
+ * not expire when the last binary formatter retires. See its docstring.
  */
 function deriveBinaryConversionHelpers(): Set<string> {
   const { binary, exported } = conversionHelpersIn(parseForDerivation(CONVERSION_SOURCE))
@@ -517,6 +563,7 @@ function deriveQuantityTokens(): Map<string, Set<string>> {
   return tokens
 }
 
+requireBinarySystemType()
 const BINARY_FORMATTER_METHODS = deriveBinaryFormatterMethods()
 const BINARY_CONVERSION_HELPERS = deriveBinaryConversionHelpers()
 const QUANTITY_TOKENS = deriveQuantityTokens()
