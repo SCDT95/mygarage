@@ -423,13 +423,14 @@ MUTATIONS = [
     Mutation(
         "M44-drop-formatter-leg",
         "gate",
-        "        if (BINARY_FORMATTER_METHODS.has(called)) {",
-        "        if (false && BINARY_FORMATTER_METHODS.has(called)) {",
+        "        if (binaryFormattersHere.has(called)) {",
+        "        if (false && binaryFormattersHere.has(called)) {",
         "script",
         [
             "S-P30-formatter-binary-call",
             "S-P31-formatter-label-selector",
             "S-P35-aliased-formatter-receiver",
+            "S-P37-binary-formatter-on-a-foreign-class",
         ],
         "the whole formatter leg. 73 production calls carry no system literal, so "
         "without it the comparison leg certifies every one of them as clean.",
@@ -437,8 +438,8 @@ MUTATIONS = [
     Mutation(
         "M45-formatter-format-prefix-only",
         "gate",
-        "        if (!isStatic(member) || !takesBinarySystem(member, source)) continue",
-        "        if (!isStatic(member) || !member.name?.getText(source).startsWith('format')) continue",
+        "        if (takesBinarySystem(member, source)) binary.add(member.name.getText(source))",
+        "        if (member.name.getText(source).startsWith('format')) binary.add(member.name.getText(source))",
         "script",
         [
             "S-N7-formatter-resolved-set",
@@ -460,9 +461,13 @@ MUTATIONS = [
         "      if (callee?.kind === ts.SyntaxKind.PropertyAccessExpression) {",
         "      if (callee?.expression?.getText(sf) === FORMATTER_CLASS) {",
         "script",
-        ["S-P35-aliased-formatter-receiver"],
+        [
+            "S-P35-aliased-formatter-receiver",
+            "S-P37-binary-formatter-on-a-foreign-class",
+        ],
         "keying on the receiver's spelling makes `import { UnitFormatter as UF }` "
-        "a one-line bypass",
+        "a one-line bypass, and since task 7 it also loses a binary formatter "
+        "declared on a class with any other name",
     ),
     Mutation(
         "M52-formatter-name-without-receiver",
@@ -480,8 +485,8 @@ MUTATIONS = [
     Mutation(
         "M51-every-static-method-is-binary",
         "gate",
-        "        if (!isStatic(member) || !takesBinarySystem(member, source)) continue",
-        "        if (!isStatic(member)) continue",
+        "        if (takesBinarySystem(member, source)) binary.add(member.name.getText(source))",
+        "        binary.add(member.name.getText(source))",
         "script",
         ["S-N7-formatter-resolved-set"],
         "T4-R7's mirror on the new leg: a detector that flags every formatter call "
@@ -504,8 +509,11 @@ MUTATIONS = [
         "      binary.add(node.name.getText(source))",
         "script",
         ["S-N9-set-conversion-helper"],
-        "`toCanonicalLiters` sits in the same file and takes a resolved set: the "
-        "leg cannot key on the module or on the `toCanonical` prefix",
+        "a resolved-set helper sits in the same file as the binary ones did: the "
+        "leg cannot key on the module or on a name prefix. The case spelled "
+        "`toCanonicalLiters` until task 7 deleted it and now spells "
+        "`seedPriceField`, which is what a negative naming a live symbol costs "
+        "and is cheaper than a negative that can no longer be made positive",
     ),
     Mutation(
         "M47-drop-token-branch-leg",
@@ -569,8 +577,8 @@ MUTATIONS = [
     Mutation(
         "M61-empty-formatter-derivation-refuses",
         "gate",
-        '    if (node.kind === ts.SyntaxKind.ClassDeclaration && node.name?.text === FORMATTER_CLASS) {',
-        '    if (false) {',
+        "      (onlyClass === null || node.name?.text === onlyClass)",
+        "      false",
         "script",
         [],  # filled in below: every script case, because the gate refuses them all
         "★ THE loadTypeScript LESSON, one layer in. The callable set is DERIVED "
@@ -578,27 +586,74 @@ MUTATIONS = [
         "empties it, and a detector with an empty vocabulary reports zero "
         "findings on a tree full of them while the gate prints a tick. The "
         "fail-loud guard turns that into a refusal, which is what this mutation "
-        "measures.",
-        expect_probe="refuses:derived no binary formatter method",
+        "measures. ★ WHAT IT GUARDS MOVED IN TASK 7: the BINARY set is legitimately "
+        "empty now that the last two cost-per-distance methods are retired, so an "
+        "empty one can no longer be the alarm. The guard reads the walk's own "
+        "receipt instead, the STATIC methods `UnitFormatter` does declare, exactly "
+        "as `deriveBinaryConversionHelpers` has guarded `exported` since task 5.",
+        expect_probe="refuses:derived no static UnitFormatter method",
     ),
     Mutation(
         "M62-empty-derivation-without-the-guard",
         "gate",
-        '    if (node.kind === ts.SyntaxKind.ClassDeclaration && node.name?.text === FORMATTER_CLASS) {',
-        '    if (false) {',
+        "      (onlyClass === null || node.name?.text === onlyClass)",
+        "      false",
         "script",
         [
             "S-P30-formatter-binary-call",
             "S-P31-formatter-label-selector",
             "S-P35-aliased-formatter-receiver",
+            "S-P37-binary-formatter-on-a-foreign-class",
         ],
         "★ and the SURVIVOR the guard prevents, built and run: with "
-        "requireNonEmpty gone, the same empty derivation is SILENT. Three "
+        "requireNonEmpty gone, the same empty walk is SILENT. Three "
         "positives quietly stop being reported and every other case, including "
         "both positive controls, still passes. That is what a gate that cannot "
         "fire looks like from the outside, and it is why the guard is not "
-        "defensive clutter.",
-        also=[("  return requireNonEmpty(found, 'binary formatter method', UNITS_SOURCE)", '  return found')],
+        "defensive clutter. Since task 7 the walk feeds BOTH the derivation and "
+        "the per-file augmentation, so disabling it takes the fixtures' own "
+        "declarations with it, which is why these three still flip.",
+        also=[
+            (
+                "  requireNonEmpty(statics, `static ${FORMATTER_CLASS} method`, UNITS_SOURCE)\n",
+                "",
+            )
+        ],
+    ),
+    Mutation(
+        "M66-formatter-augmentation-dropped",
+        "gate",
+        "    ...formatterMethodsIn(sf, null).binary,\n",
+        "",
+        "script",
+        [
+            "S-P30-formatter-binary-call",
+            "S-P31-formatter-label-selector",
+            "S-P35-aliased-formatter-receiver",
+            "S-P37-binary-formatter-on-a-foreign-class",
+        ],
+        "★ THE LINE TASK 7 ADDED, mutated on its own rather than through the walk "
+        "it shares with the derivation. `UnitFormatter`'s binary surface is empty, "
+        "so without the scanned file's own class declarations the formatter leg "
+        "has NO vocabulary and cannot fire at all: the three positives score zero "
+        "and every negative still passes, which is precisely the shape M62 exists "
+        "to make visible one level up. It also measures the same-file blindness "
+        "the augmentation closes, where a component declares a static "
+        "`format(x, system: UnitSystem)` on a class of its own and calls it.",
+    ),
+    Mutation(
+        "M67-augmentation-only-the-production-class",
+        "gate",
+        "    ...formatterMethodsIn(sf, null).binary,",
+        "    ...formatterMethodsIn(sf, FORMATTER_CLASS).binary,",
+        "script",
+        ["S-P37-binary-formatter-on-a-foreign-class"],
+        "★ THE NARROWING THREE POSITIVES COULD NOT SEE. S-P30, S-P31 and S-P35 "
+        "declare a class called `UnitFormatter` on purpose, so restricting the "
+        "per-file augmentation to that name leaves all three green while the leg "
+        "quietly stops covering a binary formatter declared on any other class. "
+        "S-P37 exists for exactly this mutation, and this mutation exists so the "
+        "`onlyClass === null` argument is not a guard nothing can kill.",
     ),
     Mutation(
         "M63-rename-the-binary-type-refuses",
@@ -628,6 +683,7 @@ MUTATIONS = [
             "S-P31-formatter-label-selector",
             "S-P32-binary-conversion-call",
             "S-P35-aliased-formatter-receiver",
+            "S-P37-binary-formatter-on-a-foreign-class",
         ],
         "★ and the SURVIVOR it prevents, built and run. Take away the direct check "
         "AND the accidental cover (which is what retiring the last binary formatter "
@@ -639,12 +695,15 @@ MUTATIONS = [
         "mutation listed only the formatter cases and the harness reported the "
         "extra one, which is the mutation teaching its own author something. "
         "`takesBinarySystem` is shared, so the one-word rename blinds the "
-        "conversion leg in the same instant, and S-P32 goes quiet with them.",
+        "conversion leg in the same instant, and S-P32 goes quiet with them. "
+        "FIVE since task 7, which added a fourth formatter positive; the guard it "
+        "takes away is now the one over the walk's static-method receipt, because "
+        "the binary set the old one guarded is legitimately empty.",
         also=[
             ("requireBinarySystemType()\n", ""),
             (
-                "  return requireNonEmpty(found, 'binary formatter method', UNITS_SOURCE)",
-                "  return found",
+                "  requireNonEmpty(statics, `static ${FORMATTER_CLASS} method`, UNITS_SOURCE)\n",
+                "",
             ),
         ],
     ),

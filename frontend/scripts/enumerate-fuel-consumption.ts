@@ -97,11 +97,14 @@ const UNITS_SOURCE = join(SRC, 'utils', 'units.ts')
  * reports one somewhere else, that hit is a volume site and belongs to whoever
  * owns volume, not to this family.
  *
- * `formatCostPerDistance` and `getCostPerDistanceLabel` sit beside these call
- * sites and are deliberately OUT: their subject is a currency rate quoted over
- * a chosen number of distance units, which is a separate composition question
- * (the per-unit denominator) on a separate work list, task 7. They are named
- * here rather than omitted, so the boundary is a statement instead of a gap.
+ * `formatCostPerDistance` and `getCostPerDistanceLabel` sat beside these call
+ * sites and were deliberately OUT: their subject is a currency rate quoted over
+ * a chosen number of distance units, which was a separate composition question
+ * (the per-unit denominator) on a separate work list, task 7. Task 7 has since
+ * migrated and DELETED both, so a run naming them would resolve two more
+ * `DELETED` rows and nothing else. They stay named here rather than removed,
+ * because the boundary this file drew was a statement about scope and deleting
+ * the statement would leave a gap where a decision used to be.
  */
 const VOCABULARY: readonly { className: string; method: string }[] = [
   { className: 'UnitFormatter', method: 'formatFuelEconomy' },

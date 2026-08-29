@@ -86,11 +86,14 @@ const UNITS_SOURCE = join(SRC, 'utils', 'units.ts')
  * formatters whose parameter IS a binary `UnitSystem`, and the two raw
  * converters a call site reaches for when it makes that decision itself.
  *
- * `formatCostPerDistance` and `getCostPerDistanceLabel` carry a distance too
- * and are deliberately OUT: their subject is a currency rate quoted over a
- * chosen number of distance units, which is a separate composition question on
- * a separate work list. They are named here rather than omitted, so the
- * boundary is a statement instead of a gap.
+ * `formatCostPerDistance` and `getCostPerDistanceLabel` carried a distance too
+ * and were deliberately OUT: their subject is a currency rate quoted over a
+ * chosen number of distance units, which was a separate composition question on
+ * a separate work list, task 7. That task migrated both onto `units.distance`
+ * and deleted them, so naming them here would resolve two more `DELETED` rows.
+ * They stay named rather than removed, because the boundary this file drew was
+ * a statement about scope and deleting the statement leaves a gap where a
+ * decision used to be.
  */
 const VOCABULARY: readonly { className: string; method: string }[] = [
   { className: 'UnitFormatter', method: 'formatDistance' },

@@ -430,6 +430,7 @@
     "tableCaption": "Fuel fill-up history",
     "avgFuelRate": "Moy. {{unit}}",
     "costPerHour": "Coût/h",
+    "costPerDistance": "Coût/{{unit}}",
     "fuelRate": "Débit de carburant"
   },
   "insuranceList": {

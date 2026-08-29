@@ -258,6 +258,7 @@
     "avgFuelRate": "Śr. {{unit}}",
     "confirmDelete": "Potwierdź usunięcie",
     "costPerHour": "Koszt/godz.",
+    "costPerDistance": "Koszt/{{unit}}",
     "date": "Data",
     "deleteError": "Błąd usuwania",
     "exportCSV": "Eksportuj CSV",

@@ -17,6 +17,7 @@
     "anomalyAbove": "Wydano {{spent}} — {{deviation}}% powyżej średniej {{avg}}.",
     "anomalyBelow": "Wydano {{spent}} — {{deviation}}% poniżej średniej {{avg}}.",
     "costPerHourAxis": "Koszt/godzinę ({{currency}})",
+    "costPerDistance": "Koszt/{{unit}}",
     "costPerHourLabel": "Koszt/godzinę",
     "costPerHourValue": "{{value}}/godz.",
     "engineHoursAxis": "Motogodziny",

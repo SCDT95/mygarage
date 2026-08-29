@@ -306,6 +306,7 @@
     "period1Value": "Zeitraum 1: {{value}}",
     "period2Value": "Zeitraum 2: {{value}}",
     "costPerHourAxis": "Kosten/Stunde ({{currency}})",
+    "costPerDistance": "Kosten/{{unit}}",
     "costPerHourLabel": "Kosten/Stunde",
     "costPerHourValue": "{{value}}/Std.",
     "engineHoursAxis": "Motorstunden",

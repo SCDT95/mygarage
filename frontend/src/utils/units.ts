@@ -514,38 +514,42 @@ export class UnitConverter {
  * All format* methods accept the value in canonical SI metric form.
  * For imperial-preferring users, the metric value is converted at render time.
  *
- * ★ THE REMAINING `UnitSystem` METHODS ARE EXEMPT WITH AN EXPIRY, and this is
- * the one place the scheme is written down (plan 3b, ruling R2). How many
- * remain is deliberately not written here: `--derived` prints the set and
- * `unitsBinaryApiSurface.test.ts` pins it, and a count in prose goes stale the
- * next time one retires.
+ * ★ THERE ARE NO `UnitSystem` METHODS LEFT ON THIS CLASS, AND NO
+ * `// units-exempt:` PRAGMAS, and the scheme that got it here is written down
+ * once, here, because it is what a reader adding a method next needs (plan 3b,
+ * ruling R2).
  *
- * Each of them carries exactly one `system === '...'` comparison, which is why
- * the units gate derives the same names from this class that its comparison leg
- * counts in this file. The comparison is not the defect: the parameter IS the
- * decision, already made by the caller. The defect is that `system` is
- * collapsed from VOLUME (spec D8, `useUnitPreference.ts:98`), so a
- * `{volume:'L', distance:'mi'}` user reached `formatDistance` as `'metric'` and
- * read kilometres. That is a call-site decision, and the gate reports every one
- * of these call sites under its `formatter-binary` leg.
+ * Each of the retired methods carried exactly one `system === '...'`
+ * comparison, which is why the units gate derived the same names from this
+ * class that its comparison leg counted in this file. The comparison was never
+ * the defect: the parameter IS the decision, already made by the caller. The
+ * defect is that `system` is collapsed from VOLUME (spec D8,
+ * `useUnitPreference.ts:98`), so a `{volume:'L', distance:'mi'}` user reached
+ * `formatDistance` as `'metric'` and read kilometres. That is a call-site
+ * decision, and the gate reported every one of those call sites under its
+ * `formatter-binary` leg.
  *
- * So each comparison carries `// units-exempt:` naming who owns its call sites.
- * ★ THOSE OWNERS ARE SUCCESSORS, NOT THE TASK THAT WROTE THEM. They all said
- * "task 6" until task 6 finished and the name stopped pointing at anybody, then
- * six of them said "task 6b" until that task retired the fuel-economy and
- * fuel-rate family; the two that remain name **task 7** for the
- * cost-per-distance surface, which is price. A pragma is the version a reader
- * of this file actually sees, so an owner here going stale is worse than one
- * going stale in the manifest.
- * A reason-bearing pragma silences anything (`EXEMPT_PRAGMA` in `validate-units.ts`), so the
- * exemptions do not rest on that prose:
- * `utils/__tests__/unitsBinaryApiSurface.test.ts` derives this surface from the
- * file and fails when a method outlives its last production caller. Seven
- * methods failed it at t=0 and are gone; `getWeightUnit` followed the moment
- * task 3 moved `PropaneRecordForm` onto the mass adapter; and `formatDistance`
- * and `getDistanceUnit` followed task 6's migration of their twenty-seven call
- * sites. Each time the test failed first, exactly as designed. The same holds
- * for every method still below.
+ * So each comparison carried `// units-exempt:` naming who owned its call
+ * sites, and the exemption expired when they were migrated rather than when
+ * somebody remembered. A reason-bearing pragma silences anything
+ * (`EXEMPT_PRAGMA` in `validate-units.ts`), so the exemptions never rested on
+ * that prose: `utils/__tests__/unitsBinaryApiSurface.test.ts` derives this
+ * surface from the file and fails when a method outlives its last production
+ * caller. Seven methods failed it at t=0 and are gone; `getWeightUnit` followed
+ * the moment task 3 moved `PropaneRecordForm` onto the mass adapter;
+ * `formatDistance` and `getDistanceUnit` followed task 6's migration of their
+ * twenty-seven call sites; the fuel-economy and fuel-rate family followed task
+ * 6b's thirty-one; and `formatCostPerDistance` / `getCostPerDistanceLabel`
+ * followed task 7's five. Each time the test failed first, exactly as designed.
+ *
+ * ★ THE SET BEING EMPTY IS NOW THE THING THAT NEEDS GUARDING. A derivation that
+ * finds nothing looks identical to a derivation that has stopped looking, so
+ * `validate-units.ts` no longer refuses on an empty binary-formatter set: it
+ * refuses on an empty set of STATIC METHODS, which is the walk's own receipt,
+ * exactly as it already did for the conversion leg one module over. A method
+ * added below with a `UnitSystem` parameter is picked up by both derivations on
+ * the next run, and its call sites become findings; nothing about that rests on
+ * anybody reading this paragraph.
  *
  * The resolved-set replacement already exists for all ten quantities:
  * `useUnitFormat()` in a component, `makeUnitFormat(units)` outside one.
@@ -691,42 +695,28 @@ export class UnitFormatter {
     return `Avg Cost/${UnitFormatter.getVolumeUnit(units)}`;
   }
 
-  /**
-   * Format cost per distance for summary cards.
-   * Input: cost per kilometer (canonical metric $/km).
-   * Metric uses $/100 km (standard convention), imperial uses $/1,000 mi.
-   */
-  static formatCostPerDistance(
-    costPerKm: number,
-    system: UnitSystem,
-    currencyCode: string = 'USD',
-    locale: string = 'en-US'
-  ): string {
-    // The mile factor was spelled `1.60934` here, a fourteenth copy of a
-    // constant this class declares two hundred lines up, and the whole-file
-    // ESLint exemption is why nobody saw it. The 1000 and the 100 are not
-    // conversion factors: they are how many of the user's distance units the
-    // cost is quoted over, and `getCostPerDistanceLabel` names them in prose.
-    // units-exempt: binary display API; 3 call sites in FuelRecordList and Analytics are task 7's (price), expiry enforced by unitsBinaryApiSurface.test.ts
-    const value = system === 'imperial'
-      ? costPerKm * UnitConverter.MILES_TO_KM * 1000  // $/km -> $/1000 mi
-      : costPerKm * 100;                              // $/km -> $/100 km
-    return new Intl.NumberFormat(locale, {
-      style: 'currency',
-      currency: currencyCode,
-      minimumFractionDigits: 2,
-      maximumFractionDigits: 2,
-    }).format(value);
-  }
-
-  /**
-   * Get the label for cost-per-distance cards.
-   * Returns "Cost/1k Miles" or "Cost/100 km".
-   */
-  static getCostPerDistanceLabel(system: UnitSystem): string {
-    // units-exempt: label for the same binary decision; 3 call sites, task 7 (price), expiry enforced by unitsBinaryApiSurface.test.ts
-    return system === 'imperial' ? 'Cost/1k Miles' : 'Cost/100 km';
-  }
+  // ★ `formatCostPerDistance` and `getCostPerDistanceLabel` USED TO BE HERE,
+  // and they are the LAST pair to leave, which is why this class no longer
+  // declares a single method taking a `UnitSystem`. Both decided on that binary
+  // system, which spec D8 collapses from VOLUME, so a
+  // `{volume:'L', distance:'mi'}` account read "Cost/100 km" under a figure
+  // quoted per 100 km, beside an odometer column task 6 had already migrated to
+  // miles. The two DISAGREED ON SCREEN in the meantime: before task 6 they were
+  // wrong together, which is less visible and no more correct.
+  //
+  // Plan 3b task 7 moved them to `utils/unitFormat.ts` as
+  // `formatCostPerDistance(units, ...)` and `costPerDistanceUnitLabel(units)`,
+  // for the same reason the volume-per-distance pair moved in task 6: this
+  // module cannot import the adapter table (see the `import type` note at the
+  // top), so the distance half would have needed a second dispatch beside
+  // `LITERS_PER_VOLUME_UNIT`. The denominators did NOT change: 100 km and
+  // 1,000 mi are what shipped, and what the label named in prose. What changed
+  // is which of the two an account gets, and that the label is now translated
+  // rather than two hardcoded English strings every language received.
+  //
+  // ★ `formatCostPerVolume` and `getCostPerVolumeLabel` stay, and the split is
+  // the rule rather than an accident: they need the litres-per-unit factor this
+  // class already holds and no adapter at all.
 
   // ★ `formatVolumePerDistance` and `getVolumePerDistanceLabel` USED TO BE HERE,
   // and where they went is the point rather than a filing detail. Both derived

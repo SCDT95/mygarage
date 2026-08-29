@@ -141,6 +141,54 @@ class Case:
 # --------------------------------------------------------------------------
 HOOK_IMPORT = "import { useUnitPreference } from '@/hooks/useUnitPreference'\n"
 
+# A binary formatter the FIXTURE declares, so the formatter leg's three
+# positives own their own vocabulary.
+#
+# ★ THEY USED TO NAME A LIVE PRODUCTION METHOD, and that had to end. The
+# derived set is read from `src/utils/units.ts`, so each fixture spelled
+# whichever binary formatter still existed: `formatDistance` until task 6
+# deleted it, `formatFuelEconomy` until task 6b deleted that one,
+# `formatCostPerDistance` until task 7 deleted the last two. Every rename was
+# the case working rather than bending, and the third one exhausted the supply:
+# `UnitFormatter`'s binary surface is now EMPTY, which is the goal state, and a
+# positive naming a method the derivation cannot find scores zero.
+#
+# Task 7 therefore made the formatter leg read the SCANNED FILE's own class
+# declarations as well, exactly as the conversion leg has read the scanned
+# file's own function declarations since task 5, and these fixtures declare
+# theirs. That closes the corpus's dependence on a production name for good:
+# the file docstring's claim that "nothing here reads a production line" is
+# true again. It also closes a real same-file blindness, which is why it is a
+# gate change and not a test convenience.
+#
+# ★ TWO DELIBERATE NAMING CHOICES, both so the mutations keep their precision.
+# The class is called `UnitFormatter` because M49 mutates the leg into requiring
+# that exact receiver SPELLING, and its whole subject is that an alias
+# (S-P35's `UF`) must not be a bypass; a fixture class named anything else would
+# make M49 flip all three formatter positives instead of the one it is about.
+# `formatRate` starts with `format` because M45 mutates the derivation into a
+# `format*` NAME rule, and its subject is that label selectors like `unitLabel`
+# are just as binary; a fixture where BOTH methods failed that prefix would make
+# M45 flip more than it is measuring. Neither method name may equal the EXPORTED
+# WRAPPER's name in a case that uses it, which is why the label selector is
+# `unitLabel` and not `unit`: M53 turns every exported function into a
+# binary-conversion helper, and a call whose name matches one then scores a
+# second finding on top of the formatter one, so the case reads as flipped for
+# a reason that has nothing to do with the mutation it is pinned by. Measured,
+# not reasoned: the run said `M53 *** WRONG CASES FLIPPED ***` and named them. The class is the fixture's own declaration
+# either way: production's `UnitFormatter` has no binary method left.
+FIXTURE_FORMATTER = (
+    "import type { UnitSystem } from '@/utils/units'\n"
+    "export class UnitFormatter {\n"
+    "  static formatRate(value: number, system: UnitSystem): string {\n"
+    "    return String(value) + system\n"
+    "  }\n"
+    "  static unitLabel(system: UnitSystem): string {\n"
+    "    return String(system)\n"
+    "  }\n"
+    "}\n"
+)
+
 SCRIPT_POSITIVE = [
     Case(
         "S-P1-eq-imperial",
@@ -507,41 +555,48 @@ SCRIPT_POSITIVE = [
     # ---- phase 3b: the three shapes the comparison leg cannot see -----------
     Case(
         "S-P30-formatter-binary-call",
-        "import { UnitFormatter } from '@/utils/units'\n"
+        FIXTURE_FORMATTER
         + HOOK_IMPORT
         + "export function costRate(costPerKm: number): string {\n"
         "  const { system } = useUnitPreference()\n"
-        "  return UnitFormatter.formatCostPerDistance(costPerKm, system, 'USD', 'en-US')\n"
+        "  return UnitFormatter.formatRate(costPerKm, system)\n"
         "}\n",
         1,
         "formatter-binary",
         "★ nothing at this call site names a system: the binary collapse happens "
         "inside the callee, so the comparison leg is blind to it by construction. "
         "It spelled `formatDistance` until task 6 deleted that method, then "
-        "`formatFuelEconomy` until task 6b deleted that one; each time the case "
-        "scored zero and the corpus said so, because a positive naming a method "
-        "the DERIVATION can no longer find is a case that passes for the wrong "
-        "reason. Any surviving binary formatter exercises the same leg, so it "
-        "now spells the last one standing.",
+        "`formatFuelEconomy` until task 6b, then `formatCostPerDistance` until "
+        "task 7 retired the last two; each time the case scored zero and the "
+        "corpus said so, because a positive naming a method the DERIVATION can no "
+        "longer find is a case that passes for the wrong reason. There is no "
+        "production binary formatter left to spell, which is the goal state, so "
+        "the fixture DECLARES one — the same move S-P32 made when task 5 deleted "
+        "the conversion helpers.",
         "M44-drop-formatter-leg",
+        ext=".ts",
     ),
     Case(
         "S-P31-formatter-label-selector",
-        "import { UnitFormatter } from '@/utils/units'\n"
+        FIXTURE_FORMATTER
         + HOOK_IMPORT
         + "export function unit(): string {\n"
         "  const { system } = useUnitPreference()\n"
-        "  return UnitFormatter.getCostPerDistanceLabel(system)\n"
+        "  return UnitFormatter.unitLabel(system)\n"
         "}\n",
         1,
         "formatter-binary",
         "★ THE case that makes the set DERIVED rather than transcribed: round 1 "
         "hand-listed the `format*` methods and missed every label selector, which "
         "takes the same binary system and is just as wrong for a mixed user. It "
-        "spelled `getDistanceUnit` until task 6 retired that one and "
-        "`getFuelRateUnit` until task 6b retired the next; a label selector is a "
-        "label selector whichever quantity it names.",
+        "spelled `getDistanceUnit` until task 6 retired that one, "
+        "`getFuelRateUnit` until task 6b retired the next and "
+        "`getCostPerDistanceLabel` until task 7 retired the last; a label "
+        "selector is a label selector whichever quantity it names, and the "
+        "fixture's own `unit` is deliberately named nothing like `get*Label` so "
+        "the rule cannot be passing on a name shape.",
         "M45-formatter-format-prefix-only",
+        ext=".ts",
     ),
     Case(
         "S-P32-binary-conversion-call",
@@ -596,17 +651,51 @@ SCRIPT_POSITIVE = [
     ),
     Case(
         "S-P35-aliased-formatter-receiver",
-        "import { UnitFormatter as UF } from '@/utils/units'\n"
+        FIXTURE_FORMATTER
         + HOOK_IMPORT
-        + "export function unit(): string {\n"
+        + "const UF = UnitFormatter\n"
+        "export function unit(): string {\n"
         "  const { system } = useUnitPreference()\n"
-        "  return UF.getCostPerDistanceLabel(system)\n"
+        "  return UF.unitLabel(system)\n"
         "}\n",
         1,
         "formatter-binary",
         "the receiver is REQUIRED but never READ: requiring the spelling makes "
-        "`import { UnitFormatter as UF }` a one-line bypass",
+        "`import { UnitFormatter as UF }` a one-line bypass. It spelled that "
+        "import until task 7 retired the last production binary formatter; a "
+        "local alias of the fixture's own class is the same decision through the "
+        "same shape, and it no longer depends on a name production owns.",
         "M49-formatter-receiver-spelling",
+        ext=".ts",
+    ),
+    Case(
+        "S-P37-binary-formatter-on-a-foreign-class",
+        "import type { UnitSystem } from '@/utils/units'\n"
+        + HOOK_IMPORT
+        + "class TripFormatter {\n"
+        "  static formatLeg(km: number, system: UnitSystem): string {\n"
+        "    return String(km) + system\n"
+        "  }\n"
+        "}\n"
+        "export function leg(km: number): string {\n"
+        "  const { system } = useUnitPreference()\n"
+        "  return TripFormatter.formatLeg(km, system)\n"
+        "}\n",
+        1,
+        "formatter-binary",
+        "★ THE CASE THAT MAKES THE PER-FILE AUGMENTATION FALSIFIABLE. S-P30, "
+        "S-P31 and S-P35 all declare a class called `UnitFormatter`, chosen so "
+        "M49's receiver-spelling mutation keeps a precise subject, and that means "
+        "narrowing the scan to the production class NAME would leave all three "
+        "passing. This one names its class something else, so it fails the moment "
+        "the augmentation stops meaning 'any class this file declares'. It is "
+        "also the shape the augmentation exists to catch: a module that declares "
+        "its own static binary formatter and calls it makes the D8-collapsed "
+        "decision where neither the comparison leg (the comparison is inside the "
+        "callee) nor the derived leg (the method is not on `UnitFormatter`) can "
+        "see it.",
+        "M67-augmentation-only-the-production-class",
+        ext=".ts",
     ),
     Case(
         "S-P36-double-quoted-union",
@@ -713,42 +802,46 @@ SCRIPT_NEGATIVE = [
     ),
     Case(
         "S-N8-local-format-distance",
-        "import type { UnitSet } from '@/types/units'\n"
-        "function formatCostPerDistance(perKm: number, units: UnitSet): string {\n"
+        FIXTURE_FORMATTER
+        + "import type { UnitSet } from '@/types/units'\n"
+        "function formatRate(perKm: number, units: UnitSet): string {\n"
         "  return `${perKm} ${units.distance}`\n"
         "}\n"
         "export function cell(v: number, units: UnitSet): string {\n"
-        "  return formatCostPerDistance(v, units)\n"
+        "  return formatRate(v, units)\n"
         "}\n",
         0,
         why="★ POICard's real shape, measured: matching the METHOD NAME alone "
         "flagged three module-local `formatDistance` helpers, and POICard's is "
         "correct migrated code taking a resolved set. A static method is only "
         "reachable through a receiver, so requiring one separates them. "
-        "★ IT HAS BEEN RENAMED TWICE, and both times that is the case working "
-        "rather than the case bending. It spelled the helper `formatDistance` "
-        "until task 6 and `formatFuelEconomy` until task 6b; each retirement took "
-        "that name out of the DERIVED set, so the fixture stopped colliding with "
-        "anything and M52 became a survivor flipping nothing. The selftest said so "
-        "both times, on the run right after the deletion. The rule is unchanged "
-        "and still guards whichever binary names survive, so the fixture uses one "
-        "of them; a negative that can no longer be made positive is not a "
-        "negative. Two are left, and when the last one goes this case has no "
-        "colliding name available and M52 has nothing left to guard: retire the "
-        "pair together rather than renaming a third time.",
+        "★ IT HAS BEEN RENAMED TWICE AND IS NOW SELF-OWNED, which is better than "
+        "the third rename its old comment planned for. It spelled the helper "
+        "`formatDistance` until task 6 and `formatFuelEconomy` until task 6b; each "
+        "retirement took that name out of the DERIVED set, so the fixture stopped "
+        "colliding with anything and M52 became a survivor flipping nothing. Task "
+        "7 retired the last two binary formatters and left no production name to "
+        "collide with at all, so the fixture declares the class AND the "
+        "module-local helper that shadows one of its method names. The collision "
+        "is now a property of this file, and M52 has a subject that cannot "
+        "expire.",
         pinned_by="M52-formatter-name-without-receiver",
         ext=".ts",
     ),
     Case(
         "S-N9-set-conversion-helper",
-        "import { toCanonicalLiters } from '@/utils/decimalSafe'\n"
+        "import { seedPriceField } from '@/utils/decimalSafe'\n"
         "import type { UnitSet } from '@/types/units'\n"
-        "export function submit(entered: number, units: UnitSet): number | null {\n"
-        "  return toCanonicalLiters(entered, units)\n"
+        "export function seed(stored: number, units: UnitSet): string {\n"
+        "  return seedPriceField(stored, units, 'per_volume').display\n"
         "}\n",
         0,
-        why="R8's destination: the resolved-set converter beside the binary ones "
-        "in the same file, so the leg cannot key on the file or the name prefix",
+        why="R8's destination: the resolved-set helper beside the binary ones "
+        "in the same file, so the leg cannot key on the file or the name prefix. "
+        "It spelled `toCanonicalLiters` until task 7 deleted that one for a "
+        "different defect (it converted a DISPLAY value straight to canonical, "
+        "which is ruling R4's entry-grid shift); the case needs a name the "
+        "mutation M53 can still reach, so it spells a survivor.",
         pinned_by="M53-every-exported-helper-is-binary",
         ext=".ts",
     ),

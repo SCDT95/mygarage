@@ -209,11 +209,14 @@ UNIT_MODULES = [
 IMPORT_RX = re.compile(r"""^\s*(?:import|export)\b[^\n]*?from\s+['"]([^'"]+)['"]""")
 SYMBOL_RX = re.compile(
     # `toCanonicalKm`, `toCanonicalKg` and `toCanonicalMeters` were listed here
-    # until phase 3b task 5 deleted them under ruling R8. A name kept in this
-    # alternation after its symbol is gone cannot match anything, so it does not
-    # inflate a count, but it does make the list read as an inventory of what
-    # exists when it is really an inventory of what was once looked for.
-    r"\b(UnitFormatter|UnitConverter|useUnitPreference|convertTelemetryValue|priceToCanonical|priceToDisplay|toCanonicalLiters|seedUnitField|canonicalFromUnitField|canonicalToDisplay|displayToCanonical|supplyUnitLabel)\b"
+    # until phase 3b task 5 deleted them under ruling R8, and `toCanonicalLiters`
+    # and the exported `priceToCanonical` until task 7 did the same to them under
+    # R4. A name kept in this alternation after its symbol is gone cannot match
+    # anything, so it does not inflate a count, but it does make the list read as
+    # an inventory of what exists when it is really an inventory of what was once
+    # looked for. The pair that replaced them, `seedPriceField` and
+    # `canonicalFromPriceField`, is listed instead, beside the quantity pair.
+    r"\b(UnitFormatter|UnitConverter|useUnitPreference|convertTelemetryValue|priceToDisplay|toLitersWirePrecision|seedUnitField|canonicalFromUnitField|seedPriceField|canonicalFromPriceField|canonicalToDisplay|displayToCanonical|supplyUnitLabel)\b"
 )
 
 

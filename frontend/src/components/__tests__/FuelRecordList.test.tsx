@@ -61,6 +61,7 @@ vi.mock('../../hooks/useCurrencyPreference', () => ({
 vi.mock('sonner', () => ({ toast: { success: vi.fn(), error: vi.fn() } }))
 
 import { IMPERIAL_UNITS, METRIC_UNITS, UK_IMPERIAL_UNITS } from '../../__tests__/factories'
+import { binarySystemFor } from '../../types/units'
 import { UnitConverter } from '../../utils/units'
 import FuelRecordList from '../FuelRecordList'
 
@@ -324,7 +325,16 @@ describe('FuelRecordList — hours usage tracking (Task 13)', () => {
       { ...record, id: 11, odometer_km: '2000', l_per_hr: '3.30', engine_hours: '150.0' },
     ] as FuelRecord[]
 
-    // Pure-hours: real getCostPerDistanceLabel('metric') === 'Cost/100 km' is hidden.
+    // ★ THE LABEL IS A TRANSLATED KEY NOW, and the string this case used to look
+    // for is the evidence of why. It asserted the literal 'Cost/100 km', which
+    // this file's `t` mock returns keys from: the label was never translated at
+    // all, it was two hardcoded English strings inside
+    // `UnitFormatter.getCostPerDistanceLabel`, shown to every reader of every
+    // language. Task 7 routed it through `t('fuelList.costPerDistance', {unit})`
+    // in all seven bundles, so the mock now renders `key (unit)` and the unit
+    // half comes from the resolved DISTANCE token instead of a system collapsed
+    // from volume.
+    // Pure-hours: the stat is hidden regardless of what it would have said.
     apiGetMock.mockResolvedValue({ data: { fuel_type: 'gasoline', usage_unit: 'hours', secondary_usage_enabled: false } })
     useFuelRecordsMock.mockReturnValue({
       data: { records: twoRecords, total: 2, average_l_per_100km: null, average_l_per_hr: '4.50', average_cost_per_hr: '2.75' },
@@ -333,7 +343,7 @@ describe('FuelRecordList — hours usage tracking (Task 13)', () => {
     })
     const hours = render(<FuelRecordList {...DEFAULT_PROPS} />)
     await screen.findByText('4.50 L/hr') // hours state applied before asserting absence
-    expect(screen.queryByText('Cost/100 km')).not.toBeInTheDocument()
+    expect(screen.queryByText('fuelList.costPerDistance (100 km)')).not.toBeInTheDocument()
     hours.unmount()
 
     // Pure-distance, same records: the cost-per-distance stat returns.
@@ -344,7 +354,76 @@ describe('FuelRecordList — hours usage tracking (Task 13)', () => {
       error: null,
     })
     render(<FuelRecordList {...DEFAULT_PROPS} />)
-    expect(await screen.findByText('Cost/100 km')).toBeInTheDocument()
+    expect(await screen.findByText('fuelList.costPerDistance (100 km)')).toBeInTheDocument()
+  })
+})
+
+describe('FuelRecordList — the cost-per-distance card, label and value together', () => {
+  // ★ THE HALF-MIGRATED PAIR THIS CLOSES. Task 6 moved the odometer column onto
+  // `units.distance` and left this card on the binary system, which spec D8
+  // collapses from VOLUME. A `{volume:'L', distance:'mi'}` account therefore
+  // read a miles odometer beside a "Cost/100 km" caption over a per-100-km
+  // figure: before task 6 both halves were wrong together, which is less
+  // visible and no more correct. Both halves are asserted in every case here,
+  // because a label that moves without its value is the same defect inverted.
+  const twoFills = [
+    { ...record, id: 30, odometer_km: '1000', cost: '10.00' },
+    { ...record, id: 31, odometer_km: '2000', cost: '10.00' },
+  ] as FuelRecord[]
+
+  beforeEach(() => {
+    apiGetMock.mockResolvedValue({
+      data: { fuel_type: 'gasoline', usage_unit: 'distance', secondary_usage_enabled: false },
+    })
+    useFuelRecordsMock.mockReturnValue({
+      data: { records: twoFills, total: 2, average_l_per_100km: '8.5' },
+      isLoading: false,
+      error: null,
+    })
+  })
+
+  it('★ a LITRES-and-MILES account reads its cost per 1,000 MILES', async () => {
+    // $20.00 over 1000 km is $0.02/km; x 1.60934 x 1000 = $32.19 per 1,000 mi.
+    // The retired pair read 'metric' off the litres and answered $2.00 under
+    // "Cost/100 km", beside an odometer column already reading miles.
+    unitPrefMock.units = { ...METRIC_UNITS, distance: 'mi', speed: 'mph' }
+
+    render(<FuelRecordList {...DEFAULT_PROPS} />)
+    expect(await screen.findByText('fuelList.costPerDistance (1,000 mi)')).toBeInTheDocument()
+    expect(screen.getByText('$32.19')).toBeInTheDocument()
+    // The two answers the collapsed decision would have given, named so this
+    // cannot pass on a build that merely relabelled the card.
+    expect(screen.queryByText('fuelList.costPerDistance (100 km)')).not.toBeInTheDocument()
+    expect(screen.queryByText('$2.00')).not.toBeInTheDocument()
+    // And the collapse really does disagree, so the case is not a coincidence.
+    expect(binarySystemFor(unitPrefMock.units.volume)).toBe('metric')
+  })
+
+  it('★ the MIRROR, gallons with kilometres, reads its cost per 100 KILOMETRES', async () => {
+    // Without this, everything above is satisfied by code that merely inverted
+    // the branch. $0.02/km x 1 x 100 = $2.00 per 100 km.
+    unitPrefMock.units = { ...IMPERIAL_UNITS, distance: 'km', speed: 'kmh' }
+
+    render(<FuelRecordList {...DEFAULT_PROPS} />)
+    expect(await screen.findByText('fuelList.costPerDistance (100 km)')).toBeInTheDocument()
+    expect(screen.getByText('$2.00')).toBeInTheDocument()
+    expect(screen.queryByText('$32.19')).not.toBeInTheDocument()
+    expect(binarySystemFor(unitPrefMock.units.volume)).toBe('imperial')
+  })
+
+  it('leaves both uniform accounts exactly where they were', async () => {
+    // The controls. Neither denominator changed in this task, and a fix that
+    // moved one would be a different bug rather than a fix.
+    unitPrefMock.units = METRIC_UNITS
+    const metric = render(<FuelRecordList {...DEFAULT_PROPS} />)
+    expect(await screen.findByText('fuelList.costPerDistance (100 km)')).toBeInTheDocument()
+    expect(screen.getByText('$2.00')).toBeInTheDocument()
+    metric.unmount()
+
+    unitPrefMock.units = IMPERIAL_UNITS
+    render(<FuelRecordList {...DEFAULT_PROPS} />)
+    expect(await screen.findByText('fuelList.costPerDistance (1,000 mi)')).toBeInTheDocument()
+    expect(screen.getByText('$32.19')).toBeInTheDocument()
   })
 })
 

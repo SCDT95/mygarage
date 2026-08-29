@@ -11,7 +11,9 @@
 import { describe, it, expect } from 'vitest'
 import {
   canonicalFromUnitField,
+  costPerDistanceUnitLabel,
   formatAtPrecision,
+  formatCostPerDistance,
   formatVolumePerDistance,
   makeUnitFormat,
   resolvedUnitSummary,
@@ -184,6 +186,75 @@ describe('volume per distance', () => {
   })
 })
 
+describe('cost per distance', () => {
+  // ★ WHAT THE RETIRED PAIR DID. `UnitFormatter.formatCostPerDistance(km, system)`
+  // and `getCostPerDistanceLabel(system)` decided a DISTANCE on the binary
+  // system, which spec D8 collapses from VOLUME. Task 6 migrated the odometer
+  // beside them and left these, so a `{volume:'L', distance:'mi'}` account read
+  // a miles odometer under a "Cost/100 km" caption: before task 6 the two were
+  // wrong together, which is less visible and no more correct.
+  //
+  // The DENOMINATORS are unchanged: 100 km and 1,000 mi are what shipped. What
+  // changed is which one an account gets, and that the "Cost/" half is now a
+  // translated key at the call site instead of two hardcoded English strings.
+
+  it('renders a metric set per 100 km and an imperial one per 1,000 mi', () => {
+    // The two controls, carried over from unitsSummaryHelpers.test.ts
+    // unchanged. Both were already right and both must stay right, or the fix
+    // is a different bug rather than a fix.
+    // $0.10/km x 100 = $10.00 per 100 km.
+    expect(formatCostPerDistance(METRIC, 0.1)).toBe('$10.00')
+    expect(costPerDistanceUnitLabel(METRIC)).toBe('100 km')
+    // $0.10/km x 1.60934 x 1000 = $160.93 per 1,000 mi.
+    expect(formatCostPerDistance(IMPERIAL, 0.1)).toBe('$160.93')
+    expect(costPerDistanceUnitLabel(IMPERIAL)).toBe('1,000 mi')
+  })
+
+  it('★ a litres-and-miles set reads cost per 1,000 MILES', () => {
+    // The set the retired pair could not express: it read 'metric' off the
+    // litres and answered '$10.00' under 'Cost/100 km' for an account whose
+    // odometer, since task 6, reads miles.
+    expect(formatCostPerDistance(LITRES_MILES, 0.1)).toBe('$160.93')
+    expect(formatCostPerDistance(LITRES_MILES, 0.1)).not.toBe('$10.00')
+    expect(costPerDistanceUnitLabel(LITRES_MILES)).toBe('1,000 mi')
+  })
+
+  it('★ a gallons-and-kilometres set reads cost per 100 KILOMETRES', () => {
+    // The mirror, so nothing above is satisfied by an inverted branch. The
+    // retired pair read 'imperial' off the gallons and answered '$160.93'
+    // under 'Cost/1k Miles' for an account that chose kilometres.
+    expect(formatCostPerDistance(GALLONS_KM, 0.1)).toBe('$10.00')
+    expect(formatCostPerDistance(GALLONS_KM, 0.1)).not.toBe('$160.93')
+    expect(costPerDistanceUnitLabel(GALLONS_KM)).toBe('100 km')
+  })
+
+  it('takes the volume token out of the decision entirely', () => {
+    // ★ The property both cases above rest on, stated once: for a fixed
+    // distance token the answer does not move when the volume one does. Three
+    // volume tokens, one distance token, one answer.
+    const answers = new Set(
+      (['L', 'gal_us', 'gal_uk'] as const).map((volume) =>
+        formatCostPerDistance({ ...IMPERIAL, volume }, 0.1)
+      )
+    )
+    expect([...answers]).toStrictEqual(['$160.93'])
+  })
+
+  it('renders the currency and locale it is given, not a hardcoded dollar', () => {
+    // The two arguments the call sites thread through from the currency
+    // preference. Non-breaking spaces are what Intl emits for these locales.
+    expect(formatCostPerDistance(METRIC, 0.1, 'EUR', 'de-DE')).toBe('10,00\u00a0€')
+    expect(costPerDistanceUnitLabel(METRIC)).toBe('100 km')
+  })
+
+  it('renders a zero rate as a zero, not as an absent value', () => {
+    // A vehicle with no fuel records legitimately reports zero, and the
+    // retired formatter printed it. `formatUtils.formatCurrency` would have
+    // rendered '-' here, which is why this composes Intl directly.
+    expect(formatCostPerDistance(METRIC, 0)).toBe('$0.00')
+  })
+})
+
 describe('step', () => {
   it('follows the unit precision rather than a fixed 0.1', () => {
     // The tread inputs carried step="0.1" while in32 is a whole-number unit,
@@ -310,6 +381,35 @@ describe('canonicalFromUnitField', () => {
     const blank: UnitFieldOrigin = { canonical: null, display: '' }
     // 4/32 in x 0.79375 = 3.175 mm
     expect(canonicalFromUnitField('4', blank, u.tread)).toBe(3.175)
+  })
+
+  it('★ keeps a canonical ZERO whose unit has no finite display for it', () => {
+    // ★ FOUND BY MUTATION, not by reading. Deleting `unitFieldUnchanged`'s
+    // exact-string leg killed NOTHING, because the numeric leg answers the same
+    // for every value whose display is a number. The one case where it does not
+    // is a RECIPROCAL quantity at canonical zero: `mpg` has no finite display
+    // for 0, so `toInputValue` returns `''` and the origin is
+    // `{canonical: 0, display: ''}` — a field that legitimately reads empty
+    // while holding a value. The numeric leg's own empty-origin guard rejects
+    // it, so without the string leg an untouched save turns a recorded 0 into
+    // null. `format`'s docstring already calls this boundary out on the render
+    // side; this is its entry side.
+    const u = makeUnitFormat(IMPERIAL)
+    const origin = seedUnitField(0, u.consumption)
+    expect(origin).toStrictEqual({ canonical: 0, display: '' })
+    expect(canonicalFromUnitField('', origin, u.consumption)).toBe(0)
+  })
+
+  it('★ still reads a CLEARED zero field as null, where the display was a number', () => {
+    // The mirror, and the second thing mutation found: deleting the BLANK leg
+    // also killed nothing. It is what separates the case above from this one.
+    // A linear quantity at zero seeds `'0.00'`, and `Number('')` is 0, so the
+    // numeric leg alone would read a cleared box as unchanged and keep the
+    // zero the user had just deleted.
+    const metric = makeUnitFormat(METRIC)
+    const origin = seedUnitField(0, metric.tread)
+    expect(origin).toStrictEqual({ canonical: 0, display: '0.00' })
+    expect(canonicalFromUnitField('', origin, metric.tread)).toBeNull()
   })
 
   it('rejects text that is not a number instead of storing NaN', () => {

@@ -258,6 +258,7 @@
     "avgFuelRate": "Сред. {{unit}}",
     "confirmDelete": "Подтвердить удаление",
     "costPerHour": "Стоимость/ч",
+    "costPerDistance": "Стоимость/{{unit}}",
     "date": "Дата",
     "deleteError": "Ошибка удаления",
     "exportCSV": "Экспорт CSV",

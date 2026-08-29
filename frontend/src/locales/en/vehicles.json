@@ -469,6 +469,7 @@
     "avgFuelRate": "Avg {{unit}}",
     "confirmDelete": "Are you sure you want to delete this fuel record?",
     "costPerHour": "Cost/hr",
+    "costPerDistance": "Cost/{{unit}}",
     "date": "Date",
     "deleteError": "Failed to delete record",
     "exportCSV": "Export CSV",

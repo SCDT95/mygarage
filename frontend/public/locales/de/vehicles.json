@@ -406,6 +406,7 @@
     "pageOf": "Seite {{page}} von {{total}}",
     "avgFuelRate": "Ø {{unit}}",
     "costPerHour": "Kosten/Std.",
+    "costPerDistance": "Kosten/{{unit}}",
     "fuelRate": "Verbrauchsrate"
   },
   "insuranceList": {

@@ -422,6 +422,104 @@ export function fuelRateLabel(units: UnitSet): string {
 }
 
 /**
+ * How many of the reader's distance units a COST rate is quoted over.
+ *
+ * ★ NOT A CONVERSION FACTOR, and not a new decision either. These two numbers
+ * are exactly what `UnitFormatter.formatCostPerDistance` has always used, and
+ * what its label named in prose: a kilometre reader has always read cost per
+ * 100 km and a mile reader cost per 1,000 mi. What moved is only WHICH of the
+ * two a given account gets. The retired pair chose on the binary `UnitSystem`,
+ * which spec D8 collapses from VOLUME, so a `{volume:'L', distance:'mi'}`
+ * account read "Cost/100 km" beside an odometer column reading miles. Plan 3b
+ * task 6 migrated that odometer and left this, so the two DISAGREED ON SCREEN
+ * until now: before task 6 both were wrong together, which is less visible and
+ * no more correct.
+ *
+ * A `Record` over the token rather than a ternary, for the reason
+ * `PropaneRecordForm`'s example table gives: a distance unit added later cannot
+ * compile without stating what it is quoted over, where an `else` arm would
+ * silently answer 1,000 for it.
+ *
+ * The two conventions are not arbitrary and are not interchangeable: 100 km and
+ * 1,000 mi are the denominators fuel-cost figures are published under in each
+ * vocabulary, and they differ by more than the unit conversion does.
+ */
+const COST_PER_DISTANCE_OVER: Readonly<Record<UnitSet['distance'], number>> = {
+  km: 100,
+  mi: 1000,
+}
+
+/** Decimal places a currency figure is read at on a summary card. */
+const COST_PER_DISTANCE_PRECISION = 2
+
+/**
+ * Render a cost-per-distance rate in the reader's OWN distance unit.
+ *
+ * ★ IT TAKES THE DISTANCE FROM THE RESOLVED SET, and it had to move files to do
+ * it, exactly as `formatVolumePerDistance` did in task 6. `utils/units.ts`
+ * cannot import `adapterFor`: `unitAdapters.ts` builds its table from
+ * `UnitConverter` at module scope, so a runtime import back would form a cycle.
+ * Left there, this would have needed a `KM_PER_DISTANCE_UNIT` map beside
+ * `LITERS_PER_VOLUME_UNIT`, a second dispatch of a decision the adapter table
+ * already makes, and a second copy of a unit decision is the defect this
+ * workstream keeps unpicking. `formatCostPerVolume` stays in `units.ts` for the
+ * mirror reason: it needs no adapter, only the litres-per-unit factor.
+ *
+ * The currency formatting is `formatCostPerVolume`'s, character for character,
+ * rather than `formatUtils.formatCurrency`: that helper renders a zero as `'-'`
+ * unless asked otherwise, and a zero cost per distance is a real figure a
+ * vehicle with no fuel records legitimately reports.
+ *
+ * @param units The client's resolved unit set.
+ * @param costPerKm The canonical rate, currency per kilometre.
+ * @param currencyCode The reader's currency.
+ * @param locale The reader's locale.
+ * @returns e.g. `'$10.00'` per 100 km, or `'$160.93'` per 1,000 mi.
+ */
+export function formatCostPerDistance(
+  units: UnitSet,
+  costPerKm: number,
+  currencyCode = 'USD',
+  locale = 'en-US'
+): string {
+  // Cost per km to cost per one of the reader's distance units, then to cost
+  // per however many of them the convention quotes. The canonical length of one
+  // display unit is exactly what the distance adapter's `toCanonical(1)`
+  // answers, so no mile factor is spelled here; the old code spelled `1.60934`
+  // inline, a fourteenth copy of a constant `UnitConverter` already declared.
+  const canonicalPerDistanceUnit = adapterFor(units, 'distance').toCanonical(1) ?? 1
+  const over = COST_PER_DISTANCE_OVER[units.distance]
+  return new Intl.NumberFormat(locale, {
+    style: 'currency',
+    currency: currencyCode,
+    minimumFractionDigits: COST_PER_DISTANCE_PRECISION,
+    maximumFractionDigits: COST_PER_DISTANCE_PRECISION,
+  }).format(costPerKm * canonicalPerDistanceUnit * over)
+}
+
+/**
+ * The denominator a cost-per-distance figure is read under, as a unit phrase.
+ *
+ * Composed from the distance adapter rather than selected from two fixed
+ * strings, for the reason `resolvedUnitSummary` gives at length.
+ * `getCostPerDistanceLabel` was such a selection AND it returned hardcoded
+ * English: `'Cost/1k Miles'` and `'Cost/100 km'` bypassed i18n entirely, so
+ * every reader of every language got those two strings. This returns only the
+ * unit half; the "Cost/" is a translated key at the call site, which is the
+ * same split `fuelList.avgFuelRate` uses.
+ *
+ * The number is grouped for the active locale, matching
+ * `volumePerDistanceLabel`, so a French reader reads `1 000 mi`.
+ *
+ * @param units The client's resolved unit set.
+ * @returns e.g. `'100 km'` or `'1,000 mi'`.
+ */
+export function costPerDistanceUnitLabel(units: UnitSet): string {
+  const over = formatAtPrecision(COST_PER_DISTANCE_OVER[units.distance], 0)
+  return `${over} ${adapterFor(units, 'distance').label}`
+}
+
+/**
  * Populate a unit-bearing form field, remembering where its value came from.
  *
  * @param canonical The stored canonical value, or null for an empty field.

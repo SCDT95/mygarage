@@ -147,10 +147,22 @@ function parse(path: string): ts.SourceFile {
   return source
 }
 
-/** Every static `UnitFormatter` method that takes a binary `UnitSystem`. */
-function binaryFormatterMethods(): string[] {
+/**
+ * `UnitFormatter`'s static methods, split by shape.
+ *
+ * ★ Both halves are returned because the interesting assertion is now that
+ * `binary` is EMPTY, and "empty" is only evidence if the walk was looking.
+ * `statics` is the walk's own receipt, exactly as `exported` is for the
+ * conversion surface below: a walk that had silently stopped visiting the class
+ * returns two empty sets, and the test that pins `statics` fails first with a
+ * name to look at. Until task 7 the pinned list of two binary methods played
+ * that role; retiring them took the receipt with it, so the replacement lands
+ * in the same change rather than on the day somebody notices.
+ */
+function formatterMethods(): { binary: string[]; statics: string[] } {
   const source = parse(UNITS)
-  const found = new Set<string>()
+  const binary = new Set<string>()
+  const statics = new Set<string>()
   const walk = (node: ts.Node): void => {
     if (ts.isClassDeclaration(node) && node.name?.text === FORMATTER_CLASS) {
       for (const member of node.members) {
@@ -158,13 +170,15 @@ function binaryFormatterMethods(): string[] {
         const isStatic = (member.modifiers ?? []).some(
           (m) => m.kind === ts.SyntaxKind.StaticKeyword
         )
-        if (isStatic && takesBinarySystem(member, source)) found.add(member.name.getText(source))
+        if (!isStatic) continue
+        statics.add(member.name.getText(source))
+        if (takesBinarySystem(member, source)) binary.add(member.name.getText(source))
       }
     }
     ts.forEachChild(node, walk)
   }
   walk(source)
-  return [...found].sort()
+  return { binary: [...binary].sort(), statics: [...statics].sort() }
 }
 
 /**
@@ -251,37 +265,51 @@ describe('the binary UnitFormatter surface', () => {
   it('derives the same set the units gate derives, in the other language', () => {
     // The gate's `formatter-binary` leg only reports call sites for methods in
     // ITS set. If the two derivations drift, one of them is reporting on a
-    // surface the other cannot see, and neither would say so.
-    expect(binaryFormatterMethods()).toEqual(gateDerivedSet('BINARY_FORMATTER_METHODS'))
+    // surface the other cannot see, and neither would say so. This matters most
+    // now that the set is EMPTY: `gateDerivedSet` throws when the gate does not
+    // print the line at all, so a gate that stopped deriving the set is not
+    // mistaken for one that derived it and found nothing.
+    expect(formatterMethods().binary).toEqual(gateDerivedSet('BINARY_FORMATTER_METHODS'))
   })
 
-  it('derives the binary methods from units.ts rather than listing them', () => {
-    // A derivation that silently found nothing would make the real assertion
-    // below vacuously true, so the count is pinned. Task 2 deleted the seven
-    // that no production file called, leaving nine; task 3 moved
-    // PropaneRecordForm onto the mass adapter, which retired `getWeightUnit`
-    // and left eight; task 6 migrated the twenty-seven call sites of
-    // `formatDistance` and `getDistanceUnit` onto the resolved `units.distance`
-    // adapter, this test failed exactly as designed, and both methods followed.
-    // Task 6b did the same for the thirty-one sites of the fuel-economy and
-    // fuel-rate family, and `formatFuelEconomy`, `getFuelEconomyUnit`,
-    // `formatFuelRate` and `getFuelRateUnit` went with them. The two below are
-    // the cost-per-distance surface, still with production callers, and their
-    // retirement empties this list.
-    expect(binaryFormatterMethods()).toEqual([
-      'formatCostPerDistance',
-      'getCostPerDistanceLabel',
+  it('still reads the static methods, so the empty set below means something', () => {
+    // The receipt. Task 2 deleted the seven binary methods that no production
+    // file called, leaving nine; task 3 moved PropaneRecordForm onto the mass
+    // adapter, which retired `getWeightUnit`; task 6 migrated the twenty-seven
+    // call sites of `formatDistance` and `getDistanceUnit`; task 6b the
+    // thirty-one of the fuel-economy and fuel-rate family; task 7 the five of
+    // `formatCostPerDistance` and `getCostPerDistanceLabel`. Each time this
+    // file failed FIRST and the methods followed.
+    //
+    // What survives on the class is the resolved-set surface, and pinning it is
+    // what stops the assertion after this one going vacuous.
+    expect(formatterMethods().statics).toEqual([
+      'formatCostPerVolume',
+      'formatVolume',
+      'formatVolumeShort',
+      'formatVolumeTotal',
+      'getCostPerVolumeLabel',
+      'getMassUnit',
+      'getVolumeUnit',
     ])
   })
 
-  it('keeps no binary method that no production file calls', () => {
-    const callers = callersByMethod(binaryFormatterMethods())
-    const dead = [...callers].filter(([, files]) => files.length === 0).map(([name]) => name)
+  it('★ declares no binary method at all, and keeps none a production file cannot call', () => {
+    const { binary } = formatterMethods()
+    // ★ EMPTY IS THE GOAL STATE, reached by task 7. Every method on this class
+    // now takes the resolved `UnitSet`. A `UnitSystem` parameter added back
+    // here fails this line one step before a call site can exist, and the units
+    // gate picks its call sites up on the next run without anybody widening a
+    // list.
+    expect(binary).toEqual([])
 
-    // Empty, and it has to stay empty. A binary method with no caller left is
-    // not dead code to tidy up later: it is a `system` parameter waiting for
-    // somebody to pass it a value collapsed from volume. Delete it, and reach
-    // for `useUnitFormat()` / `makeUnitFormat()` instead.
+    // And the rule that emptied it, kept live for whatever is added next: a
+    // binary method with no caller left is not dead code to tidy up later, it
+    // is a `system` parameter waiting for somebody to pass it a value collapsed
+    // from volume. Delete it, and reach for `useUnitFormat()` /
+    // `makeUnitFormat()` instead.
+    const callers = callersByMethod(binary)
+    const dead = [...callers].filter(([, files]) => files.length === 0).map(([name]) => name)
     expect(dead).toEqual([])
   })
 })

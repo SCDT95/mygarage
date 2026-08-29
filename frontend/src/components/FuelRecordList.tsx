@@ -11,7 +11,12 @@ import api from '../services/api'
 import { useUnitPreference } from '../hooks/useUnitPreference'
 import { useUnitFormat } from '../hooks/useUnitFormat'
 import { UnitFormatter } from '../utils/units'
-import { formatFuelRate, fuelRateLabel } from '../utils/unitFormat'
+import {
+  costPerDistanceUnitLabel,
+  formatCostPerDistance,
+  formatFuelRate,
+  fuelRateLabel,
+} from '../utils/unitFormat'
 import { priceToDisplay } from '../utils/decimalSafe'
 import { getUsageTracking } from '../utils/usageTracking'
 import { useFuelRecords, useDeleteFuelRecord, useImportFuelCSV } from '../hooks/queries/useFuelRecords'
@@ -41,7 +46,11 @@ export default function FuelRecordList({ vin, onAddClick, onEditClick }: FuelRec
   const [vehicleSecondaryUsageEnabled, setVehicleSecondaryUsageEnabled] = useState<boolean>(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const [importFormat, setImportFormat] = useState<ImportFormat>('csv')
-  const { system, showBoth, units } = useUnitPreference()
+  // ★ No `system` here any more. The last two consumers were
+  // `UnitFormatter.getCostPerDistanceLabel(system)` and its formatter, which
+  // decided a DISTANCE on a binary collapsed from VOLUME; both now read
+  // `units.distance` through `utils/unitFormat.ts`.
+  const { showBoth, units } = useUnitPreference()
   const u = useUnitFormat()
   const { currencyCode, locale } = useCurrencyPreference()
 
@@ -395,9 +404,9 @@ export default function FuelRecordList({ vin, onAddClick, onEditClick }: FuelRec
               <Card padding="sm">
                 <div className="flex items-center gap-1 text-xs text-text-mute mb-1">
                   <Truck aria-hidden="true" className="w-3 h-3" />
-                  <span>{UnitFormatter.getCostPerDistanceLabel(system)}</span>
+                  <span>{t('fuelList.costPerDistance', { unit: costPerDistanceUnitLabel(units) })}</span>
                 </div>
-                <Mono size="2xl" weight="bold">{UnitFormatter.formatCostPerDistance(costPerKm, system, currencyCode, locale)}</Mono>
+                <Mono size="2xl" weight="bold">{formatCostPerDistance(units, costPerKm, currencyCode, locale)}</Mono>
               </Card>
             )}
             {/* Task 13 — engine-hours economy stats. */}

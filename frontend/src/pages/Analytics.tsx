@@ -9,7 +9,14 @@ import api from '../services/api'
 import { getActionErrorMessage } from '../utils/httpErrorHandler'
 import { useUnitPreference } from '../hooks/useUnitPreference'
 import { useUnitFormat } from '../hooks/useUnitFormat'
-import { formatFuelRate, formatVolumePerDistance, fuelRateLabel, volumePerDistanceLabel } from '../utils/unitFormat'
+import {
+  costPerDistanceUnitLabel,
+  formatCostPerDistance,
+  formatFuelRate,
+  formatVolumePerDistance,
+  fuelRateLabel,
+  volumePerDistanceLabel,
+} from '../utils/unitFormat'
 import { NON_MOTORIZED_TYPES } from '../schemas/vehicle'
 import { UnitFormatter } from '../utils/units'
 import { withBase } from '../utils/basePath'
@@ -93,7 +100,11 @@ const DEFAULT_ANOMALY_RANGE: AnomalyRange = '12m'
 export default function Analytics() {
   const { t } = useTranslation('analytics')
   const { vin } = useParams<{ vin: string }>()
-  const { system, showBoth, units } = useUnitPreference()
+  // ★ No `system` here any more. The last two consumers were
+  // `UnitFormatter.getCostPerDistanceLabel(system)` and its formatter, which
+  // decided a DISTANCE on a binary collapsed from VOLUME; both now read
+  // `units.distance` through `utils/unitFormat.ts`.
+  const { showBoth, units } = useUnitPreference()
   const u = useUnitFormat()
   const { currencyCode, locale } = useCurrencyPreference()
   const currencySymbol = useCurrencySymbol()
@@ -257,7 +268,10 @@ export default function Analytics() {
     rows.push(['Service Count', cost_analysis.service_count.toString()])
     rows.push(['Fuel Count', cost_analysis.fuel_count.toString()])
     if (cost_analysis.cost_per_km) {
-      rows.push([UnitFormatter.getCostPerDistanceLabel(system), UnitFormatter.formatCostPerDistance(parseFloat(String(cost_analysis.cost_per_km)), system, currencyCode, locale)])
+      rows.push([
+        t('vehicle.costPerDistance', { unit: costPerDistanceUnitLabel(units) }),
+        formatCostPerDistance(units, parseFloat(String(cost_analysis.cost_per_km)), currencyCode, locale),
+      ])
     }
     rows.push([]) // Empty row
 
@@ -703,11 +717,11 @@ export default function Analytics() {
         {isMotorized && (
           <div className="bg-garage-surface border border-garage-border rounded-lg p-6">
             <div className="flex items-center justify-between mb-2">
-              <h3 className="text-sm font-medium text-garage-text-muted">{UnitFormatter.getCostPerDistanceLabel(system)}</h3>
+              <h3 className="text-sm font-medium text-garage-text-muted">{t('vehicle.costPerDistance', { unit: costPerDistanceUnitLabel(units) })}</h3>
               <LineChart className="w-5 h-5 text-garage-text-muted" />
             </div>
             <p className="text-2xl font-bold text-garage-text">
-              {cost_analysis.cost_per_km ? UnitFormatter.formatCostPerDistance(parseFloat(String(cost_analysis.cost_per_km)), system, currencyCode, locale) : t('vehicle.notAvailable')}
+              {cost_analysis.cost_per_km ? formatCostPerDistance(units, parseFloat(String(cost_analysis.cost_per_km)), currencyCode, locale) : t('vehicle.notAvailable')}
             </p>
             {analytics.total_km_driven && (
               <p className="text-xs text-garage-text-muted mt-1">

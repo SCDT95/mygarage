@@ -258,6 +258,7 @@
     "avgFuelRate": "Méd. {{unit}}",
     "confirmDelete": "Confirmar exclusão",
     "costPerHour": "Custo/h",
+    "costPerDistance": "Custo/{{unit}}",
     "date": "Data",
     "deleteError": "Erro ao excluir",
     "exportCSV": "Exportar CSV",

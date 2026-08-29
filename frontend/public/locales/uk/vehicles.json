@@ -258,6 +258,7 @@
     "avgFuelRate": "Сер. {{unit}}",
     "confirmDelete": "Підтвердити видалення",
     "costPerHour": "Вартість/год",
+    "costPerDistance": "Вартість/{{unit}}",
     "date": "Дата",
     "deleteError": "Помилка видалення",
     "exportCSV": "Експорт CSV",

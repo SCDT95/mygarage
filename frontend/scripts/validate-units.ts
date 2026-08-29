@@ -419,22 +419,69 @@ function requireBinarySystemType(): void {
   }
 }
 
-/** Every static `UnitFormatter` method that decides on a binary `UnitSystem`. */
-function deriveBinaryFormatterMethods(): Set<string> {
-  const source = parseForDerivation(UNITS_SOURCE)
-  const found = new Set<string>()
+/**
+ * The static methods one source declares on a class, split by shape.
+ *
+ * `binary` is the formatter vocabulary; `statics` is everything the walk
+ * visited, which is what lets an empty `binary` be told apart from a walk that
+ * ran over nothing. Exactly the receipt `conversionHelpersIn` returns one leg
+ * over, and it is here for the same reason.
+ *
+ * ★ `onlyClass` is what separates the two callers. The DERIVATION reads the
+ * production `UnitFormatter` and nothing else, because that is the class whose
+ * surface ruling R2 governs. A SCANNED FILE contributes any class it declares
+ * for itself, mirroring the conversion leg's `conversionHelpersIn(sf)`: a
+ * static method taking a `UnitSystem` is a binary formatter API whatever its
+ * class is called, and a file that declares one and calls it is making the
+ * D8-collapsed decision inside its own module where nothing else can see it.
+ */
+function formatterMethodsIn(
+  source: TsSourceFile,
+  onlyClass: string | null,
+): { binary: Set<string>; statics: Set<string> } {
+  const binary = new Set<string>()
+  const statics = new Set<string>()
   const walk = (node: TsNode): void => {
-    if (node.kind === ts.SyntaxKind.ClassDeclaration && node.name?.text === FORMATTER_CLASS) {
+    if (
+      node.kind === ts.SyntaxKind.ClassDeclaration &&
+      (onlyClass === null || node.name?.text === onlyClass)
+    ) {
       for (const member of node.members ?? []) {
-        if (member.kind !== ts.SyntaxKind.MethodDeclaration) continue
-        if (!isStatic(member) || !takesBinarySystem(member, source)) continue
-        if (member.name) found.add(member.name.getText(source))
+        if (member.kind !== ts.SyntaxKind.MethodDeclaration || !isStatic(member)) continue
+        if (!member.name) continue
+        statics.add(member.name.getText(source))
+        if (takesBinarySystem(member, source)) binary.add(member.name.getText(source))
       }
     }
     ts.forEachChild(node, walk)
   }
   walk(source)
-  return requireNonEmpty(found, 'binary formatter method', UNITS_SOURCE)
+  return { binary, statics }
+}
+
+/**
+ * Every static `UnitFormatter` method that decides on a binary `UnitSystem`.
+ *
+ * ★ THIS SET IS EMPTY TODAY, AND EMPTY IS THE GOAL STATE RATHER THAN A BROKEN
+ * DERIVATION. Plan 3b task 7 migrated the last two call sites of the last two
+ * such methods, `unitsBinaryApiSurface.test.ts` reported both as dead exactly
+ * as designed, and they went. So `requireNonEmpty` guards `statics`, not
+ * `binary`: the walk still has to come back holding the static methods
+ * `UnitFormatter` does declare (`formatVolume`, `getVolumeUnit` and the rest),
+ * which is what a gutted file or a changed AST shape would fail. This is the
+ * same move `deriveBinaryConversionHelpers` made when task 5 emptied ITS
+ * vocabulary, and the docstring one function up predicted the day it would be
+ * needed: "on the day the last one goes, an empty set becomes the TRUTH rather
+ * than a symptom, and `requireNonEmpty` has to go with it".
+ *
+ * The other way `binary` could empty is `BINARY_SYSTEM_TYPE` ceasing to match,
+ * and that is checked directly by `requireBinarySystemType`, which runs before
+ * either derivation and does not expire.
+ */
+function deriveBinaryFormatterMethods(): Set<string> {
+  const { binary, statics } = formatterMethodsIn(parseForDerivation(UNITS_SOURCE), FORMATTER_CLASS)
+  requireNonEmpty(statics, `static ${FORMATTER_CLASS} method`, UNITS_SOURCE)
+  return binary
 }
 
 /**
@@ -942,6 +989,23 @@ export function scanSource(source: string, rel: string): Finding[] {
     ...BINARY_CONVERSION_HELPERS,
     ...conversionHelpersIn(sf).binary,
   ])
+  // ★ The formatter leg gets the same treatment, and it is not symmetry for
+  // its own sake. `UnitFormatter`'s binary surface is EMPTY since task 7, so a
+  // vocabulary derived from `units.ts` alone can no longer fire at all, and a
+  // leg that cannot fire is one nothing can prove still works: the two-sided
+  // corpus that pins it (`units_gate_corpus.py`) had to spell a live
+  // production method name, and it has now been renamed three times as each
+  // one retired. Reading the scanned file's OWN class declarations makes the
+  // corpus fixtures self-owned, exactly as the conversion leg's already are,
+  // and closes a real same-file blindness at the same time: a component that
+  // declares a static `format(x, system: UnitSystem)` on a class of its own and
+  // calls it is making the D8-collapsed decision where neither the comparison
+  // leg (the comparison is in the callee) nor the derived leg (the method is
+  // not on `UnitFormatter`) could see it.
+  const binaryFormattersHere = new Set([
+    ...BINARY_FORMATTER_METHODS,
+    ...formatterMethodsIn(sf, null).binary,
+  ])
   const lines = source.split('\n')
   const index = indexDeclarations(sf)
   const findings: Finding[] = []
@@ -992,7 +1056,7 @@ export function scanSource(source: string, rel: string): Finding[] {
       // `import { UnitFormatter as UF }` a one-line bypass, so the object is
       // required but not read.
       if (callee?.kind === ts.SyntaxKind.PropertyAccessExpression) {
-        if (BINARY_FORMATTER_METHODS.has(called)) {
+        if (binaryFormattersHere.has(called)) {
           record(node, 'formatter-binary', `${normalize(callee.getText(sf))}(...)`)
         }
       }

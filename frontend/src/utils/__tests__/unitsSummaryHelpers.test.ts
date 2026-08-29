@@ -29,8 +29,6 @@ beforeEach(() => {
 // All summary card helpers take CANONICAL METRIC inputs:
 // - formatVolumeTotal: liters
 // - formatCostPerVolume: $/L
-// - formatCostPerDistance: $/km (rendered as $/100km metric or $/1000mi imperial)
-// - formatVolumePerDistance: L/1000km
 describe('UnitConverter.litersToVolumeUnit', () => {
   it('hands a litre set its stored value untouched and rounds a gallon one for display', () => {
     // Form fields are seeded from this. A litre set must NOT go through
@@ -111,27 +109,16 @@ describe('UnitFormatter summary card helpers', () => {
     })
   })
 
-  describe('formatCostPerDistance', () => {
-    it('metric: shows $/100 km from $/km input', () => {
-      // $0.10/km * 100 = $10.00/100km
-      expect(UnitFormatter.formatCostPerDistance(0.10, 'metric')).toBe('$10.00')
-    })
-
-    it('imperial: converts $/km to $/1000 mi', () => {
-      // $0.10/km * 1.60934 * 1000 = $160.93/1000mi
-      expect(UnitFormatter.formatCostPerDistance(0.10, 'imperial')).toBe('$160.93')
-    })
-  })
-
-  describe('getCostPerDistanceLabel', () => {
-    it('imperial: Cost/1k Miles', () => {
-      expect(UnitFormatter.getCostPerDistanceLabel('imperial')).toBe('Cost/1k Miles')
-    })
-
-    it('metric: Cost/100 km', () => {
-      expect(UnitFormatter.getCostPerDistanceLabel('metric')).toBe('Cost/100 km')
-    })
-  })
+  // ★ `formatCostPerDistance` and `getCostPerDistanceLabel` WERE COVERED HERE,
+  // with cases named "metric: shows $/100 km" and "imperial: Cost/1k Miles".
+  // Those described what the code did and pinned the defect: the binary system
+  // is collapsed from VOLUME, so a `{volume:'L', distance:'mi'}` account read
+  // "$10.00" under a "Cost/100 km" caption beside a miles odometer. Plan 3b
+  // task 7 moved both functions to `utils/unitFormat.ts`, where `adapterFor`
+  // supplies the distance half from the resolved set, and their cases moved
+  // with them into `utils/__tests__/unitFormat.test.ts`, including the two
+  // mixed sets the retired pair could not express and the denominators, which
+  // did not change.
 
   // ★ `formatVolumePerDistance` and `getVolumePerDistanceLabel` WERE COVERED
   // HERE, with a case named "keeps the DISTANCE half on the binary system the
