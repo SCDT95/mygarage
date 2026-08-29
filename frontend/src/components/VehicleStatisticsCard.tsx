@@ -18,6 +18,7 @@ import {
 import type { VehicleStatistics } from '../types/dashboard'
 import { formatDateForDisplay } from '../utils/dateUtils'
 import { useUnitPreference } from '../hooks/useUnitPreference'
+import { useUnitFormat } from '../hooks/useUnitFormat'
 import { UnitFormatter } from '../utils/units'
 import { withBase } from '../utils/basePath'
 import { getUsageTracking } from '../utils/usageTracking'
@@ -35,6 +36,7 @@ function VehicleStatisticsCard({ stats, selectMode = false, selected = false, on
   const { t } = useTranslation('vehicles')
   const navigate = useNavigate()
   const { system } = useUnitPreference()
+  const u = useUnitFormat()
 
   const handleClick = () => {
     if (selectMode) {
@@ -225,11 +227,7 @@ function VehicleStatisticsCard({ stats, selectMode = false, selected = false, on
                 <ListRow
                   icon={Gauge}
                   label={t('vehicleStats.latestOdometer')}
-                  value={UnitFormatter.formatDistance(
-                    parseFloat(String(stats.latest_odometer_km)),
-                    system,
-                    false
-                  )}
+                  value={u.distance.formatPrimary(parseFloat(String(stats.latest_odometer_km)))}
                 />
               )}
               {usage.tracksHours && stats.latest_hours != null && (

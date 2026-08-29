@@ -260,15 +260,17 @@ describe('the binary UnitFormatter surface', () => {
     // below vacuously true, so the count is pinned. Task 2 deleted the seven
     // that no production file called, leaving nine; task 3 moved
     // PropaneRecordForm onto the mass adapter, which retired `getWeightUnit`
-    // and left these eight. Task 6 retires the rest, and each retirement
-    // lowers this number.
+    // and left eight; task 6 migrated the twenty-seven call sites of
+    // `formatDistance` and `getDistanceUnit` onto the resolved `units.distance`
+    // adapter, this test failed exactly as designed, and both methods followed.
+    // The six below are the fuel-economy, fuel-rate and cost-per-distance
+    // surface, each still with production callers, and each retirement lowers
+    // this list again.
     expect(binaryFormatterMethods()).toEqual([
       'formatCostPerDistance',
-      'formatDistance',
       'formatFuelEconomy',
       'formatFuelRate',
       'getCostPerDistanceLabel',
-      'getDistanceUnit',
       'getFuelEconomyUnit',
       'getFuelRateUnit',
     ])

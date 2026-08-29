@@ -36,6 +36,7 @@ vi.mock('../useUnitPreference', () => ({
 import { setGallonStandard as storeSet, getGallonStandard as storeGet } from '../../utils/gallonStandardStore'
 import { UK_IMPERIAL_UNITS } from '../../__tests__/factories'
 import { UnitConverter, UnitFormatter } from '../../utils/units'
+import { makeUnitFormat } from '../../utils/unitFormat'
 import { useResolvedGallonSync } from '../useResolvedGallonSync'
 
 /**
@@ -127,7 +128,9 @@ describe('useResolvedGallonSync', () => {
     renderHook(() => useResolvedGallonSync())
 
     expect(UnitFormatter.formatVolume(45.4609, UK_IMPERIAL_UNITS)).toBe('10.00 gal')
-    expect(UnitFormatter.formatDistance(482.802, 'imperial')).toBe('300 mi')
+    // Distance never had a gallon in it; through the resolved `mi` adapter
+    // since task 6 deleted the binary formatter. 482.802 / 1.60934 = 300.
+    expect(makeUnitFormat(UK_IMPERIAL_UNITS).distance.format(482.802)).toBe('300 mi')
     expect(UnitFormatter.formatFuelEconomy(9.4160546, 'imperial')).toBe('30.0 MPG')
     expect(UnitFormatter.formatFuelRate(4.54609, 'imperial')).toBe('1.00 GPH')
     // 300 / 10.00 = 30.0, and every cell now names the same gallon.

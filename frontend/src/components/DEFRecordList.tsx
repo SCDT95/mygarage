@@ -8,10 +8,10 @@ import { useCurrencyPreference } from '../hooks/useCurrencyPreference'
 import type { DEFRecord } from '../types/def'
 import DEFRecordForm from './DEFRecordForm'
 import { useUnitPreference } from '../hooks/useUnitPreference'
-import { UnitConverter, UnitFormatter } from '../utils/units'
+import { useUnitFormat } from '../hooks/useUnitFormat'
+import { UnitFormatter } from '../utils/units'
 import { useDEFRecords, useDEFAnalytics, useDeleteDEFRecord } from '../hooks/queries/useDEFRecords'
 import { useQueryClient } from '@tanstack/react-query'
-import { getActiveLocale } from '@/constants/i18n'
 import { getActionErrorMessage } from '../utils/httpErrorHandler'
 import { Button, IconButton, Card, Mono, Chip, DataTable, EmptyState } from './ui'
 import type { DataTableColumn } from './ui'
@@ -28,7 +28,8 @@ export default function DEFRecordList({ vin, readOnly = false }: DEFRecordListPr
   const [showForm, setShowForm] = useState(false)
   const [editingRecord, setEditingRecord] = useState<DEFRecord | undefined>()
   const { t } = useTranslation('vehicles')
-  const { system, showBoth, units } = useUnitPreference()
+  const { showBoth, units } = useUnitPreference()
+  const u = useUnitFormat()
   const { currencyCode, locale } = useCurrencyPreference()
 
   const { data: recordsData, isLoading, error } = useDEFRecords(vin)
@@ -106,7 +107,7 @@ export default function DEFRecordList({ vin, readOnly = false }: DEFRecordListPr
         ? <Chip tone="info">{t('defList.auto')}</Chip>
         : <Chip tone="success">{t('defList.purchase')}</Chip> },
     { id: 'mileage', header: t('defList.mileage'), align: 'right', mono: true,
-      render: (r) => r.odometer_km != null ? UnitFormatter.formatDistance(parseFloat(String(r.odometer_km)), system, showBoth) : '-' },
+      render: (r) => r.odometer_km != null ? u.distance.format(parseFloat(String(r.odometer_km))) : '-' },
     // B7: unit-aware header — formatVolume yields liters in metric, so the old static
     // `defList.gallons` ("Gallons") lied to metric users. `volumeUnit` interpolates the system unit.
     { id: 'gallons', header: t('defList.volumeUnit', { unit: UnitFormatter.getVolumeUnit(units) }), align: 'right', mono: true, render: (r) => formatVolume(r.liters) },
@@ -172,12 +173,10 @@ export default function DEFRecordList({ vin, readOnly = false }: DEFRecordListPr
             <Card padding="sm">
               <div className="flex items-center gap-1 text-xs text-text-mute mb-1">
                 <TrendingDown aria-hidden="true" className="w-3 h-3" />
-                <span>Est. {UnitFormatter.getDistanceUnit(system)} Left</span>
+                <span>Est. {u.distance.label} Left</span>
               </div>
               <Mono size="2xl" weight="bold" tone={remainingTone(parseNum(analytics.estimated_km_remaining) ?? 0)}>
-                {system === 'imperial'
-                  ? Math.round(UnitConverter.kmToMiles(parseNum(analytics.estimated_km_remaining) ?? 0) ?? 0).toLocaleString(getActiveLocale())
-                  : Math.round(parseNum(analytics.estimated_km_remaining) ?? 0).toLocaleString(getActiveLocale())}
+                {u.distance.toDisplayText(parseNum(analytics.estimated_km_remaining) ?? 0)}
               </Mono>
               {analytics.estimated_days_remaining !== null && (
                 <p className="text-xs text-text-mute">{t('defList.estimatedDays', { count: analytics.estimated_days_remaining })}</p>

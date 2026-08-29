@@ -9,6 +9,7 @@ import { formatCurrency } from '../utils/formatUtils'
 import { useCurrencyPreference } from '../hooks/useCurrencyPreference'
 import api from '../services/api'
 import { useUnitPreference } from '../hooks/useUnitPreference'
+import { useUnitFormat } from '../hooks/useUnitFormat'
 import { UnitFormatter } from '../utils/units'
 import { priceToDisplay } from '../utils/decimalSafe'
 import { getUsageTracking } from '../utils/usageTracking'
@@ -40,6 +41,7 @@ export default function FuelRecordList({ vin, onAddClick, onEditClick }: FuelRec
   const fileInputRef = useRef<HTMLInputElement>(null)
   const [importFormat, setImportFormat] = useState<ImportFormat>('csv')
   const { system, showBoth, units } = useUnitPreference()
+  const u = useUnitFormat()
   const { currencyCode, locale } = useCurrencyPreference()
 
   // Phase 3.8 — paginate the fuel-records list. rc1 silently capped
@@ -213,7 +215,7 @@ export default function FuelRecordList({ vin, onAddClick, onEditClick }: FuelRec
     { id: 'date', header: t('fuelList.date'), mono: true, render: (r) => formatDate(r.date) },
     ...(tracksDistance ? [{
       id: 'mileage', header: t('fuelList.mileage'), align: 'right' as const, mono: true,
-      render: (r: FuelRecord) => r.odometer_km != null ? UnitFormatter.formatDistance(parseFloat(String(r.odometer_km)), system, showBoth) : '-',
+      render: (r: FuelRecord) => r.odometer_km != null ? u.distance.format(parseFloat(String(r.odometer_km))) : '-',
     }] : []),
     { id: 'volume', header: t('fuelList.volumeUnit', { unit: UnitFormatter.getVolumeUnit(units) }), align: 'right', mono: true,
       render: (r) => r.liters ? UnitFormatter.formatVolume(parseFloat(r.liters.toString()), units, showBoth) : '-' },

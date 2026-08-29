@@ -1,6 +1,5 @@
 import { describe, it, expect, afterEach } from 'vitest'
 import { getActiveLocale, setActiveLocale } from '@/constants/i18n'
-import { UnitFormatter } from '@/utils/units'
 import { makeUnitFormat } from '@/utils/unitFormat'
 import { presetUnitsFor } from '@/types/units'
 import { formatDateForDisplay, getDateFnsLocale } from '@/utils/dateUtils'
@@ -30,10 +29,14 @@ describe('locale-aware number formatting', () => {
   })
 
   it('formats distance with the separators of the active language', () => {
+    // Through the resolved `km` adapter: task 6 deleted the binary
+    // `formatDistance`, and the grouping this case is about is the same
+    // `Intl.NumberFormat(getActiveLocale())` either way.
+    const km = makeUnitFormat(presetUnitsFor('metric', 'us')).distance
     setActiveLocale('en')
-    const en = UnitFormatter.formatDistance(12345, 'metric')
+    const en = km.format(12345)
     setActiveLocale('de')
-    const de = UnitFormatter.formatDistance(12345, 'metric')
+    const de = km.format(12345)
 
     // en-US groups with a comma, de-DE with a period — the point is that the
     // two differ, which is exactly what a bare toLocaleString() failed to do.

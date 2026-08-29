@@ -8,6 +8,7 @@ import { useParams, Link } from 'react-router-dom'
 import api from '../services/api'
 import { getActionErrorMessage } from '../utils/httpErrorHandler'
 import { useUnitPreference } from '../hooks/useUnitPreference'
+import { useUnitFormat } from '../hooks/useUnitFormat'
 import { NON_MOTORIZED_TYPES } from '../schemas/vehicle'
 import { UnitConverter, UnitFormatter } from '../utils/units'
 import { withBase } from '../utils/basePath'
@@ -92,6 +93,7 @@ export default function Analytics() {
   const { t } = useTranslation('analytics')
   const { vin } = useParams<{ vin: string }>()
   const { system, showBoth, units } = useUnitPreference()
+  const u = useUnitFormat()
   const { currencyCode, locale } = useCurrencyPreference()
   const currencySymbol = useCurrencySymbol()
   const dateLocale = useDateLocale()
@@ -708,7 +710,7 @@ export default function Analytics() {
             </p>
             {analytics.total_km_driven && (
               <p className="text-xs text-garage-text-muted mt-1">
-                {t('vehicle.distanceDriven', { distance: UnitFormatter.formatDistance(parseFloat(String(analytics.total_km_driven)), system, showBoth) })}
+                {t('vehicle.distanceDriven', { distance: u.distance.format(parseFloat(String(analytics.total_km_driven))) })}
               </p>
             )}
           </div>
@@ -962,7 +964,7 @@ export default function Analytics() {
                         <span className="text-garage-text-muted">{formatDate(prediction.predicted_date)}</span>
                       )}
                       {prediction.predicted_odometer_km && (
-                        <span className="text-garage-text-muted">@ {UnitFormatter.formatDistance(parseFloat(String(prediction.predicted_odometer_km)), system, false)}</span>
+                        <span className="text-garage-text-muted">@ {u.distance.formatPrimary(parseFloat(String(prediction.predicted_odometer_km)))}</span>
                       )}
                     </div>
                     {/* Scheduled Maintenance if exists */}
@@ -973,7 +975,7 @@ export default function Analytics() {
                           <span className="text-garage-text-muted">{formatDate(prediction.schedule_item_next_date)}</span>
                         )}
                         {prediction.schedule_item_next_odometer_km && (
-                          <span className="text-garage-text-muted">@ {UnitFormatter.formatDistance(parseFloat(String(prediction.schedule_item_next_odometer_km)), system, false)}</span>
+                          <span className="text-garage-text-muted">@ {u.distance.formatPrimary(parseFloat(String(prediction.schedule_item_next_odometer_km)))}</span>
                         )}
                       </div>
                     )}
@@ -993,7 +995,7 @@ export default function Analytics() {
                   )}
                   {prediction.km_until_due != null && (
                     <p className="text-xs text-garage-text-muted mt-1">
-                      {parseFloat(prediction.km_until_due) < 0 ? t('vehicle.pastMileage') : UnitFormatter.formatDistance(parseFloat(prediction.km_until_due), system, false)}
+                      {parseFloat(prediction.km_until_due) < 0 ? t('vehicle.pastMileage') : u.distance.formatPrimary(parseFloat(prediction.km_until_due))}
                     </p>
                   )}
                 </div>
@@ -1251,7 +1253,7 @@ export default function Analytics() {
                           </p>
                           {payload[0].payload.odometer_km != null && (
                             <p style={{ fontSize: '12px', color: '#9ca3af', marginTop: '4px' }}>
-                              {UnitFormatter.formatDistance(payload[0].payload.odometer_km as number, system, false)}
+                              {u.distance.formatPrimary(payload[0].payload.odometer_km as number)}
                             </p>
                           )}
                         </div>
@@ -1283,7 +1285,7 @@ export default function Analytics() {
                 <tr className="border-b border-garage-border">
                   <th className="text-left py-2 px-4 text-sm font-medium text-garage-text-muted">{t('vehicle.table.date')}</th>
                   <th className="text-right py-2 px-4 text-sm font-medium text-garage-text-muted">{t('vehicle.table.fuelEconomy')}</th>
-                  <th className="text-right py-2 px-4 text-sm font-medium text-garage-text-muted">{t('vehicle.table.mileage', { unit: UnitFormatter.getDistanceUnit(system) })}</th>
+                  <th className="text-right py-2 px-4 text-sm font-medium text-garage-text-muted">{t('vehicle.table.mileage', { unit: u.distance.label })}</th>
                   <th className="text-right py-2 px-4 text-sm font-medium text-garage-text-muted">{t('vehicle.table.volume', { unit: UnitFormatter.getVolumeUnit(units) })}</th>
                   <th className="text-right py-2 px-4 text-sm font-medium text-garage-text-muted">{t('vehicle.table.cost')}</th>
                 </tr>
@@ -1293,7 +1295,7 @@ export default function Analytics() {
                   <tr key={idx} className="border-b border-garage-border/50">
                     <td className="py-2 px-4 text-sm text-garage-text">{formatDate(point.date)}</td>
                     <td className="py-2 px-4 text-sm text-garage-text text-right font-medium">{UnitFormatter.formatFuelEconomy(parseFloat(point.l_per_100km), system, showBoth)}</td>
-                    <td className="py-2 px-4 text-sm text-garage-text text-right">{UnitFormatter.formatDistance(parseFloat(point.odometer_km), system, false)}</td>
+                    <td className="py-2 px-4 text-sm text-garage-text text-right">{u.distance.formatPrimary(parseFloat(point.odometer_km))}</td>
                     <td className="py-2 px-4 text-sm text-garage-text text-right">{UnitFormatter.formatVolume(parseFloat(point.liters), units, false)}</td>
                     <td className="py-2 px-4 text-sm text-garage-text text-right">{formatCurrency(point.cost, { currencyCode, locale })}</td>
                   </tr>
@@ -1681,7 +1683,7 @@ export default function Analytics() {
                     <p className="text-sm text-garage-text-muted mb-2">{item.description}</p>
                   )}
                   <div className="flex items-center gap-4 text-xs text-garage-text-muted">
-                    {item.odometer_km && <span>{UnitFormatter.formatDistance(parseFloat(item.odometer_km), system, false)}</span>}
+                    {item.odometer_km && <span>{u.distance.formatPrimary(parseFloat(item.odometer_km))}</span>}
                     {item.vendor_name && <span>{item.vendor_name}</span>}
                     {item.days_since_last && (
                       <span className="text-primary">
@@ -1690,7 +1692,7 @@ export default function Analytics() {
                     )}
                     {item.km_since_last && (
                       <span className="text-primary">
-                        {t('vehicle.distanceSinceLast', { distance: UnitFormatter.formatDistance(parseFloat(item.km_since_last), system, false) })}
+                        {t('vehicle.distanceSinceLast', { distance: u.distance.formatPrimary(parseFloat(item.km_since_last)) })}
                       </span>
                     )}
                   </div>

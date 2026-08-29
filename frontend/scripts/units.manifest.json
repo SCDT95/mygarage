@@ -449,17 +449,11 @@
   {
    "path": "src/components/DEFRecordList.tsx",
    "disposition": "audited",
-   "digest": "dd41161c7e6d123572883294169e4467cccc492af8d7b14b3300acba9577b97b",
-   "reason": "gate-detectable unit decisions, recorded not asserted clean (plan 3b task 1 ordering)",
+   "digest": "7ae05eb2aaaedfba286673e2f393b502644a4d8233bacd6c1021b2b9c469d5c1",
+   "reason": "gate-detectable unit decisions, recorded not asserted clean (plan 3b task 1 ordering). Task 6 migrated its binary distance read sites onto the resolved `units.distance` token (useUnitFormat), so nothing here reads a distance through a system collapsed from volume.",
    "tests": [
-    "components/__tests__/DEFRecordList.test.tsx"
-   ],
-   "findings": [
-    "compare x1 (units gate baseline)",
-    "formatter-binary x2 (units gate baseline)"
-   ],
-   "owners": [
-    "task 6"
+    "components/__tests__/DEFRecordList.test.tsx",
+    "components/__tests__/distanceReadSites.mixedUnits.test.tsx"
    ]
   },
   {
@@ -501,16 +495,11 @@
   {
    "path": "src/components/FleetHealthStrip.tsx",
    "disposition": "audited",
-   "digest": "fa474dbc3887f1e1576fd900283ecd71a2d33cda94c1f51bbcb7ac11a77453f5",
-   "reason": "gate-detectable unit decisions, recorded not asserted clean (plan 3b task 1 ordering)",
+   "digest": "74adf66be3280d1be93d4b7de6009c4b6e551be1543ab54a784df32a49df19b5",
+   "reason": "gate-detectable unit decisions, recorded not asserted clean (plan 3b task 1 ordering). Task 6 migrated its binary distance read sites onto the resolved `units.distance` token (useUnitFormat), so nothing here reads a distance through a system collapsed from volume.",
    "tests": [
-    "components/__tests__/FleetHealthStrip.test.tsx"
-   ],
-   "findings": [
-    "formatter-binary x1 (units gate baseline)"
-   ],
-   "owners": [
-    "task 6"
+    "components/__tests__/FleetHealthStrip.test.tsx",
+    "components/__tests__/distanceReadSites.mixedUnits.test.tsx"
    ]
   },
   {
@@ -546,13 +535,13 @@
   {
    "path": "src/components/FuelRecordList.tsx",
    "disposition": "audited",
-   "digest": "7ce52274b8cf1005de3b78a9cf34b0430da02ac77c1700598d97bfa4e3a75c6c",
-   "reason": "gate-detectable unit decisions, recorded not asserted clean (plan 3b task 1 ordering)",
+   "digest": "e2b00ea23f8ce3a4213525dcff76c5d49c43b1d14cc9328c546feb2ebda3a706",
+   "reason": "gate-detectable unit decisions, recorded not asserted clean (plan 3b task 1 ordering). Task 6 migrated the DISTANCE sites onto the resolved `units.distance` token; what remains is the fuel-economy, fuel-rate and cost-per-distance surface, which still takes the collapsed binary system.",
    "tests": [
     "components/__tests__/FuelRecordList.test.tsx"
    ],
    "findings": [
-    "formatter-binary x8 (units gate baseline)"
+    "formatter-binary x7 (units gate baseline)"
    ],
    "owners": [
     "task 6"
@@ -671,16 +660,11 @@
   {
    "path": "src/components/OdometerRecordList.tsx",
    "disposition": "audited",
-   "digest": "bf1016951d4636e143505972f3c1bce6365ceef320cf54bc01f361eec83f4931",
-   "reason": "gate-detectable unit decisions, recorded not asserted clean (plan 3b task 1 ordering)",
+   "digest": "5ef7d08a381a5d36c0cb61f455a56babb5ba6189b07957bf7c237c5d79035d1d",
+   "reason": "gate-detectable unit decisions, recorded not asserted clean (plan 3b task 1 ordering). Task 6 migrated its binary distance read sites onto the resolved `units.distance` token (useUnitFormat), so nothing here reads a distance through a system collapsed from volume.",
    "tests": [
-    "components/__tests__/OdometerRecordList.test.tsx"
-   ],
-   "findings": [
-    "formatter-binary x3 (units gate baseline)"
-   ],
-   "owners": [
-    "task 6"
+    "components/__tests__/OdometerRecordList.test.tsx",
+    "components/__tests__/distanceReadSites.mixedUnits.test.tsx"
    ]
   },
   {
@@ -783,16 +767,11 @@
   {
    "path": "src/components/ReminderList.tsx",
    "disposition": "audited",
-   "digest": "af59b21ba68a50c31297efbb3196478e37983f61433cf7142a25c561b49c5729",
-   "reason": "gate-detectable unit decisions, recorded not asserted clean (plan 3b task 1 ordering)",
+   "digest": "4e0d09ce5aa670caba4c379306a734487d837ae9aa2401d56ee13add58ff32c0",
+   "reason": "gate-detectable unit decisions, recorded not asserted clean (plan 3b task 1 ordering). Task 6 migrated its binary distance read sites onto the resolved `units.distance` token (useUnitFormat), so nothing here reads a distance through a system collapsed from volume.",
    "tests": [
-    "components/__tests__/ReminderList.test.tsx"
-   ],
-   "findings": [
-    "formatter-binary x1 (units gate baseline)"
-   ],
-   "owners": [
-    "task 6"
+    "components/__tests__/ReminderList.test.tsx",
+    "components/__tests__/distanceReadSites.mixedUnits.test.tsx"
    ]
   },
   {
@@ -836,16 +815,11 @@
   {
    "path": "src/components/ServiceVisitList.tsx",
    "disposition": "audited",
-   "digest": "f41522642792cd653df80b3903405e46c093a15156df8c623446952f233e9cbc",
-   "reason": "gate-detectable unit decisions, recorded not asserted clean (plan 3b task 1 ordering)",
+   "digest": "64212db17448a103a7ae50b1f7b242de51fee854e3e203b9832df10a97f113f6",
+   "reason": "gate-detectable unit decisions, recorded not asserted clean (plan 3b task 1 ordering). Task 6 migrated its binary distance read sites onto the resolved `units.distance` token (useUnitFormat), so nothing here reads a distance through a system collapsed from volume.",
    "tests": [
-    "components/__tests__/ServiceVisitList.test.tsx"
-   ],
-   "findings": [
-    "formatter-binary x1 (units gate baseline)"
-   ],
-   "owners": [
-    "task 6"
+    "components/__tests__/ServiceVisitList.test.tsx",
+    "components/__tests__/distanceReadSites.mixedUnits.test.tsx"
    ]
   },
   {
@@ -956,13 +930,13 @@
   {
    "path": "src/components/VehicleStatisticsCard.tsx",
    "disposition": "audited",
-   "digest": "62449c943639240626648b41f2d925de32cf61e0e21ee22eb5b068af9f7866cc",
-   "reason": "gate-detectable unit decisions, recorded not asserted clean (plan 3b task 1 ordering)",
+   "digest": "ce4bc71b011c8575ffa42ab1c7543680ba9bff638dde27aece0700d69ebcfe3e",
+   "reason": "gate-detectable unit decisions, recorded not asserted clean (plan 3b task 1 ordering). Task 6 migrated the DISTANCE sites onto the resolved `units.distance` token; what remains is the fuel-economy, fuel-rate and cost-per-distance surface, which still takes the collapsed binary system.",
    "tests": [
     "components/__tests__/VehicleStatisticsCard.test.tsx"
    ],
    "findings": [
-    "formatter-binary x6 (units gate baseline)"
+    "formatter-binary x5 (units gate baseline)"
    ],
    "owners": [
     "task 6"
@@ -993,16 +967,11 @@
   {
    "path": "src/components/WarrantyList.tsx",
    "disposition": "audited",
-   "digest": "c8184b9b4bf84c6ccee29a0a8259d81aa2b1d77b865f982716b85551196d02c1",
-   "reason": "gate-detectable unit decisions, recorded not asserted clean (plan 3b task 1 ordering)",
+   "digest": "4df0a4a1d9ba34f18194b2bfb1c110a55765dcb790475b01bfd8ae8ba1b1983a",
+   "reason": "gate-detectable unit decisions, recorded not asserted clean (plan 3b task 1 ordering). Task 6 migrated its binary distance read sites onto the resolved `units.distance` token (useUnitFormat), so nothing here reads a distance through a system collapsed from volume.",
    "tests": [
-    "components/__tests__/WarrantyList.test.tsx"
-   ],
-   "findings": [
-    "formatter-binary x1 (units gate baseline)"
-   ],
-   "owners": [
-    "task 6"
+    "components/__tests__/WarrantyList.test.tsx",
+    "components/__tests__/distanceReadSites.mixedUnits.test.tsx"
    ]
   },
   {
@@ -1708,16 +1677,11 @@
   {
    "path": "src/components/vehicle-detail/VehicleHero.tsx",
    "disposition": "audited",
-   "digest": "998d763be61f285a636881d70b9b63a979b829a1f52d87f2fe69f89b8c906f4d",
-   "reason": "gate-detectable unit decisions, recorded not asserted clean (plan 3b task 1 ordering)",
+   "digest": "43d958cc640829f5ed105c403d00ae7680d808ff385634b6d6206fdb15d18106",
+   "reason": "gate-detectable unit decisions, recorded not asserted clean (plan 3b task 1 ordering). Task 6 migrated its binary distance read sites onto the resolved `units.distance` token (useUnitFormat), so nothing here reads a distance through a system collapsed from volume.",
    "tests": [
+    "components/__tests__/distanceReadSites.mixedUnits.test.tsx",
     "components/vehicle-detail/__tests__/VehicleHero.test.tsx"
-   ],
-   "findings": [
-    "formatter-binary x2 (units gate baseline)"
-   ],
-   "owners": [
-    "task 6"
    ]
   },
   {
@@ -2151,15 +2115,15 @@
   {
    "path": "src/pages/Analytics.tsx",
    "disposition": "audited",
-   "digest": "4c32189e7fe8764bd41deb10154c3089c82f6a98380bfbd94d34437b6decbd41",
-   "reason": "gate-detectable unit decisions, recorded not asserted clean (plan 3b task 1 ordering)",
+   "digest": "c246cd79059fe7a2fc0d6d5934e6b8364642b24d97720a8268e8ddf2b88d64f5",
+   "reason": "gate-detectable unit decisions, recorded not asserted clean (plan 3b task 1 ordering). Task 6 migrated the DISTANCE sites onto the resolved `units.distance` token; what remains is the fuel-economy, fuel-rate and cost-per-distance surface, which still takes the collapsed binary system.",
    "tests": [
     "pages/__tests__/Analytics.anomalies.test.tsx",
     "pages/__tests__/Analytics.hours.test.tsx"
    ],
    "findings": [
     "compare x2 (units gate baseline)",
-    "formatter-binary x29 (units gate baseline)",
+    "formatter-binary x20 (units gate baseline)",
     "token-branch x2 (units gate baseline)",
     "raw resolved-token branches at the two volume-total labels"
    ],
@@ -2170,14 +2134,10 @@
   {
    "path": "src/pages/Calendar.tsx",
    "disposition": "audited",
-   "digest": "137c9d05cf24ea5c884bcccb18156bdadae262dec69cde9b226b8153441d529d",
-   "reason": "gate-detectable unit decisions, recorded not asserted clean (plan 3b task 1 ordering)",
-   "findings": [
-    "compare x1 (units gate baseline)",
-    "formatter-binary x3 (units gate baseline)"
-   ],
-   "owners": [
-    "task 6"
+   "digest": "2de54ba296091e6c28cbd748ba044fb1cb37659cef464944d457135f9ab17db8",
+   "reason": "gate-detectable unit decisions, recorded not asserted clean (plan 3b task 1 ordering). Task 6 migrated its binary distance read sites onto the resolved `units.distance` token (useUnitFormat), so nothing here reads a distance through a system collapsed from volume.",
+   "tests": [
+    "pages/__tests__/Calendar.mixedUnits.test.tsx"
    ]
   },
   {
@@ -2854,7 +2814,7 @@
   {
    "path": "src/utils/units.ts",
    "disposition": "audited",
-   "digest": "59fb1f19aa46678e1fbeffbad5ab929dfde911cd0bdea57d30a89d24a3dc6b1b",
+   "digest": "7e87bea09a03a1bcce3b11ec1a990fd1bc6187260c989ed9307408f2612bc275",
    "reason": "gate-detectable unit decisions, recorded not asserted clean (plan 3b task 1 ordering)",
    "tests": [
     "utils/__tests__/unitFactorParity.test.ts",
@@ -2864,7 +2824,7 @@
    ],
    "findings": [
     "token-branch x7 (units gate baseline)",
-    "R2 CLOSED: all 16 comparisons decided per occurrence. Seven methods deleted (formatTemperature, formatPressure, formatWeight, formatTorque, getTemperatureUnit, getPressureUnit, getTorqueUnit) because no production file called them and a retained binary UnitSystem API is a trap. Nine exempt with an EXPIRY, each carrying `// units-exempt:` naming the owner of its call sites: task 6 holds formatDistance, formatFuelEconomy, formatFuelRate, getDistanceUnit, getFuelEconomyUnit, getFuelRateUnit, formatCostPerDistance and getCostPerDistanceLabel. The ninth, getWeightUnit, is GONE: task 3 moved PropaneRecordForm onto the mass adapter, the expiry test failed as designed, and the method followed, leaving eight. The exemptions do not rest on the pragma prose: utils/__tests__/unitsBinaryApiSurface.test.ts derives the surface from the file and fails when a method outlives its last caller.",
+    "R2 CLOSED: every comparison decided per occurrence. Seven methods deleted by task 2 (formatTemperature, formatPressure, formatWeight, formatTorque, getTemperatureUnit, getPressureUnit, getTorqueUnit) because no production file called them and a retained binary UnitSystem API is a trap. getWeightUnit followed in task 3 when PropaneRecordForm moved onto the mass adapter, and formatDistance and getDistanceUnit followed in task 6 when its twenty-seven call sites moved onto the resolved distance token; the raw pair UnitConverter.kmToMiles / milesToKm went with them, having no caller left either. Each retirement was announced by utils/__tests__/unitsBinaryApiSurface.test.ts failing first, which is what the exemptions rest on rather than the pragma prose. What survives is the fuel-economy, fuel-rate and cost-per-distance surface, each `// units-exempt:` and each still with production callers; how many is printed by `validate-units.ts --derived` rather than written down.",
     "the 7 token branches are the resolved-set collapse (formatVolumePerDistance, getVolumePerDistanceLabel), owned by task 6",
     "ESLint: units.ts is no longer silenced whole-file. It left both the i18n-utility `off` block and UNITS_CONSTANT_EXEMPT; the factor table carries a twelve-line eslint-disable and nothing else does. Of the 12 findings that silence was hiding, 10 are the table and 2 are fixed."
    ],

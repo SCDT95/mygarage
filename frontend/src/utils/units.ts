@@ -11,16 +11,21 @@
  *
  * Supported conversions:
  * - Volume: liters ↔ gallons
- * - Distance: kilometers ↔ miles
  * - Fuel Economy: L/100km ↔ MPG
  * - Dimensions: meters ↔ feet
  * - Pressure: kPa ↔ PSI (bar = kPa/100)
  * - Weight: kilograms ↔ pounds
  * - Torque: Nm ↔ lb-ft
  * - Electric: kWh, kW, voltage (no conversion needed, universal)
+ *
+ * ★ DISTANCE IS NOT ON THAT LIST ANY MORE, and its absence is a statement.
+ * `UNIT_ADAPTERS` in `utils/unitAdapters.ts` is where km ↔ mi happens now, off
+ * the resolved `units.distance` token; plan 3b task 6 migrated the last call
+ * site and deleted `formatDistance`, `getDistanceUnit`, `kmToMiles` and
+ * `milesToKm`. The factor `MILES_TO_KM` stays here because that table is built
+ * from it.
  */
 
-import { getActiveLocale } from '@/constants/i18n';
 // TYPE-ONLY, and it has to stay that way. `utils/unitAdapters.ts` imports
 // `UnitConverter` and builds its adapter table at module scope, so a runtime
 // import back from here would form a cycle whose evaluation order decides
@@ -77,8 +82,9 @@ type Numeric = number | null | undefined;
  * Unit conversion between imperial and metric systems.
  *
  * These bidirectional helpers keep their imperial-named signatures
- * (gallonsToLiters, milesToKm, etc.) — they're utility functions used
- * in both directions, not tied to canonical storage.
+ * (gallonsToLiters, litersToGallons, etc.) — they're utility functions used
+ * in both directions, not tied to canonical storage. The distance pair that
+ * used to be named here is gone; see the DISTANCE CONVERSIONS marker below.
  */
 export class UnitConverter {
   // Conversion factors (imperial to metric).
@@ -245,26 +251,18 @@ export class UnitConverter {
   }
 
   // ========== DISTANCE CONVERSIONS ==========
-
-  /**
-   * Convert miles to kilometers.
-   */
-  static milesToKm(miles: Numeric): number | null {
-    if (miles === null || miles === undefined) {
-      return null;
-    }
-    return this.roundResult(miles * this.MILES_TO_KM);
-  }
-
-  /**
-   * Convert kilometers to miles.
-   */
-  static kmToMiles(km: Numeric): number | null {
-    if (km === null || km === undefined) {
-      return null;
-    }
-    return this.roundResult(km / this.MILES_TO_KM);
-  }
+  //
+  // ★ There are none left here, and the gap is deliberate rather than an
+  // oversight. `milesToKm` and `kmToMiles` were the raw pair a call site
+  // reached for when it wanted to make the imperial/metric decision itself,
+  // and plan 3b task 6 migrated the last two such sites (Calendar's
+  // remaining-distance badge and the DEF card's estimate) onto the resolved
+  // `units.distance` adapter. Both then had zero callers. Deleting them makes
+  // "convert this to miles regardless of what the reader chose" inexpressible,
+  // which is the same call R8 made one module over for the three
+  // `toCanonical*` helpers. `MILES_TO_KM` stays: `UNIT_ADAPTERS` builds the
+  // `mi` and `mph` adapters from it, which is the one place the conversion
+  // should happen.
 
   // ========== FUEL ECONOMY CONVERSIONS ==========
 
@@ -516,29 +514,31 @@ export class UnitConverter {
  * All format* methods accept the value in canonical SI metric form.
  * For imperial-preferring users, the metric value is converted at render time.
  *
- * ★ THE EIGHT REMAINING `UnitSystem` METHODS ARE EXEMPT WITH AN EXPIRY, and
- * this is the one place the scheme is written down (plan 3b, ruling R2).
+ * ★ THE REMAINING `UnitSystem` METHODS ARE EXEMPT WITH AN EXPIRY, and this is
+ * the one place the scheme is written down (plan 3b, ruling R2). How many
+ * remain is deliberately not written here: `--derived` prints the set and
+ * `unitsBinaryApiSurface.test.ts` pins it, and a count in prose goes stale the
+ * next time one retires.
  *
  * Each of them carries exactly one `system === '...'` comparison, which is why
- * the units gate derives the same eight names from this class that its
- * comparison leg counts in this file. The comparison is not the defect: the
- * parameter IS the decision, already made by the caller. The defect is that
- * `system` is collapsed from VOLUME (spec D8, `useUnitPreference.ts:98`), so a
- * `{volume:'L', distance:'mi'}` user reaches `formatDistance` as `'metric'` and
- * reads kilometres. That is a call-site decision, and the gate reports every
- * one of these call sites under its `formatter-binary` leg; migrating them is
- * task 6's work list.
+ * the units gate derives the same names from this class that its comparison leg
+ * counts in this file. The comparison is not the defect: the parameter IS the
+ * decision, already made by the caller. The defect is that `system` is
+ * collapsed from VOLUME (spec D8, `useUnitPreference.ts:98`), so a
+ * `{volume:'L', distance:'mi'}` user reached `formatDistance` as `'metric'` and
+ * read kilometres. That is a call-site decision, and the gate reports every one
+ * of these call sites under its `formatter-binary` leg.
  *
  * So each comparison carries `// units-exempt:` naming who owns its call sites.
  * A reason-bearing pragma silences anything (`validate-units.ts:486`), so the
  * exemptions do not rest on that prose:
  * `utils/__tests__/unitsBinaryApiSurface.test.ts` derives this surface from the
  * file and fails when a method outlives its last production caller. Seven
- * methods failed it at t=0 and are gone, and `getWeightUnit` followed the
- * moment task 3 moved `PropaneRecordForm` onto the mass adapter: the test
- * failed, exactly as designed. When task 6 migrates the last
- * `formatDistance(km, system)` call site, it fails again and that method has to
- * follow too.
+ * methods failed it at t=0 and are gone; `getWeightUnit` followed the moment
+ * task 3 moved `PropaneRecordForm` onto the mass adapter; and `formatDistance`
+ * and `getDistanceUnit` followed task 6's migration of their twenty-seven call
+ * sites. Each time the test failed first, exactly as designed. The same holds
+ * for every method still below.
  *
  * The resolved-set replacement already exists for all ten quantities:
  * `useUnitFormat()` in a component, `makeUnitFormat(units)` outside one.
@@ -577,39 +577,6 @@ export class UnitFormatter {
       const primary = `${gallons?.toFixed(2)} gal`;
       if (showBoth) {
         return `${primary} (${litersNum.toFixed(2)} L)`;
-      }
-      return primary;
-    }
-  }
-
-  /**
-   * Format distance with appropriate unit label.
-   *
-   * @param km - Value in kilometers (canonical metric)
-   * @param system - Target unit system
-   * @param showBoth - Show both units
-   */
-  static formatDistance(km: Numeric, system: UnitSystem, showBoth: boolean = false): string {
-    if (km === null || km === undefined) {
-      return 'N/A';
-    }
-
-    const kmNum = typeof km === 'string' ? parseFloat(km) : km;
-    if (isNaN(kmNum)) return 'N/A';
-
-    // units-exempt: binary display API; its 21 call sites are task 6's, and unitsBinaryApiSurface.test.ts deletes this method when the last one goes
-    if (system === 'metric') {
-      const primary = `${Math.round(kmNum).toLocaleString(getActiveLocale())} km`;
-      if (showBoth) {
-        const miles = UnitConverter.kmToMiles(kmNum);
-        return `${primary} (${miles?.toLocaleString(getActiveLocale())} mi)`;
-      }
-      return primary;
-    } else {
-      const miles = UnitConverter.kmToMiles(kmNum);
-      const primary = `${miles?.toLocaleString(getActiveLocale())} mi`;
-      if (showBoth) {
-        return `${primary} (${Math.round(kmNum).toLocaleString(getActiveLocale())} km)`;
       }
       return primary;
     }
@@ -701,14 +668,6 @@ export class UnitFormatter {
    */
   static getVolumeUnit(units: UnitSet): string {
     return units.volume === 'L' ? 'L' : 'gal';
-  }
-
-  /**
-   * Get distance unit label for input placeholders.
-   */
-  static getDistanceUnit(system: UnitSystem): string {
-    // units-exempt: label for the same binary decision; 15 call sites, task 6 and task 3, expiry enforced by unitsBinaryApiSurface.test.ts
-    return system === 'imperial' ? 'mi' : 'km';
   }
 
   /**
