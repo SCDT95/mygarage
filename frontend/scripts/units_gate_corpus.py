@@ -714,24 +714,28 @@ SCRIPT_NEGATIVE = [
     Case(
         "S-N8-local-format-distance",
         "import type { UnitSet } from '@/types/units'\n"
-        "function formatFuelEconomy(l100km: number, units: UnitSet): string {\n"
-        "  return `${l100km} ${units.consumption}`\n"
+        "function formatCostPerDistance(perKm: number, units: UnitSet): string {\n"
+        "  return `${perKm} ${units.distance}`\n"
         "}\n"
         "export function cell(v: number, units: UnitSet): string {\n"
-        "  return formatFuelEconomy(v, units)\n"
+        "  return formatCostPerDistance(v, units)\n"
         "}\n",
         0,
         why="★ POICard's real shape, measured: matching the METHOD NAME alone "
         "flagged three module-local `formatDistance` helpers, and POICard's is "
         "correct migrated code taking a resolved set. A static method is only "
         "reachable through a receiver, so requiring one separates them. "
-        "★ IT SPELLED THAT HELPER `formatDistance` UNTIL TASK 6, and the rename "
-        "is the case working rather than the case bending: retiring "
-        "`UnitFormatter.formatDistance` took that name out of the DERIVED set, so "
-        "the fixture stopped colliding with anything and M52 became a survivor "
-        "flipping nothing. The selftest said so. The rule is unchanged and still "
-        "guards the six surviving binary names, so the fixture uses one of them; a "
-        "negative that can no longer be made positive is not a negative.",
+        "★ IT HAS BEEN RENAMED TWICE, and both times that is the case working "
+        "rather than the case bending. It spelled the helper `formatDistance` "
+        "until task 6 and `formatFuelEconomy` until task 6b; each retirement took "
+        "that name out of the DERIVED set, so the fixture stopped colliding with "
+        "anything and M52 became a survivor flipping nothing. The selftest said so "
+        "both times, on the run right after the deletion. The rule is unchanged "
+        "and still guards whichever binary names survive, so the fixture uses one "
+        "of them; a negative that can no longer be made positive is not a "
+        "negative. Two are left, and when the last one goes this case has no "
+        "colliding name available and M52 has nothing left to guard: retire the "
+        "pair together rather than renaming a third time.",
         pinned_by="M52-formatter-name-without-receiver",
         ext=".ts",
     ),
