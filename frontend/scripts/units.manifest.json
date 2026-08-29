@@ -1323,7 +1323,7 @@
     "notify_service_miles defaults to '500' and the field carries no unit selector. Its unit only becomes a real question if something ever reads it."
    ],
    "owners": [
-    "task 6"
+    "deferred"
    ]
   },
   {
@@ -2551,7 +2551,7 @@
     "token-branch x1 (units gate baseline)"
    ],
    "owners": [
-    "task 6"
+    "task 8"
    ]
   },
   {
@@ -2686,7 +2686,7 @@
     "token-branch x2 (units gate baseline)"
    ],
    "owners": [
-    "task 6"
+    "task 8"
    ]
   },
   {
@@ -2741,7 +2741,7 @@
   {
    "path": "src/utils/units.ts",
    "disposition": "audited",
-   "digest": "0e761767aaa06b0ff21c0d105ca4ae3f1116ff3e54e4ec5a88bd603375154d80",
+   "digest": "01460df9a73c31869961724701a9f568c3d2a1b668d90a4a31feeb70061616ec",
    "reason": "gate-detectable unit decisions, recorded not asserted clean (plan 3b task 1 ordering)",
    "tests": [
     "utils/__tests__/unitFactorParity.test.ts",

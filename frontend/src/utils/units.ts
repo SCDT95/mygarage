@@ -531,11 +531,12 @@ export class UnitConverter {
  *
  * So each comparison carries `// units-exempt:` naming who owns its call sites.
  * ★ THOSE OWNERS ARE SUCCESSORS, NOT THE TASK THAT WROTE THEM. They all said
- * "task 6" until task 6 finished and the name stopped pointing at anybody; the
- * six that remain now name **task 6b** for the fuel-economy and fuel-rate
- * surface and **task 7** for the cost-per-distance surface, which is price. A
- * pragma is the version a reader of this file actually sees, so an owner here
- * going stale is worse than one going stale in the manifest.
+ * "task 6" until task 6 finished and the name stopped pointing at anybody, then
+ * six of them said "task 6b" until that task retired the fuel-economy and
+ * fuel-rate family; the two that remain name **task 7** for the
+ * cost-per-distance surface, which is price. A pragma is the version a reader
+ * of this file actually sees, so an owner here going stale is worse than one
+ * going stale in the manifest.
  * A reason-bearing pragma silences anything (`EXEMPT_PRAGMA` in `validate-units.ts`), so the
  * exemptions do not rest on that prose:
  * `utils/__tests__/unitsBinaryApiSurface.test.ts` derives this surface from the
