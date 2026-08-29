@@ -35,7 +35,8 @@ vi.mock('../../../hooks/useUnitPreference', async () => {
   }
 })
 
-import { UK_IMPERIAL_UNITS } from '../../../__tests__/factories'
+import { IMPERIAL_UNITS, UK_IMPERIAL_UNITS } from '../../../__tests__/factories'
+import { binarySystemFor } from '../../../types/units'
 import { UnitConverter } from '../../../utils/units'
 import { toast } from 'sonner'
 import api from '../../../services/api'
@@ -827,6 +828,25 @@ describe('VehicleEditDrawer — the DEF tank capacity is the eighth gallon write
     expect(payload.def_tank_capacity_liters).toBe(19)
     expect(payload.def_tank_capacity_liters).not.toBe(19.003)
     expect(UnitConverter.getGallonStandard()).toBe('us')
+  })
+
+  it('★ the capacity EXAMPLE names the reader\'s OWN gallon', async () => {
+    // ★ FOUND BY MUTATION, not by reading. Pinning the example table to
+    // `gal_us` killed NOTHING: this placeholder had no test, and it was a
+    // `system === 'imperial'` ternary, so a UK account read a US-gallon example
+    // for a unit 20 percent larger. One physical tank, three vocabularies:
+    // 19 L is 5.0 US gallons and 4.2 imperial ones.
+    UnitConverter.setGallonStandard('us')
+    unitPrefMock.system = 'imperial'
+    unitPrefMock.units = UK_IMPERIAL_UNITS
+
+    renderVehicleEdit(dieselWithCapacity)
+    const uk = (await screen.findByLabelText('edit.defTankCapacity (gal)')) as HTMLInputElement
+    expect(uk.placeholder).toBe('4.2')
+    // The collapsed answer agrees with the US one here, which is what made this
+    // invisible: both gallons read 'imperial'.
+    expect(binarySystemFor(UK_IMPERIAL_UNITS.volume)).toBe('imperial')
+    expect(binarySystemFor(IMPERIAL_UNITS.volume)).toBe('imperial')
   })
 
   it('labels and converts in litres for a metric set, on a UK-default instance', async () => {

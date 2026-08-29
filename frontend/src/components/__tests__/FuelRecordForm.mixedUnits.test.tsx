@@ -464,6 +464,27 @@ describe('FuelRecordForm — odometer and temperature follow their own tokens', 
     // And the volume placeholder on the same screen still follows VOLUME, which
     // for this client is litres. One form, two independent answers.
     expect(field('liters').placeholder).toBe('47.318')
+    expect(field('price_per_unit').placeholder).toBe('0.924')
+  })
+
+  it('★ the volume and price EXAMPLES name the reader\'s OWN gallon', async () => {
+    // ★ The case the one above cannot make. It distinguishes litres from
+    // gallons; this distinguishes the two GALLONS, which is what
+    // `units.volume === 'L'` could not do: `gal_uk` took the else arm and read a
+    // US-gallon example for a unit 20 percent larger. One physical fill, three
+    // vocabularies: 47.318 L at $0.924/L is 12.500 US gallons at $3.498 and
+    // 10.409 imperial ones at $4.200.
+    units = { ...IMPERIAL_UNITS, volume: 'gal_uk', consumption: 'mpg_uk', secondary_gallon: 'uk' }
+    const uk = render(<FuelRecordForm {...DEFAULT_PROPS} />)
+    await waitFor(() => expect(mockedApiGet).toHaveBeenCalled())
+    expect(field('liters').placeholder).toBe('10.409')
+    expect(field('price_per_unit').placeholder).toBe('4.200')
+    uk.unmount()
+
+    units = IMPERIAL_UNITS
+    render(<FuelRecordForm {...DEFAULT_PROPS} />)
+    await waitFor(() => expect(field('liters').placeholder).toBe('12.500'))
+    expect(field('price_per_unit').placeholder).toBe('3.498')
   })
 
   it('★ the RECEIPT path lands the odometer in the client\'s distance unit', async () => {

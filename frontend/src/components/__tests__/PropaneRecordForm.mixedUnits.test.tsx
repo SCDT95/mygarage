@@ -60,7 +60,7 @@ vi.mock('react-i18next', () => ({
   initReactI18next: { type: '3rdParty', init: () => {} },
 }))
 
-import { IMPERIAL_UNITS, METRIC_UNITS } from '../../__tests__/factories'
+import { IMPERIAL_UNITS, METRIC_UNITS, UK_IMPERIAL_UNITS } from '../../__tests__/factories'
 import PropaneRecordForm from '../PropaneRecordForm'
 
 /** Litres, but pounds. `binarySystemFor('L')` is `'metric'`. */
@@ -186,6 +186,41 @@ describe('PropaneRecordForm — the tank size follows units.mass', () => {
     const payload = updateMock.mock.calls[0][0] as Record<string, unknown>
     expect(payload.tank_size_kg).toBe(9.07)
     expect(payload.tank_size_kg).not.toBe(9.07184)
+  })
+
+  it('★ the volume and price EXAMPLES name the reader\'s OWN gallon', async () => {
+    // ★ FOUND BY MUTATION, not by reading. Pinning the example table to
+    // `gal_us` killed NOTHING: these two placeholders had no test at all, which
+    // is exactly the state ruling R5's structural exemption left them in (the
+    // units gate cannot see a `placeholder` attribute on its comparison leg).
+    // They were `system === 'imperial'` ternaries, and `system` is D8-collapsed
+    // from volume, so both gallons took the same arm and a UK account read a
+    // US-gallon example for a unit 20 percent larger.
+    //
+    // One physical fill, three vocabularies: 39.75 L at $0.766/L is 10.500 US
+    // gallons at $2.899 and 8.744 imperial ones at $3.482.
+    const placeholderOf = (id: string): string =>
+      (document.getElementById(id) as HTMLInputElement).placeholder
+
+    unitPrefMock.units = UK_IMPERIAL_UNITS
+    const uk = render(<PropaneRecordForm {...DEFAULT_PROPS} />)
+    expect(placeholderOf('propane_liters')).toBe('8.744')
+    expect(placeholderOf('price_per_unit')).toBe('3.482')
+    // The collapsed answer really does agree with the US one here, which is
+    // what made this invisible.
+    expect(binarySystemFor(unitPrefMock.units.volume)).toBe('imperial')
+    uk.unmount()
+
+    unitPrefMock.units = IMPERIAL_UNITS
+    const us = render(<PropaneRecordForm {...DEFAULT_PROPS} />)
+    expect(placeholderOf('propane_liters')).toBe('10.500')
+    expect(placeholderOf('price_per_unit')).toBe('2.899')
+    us.unmount()
+
+    unitPrefMock.units = METRIC_UNITS
+    render(<PropaneRecordForm {...DEFAULT_PROPS} />)
+    expect(placeholderOf('propane_liters')).toBe('39.750')
+    expect(placeholderOf('price_per_unit')).toBe('0.766')
   })
 
   it('a record with no tank size posts none, rather than a zero', async () => {

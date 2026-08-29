@@ -72,6 +72,8 @@ const VIN = 'TEST12345678901234'
 const DEFAULT_PROPS = { vin: VIN, onClose: vi.fn(), onSuccess: vi.fn() }
 
 const vehicle = { vin: VIN, nickname: 'Test Car', vehicle_type: 'Car', year: 2024, make: 'Toyota', model: 'Camry', created_at: '2024-01-15T00:00:00Z', archived_visible: true, fuel_type: 'gasoline' } as Vehicle
+/** The same vehicle on propane, which is what makes the `propane_liters` field render. */
+const propaneVehicle = { ...vehicle, fuel_type: 'propane_lpg' } as Vehicle
 
 const field = (id: string): HTMLInputElement => document.getElementById(id) as HTMLInputElement
 
@@ -410,6 +412,45 @@ describe('FuelRecordForm — the gallon comes from the user, not the instance', 
     // The answers an origin-less accept would have posted.
     expect(payload.liters).not.toBe(22.73)
     expect(payload.price_per_unit).not.toBe(1.32003545904)
+  })
+
+  it('★ the PROPANE volume field on this form has an origin too', async () => {
+    // ★ FOUND BY MUTATION, not by reading. Reverting `propane_liters` to a
+    // straight reconversion killed NOTHING: `PropaneRecordForm` has its own
+    // field of the same name and its own cases, and this form's second volume
+    // field had no test at all. A fuel record on a propane vehicle renders it,
+    // and its round trip is the same one `liters` has.
+    UnitConverter.setGallonStandard('us')
+    unitPrefMock.units = UK_IMPERIAL_UNITS
+    mockedApiGet.mockImplementation((url: string) =>
+      url.includes('/settings/public')
+        ? Promise.resolve({ data: { settings: [] } })
+        : Promise.resolve({ data: propaneVehicle })
+    )
+
+    render(
+      <FuelRecordForm
+        {...DEFAULT_PROPS}
+        record={{
+          id: 22,
+          vin: VIN,
+          date: '2026-02-10',
+          propane_liters: 22.712,
+          price_per_unit: 1.32,
+          price_basis: 'per_volume',
+          cost: 30.01,
+        } as never}
+      />
+    )
+    await waitFor(() => expect(field('propane_liters')).not.toBeNull())
+    // 22.712 / 4.54609 = 4.9959... at two decimals is 5.00.
+    expect(field('propane_liters').value).toBe('5')
+
+    fireEvent.submit(drawerForm())
+    await waitFor(() => expect(mockedApiPut).toHaveBeenCalled())
+    const payload = mockedApiPut.mock.calls[0][1] as Record<string, unknown>
+    expect(payload.propane_liters).toBe(22.712)
+    expect(payload.propane_liters).not.toBe(22.73)
   })
 
   it('★ moving the price BASIS is an edit, even with the number untouched', async () => {
