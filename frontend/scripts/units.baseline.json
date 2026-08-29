@@ -6,12 +6,6 @@
   "count": 1
  },
  {
-  "file": "src/components/FuelRecordForm.tsx",
-  "kind": "token-branch",
-  "text": "volume: units.volume === 'L'",
-  "count": 2
- },
- {
   "file": "src/components/FuelRecordList.tsx",
   "kind": "formatter-binary",
   "text": "UnitFormatter.formatCostPerDistance(...)",

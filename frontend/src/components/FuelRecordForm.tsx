@@ -8,6 +8,7 @@ import AddressBookAutocomplete from './AddressBookAutocomplete'
 import AddressBookQuickAddModal from './AddressBookQuickAddModal'
 import type { FuelRecord, FuelRecordCreate, FuelRecordUpdate } from '../types/fuel'
 import type { Vehicle } from '../types/vehicle'
+import type { UnitSet } from '../types/units'
 import type { AddressBookEntry } from '../types/addressBook'
 import { makeFuelRecordSchema, type FuelRecordFormData } from '../schemas/fuel'
 import {
@@ -22,8 +23,14 @@ import api from '../services/api'
 import { useCreateFuelRecord, useUpdateFuelRecord, useParseFuelReceipt, type FuelReceiptDraft } from '../hooks/queries/useFuelRecords'
 import { useUnitPreference } from '../hooks/useUnitPreference'
 import { useAuth } from '../contexts/AuthContext'
-import { UnitConverter, UnitFormatter } from '../utils/units'
-import { toCanonicalLiters, priceToDisplay, priceToCanonical, readNumber } from '../utils/decimalSafe'
+import { UnitFormatter } from '../utils/units'
+import {
+  canonicalFromPriceField,
+  readNumber,
+  seedPriceField,
+  toLitersWirePrecision,
+  type PriceFieldOrigin,
+} from '../utils/decimalSafe'
 import { useUnitFormat } from '../hooks/useUnitFormat'
 import {
   canonicalFromUnitField,
@@ -43,6 +50,31 @@ import { applyServerErrors } from '../hooks/useApiFormErrors'
 import { getActionErrorMessage } from '../utils/httpErrorHandler'
 
 const MORE_DETAILS_KEY = 'fuel_form:more_details_expanded'
+
+/**
+ * The volume and price EXAMPLES each volume token gets, as ONE physical fill.
+ *
+ * ★ Keyed by the resolved token rather than branched on `units.volume === 'L'`,
+ * which is the correction ruling R4 hands this task along with the two fields'
+ * round trip. The branch named the right QUANTITY and still could not name the
+ * right UNIT: `gal_uk` took the else arm, so a UK account read a US-gallon
+ * example (12.500 gal at $3.499) beside a field labelled with its own gallon,
+ * which is 20 percent larger. `Record` over the token means a volume unit added
+ * later cannot compile without its own example.
+ *
+ * All three describe the same 47.318 L at $0.924/L: 47.318 / 3.78541 = 12.500
+ * US gallons at 0.924 x 3.78541 = $3.498, and / 4.54609 = 10.409 imperial
+ * gallons at 0.924 x 4.54609 = $4.200. They are placeholders, not converted
+ * quantities (ruling R5's exempt class), which is why they are written out
+ * rather than computed. PropaneRecordForm and VehicleEditDrawer carry sibling
+ * tables for their own examples; one shared table would have to describe a fuel
+ * fill, a propane bottle and a DEF tank at once.
+ */
+const VOLUME_EXAMPLES: Readonly<Record<UnitSet['volume'], { volume: string; price: string }>> = {
+  L: { volume: '47.318', price: '0.924' },
+  gal_us: { volume: '12.500', price: '3.498' },
+  gal_uk: { volume: '10.409', price: '4.200' },
+}
 
 /** Split a "YYYY-MM-DDTHH:mm" (or naive ISO) value into date + 24h time parts. */
 export function splitFilledAt(val: string | null | undefined): { date: string; time: string } {
@@ -208,13 +240,23 @@ export default function FuelRecordForm({ vin, record, onClose, onSuccess }: Fuel
    *
    * Seeded through a lazy `useState` for the same reason `defaultValues` is
    * computed once: an origin that moved on re-render would stop being an
-   * origin. Volume and price are deliberately NOT here; they are react-hook-
-   * form number fields whose own round trip Task 2 already made exact.
+   * origin.
+   *
+   * ★ VOLUME IS HERE NOW, and the comment it replaces said the two were
+   * "deliberately NOT here; they are react-hook-form number fields whose own
+   * round trip Task 2 already made exact". It was not exact. Task 2 put both
+   * on the resolved `UnitSet`, which settled WHICH gallon they convert
+   * through and left the round trip reconverting a rounded display: a stored
+   * 37.9 L seeded a US-gallon field as 10.01 and came back 37.892 on a save
+   * that touched nothing. Ruling R4 gives that shift to plan 3b task 7.
+   * PRICE is one field over, in `priceOrigin`, because a price origin also
+   * carries the basis its number was read under and this record's shape
+   * cannot express that.
    *
    * ★ The setter has exactly one caller, `acceptUnitField`, which is where a
    * canonical value arriving after mount gets seeded; see its docstring for
    * why that is a second seed rather than an edit. Nothing else moves an
-   * origin, so the four still change only when the value behind them does.
+   * origin, so the six still change only when the value behind them does.
    *
    * ★ The spelling gap this used to rest a precision pin on is now closed in
    * the helper. `canonicalFromUnitField` decided "the user did not touch this"
@@ -233,12 +275,30 @@ export default function FuelRecordForm({ vin, record, onClose, onSuccess }: Fuel
     outside_temp_c: UnitFieldOrigin
     obc_l_per_100km: UnitFieldOrigin
     obc_avg_speed_kmh: UnitFieldOrigin
+    liters: UnitFieldOrigin
+    propane_liters: UnitFieldOrigin
   }>(() => ({
     odometer_km: seedUnitField(readNumber(record?.odometer_km), u.distance),
     outside_temp_c: seedUnitField(readNumber(record?.outside_temp_c), u.temperature),
     obc_l_per_100km: seedUnitField(readNumber(record?.obc_l_per_100km), u.consumption),
     obc_avg_speed_kmh: seedUnitField(readNumber(record?.obc_avg_speed_kmh), u.speed),
+    liters: seedUnitField(readNumber(record?.liters), u.volume),
+    propane_liters: seedUnitField(readNumber(record?.propane_liters), u.volume),
   }))
+
+  /**
+   * The price field's canonical origin, and the basis its number was read as.
+   *
+   * ★ SEPARATE FROM `unitOrigins` BECAUSE A PRICE ORIGIN IS NOT A QUANTITY
+   * ORIGIN. `price_basis` is a `<select>` on this very form, so a user can move
+   * the denominator from `per_volume` to `per_weight` without touching the
+   * number, and the same characters then mean a different quantity.
+   * `canonicalFromPriceField` compares the basis as well as the value, which is
+   * what stops an untouched-looking field from storing a $/gal figure as $/lb.
+   */
+  const [priceOrigin, setPriceOrigin] = useState<PriceFieldOrigin>(() =>
+    seedPriceField(record?.price_per_unit, units, record?.price_basis)
+  )
 
   const {
     register,
@@ -261,19 +321,19 @@ export default function FuelRecordForm({ vin, record, onClose, onSuccess }: Fuel
       odometer_km: readNumber(unitOrigins.odometer_km.display),
       // Engine hours are dimensionless — no unit conversion regardless of system.
       engine_hours: readNumber(record?.engine_hours),
-      // Volume is seeded through the SAME resolved set the submit converts
-      // back with; a seed on one gallon and a submit on another rewrites a
-      // record the user only opened (defect L1).
-      liters: UnitConverter.litersToVolumeUnit(readNumber(record?.liters), units) ?? undefined,
-      propane_liters:
-        UnitConverter.litersToVolumeUnit(readNumber(record?.propane_liters), units) ?? undefined,
+      // Seeded in `units.volume`, and the submit reads both back through the
+      // SAME origins: a seed on one gallon and a submit on another rewrites a
+      // record the user only opened (defect L1), and a submit that reconverts
+      // its own seed's rounding does it again by a smaller amount (R4).
+      liters: readNumber(unitOrigins.liters.display),
+      propane_liters: readNumber(unitOrigins.propane_liters.display),
       kwh: readNumber(record?.kwh),
       soc_start_pct: readNumber((record as { soc_start_pct?: number | string | null })?.soc_start_pct),
       soc_end_pct: readNumber((record as { soc_end_pct?: number | string | null })?.soc_end_pct),
       charge_level: (record as { charge_level?: 'L1' | 'L2' | 'DCFC' | null })?.charge_level ?? undefined,
       charge_location: (record as { charge_location?: 'home' | 'public' | null })?.charge_location ?? undefined,
       battery_soh_pct: readNumber((record as { battery_soh_pct?: number | string | null })?.battery_soh_pct),
-      price_per_unit: priceToDisplay(record?.price_per_unit, units, record?.price_basis) ?? undefined,
+      price_per_unit: readNumber(priceOrigin.display),
       price_basis: (record?.price_basis as 'per_volume' | 'per_weight' | 'per_kwh' | 'per_tank' | undefined) ?? undefined,
       cost: readNumber(record?.cost),
       rebate: readNumber(record?.rebate),
@@ -461,15 +521,20 @@ export default function FuelRecordForm({ vin, record, onClose, onSuccess }: Fuel
    * without the other is right, which is why they live in one function rather
    * than in a convention.
    *
-   * ★ It covers ALL THREE react-hook-form origins, not just the two this task
-   * added. The receipt path used to inline the value half and skip the origin
-   * half, so a draft odometer between two whole miles came back rounded; that
-   * was one unguarded seed sitting beside a guarded one, which is how the next
-   * unit-bearing field would have learned the wrong idiom. `outside_temp_c` is
-   * the one origin it cannot take: that field holds its canonical value in
-   * react-hook-form and its display in a separate string state, so it is
-   * written through `setOutsideTempDisplay` instead. See the deferral note on
-   * that field's `<Field>` below.
+   * ★ It covers EVERY react-hook-form quantity origin, not just the two the
+   * task that wrote it added. The receipt path used to inline the value half
+   * and skip the origin half, so a draft odometer between two whole miles came
+   * back rounded; that was one unguarded seed sitting beside a guarded one,
+   * which is how the next unit-bearing field would have learned the wrong
+   * idiom. Task 7 added `liters`, which the receipt path was landing the same
+   * unguarded way, and `propane_liters` for symmetry: a name in this union with
+   * no caller is cheaper than the next accepted draft reaching for `setValue`.
+   * `outside_temp_c` is the one origin it cannot take: that field holds its
+   * canonical value in react-hook-form and its display in a separate string
+   * state, so it is written through `setOutsideTempDisplay` instead. See the
+   * deferral note on that field's `<Field>` below. PRICE cannot use it either,
+   * for a different reason: its origin carries a basis, so it has its own
+   * `acceptPriceField` below.
    *
    * An absent value writes nothing rather than clearing the field, and that
    * covers two cases in one: a `null` from the API, and a quantity with no
@@ -481,7 +546,7 @@ export default function FuelRecordForm({ vin, record, onClose, onSuccess }: Fuel
    * @param quantity The formatter for that field's quantity.
    */
   const acceptUnitField = (
-    name: 'odometer_km' | 'obc_l_per_100km' | 'obc_avg_speed_kmh',
+    name: 'odometer_km' | 'obc_l_per_100km' | 'obc_avg_speed_kmh' | 'liters' | 'propane_liters',
     canonical: number | undefined,
     quantity: QuantityFormat
   ) => {
@@ -490,6 +555,26 @@ export default function FuelRecordForm({ vin, record, onClose, onSuccess }: Fuel
     if (display === undefined) return
     setValue(name, display, { shouldValidate: true })
     setUnitOrigins((prev) => ({ ...prev, [name]: origin }))
+  }
+
+  /**
+   * Seed the price field from a canonical price that arrived after mount.
+   *
+   * The price mirror of `acceptUnitField`, and it exists for the identical
+   * reason: the parsed receipt used to `setValue` the converted price and leave
+   * the load-time origin in place, so the next submit read the rounded display
+   * as an edit and reconverted it. Its basis is `per_volume` because that is
+   * what the parser reports; passing it explicitly is what makes the origin
+   * comparable against whatever basis the user submits under.
+   *
+   * @param canonical The price in canonical $/L, or undefined for none.
+   */
+  const acceptPriceField = (canonical: number | undefined) => {
+    const origin = seedPriceField(canonical, units, 'per_volume')
+    const display = readNumber(origin.display)
+    if (display === undefined) return
+    setValue('price_per_unit', display, { shouldValidate: true })
+    setPriceOrigin(origin)
   }
 
   const acceptObcSuggestion = () => {
@@ -542,25 +627,19 @@ export default function FuelRecordForm({ vin, record, onClose, onSuccess }: Fuel
     // 72420.3. Both of Task 2's surviving mutants lived in this function, and
     // it is now the same call the OBC suggestion makes.
     acceptUnitField('odometer_km', readNumber(receiptDraft.odometer_km), u.distance)
-    if (receiptDraft.liters != null) {
-      const raw = Number(receiptDraft.liters)
-      const display = UnitConverter.litersToVolumeUnit(raw, units)
-      if (display != null && !Number.isNaN(display)) {
-        setValue('liters', Math.round(display * 1000) / 1000, { shouldValidate: true })
-      }
-    }
+    // Through `acceptUnitField` for the same reason the odometer is: the draft's
+    // litres are CANONICAL, so landing them is a second SEED and needs a fresh
+    // origin as well as a converted value. This used to be an inline copy that
+    // set the value alone, which left the load-time origin behind and made the
+    // next submit reconvert the display it had just written.
+    acceptUnitField('liters', readNumber(receiptDraft.liters), u.volume)
     if (receiptDraft.kwh != null) {
       setValue('kwh', Number(receiptDraft.kwh), { shouldValidate: true })
     }
     if (receiptDraft.cost != null) {
       setValue('cost', Number(receiptDraft.cost), { shouldValidate: true })
     }
-    if (receiptDraft.price_per_unit != null) {
-      const display = priceToDisplay(Number(receiptDraft.price_per_unit), units, 'per_volume')
-      if (display != null) {
-        setValue('price_per_unit', display, { shouldValidate: true })
-      }
-    }
+    acceptPriceField(readNumber(receiptDraft.price_per_unit))
     if (isFuelType(receiptDraft.fuel_type_used)) {
       setValue('fuel_type_used', receiptDraft.fuel_type_used, { shouldValidate: true })
     }
@@ -631,6 +710,9 @@ export default function FuelRecordForm({ vin, record, onClose, onSuccess }: Fuel
     const odometerTyped = readNumber(data.odometer_km)
     const obcConsumptionTyped = readNumber(data.obc_l_per_100km)
     const obcSpeedTyped = readNumber(data.obc_avg_speed_kmh)
+    const litersTyped = readNumber(data.liters)
+    const propaneTyped = readNumber(data.propane_liters)
+    const priceTyped = readNumber(data.price_per_unit)
 
     try {
       // Convert user-entered values to canonical metric (SI) for the API.
@@ -658,16 +740,36 @@ export default function FuelRecordForm({ vin, record, onClose, onSuccess }: Fuel
         // ★ Volume and price convert through ONE resolved set. Splitting them
         // stores 10 gal as 37.85 L against an imperial-gallon price: one
         // payload, internally inconsistent, and worse than being uniformly
-        // wrong. See utils/decimalSafe.ts.
-        liters: toCanonicalLiters(data.liters, units) ?? undefined,
-        propane_liters: toCanonicalLiters(data.propane_liters, units) ?? undefined,
+        // wrong. See utils/decimalSafe.ts. Both now go back through the origin
+        // they were seeded from, so an untouched field returns its stored value
+        // instead of a re-conversion of the rounding the seed applied.
+        // `toLitersWirePrecision` is the API's declared 3 decimals, which the
+        // protocol deliberately leaves to the caller: pydantic 422s a fourth.
+        liters:
+          toLitersWirePrecision(
+            canonicalFromUnitField(String(litersTyped ?? ''), unitOrigins.liters, u.volume)
+          ) ?? undefined,
+        propane_liters:
+          toLitersWirePrecision(
+            canonicalFromUnitField(
+              String(propaneTyped ?? ''),
+              unitOrigins.propane_liters,
+              u.volume
+            )
+          ) ?? undefined,
         kwh: data.kwh,
         soc_start_pct: data.soc_start_pct,
         soc_end_pct: data.soc_end_pct,
         charge_level: data.charge_level,
         charge_location: data.charge_location,
         battery_soh_pct: data.battery_soh_pct,
-        price_per_unit: priceToCanonical(data.price_per_unit, units, data.price_basis) ?? undefined,
+        price_per_unit:
+          canonicalFromPriceField(
+            String(priceTyped ?? ''),
+            priceOrigin,
+            units,
+            data.price_basis
+          ) ?? undefined,
         price_basis: data.price_basis,
         cost: data.cost,
         rebate: data.rebate,
@@ -946,7 +1048,7 @@ export default function FuelRecordForm({ vin, record, onClose, onSuccess }: Fuel
           <div className="grid grid-cols-3 gap-4">
             {showGallons && (
               <Field id="liters" label={t('fuel.volume')} unit={UnitFormatter.getVolumeUnit(units)} error={errors.liters}>
-                <NumberInput id="liters" {...registerDecimal(register, 'liters')} placeholder={units.volume === 'L' ? '47.318' : '12.500'} invalid={!!errors.liters} disabled={isSubmitting} />
+                <NumberInput id="liters" {...registerDecimal(register, 'liters')} placeholder={VOLUME_EXAMPLES[units.volume].volume} invalid={!!errors.liters} disabled={isSubmitting} />
               </Field>
             )}
             {showKwh && (
@@ -965,7 +1067,7 @@ export default function FuelRecordForm({ vin, record, onClose, onSuccess }: Fuel
                 <NumberInput
                   id="price_per_unit"
                   {...registerDecimal(register, 'price_per_unit')}
-                  placeholder={isElectric ? '0.130' : (units.volume === 'L' ? '0.924' : '3.499')}
+                  placeholder={isElectric ? '0.130' : VOLUME_EXAMPLES[units.volume].price}
                   invalid={!!errors.price_per_unit}
                   disabled={isSubmitting}
                   className="pl-7"

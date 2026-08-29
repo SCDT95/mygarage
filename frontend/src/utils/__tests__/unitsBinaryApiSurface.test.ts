@@ -297,15 +297,26 @@ describe('the binary conversion surface', () => {
   })
 
   it('still reads the exported helpers, so the empty set below means something', () => {
-    // The receipt. `toCanonicalLiters`, `priceToDisplay` and `priceToCanonical`
-    // are the resolved-set converters R8 kept and `readNumber` is unitless, so
-    // this list is what a healthy walk over this file sees. If it ever comes
-    // back empty, the assertion after it proves nothing at all.
+    // The receipt. This list is what a healthy walk over this file sees; if it
+    // ever comes back empty, the assertion after it proves nothing at all.
+    //
+    // ★ IT MOVED IN PLAN 3b TASK 7, AND WHAT MOVED IS A SECOND DEFECT CLASS ON
+    // THE SAME FILE. `toCanonicalLiters` and `priceToCanonical` were the two
+    // exports that converted a DISPLAY value straight to canonical. That is
+    // correct for a field the user edited and is the entry-grid shift (ruling
+    // R4) for one they did not: the field had been seeded with a rounded
+    // display and the submit reconverted the rounding, moving 16 of 27 measured
+    // price combinations and 13 of 27 volume ones. Neither is exported now.
+    // Volume goes through the quantity protocol plus `toLitersWirePrecision`,
+    // which rounds and does not convert; price goes through `seedPriceField` /
+    // `canonicalFromPriceField`, the price mirror of that protocol, behind
+    // which the old converter is module-private.
     expect(conversionHelpers().exported).toEqual([
-      'priceToCanonical',
+      'canonicalFromPriceField',
       'priceToDisplay',
       'readNumber',
-      'toCanonicalLiters',
+      'seedPriceField',
+      'toLitersWirePrecision',
     ])
   })
 

@@ -31,6 +31,16 @@
  * form path (add, edit, and any separate reading path) must go through both, or
  * the one that does not becomes the corrupting one.
  *
+ * ★ PRICE OBEYS THE SAME PROTOCOL AND CANNOT USE THESE TWO FUNCTIONS, which is
+ * why `unitFieldUnchanged` is exported rather than inlined. Both helpers here
+ * require a `QuantityFormat`, and price is not a quantity: its display
+ * MULTIPLIES by the denominator factor where a volume adapter divides, so
+ * canonical $1.20/L pushed through a UK-gallon volume formatter renders `0.26`
+ * where price semantics want about `5.46/gal`. Its pair lives beside the price
+ * arithmetic in `utils/decimalSafe.ts` (`seedPriceField` /
+ * `canonicalFromPriceField`) and shares this module's untouched predicate, so
+ * the one decision both make has one implementation.
+ *
  * There are no translated strings in this module. Unit labels are symbols, not
  * prose, and `"N/A"` matches what `UnitFormatter` has always rendered; adding
  * `i18next.t()` here would need namespace-qualified keys, since this is not a
@@ -459,8 +469,45 @@ export function canonicalFromUnitField(
   origin: UnitFieldOrigin,
   quantity: QuantityFormat
 ): number | null {
-  if (typed === origin.display) return origin.canonical
+  if (unitFieldUnchanged(typed, origin)) return origin.canonical
   if (typed.trim() === '') return null
-  if (origin.display !== '' && Number(typed) === Number(origin.display)) return origin.canonical
   return quantity.toCanonical(Number(typed))
+}
+
+/**
+ * Whether a seeded field still holds the QUANTITY it was populated with.
+ *
+ * ★ EXPORTED SO THERE IS ONE ANSWER TO "DID THE USER TOUCH THIS", and that is
+ * the whole reason it is a function rather than three lines inlined twice.
+ * Price is not a quantity (`decimalSafe.ts` explains at length why it cannot
+ * borrow a `QuantityFormat`: a price adapter MULTIPLIES by the denominator
+ * factor where a volume one divides), so it carries its own seed/read pair.
+ * The untouched decision, though, is identical for both and it has already
+ * been subtly wrong twice: once by comparing characters rather than the
+ * number, and once by reading a typed `0` in a field that started empty as
+ * unchanged. A second copy is a second place for the third mistake.
+ *
+ * The three legs, in order, because the order is load bearing:
+ *
+ *   1. the exact string, which is the common case and needs no arithmetic;
+ *   2. a BLANK entry is a change, always. It has to be tested before the
+ *      numeric leg, because `Number('')` is 0 and a field seeded with `'0.00'`
+ *      would otherwise read a cleared box as untouched and keep the zero;
+ *   3. the same number spelled differently. `seedUnitField` writes
+ *      `toFixed(precision)`, so 9.07 kg seeds a pound field as `'20.00'` while
+ *      a `<select>` and a react-hook-form NUMBER field can only hand back
+ *      `'20'`. On characters alone that reads as an edit and reconverts,
+ *      storing 9.07184 kg in a record the user only opened.
+ *
+ * The `origin.display !== ''` guard on leg 3 is what keeps a field that
+ * STARTED empty from reading a typed `0` as unchanged and storing null.
+ *
+ * @param typed What the input currently holds.
+ * @param origin What the field was seeded with.
+ * @returns True when the stored value must be handed back unconverted.
+ */
+export function unitFieldUnchanged(typed: string, origin: UnitFieldOrigin): boolean {
+  if (typed === origin.display) return true
+  if (typed.trim() === '') return false
+  return origin.display !== '' && Number(typed) === Number(origin.display)
 }

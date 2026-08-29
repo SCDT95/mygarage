@@ -141,9 +141,14 @@ describe('PropaneRecordForm — the tank size follows units.mass', () => {
     fireEvent.change(document.getElementById('tank_quantity') as HTMLInputElement, {
       target: { value: '1' },
     })
-    // 20 lb = 9.07184 kg x 1 x 1.968 L/kg = 17.85338... L, at toFixed(3).
+    // 20 lb = 9.07184 kg x 1 x 1.968 L/kg = 17.85338... L, at the volume
+    // field's OWN presentation. Task 7 moved the tank auto-calc onto
+    // `u.volume.toInputValue`, the same two decimals a seeded value is shown
+    // at and the same the read-only hint above the field quotes: it used to
+    // write three, so the hint said 17.85 while the field it describes said
+    // 17.853, which that hint's own comment forbids.
     await waitFor(() =>
-      expect((document.getElementById('propane_liters') as HTMLInputElement).value).toBe('17.853')
+      expect((document.getElementById('propane_liters') as HTMLInputElement).value).toBe('17.85')
     )
 
     fireEvent.submit(propaneForm())

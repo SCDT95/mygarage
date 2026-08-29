@@ -818,8 +818,14 @@ describe('VehicleEditDrawer — the DEF tank capacity is the eighth gallon write
     fireEvent.click(screen.getByRole('button', { name: 'edit.saveChanges' }))
     await waitFor(() => expect(mockedApi.put).toHaveBeenCalled())
     const [, payload] = mockedApi.put.mock.calls[0] as [string, Record<string, unknown>]
-    // 4.18 x 4.54609 = 19.0026562 -> 19.003 at the wire precision.
-    expect(payload.def_tank_capacity_liters).toBe(19.003)
+    // ★ 19, not 19.003, and the difference is plan 3b task 7. This field had
+    // the entry-grid shift the three fuel forms had: 19 L seeds a UK-gallon
+    // box as 4.18, and 4.18 x 4.54609 = 19.0026562, which the wire precision
+    // rounds to 19.003. Opening this drawer to change a nickname moved a
+    // capacity nobody edited. It is now seeded WITH its canonical origin, so
+    // an untouched field posts what it was seeded from.
+    expect(payload.def_tank_capacity_liters).toBe(19)
+    expect(payload.def_tank_capacity_liters).not.toBe(19.003)
     expect(UnitConverter.getGallonStandard()).toBe('us')
   })
 

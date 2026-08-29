@@ -253,7 +253,12 @@ describe('FuelRecordForm — odometer and temperature follow their own tokens', 
     // Rendered VALUES, per quantity.
     expect(field('odometer_km').value).toBe('45000')
     expect(field('outside_temp_display').value).toBe('68.0')
-    expect(field('liters').value).toBe('47.318')
+    // Two decimals, which is what the `L` adapter carries and what every other
+    // rendering of a volume in the app shows. The field used to be seeded with
+    // the raw stored litres and disagreed with all of them; task 7 put it on
+    // the same adapter, and the third decimal survives in STORAGE through the
+    // seeded origin rather than on screen.
+    expect(field('liters').value).toBe('47.32')
     expect(field('price_per_unit').value).toBe('1.234')
 
     // Rendered LABELS, per quantity. A right number under a wrong label is the

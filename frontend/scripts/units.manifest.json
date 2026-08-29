@@ -376,17 +376,11 @@
   {
    "path": "src/components/DEFRecordForm.tsx",
    "disposition": "audited",
-   "digest": "0e3a160a36f132f6107ac5cfd3a7e397b771412bc5bb4c2a6132fe4b1e8a0f69",
-   "reason": "odometer already seeds an origin; volume and price do not",
+   "digest": "9d8aa6142af24bee6648c7de3c08b30be32365963c464763071ec2b802156ecd",
+   "reason": "odometer, volume and price all seed an origin. Task 7 closed ruling R4's entry-grid shift on this file: the volume and price fields are seeded WITH their canonical origins and read back through them, so a save that touched neither posts the stored values instead of a re-conversion of the two- and three-decimal displays they are shown at. The claim it replaces said Task 2 'made their round trip exact by other means'; it did not, it settled which gallon they used. The basis leg cannot fire here (this form seeds and submits per_volume), and it is passed anyway because a price origin without one is not a price origin.",
    "tests": [
     "components/__tests__/DEFRecordForm.mixedUnits.test.tsx",
     "components/__tests__/DEFRecordForm.test.tsx"
-   ],
-   "findings": [
-    "R4: DEF volume and price still shift once on the first untouched save, bounded 0.08%; seedUnitField alone is half the protocol"
-   ],
-   "owners": [
-    "task 7"
    ]
   },
   {
@@ -460,15 +454,16 @@
   {
    "path": "src/components/FuelRecordForm.tsx",
    "disposition": "audited",
-   "digest": "6128f0a5652caf9378f5f2582f7802f2ba44bd64530d3ea8a3de4dd7b848dd7b",
-   "reason": "gate-detectable unit decisions, recorded not asserted clean (plan 3b task 1 ordering). R7 CLOSED: the receipt preview rendered the draft's CANONICAL litres with a hardcoded \"L\" beside it, so a gallons account read one number and then watched the field it accepted into show another. It goes through u.volume.formatPrimary, the same adapter the field is seeded from. Task 6b interpolated the resolved consumption label into fuel.mpgTip, which told every reader \"MPG is only calculated for full tank fill-ups\" beside a figure they may read in L/100km, and dropped the kWh/100mi claim from fuel.electricTip: no code in this repo computes that figure in any unit.",
+   "digest": "c64cc50d14b9185a72a411484b1dd248e20a81a0c2c4b53acad4d03d1f841aad",
+   "reason": "gate-detectable unit decisions, recorded not asserted clean (plan 3b task 1 ordering). R7 CLOSED: the receipt preview rendered the draft's CANONICAL litres with a hardcoded \"L\" beside it, so a gallons account read one number and then watched the field it accepted into show another. It goes through u.volume.formatPrimary, the same adapter the field is seeded from. Task 6b interpolated the resolved consumption label into fuel.mpgTip, which told every reader \"MPG is only calculated for full tank fill-ups\" beside a figure they may read in L/100km, and dropped the kWh/100mi claim from fuel.electricTip: no code in this repo computes that figure in any unit. Task 7 closed ruling R4's entry-grid shift on this file: the volume and price fields are seeded WITH their canonical origins and read back through them, so a save that touched neither posts the stored values instead of a re-conversion of the two- and three-decimal displays they are shown at. The price origin is separate from the quantity ones because it carries the basis: `price_basis` is a <select> on this very form, so moving per_volume -> per_weight leaves the number alone and changes what it means. `acceptUnitField` grew `liters` and `propane_liters` and gained a price sibling, `acceptPriceField`, because the parsed-receipt path was landing both with a value and no fresh origin, which is the same unguarded seed beside a guarded one that the odometer had. The two volume/price placeholders moved off `units.volume === 'L'` onto a `Record` over the token: the branch named the right QUANTITY and still could not name the right UNIT, so a gal_uk account read a US-gallon example.",
    "tests": [
     "components/__tests__/FuelRecordForm.mixedUnits.test.tsx",
     "components/__tests__/FuelRecordForm.gallonUnits.test.tsx"
    ],
    "findings": [
-    "token-branch x3 (units gate baseline)",
-    "USER-VISIBLE DISPLAY CHANGE, SHIPPED by task 6, for the changelog: the parsed-receipt preview shows the volume in the reader's own unit (\"12.50 gal\") rather than the canonical litres it had always printed (\"47.318 L\"), so it now agrees with the field that accepting it fills in."
+    "token-branch x1 (units gate baseline)",
+    "USER-VISIBLE DISPLAY CHANGE, SHIPPED by task 6, for the changelog: the parsed-receipt preview shows the volume in the reader's own unit (\"12.50 gal\") rather than the canonical litres it had always printed (\"47.318 L\"), so it now agrees with the field that accepting it fills in.",
+    "USER-VISIBLE DISPLAY CHANGE, task 7, for the changelog: a METRIC reader's volume entry fields now show two decimals (45.46 L, not 45.461). They were seeded with the raw stored litres and disagreed with every other rendering of a volume in the app, which reads the `L` adapter's two decimals; a gallon reader has had two all along. The third decimal survives in STORAGE through the seeded origin, which is what the change buys."
    ],
    "owners": [
     "task 8",
@@ -640,18 +635,17 @@
   {
    "path": "src/components/PropaneRecordForm.tsx",
    "disposition": "audited",
-   "digest": "8e27b872c5af2cd559dfcf3886f2fd60e96949b5bac46bbaf5fd43ef96415648",
-   "reason": "the tank size through useUnitFormat with a seeded origin, and the nominal bottle name keyed by the resolved mass token. Volume and price are already on the resolved set (task 2); their two example hints stay with task 7",
+   "digest": "b50f672023407dd4f7eb902a11299b9e1e05e8ba17df4d8c1cc2fb6ec64b1b2a",
+   "reason": "the tank size through useUnitFormat with a seeded origin, and the nominal bottle name keyed by the resolved mass token. Task 7 closed ruling R4's entry-grid shift on this file: the volume and price fields are seeded WITH their canonical origins and read back through them, so a save that touched neither posts the stored values instead of a re-conversion of the two- and three-decimal displays they are shown at. The price origin also carries the BASIS it was read under, which is load bearing here: a legacy record stored the user's typed $/gal under basis='per_tank', so the seed shows it back unconverted and the submit re-reads it as per_volume, and an origin blind to the basis would call that untouched and store 2.899 as a per-litre price.",
    "tests": [
     "components/__tests__/PropaneRecordForm.mixedUnits.test.tsx",
     "components/__tests__/PropaneRecordForm.test.tsx"
    ],
    "findings": [
-    "the volume and price EXAMPLE hints still read `system === 'imperial'`. They are INVISIBLE to the gate, not baselined: R5 exempts a `placeholder` JSX attribute structurally on the comparison leg (validate-units.ts isPlaceholderAttribute). They are wrong only for a gal_uk account, which reads a US-gallon example, and task 7 owns both fields with the entry-grid shift.",
+    "USER-VISIBLE EXAMPLE CHANGE, for the changelog: the volume and price placeholders were `system === 'imperial'` ternaries, INVISIBLE to the gate (R5 exempts a `placeholder` JSX attribute structurally on the comparison leg), and wrong for exactly the account the exemption hid: `system` is D8-collapsed from volume, so a gal_uk account was shown a US-gallon example for a unit 20 percent larger. They now come from a `Record<UnitSet['volume'], ...>` table describing ONE physical fill in three vocabularies, so a volume unit added later cannot compile without its own.",
     "USER-VISIBLE LABEL CHANGE, SHIPPED: the tank-size field read 'lbs' from UnitFormatter.getWeightUnit(system) and now reads 'lb' from the mass adapter, which is what getMassUnit, UNIT_ADAPTERS.lb and the backend's table all say. Task 2 pinned the old string so it could not change silently; PropaneRecordForm.test.tsx now asserts 'lb' on purpose and task 9 puts it in the changelog."
    ],
    "owners": [
-    "task 7",
     "task 9"
    ]
   },
@@ -1588,8 +1582,8 @@
   {
    "path": "src/components/vehicle-detail/VehicleEditDrawer.tsx",
    "disposition": "audited",
-   "digest": "591b2180f39485aeb6abca4ab76de1e152233aeec98c36d4d43023821b3b542f",
-   "reason": "DEF tank capacity through toCanonicalLiters and the resolved volume label",
+   "digest": "2d62c8160d40874f5e64630d4c47d20b9b70704988967cf8a12de2a8ba707128",
+   "reason": "DEF tank capacity through toCanonicalLiters and the resolved volume label Task 7: the DEF tank capacity had the identical entry-grid shift the three fuel forms had, one drawer over from the files ruling R4 names, and on the same two helpers. 19 L seeded a UK-gallon box as 4.18 and 4.18 x 4.54609 = 19.0026562 came back 19.003, so opening this drawer to change a nickname moved a capacity nobody edited. It is now seeded WITH its canonical origin (a ref, because this drawer re-seeds from a fresh fetch on every open, so an origin captured at mount would describe a value the field no longer holds) and read back through it. Its `system === 'imperial'` capacity placeholder moved onto a `Record` over the volume token for the reason PropaneRecordForm's did.",
    "tests": [
     "components/vehicle-detail/__tests__/VehicleEditDrawer.test.tsx"
    ]
@@ -2623,10 +2617,12 @@
   {
    "path": "src/utils/decimalSafe.ts",
    "disposition": "audited",
-   "digest": "acade711e41afff95de8135209b26dc8c3c159e2df2c08234ec99a987645278f",
-   "reason": "R8 ruled and executed: the three binary helpers that wrote canonical values off a `UnitSystem` collapsed from volume (`toCanonicalKm`, `toCanonicalKg`, `toCanonicalMeters`) are DELETED, being every export in this file whose signature took a `UnitSystem`. `toCanonicalLiters`, `priceToDisplay` and `priceToCanonical` take the resolved `UnitSet` and stay. That they stay deleted is asserted structurally in utils/__tests__/unitsBinaryApiSurface.test.ts, which fails on the DECLARATION rather than on a call site.",
+   "digest": "c8ae03a4b12201a71ce2d6456cf7fcc6d2918ec5364a8eef068beaa104f5f15b",
+   "reason": "R8 ruled and executed: the three binary helpers that wrote canonical values off a `UnitSystem` collapsed from volume (`toCanonicalKm`, `toCanonicalKg`, `toCanonicalMeters`) are DELETED, being every export in this file whose signature took a `UnitSystem`. `toCanonicalLiters`, `priceToDisplay` and `priceToCanonical` take the resolved `UnitSet` and stay. That they stay deleted is asserted structurally in utils/__tests__/unitsBinaryApiSurface.test.ts, which fails on the DECLARATION rather than on a call site. Task 7 closed the SECOND defect class on this file, and closed it the way R8 closed the first. `toCanonicalLiters` and `priceToCanonical` each converted a DISPLAY value straight to canonical, which is right for a field the user edited and is ruling R4's entry-grid shift for one they did not: 13 of 27 measured volume combinations and 16 of 27 price ones moved, from 0.0006% at a 10,000-litre fill to 100% at the wire's smallest 0.001 L. `toCanonicalLiters` is DELETED (volume is a quantity and goes through the unitFormat protocol; `toLitersWirePrecision` is the API's declared 3 decimals, which the protocol deliberately leaves to the caller because pydantic 422s a fourth) and `priceToCanonical` is module-private behind `seedPriceField` / `canonicalFromPriceField`. Price gets its OWN pair rather than the quantity one for two reasons stated in the file: its display multiplies where a volume adapter divides, and its denominator (`price_basis`) can move under the field while the number does not, which the quantity origin has no place for. The untouched predicate itself is imported from unitFormat.ts, so there is one implementation of that decision. That the deleted pair stays deleted is asserted structurally in utils/__tests__/unitsBinaryApiSurface.test.ts, whose `exported` receipt now lists the five survivors.",
    "tests": [
-    "utils/__tests__/decimalSafe.test.ts"
+    "utils/__tests__/decimalSafe.test.ts",
+    "utils/__tests__/entryGridRoundTrip.test.ts",
+    "utils/__tests__/unitsBinaryApiSurface.test.ts"
    ]
   },
   {
@@ -2731,11 +2727,12 @@
   {
    "path": "src/utils/unitFormat.ts",
    "disposition": "audited",
-   "digest": "c60f438b7860eaabf517eeb80b258277c09366d6f032c95cdf1e0cb34e8d59da",
-   "reason": "makeUnitFormat plus the origin-preserving pair seedUnitField / canonicalFromUnitField, and resolvedUnitSummary, which lists a resolved set's ten labels for the settings description (plan 3b R1). Re-read for task 6: formatPrimary renders one unit even when show-both is on, because the binary distance API took the counterpart as an argument and eleven read sites passed false to suppress it. It also now holds formatVolumePerDistance and volumePerDistanceLabel, moved out of utils/units.ts by task 6: both halves of that compound unit come from adapterFor, where the retired pair derived the DISTANCE half from units.volume. That collapse is the category the units gate deliberately cannot detect (call-site identical to the correct formatVolume(units)), so it was carried here rather than in the baseline. Task 6b added `formatFuelRate(units, lPerHr, showBoth)` and `fuelRateLabel(units)`: a fuel rate is volume per a DIMENSIONLESS engine hour, so it composes the volume adapter with a fixed `/hr` suffix rather than being an eleventh quantity, mirroring `backend/app/utils/unit_derived.py::format_fuel_rate`. The suffix is applied to each representation independently, never to a completed show-both string, which is why it cannot be a `QuantityFormat` member. `format`'s docstring now states the one reachable HALF-ABSENT composition: a linear primary at zero paired with a reciprocal counterpart renders '0.00 L/100km (N/A)', because the null short-circuit is about an absent PRIMARY. Pinned by unitFormatFuelRate.test.ts so nobody 'fixes' it into 'N/A' and loses a true number.",
+   "digest": "9a557804d7df487effa4fdc9dd8c7e65efcadb6364e121a18c226c5623d2fb67",
+   "reason": "makeUnitFormat plus the origin-preserving pair seedUnitField / canonicalFromUnitField, and resolvedUnitSummary, which lists a resolved set's ten labels for the settings description (plan 3b R1). Re-read for task 6: formatPrimary renders one unit even when show-both is on, because the binary distance API took the counterpart as an argument and eleven read sites passed false to suppress it. It also now holds formatVolumePerDistance and volumePerDistanceLabel, moved out of utils/units.ts by task 6: both halves of that compound unit come from adapterFor, where the retired pair derived the DISTANCE half from units.volume. That collapse is the category the units gate deliberately cannot detect (call-site identical to the correct formatVolume(units)), so it was carried here rather than in the baseline. Task 6b added `formatFuelRate(units, lPerHr, showBoth)` and `fuelRateLabel(units)`: a fuel rate is volume per a DIMENSIONLESS engine hour, so it composes the volume adapter with a fixed `/hr` suffix rather than being an eleventh quantity, mirroring `backend/app/utils/unit_derived.py::format_fuel_rate`. The suffix is applied to each representation independently, never to a completed show-both string, which is why it cannot be a `QuantityFormat` member. `format`'s docstring now states the one reachable HALF-ABSENT composition: a linear primary at zero paired with a reciprocal counterpart renders '0.00 L/100km (N/A)', because the null short-circuit is about an absent PRIMARY. Pinned by unitFormatFuelRate.test.ts so nobody 'fixes' it into 'N/A' and loses a true number. Task 7 exported the untouched predicate as `unitFieldUnchanged` so PRICE can share it: price is not a quantity (its display MULTIPLIES by the denominator factor where a volume adapter divides, so canonical $1.20/L through a UK-gallon volume formatter renders 0.26 where price semantics want ~5.46/gal), so its seed/read pair lives beside the price arithmetic in utils/decimalSafe.ts and calls back into this one decision rather than copying it. The three legs of that predicate are ordered: exact string, then BLANK (before the numeric leg, because Number('') is 0 and a field seeded '0.00' would otherwise read a cleared box as untouched), then the same number spelled differently.",
    "tests": [
     "utils/__tests__/unitFormat.test.ts",
-    "utils/__tests__/unitFormatFuelRate.test.ts"
+    "utils/__tests__/unitFormatFuelRate.test.ts",
+    "utils/__tests__/entryGridRoundTrip.test.ts"
    ]
   },
   {

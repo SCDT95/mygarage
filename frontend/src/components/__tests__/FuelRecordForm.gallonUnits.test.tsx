@@ -189,29 +189,30 @@ describe('FuelRecordForm — the gallon comes from the user, not the instance', 
   })
 
   /*
-   * ★ These two replace a single test called "saving it untouched changes
-   * neither half", whose fixture was `liters: 45.461` and
-   * `price_per_unit: 1.31981548979`. Those are `10 * 4.54609` and `6 / 4.54609`:
-   * hand-picked values that are already exact round-trip fixed points, so the
-   * name claimed a guarantee the body could not exercise. That is the defect
-   * this project has now recorded five times. Re-fixtured to an ordinary stored
-   * value the old assertion fails with `expected 22.73 to be 22.712`.
+   * ★ THE OBLIGATION THESE TWO RECORDED IS NOW DISCHARGED, and the pair is kept
+   * rather than collapsed because it is what says so.
    *
-   * What actually holds is a FIXED POINT AFTER ONE CYCLE, and both halves of it
-   * are tested below. Every expected value is hand-computed from the documented
-   * formulas, never read back from the code under test:
+   * They replaced a single test called "saving it untouched changes neither
+   * half", whose fixture was `liters: 45.461` and `price_per_unit:
+   * 1.31981548979`. Those are `10 * 4.54609` and `6 / 4.54609`: hand-picked
+   * values that are already exact round-trip fixed points, so the name claimed
+   * a guarantee the body could not exercise. Re-fixtured to an ordinary stored
+   * value, the old assertion failed with `expected 22.73 to be 22.712`, and the
+   * case was renamed to assert the shift it had found:
    *
-   *   volume  22.712 / 4.54609 = 4.9959... -> roundResult(2)   -> 5
+   *   volume  22.712 / 4.54609 = 4.9959... -> two display dp   -> 5.00
    *           5 * 4.54609      = 22.73045  -> 3 wire decimals  -> 22.73
    *   price   1.32 * 4.54609   = 6.00084   -> 3 display dp     -> 6.001
    *           6.001 / 4.54609  = 1.32003545904 at 12 significant digits
    *
-   * The shift is display-grid quantisation, it is strictly smaller than at
-   * `44c71ed` (which also truncated the canonical value to 2 dp), and putting
-   * these two fields on `seedUnitField` so even the FIRST save is a fixed point
-   * is a named phase 3b obligation.
+   * Plan 3b task 7 put both fields on the origin-preserving protocol, so the
+   * right-hand column is now what the form does NOT post. The first case
+   * asserts that, and asserts the two shifted answers by name so it cannot pass
+   * on a build where the conversion arithmetic quietly changed instead. The
+   * second keeps a fixture that was ALREADY a fixed point, so the pair still
+   * separates "the origin works" from "the arithmetic happens to agree".
    */
-  it('EDIT: an ordinary gal_uk record shifts ONCE onto the entry grid', async () => {
+  it('★ EDIT: an ordinary gal_uk record no longer shifts onto the entry grid', async () => {
     UnitConverter.setGallonStandard('us')
     unitPrefMock.units = UK_IMPERIAL_UNITS
     // ★ Named so the assertions below can say "this MOVED". Without that, the
@@ -236,38 +237,40 @@ describe('FuelRecordForm — the gallon comes from the user, not the instance', 
       />
     )
     await waitFor(() => expect(mockedApiGet).toHaveBeenCalled())
-    // Seeded in the user's own gallon, not the instance's, and quantised onto
-    // the grid the input accepts.
+    // ★ The DISPLAY is still quantised onto the grid the input accepts, and
+    // that is what makes the payload assertions below mean something: the
+    // form is not posting the stored values because it never rounded them.
     expect(field('liters').value).toBe('5')
     expect(field('price_per_unit').value).toBe('6.001')
 
     fireEvent.submit(drawerForm())
     await waitFor(() => expect(mockedApiPut).toHaveBeenCalled())
     const payload = mockedApiPut.mock.calls[0][1] as Record<string, unknown>
-    // The fixture is deliberately NOT on the entry grid, so both values move.
-    expect(payload.liters).not.toBe(STORED_LITERS)
-    expect(payload.price_per_unit).not.toBe(STORED_PRICE)
-    // And they move to exactly here: the once-only shift asserted rather than
-    // hidden behind a fixture chosen so it cannot appear.
-    expect(payload.liters).toBe(22.73)
-    expect(payload.price_per_unit).toBe(1.32003545904)
+    // The fixture is deliberately NOT on the entry grid, and both values stay
+    // put anyway: the origin hands back what the field was seeded from.
+    expect(payload.liters).toBe(STORED_LITERS)
+    expect(payload.price_per_unit).toBe(STORED_PRICE)
+    // And explicitly not the two answers the shipped path gave, named so this
+    // case cannot pass on a build where the arithmetic moved instead.
+    expect(payload.liters).not.toBe(22.73)
+    expect(payload.price_per_unit).not.toBe(1.32003545904)
     // Cost is PRESERVED verbatim on an untouched submit, not recomputed: the form
     // deliberately keeps a stored total because a receipt may include unrelated items.
     // Pinned so nobody "fixes" it into a recomputation.
     expect(payload.cost).toBe(30.01)
   })
 
-  it('EDIT: a gal_uk record already on the entry grid is a fixed point', async () => {
-    // The property criterion 11 actually rests on. Feeding back exactly what
-    // the save above produced must change nothing, so the shift is once-only
-    // rather than a per-save drift.
+  it('EDIT: a gal_uk record already on the entry grid is a fixed point too', async () => {
+    // The negative control. This fixture is what the OLD save produced, so the
+    // naive reconversion gets it right on its own: it is the case the origin
+    // cannot be credited for, kept so the case above is not the only evidence.
     UnitConverter.setGallonStandard('us')
     unitPrefMock.units = UK_IMPERIAL_UNITS
 
-    // ★ The other half of the pin: this fixture IS on the entry grid, and the
-    // assertions say so by comparing against the stored values themselves.
-    // Swap these two fixtures and both tests fail, which is what stops the pair
-    // from silently collapsing into one case.
+    // ★ The other half of the pin: this fixture IS on the entry grid. Swapping
+    // the two fixtures no longer flips either case, because both are now
+    // preserved; what still separates them is the `not.toBe` pair above, which
+    // names the answers only the OFF-grid fixture could have produced.
     const STORED_LITERS = 22.73
     const STORED_PRICE = 1.32003545904
 
@@ -372,5 +375,78 @@ describe('FuelRecordForm — the gallon comes from the user, not the instance', 
       ((payload.price_per_unit as number) * (payload.liters as number)) / (payload.cost as number)
     expect(ratio).toBeCloseTo(1, 4)
     expect(UnitConverter.getGallonStandard()).toBe('us')
+  })
+
+  it('★ an accepted receipt draft carries its ORIGIN, so an untouched save keeps it', async () => {
+    // ★ The case above cannot see this: its draft is `45.4609` L, ten imperial
+    // gallons exactly, so the display reconverts to itself and an accepted
+    // draft with NO origin would post the same number. This draft is off the
+    // grid, so only a fresh origin gets it back out intact. `acceptUnitField`
+    // and `acceptPriceField` are the two calls under test; setting a value
+    // without moving its origin is the defect they exist to prevent.
+    UnitConverter.setGallonStandard('us')
+    unitPrefMock.units = UK_IMPERIAL_UNITS
+    receipt.draft = { liters: 22.712, price_per_unit: 1.32, cost: 30.01 }
+
+    render(<FuelRecordForm {...DEFAULT_PROPS} />)
+    await waitFor(() => expect(field('receipt_text')).not.toBeNull())
+    fireEvent.change(field('receipt_text'), { target: { value: '5.00 gal at 6.00' } })
+    fireEvent.click(screen.getByRole('button', { name: 'fuel.parseReceipt' }))
+    fireEvent.click(await screen.findByRole('button', { name: 'fuel.receiptDraftAccept' }))
+
+    // 22.712 / 4.54609 = 4.9959... at two decimals is 5.00; 1.32 x 4.54609 =
+    // 6.00084 at three is 6.001. Both are quantised, which is the point.
+    await waitFor(() => expect(field('liters').value).toBe('5'))
+    expect(field('price_per_unit').value).toBe('6.001')
+
+    fireEvent.change(field('date'), { target: { value: '2026-02-10' } })
+    fireEvent.change(field('price_basis'), { target: { value: 'per_volume' } })
+    fireEvent.submit(drawerForm())
+
+    await waitFor(() => expect(postedPayload().liters).toBeDefined())
+    const payload = postedPayload()
+    expect(payload.liters).toBe(22.712)
+    expect(payload.price_per_unit).toBe(1.32)
+    // The answers an origin-less accept would have posted.
+    expect(payload.liters).not.toBe(22.73)
+    expect(payload.price_per_unit).not.toBe(1.32003545904)
+  })
+
+  it('★ moving the price BASIS is an edit, even with the number untouched', async () => {
+    // ★ The leg a quantity origin has no place for, driven through the control
+    // that moves it. `price_basis` is a <select> on this form: switching
+    // per_volume -> per_weight leaves 6.001 in the box and makes it $/lb.
+    // Handing back the stored $/L would relabel a gallon price as a pound one.
+    UnitConverter.setGallonStandard('us')
+    unitPrefMock.units = UK_IMPERIAL_UNITS
+
+    render(
+      <FuelRecordForm
+        {...DEFAULT_PROPS}
+        record={{
+          id: 21,
+          vin: VIN,
+          date: '2026-02-10',
+          liters: 22.712,
+          price_per_unit: 1.32,
+          price_basis: 'per_volume',
+          cost: 30.01,
+        } as never}
+      />
+    )
+    await waitFor(() => expect(mockedApiGet).toHaveBeenCalled())
+    expect(field('price_per_unit').value).toBe('6.001')
+
+    fireEvent.change(field('price_basis'), { target: { value: 'per_weight' } })
+    fireEvent.submit(drawerForm())
+    await waitFor(() => expect(mockedApiPut).toHaveBeenCalled())
+    const payload = mockedApiPut.mock.calls[0][1] as Record<string, unknown>
+    // 6.001 / 0.453592 = 13.2299511455 $/kg at 12 significant digits.
+    expect(payload.price_basis).toBe('per_weight')
+    expect(payload.price_per_unit).toBe(13.2299511455)
+    expect(payload.price_per_unit).not.toBe(1.32)
+    // The volume beside it did NOT move: only the field whose denominator
+    // changed is treated as edited.
+    expect(payload.liters).toBe(22.712)
   })
 })

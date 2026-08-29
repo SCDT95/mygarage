@@ -10,9 +10,15 @@ import { makePropaneRecordSchema, type PropaneRecordFormData } from '../schemas/
 import { useCreatePropaneRecord, useUpdatePropaneRecord } from '../hooks/queries/usePropaneRecords'
 import { useUnitPreference } from '../hooks/useUnitPreference'
 import { useUnitFormat } from '../hooks/useUnitFormat'
-import { UnitConverter, UnitFormatter } from '../utils/units'
+import { UnitFormatter } from '../utils/units'
 import { canonicalFromUnitField, seedUnitField, type UnitFieldOrigin } from '../utils/unitFormat'
-import { toCanonicalLiters, priceToDisplay, priceToCanonical, readNumber } from '../utils/decimalSafe'
+import {
+  canonicalFromPriceField,
+  readNumber,
+  seedPriceField,
+  toLitersWirePrecision,
+  type PriceFieldOrigin,
+} from '../utils/decimalSafe'
 import { useOnUserEdit } from '../hooks/useOnUserEdit'
 import { formatDateForInput } from '../utils/dateUtils'
 import CurrencyInputPrefix from './common/CurrencyInputPrefix'
@@ -41,6 +47,27 @@ const TANK_SIZES: readonly {
   { kg: 190.51, nominal: { kg: 190, lb: 420 }, kind: 'rv' },
 ]
 
+/**
+ * The volume and price EXAMPLES each volume token gets, as ONE physical fill.
+ *
+ * ★ Keyed by the resolved token rather than selected by a binary system, which
+ * is the whole correction: `system` is D8-collapsed from volume, so `gal_uk`
+ * and `gal_us` both read 'imperial' and a UK account was shown a US-gallon
+ * example beside a field labelled with ITS gallon. `Record` over the token
+ * means a volume unit added later cannot compile without its own example.
+ *
+ * All three describe the same 39.75 L at $0.766/L: 39.75 / 3.78541 = 10.500 US
+ * gallons at 0.766 x 3.78541 = $2.899, and 39.75 / 4.54609 = 8.744 imperial
+ * gallons at 0.766 x 4.54609 = $3.482. They are placeholders, not converted
+ * quantities (ruling R5's exempt class), which is why they are written out
+ * rather than computed: there is no canonical value behind an example.
+ */
+const VOLUME_EXAMPLES: Readonly<Record<UnitSet['volume'], { volume: string; price: string }>> = {
+  L: { volume: '39.750', price: '0.766' },
+  gal_us: { volume: '10.500', price: '2.899' },
+  gal_uk: { volume: '8.744', price: '3.482' },
+}
+
 interface PropaneRecordFormProps {
   vin: string
   record?: FuelRecord
@@ -59,11 +86,15 @@ export default function PropaneRecordForm({
   const [error, setError] = useState<string | null>(null)
   const createMutation = useCreatePropaneRecord(vin)
   const updateMutation = useUpdatePropaneRecord(vin)
-  // ★ `system` survives here for the volume and price EXAMPLE hints only,
-  // which plan 3b ruling R4 gives to task 7 along with those two fields'
-  // entry-grid shift. Everything mass reads `u.mass`; volume and price read the
-  // resolved `units` (task 2).
-  const { system, units } = useUnitPreference()
+  // ★ `system` is GONE from this form. It survived for two `placeholder`
+  // example hints, which ruling R5 exempts structurally from the units gate's
+  // comparison leg and which R4 handed to this task with the entry-grid shift.
+  // They were wrong for exactly the account the exemption hid: `system` is
+  // D8-collapsed from volume, so `gal_uk` reads 'imperial' and a UK account was
+  // shown a US-gallon example (10.500 gal, $2.899/gal) for a unit 20 percent
+  // larger. The hints now come from the resolved volume token, which is the
+  // same token the field beside them is labelled and entered in.
+  const { units } = useUnitPreference()
   const u = useUnitFormat()
 
   /**
@@ -81,6 +112,27 @@ export default function PropaneRecordForm({
    */
   const [tankSizeOrigin] = useState<UnitFieldOrigin>(() =>
     seedUnitField(readNumber(record?.tank_size_kg), u.mass)
+  )
+
+  /** The volume field's canonical origin, in `units.volume`. */
+  const [propaneLitersOrigin] = useState<UnitFieldOrigin>(() =>
+    seedUnitField(readNumber(record?.propane_liters), u.volume)
+  )
+
+  /**
+   * The price field's canonical origin, and the basis it was READ under.
+   *
+   * ★ THE BASIS IS LOAD BEARING HERE IN A WAY IT IS NOT ON THE DEF FORM. This
+   * form seeds a legacy record on its STORED basis (a pre-fix bug wrote the
+   * user's typed $/gal under `per_tank`, so showing it back means passing it
+   * through unconverted) and always SUBMITS `per_volume`, which reinterprets
+   * the same characters as a per-volume price. That reinterpretation is the
+   * intended migration, and an origin that only remembered the number would
+   * defeat it: an untouched save would hand back 2.899 and label it $/L.
+   * `canonicalFromPriceField` sees the basis move and converts.
+   */
+  const [priceOrigin] = useState<PriceFieldOrigin>(() =>
+    seedPriceField(record?.price_per_unit, units, record?.price_basis ?? 'per_volume')
   )
 
   /**
@@ -117,22 +169,16 @@ export default function PropaneRecordForm({
     resolver: zodResolver(schema) as Resolver<PropaneRecordFormData>,
     defaultValues: {
       date: formatDateForInput(record?.date),
-      propane_liters: (() => {
-        if (record?.propane_liters == null) return undefined
-        const liters = typeof record.propane_liters === 'string'
-          ? parseFloat(record.propane_liters)
-          : record.propane_liters
-        if (isNaN(liters)) return undefined
-        // Same resolved set the submit converts back with (defect L1).
-        return UnitConverter.litersToVolumeUnit(liters, units) ?? undefined
-      })(),
+      // Seeded in `units.volume`, and the submit reads it back through the
+      // SAME origin (defect L1, then ruling R4's shift).
+      propane_liters: readNumber(propaneLitersOrigin.display),
       // Read uses the record's stored basis so legacy records saved with
       // basis='per_tank' (pre-fix bug — the form labeled the field $/gal
       // or $/L but stored the user's typed value raw under per_tank) display
       // the same value the user typed. Records saved with the corrected
       // basis='per_volume' are converted from canonical $/L to $/gal for
       // imperial users.
-      price_per_unit: priceToDisplay(record?.price_per_unit, units, record?.price_basis ?? 'per_volume') ?? undefined,
+      price_per_unit: readNumber(priceOrigin.display),
       cost: (() => {
         if (!record?.cost) return undefined
         const cost = typeof record.cost === 'string'
@@ -162,8 +208,11 @@ export default function PropaneRecordForm({
     const kg = u.mass.toCanonical(tankSize) ?? tankSize
     const totalLiters = kg * quantity * KG_TO_LITERS
     // The tank row writes straight into propane_liters, so it has to land in
-    // the SAME unit that field is entered and submitted in.
-    return UnitConverter.litersToVolumeUnit(totalLiters, units)
+    // the SAME unit AND at the same presentation that field is seeded with:
+    // `toInputValue` is what an edit-mode seed writes, so an auto-calculated
+    // volume and a stored one are spelled identically.
+    const text = u.volume.toInputValue(totalLiters)
+    return text === '' ? null : Number(text)
   }
 
   useOnUserEdit(
@@ -205,7 +254,14 @@ export default function PropaneRecordForm({
         odometer_km: undefined,  // Never set for propane
         liters: undefined,  // Never set for propane
         // ★ Volume and price convert through ONE resolved set (defect L1).
-        propane_liters: toCanonicalLiters(data.propane_liters, units) ?? undefined,
+        propane_liters:
+          toLitersWirePrecision(
+            canonicalFromUnitField(
+              String(readNumber(data.propane_liters) ?? ''),
+              propaneLitersOrigin,
+              u.volume
+            )
+          ) ?? undefined,
         // Back through `units.mass`, and an untouched selection returns the
         // canonical value it was seeded from rather than a re-conversion.
         tank_size_kg:
@@ -220,7 +276,13 @@ export default function PropaneRecordForm({
         // to canonical $/L. Earlier code saved basis='per_tank' with raw
         // values, which was inconsistent with the form's own math and the
         // rest of the app's metric-canonical storage convention.
-        price_per_unit: priceToCanonical(data.price_per_unit, units, 'per_volume') ?? undefined,
+        price_per_unit:
+          canonicalFromPriceField(
+            String(readNumber(data.price_per_unit) ?? ''),
+            priceOrigin,
+            units,
+            'per_volume'
+          ) ?? undefined,
         price_basis: 'per_volume',
         cost: data.cost,
         fuel_type_used: 'propane_lpg',  // Always propane
@@ -330,14 +392,14 @@ export default function PropaneRecordForm({
           </div>
 
           <Field id="propane_liters" label={t('propaneRecordForm.propaneVolume')} unit={UnitFormatter.getVolumeUnit(units)} error={errors.propane_liters}>
-            <NumberInput id="propane_liters" {...registerDecimal(register, 'propane_liters')} placeholder={system === 'imperial' ? '10.500' : '39.750'} invalid={!!errors.propane_liters} disabled={isSubmitting} />
+            <NumberInput id="propane_liters" {...registerDecimal(register, 'propane_liters')} placeholder={VOLUME_EXAMPLES[units.volume].volume} invalid={!!errors.propane_liters} disabled={isSubmitting} />
           </Field>
 
           <div className="grid grid-cols-2 gap-4">
             <Field id="price_per_unit" label={`${t('fuel.pricePer')} ${UnitFormatter.getVolumeUnit(units)}`} error={errors.price_per_unit}>
               <div className="relative">
                 <CurrencyInputPrefix />
-                <NumberInput id="price_per_unit" {...registerDecimal(register, 'price_per_unit')} placeholder={system === 'imperial' ? '2.899' : '0.766'} invalid={!!errors.price_per_unit} disabled={isSubmitting} className="pl-7" />
+                <NumberInput id="price_per_unit" {...registerDecimal(register, 'price_per_unit')} placeholder={VOLUME_EXAMPLES[units.volume].price} invalid={!!errors.price_per_unit} disabled={isSubmitting} className="pl-7" />
               </div>
             </Field>
             <Field id="cost" label={t('common:totalCost')} error={errors.cost} hint={t('fuel.autoCalculatedHint')}>
