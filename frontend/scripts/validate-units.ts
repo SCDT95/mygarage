@@ -23,7 +23,9 @@
  *                          `system` collapses from volume). Task 5 deleted all
  *                          three such helpers, so this leg's vocabulary is
  *                          empty on `decimalSafe.ts` today and it fires only on
- *                          a helper a scanned file declares for itself.
+ *                          a helper a scanned file declares for itself. What
+ *                          that leaves open is the named task 8 precondition
+ *                          below; read it before trusting this leg.
  *   token-branch           `units.volume === 'L' ? km : miles`, which collapses
  *                          DISTANCE out of VOLUME with no system literal
  *                          anywhere.
@@ -37,6 +39,32 @@
  * that category belongs to `units.manifest.json`, which is reviewed rather than
  * matched. Forced-unit sites (`` `${liters} L` ``) have no lexical form at all
  * and belong there too.
+ *
+ * ★ NAMED PRECONDITION FOR TASK 8'S CLEAN-ROOM FLIP. Two gaps in the
+ * `binary-conversion` leg are known, measured and deliberately NOT closed in
+ * task 5. Together they are the R8 defect class one module over, and the flip
+ * must not ship while they are open, because that is the moment this gate
+ * starts claiming completeness instead of recording a baseline.
+ *
+ *   1. CROSS-FILE IS STILL BLIND. Task 5 added the scanned file's own
+ *      declarations to the vocabulary, which closes the same-file shape only.
+ *      A binary conversion helper declared in any module OTHER than
+ *      `decimalSafe.ts` and called from a DIFFERENT file produces zero findings
+ *      in both files when its body delegates rather than comparing. Verified by
+ *      fixture, not reasoned. With `decimalSafe.ts` now declaring none, that is
+ *      the entire remaining population of this leg.
+ *
+ *   2. THE PREDICATE MATCHES ANNOTATION TEXT EXACTLY. `takesBinarySystem`
+ *      compares `p.type.getText().trim()` to the literal `'UnitSystem'`, so an
+ *      aliased import (`import type { UnitSystem as Sys }`), a union
+ *      (`UnitSystem | undefined`) and a destructured props object holding
+ *      `system: UnitSystem` all evade it. Three of the nineteen production
+ *      declarations carrying a `UnitSystem` are already in evading shapes, two
+ *      of them live components on the supplies path. Inside `decimalSafe.ts`
+ *      the exact-list `exported` receipt in
+ *      `utils/__tests__/unitsBinaryApiSurface.test.ts` catches every one of
+ *      them anyway, which is why widening this predicate was NOT done here;
+ *      outside that file nothing does.
  *
  * ★ WHY THIS IS A SCRIPT AND NOT AN ESLINT SELECTOR (plan ruling R3).
  * `no-restricted-syntax` registers purely syntactic selectors against

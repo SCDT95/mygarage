@@ -6,20 +6,45 @@
  * the quart CONVERSION; it says nothing about whether these comparisons may
  * read a collapsed `system`, so each one is ruled separately at its own site.
  *
- * The premise they share: `system` is NOT lossy with respect to the quantity
- * these functions decide. Every caller reads it from `useUnitPreference()`
- * (`SupplyHistoryModal`, `SupplyUsedPicker`, `SuppliesUsedTab`,
- * `ServiceVisitForm`, `pages/Supplies`, and no other file calls into here),
- * and on all four of that hook's rungs `system === binarySystemFor(units.volume)`.
- * That is not prose: `hooks/__tests__/useUnitPreference.precedence.test.tsx`
- * asserts it rung by rung, and `types/units.ts:binarySystemFor` is
- * `volume === 'L' ? 'metric' : 'imperial'`. Supplies are a VOLUME quantity, so
- * every comparison below is the volume token under another name.
+ * The premise they share: THESE THREE LEGS TRACK `unit_preference`, NOT THE
+ * RESOLVED VOLUME, AND THAT IS DELIBERATE. D8 gave supplies a vocabulary of
+ * `qt` and `L`, and `UnitSet` cannot express it: `UnitSet.volume` is
+ * `L | gal_uk | gal_us` and there is no quart token anywhere in the resolved
+ * set. So there is no `units` field for these comparisons to read. Supplies are
+ * the one quantity in the app with no resolved source of truth, because the
+ * spec created a display unit the vocabulary never got.
  *
- * That is what makes these different from the phase's signature defect. A
- * `{volume:'L', distance:'mi'}` user gets `system === 'metric'` and litres of
- * oil, which is right; the same collapse is wrong in `toCanonicalKm` only
- * because DISTANCE is not the quantity the collapse was taken over.
+ * That is the same root as the UK-quart defect recorded on `supplyUnitLabel`
+ * below, and both wait on the same D8 amendment: give supplies a resolved
+ * token, and these three legs get something to read and the factor gets a
+ * flavour at the same time. Until then a preference is the only signal there is.
+ *
+ * ★ AN EARLIER VERSION OF THIS BLOCK CLAIMED `system === binarySystemFor(units.volume)`
+ * ON ALL FOUR RUNGS. THAT IS FALSE, and the account it is false for is one the
+ * product creates on purpose. `useUnitPreference.ts:systemFor` consults
+ * `resolved_units` ONLY when `unit_preference === 'custom'`; for `'metric'` and
+ * `'imperial'` it returns the preference verbatim while `units` stays the fully
+ * resolved set. `PUT /auth/me` writes the preference and never clears an
+ * override column (`SettingsSystemTab.tsx` says so at length), and
+ * `backend/app/utils/unit_resolution.py:resolve_units` applies the eleven
+ * override columns on top of the preset for EVERY account, `custom` or not. So
+ * `{preference:'metric', overrides: UK imperial}` reaches this file as
+ * `system='metric'` with `units.volume='gal_uk'`.
+ *
+ * ★ NAMING THE POPULATION THIS EXEMPTION KNOWINGLY LEAVES INCOHERENT, because a
+ * ruling that implies no such account exists is worse than no ruling. That
+ * account renders gallons, miles and Fahrenheit on every other screen and
+ * LITRES here. Measured, not reasoned: label `'L'` where the resolved token
+ * says `'qt'`, one stored litre displayed as `1` where the resolved token says
+ * `1.0567`. It is NOT data corruption: label, read and write all follow
+ * `system` together, so a round trip is exact and nothing stored is wrong. It
+ * is a real user-visible inconsistency, and it is the price of D8's missing
+ * token rather than of these comparisons.
+ *
+ * The old premise also failed to distinguish this file from the phase's
+ * signature defect, so state the distinction properly: `toCanonicalKm` was
+ * wrong because it applied a VOLUME collapse to DISTANCE, a quantity the
+ * resolved set could have answered for. Supplies have nothing to ask.
  *
  * ★ The TYPE is not exempt, and used to be declared here as a second
  * `'metric' | 'imperial'` union structurally identical to `utils/units.ts`'s.
@@ -40,18 +65,19 @@ const L_PER_QUART = 0.946352946
 /**
  * Convert a canonical value (L for volume, count for count) to the user's display unit.
  *
- * R3 ruling, READ leg: EXEMPT. `units.volume` is the only field of a resolved
- * set that can change this answer, and the header's invariant says `system`
- * carries it whole. Rewriting the test as `units.volume === 'L'` would select
- * the same branch for every set the client can hold, so the migration would be
- * churn rather than a fix.
+ * R3 ruling, READ leg: EXEMPT, because there is nothing to migrate TO. The
+ * branch selects between quarts and litres, and `UnitSet` holds no quart token,
+ * so `units` cannot answer the question this line asks. Rewriting it as
+ * `units.volume === 'L'` would not be a migration to the resolved set: it would
+ * be a second guess at the same missing token, and it would silently change
+ * which unit the incoherent account named in the header sees.
  */
 export function canonicalToDisplay(
   value: number,
   unitType: SupplyUnitType,
   system: UnitSystem,
 ): number {
-  // units-exempt: R3 read leg. `system` is `binarySystemFor(units.volume)` on every rung of useUnitPreference, and volume is the quantity supplies measure, so this comparison already IS the resolved token.
+  // units-exempt: R3 read leg; D8 gave supplies a qt/L vocabulary UnitSet cannot express, so `units` holds nothing this branch could read. Owner: deferred, pending the D8 amendment. Expires when UnitSet carries a supplies token, which is the same amendment the UK-quart defect on supplyUnitLabel waits on.
   if (unitType === 'count' || system === 'metric') return value
   return value / L_PER_QUART // liters → quarts
 }
@@ -61,18 +87,21 @@ export function canonicalToDisplay(
  *
  * R3 ruling, WRITE leg: EXEMPT, and exempt as a PAIR with `canonicalToDisplay`
  * rather than on its own. This is the only function here that reaches storage,
- * so it is the one a wrong answer would make permanent; it is safe for exactly
- * the reason the read leg is, and its condition is character-identical on
- * purpose. Migrating either leg alone would be the real hazard: a stored litre
- * read back through a differently-conditioned display is a silent 5.7 percent
- * per round trip, so if these ever move they move in the same commit.
+ * so it is the one a wrong answer would make permanent. It is exempt for
+ * exactly the reason the read leg is, and its condition is character-identical
+ * on purpose: that identity is what keeps the incoherent account in the header
+ * merely inconsistent instead of corrupted, because the value written and the
+ * value read back are conditioned on the same signal. Migrating either leg
+ * alone is the real hazard: a stored litre read back through a
+ * differently-conditioned display is a silent 5.7 percent per round trip, so if
+ * these ever move they move in the same commit.
  */
 export function displayToCanonical(
   value: number,
   unitType: SupplyUnitType,
   system: UnitSystem,
 ): number {
-  // units-exempt: R3 write leg. Same premise as the read leg, and character-identical to it on purpose: these two are exempt as a pair or not at all.
+  // units-exempt: R3 write leg; same reason as the read leg and character-identical to it on purpose, which is what keeps the round trip exact. Owner: deferred, pending the D8 amendment. Expires with the read leg, in the same commit, never alone.
   if (unitType === 'count' || system === 'metric') return value
   return value * L_PER_QUART // quarts → liters
 }
@@ -80,22 +109,28 @@ export function displayToCanonical(
 /**
  * Unit label for display.
  *
- * R3 ruling, LABEL leg: EXEMPT on the mixed-set test, with one defect recorded
- * that the migration would NOT fix. No mixed set reaches a different label than
- * the volume token alone would, so the header's invariant covers it.
+ * R3 ruling, LABEL leg: EXEMPT for the header's reason, with one defect
+ * recorded that migrating this comparison would NOT fix.
  *
- * ★ What it does collapse is `gal_uk` onto `gal_us`: both answer 'imperial',
- * both get 'qt', and `L_PER_QUART` is the US liquid quart. A UK user entering
- * one quart of oil therefore stores 0.946 L where they meant 1.137, the same
- * 20.1 percent and the same shape as defect L1. Reading `units.volume` instead
- * does not fix it, because `UnitSet` has no quart token to resolve to: quarts
- * are D8's own choice of display unit, outside the resolved vocabulary
- * entirely. Fixing it means giving D8 a UK quart and restating the supplies
- * already stored under the US one, which is a spec amendment and a data
- * question, not a comparison this file can rewrite.
+ * ★ DEFERRED DEFECT, 20.1 percent, UK instances. `L_PER_QUART` is the US liquid
+ * quart (0.946352946); the UK quart is 4.54609/4 = 1.1365225. A UK user
+ * entering one quart of oil stores 0.946 L where they meant 1.137, the same
+ * magnitude and the same shape as defect L1.
+ *
+ * Rewriting `system === 'imperial'` as `units.volume !== 'L'` selects the same
+ * branch and yields the same label, so the comparison is not what makes that
+ * user wrong. The CONSTANT is. And the resolved set is not as silent as an
+ * earlier draft of this comment claimed: `UnitSet.secondary_gallon` is
+ * `'us' | 'uk'` for every account, and `UnitConverter.LITERS_PER_VOLUME_UNIT`
+ * already holds both gallons, so a correct quart is derivable today as
+ * `LITERS_PER_VOLUME_UNIT[gal_x] / 4` with no new vocabulary. What actually
+ * blocks the fix is D8's silence about which quart it meant, plus the stored
+ * data: changing the factor re-interprets every supply quantity already written
+ * on a UK instance, and no column records which quart a row was written in.
+ * That is a spec amendment and a data decision, not a refactor.
  */
 export function supplyUnitLabel(unitType: SupplyUnitType, system: UnitSystem): string {
   if (unitType === 'count') return ''
-  // units-exempt: R3 label leg. No mixed set reaches a different label than units.volume alone would; the gal_uk/gal_us collapse it does carry is D8's quart choice, which reading `units` would not fix.
+  // units-exempt: R3 label leg; the qt/L choice is not in UnitSet, so migrating this comparison changes nothing. Owner: deferred, pending the D8 amendment, which also owns the 20.1 percent UK-quart defect in the docstring above. Expires when D8 says which quart it meant.
   return system === 'imperial' ? 'qt' : 'L'
 }

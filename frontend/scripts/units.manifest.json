@@ -822,8 +822,8 @@
   {
    "path": "src/components/ServiceVisitForm.tsx",
    "disposition": "audited",
-   "digest": "794acbf3fb747b00812cfcfc2e46c6cb3f6b79e08b4a1efa6dbc6ec8899ef462",
-   "reason": "the odometer through useUnitFormat with a seeded origin. `system` survives for the SUPPLY quantities only (D8 exempts supplies; ruling R3 gives canonicalToDisplay/displayToCanonical to task 5)",
+   "digest": "a1f0e6d9bc415d710495ba89c8b376fa96eade1e4c5e75d39e2591fabfaffdf0",
+   "reason": "the odometer through useUnitFormat with a seeded origin. `system` survives for the SUPPLY quantities only (D8 exempts supplies). Ruling R3 gave canonicalToDisplay/displayToCanonical to task 5, which RULED them exempt: see src/utils/supplyUnits.ts, whose exemption is now owned by a D8 amendment rather than by a task.",
    "tests": [
     "components/__tests__/ServiceVisitForm.mixedUnits.test.tsx",
     "components/__tests__/ServiceVisitForm.test.tsx",
@@ -831,12 +831,12 @@
     "components/__tests__/ServiceVisitForm.hours.test.tsx"
    ],
    "findings": [
-    "supply quantities still convert on the binary system (D8 exemption), owned by task 5",
+    "supply quantities still convert on the binary system (D8 exemption). Task 5 ruled this exempt and is DISCHARGED; the exemption now waits on the D8 amendment that would give supplies a resolved token, recorded on src/utils/supplyUnits.ts.",
     "USER-VISIBLE DISPLAY-PRECISION CHANGE, SHIPPED: the odometer field has the same km-adapter zero-decimal display change as OdometerRecordForm (a stored 72420.5 km now renders '72421'); stored data and an untouched save are unaffected (ServiceVisitForm.mixedUnits.test.tsx pins the origin), but the displayed precision changed for every metric user. Task 3 fix round 1 LOW-4."
    ],
    "owners": [
-    "task 5",
-    "task 9"
+    "task 9",
+    "deferred"
    ]
   },
   {
@@ -2816,10 +2816,18 @@
   {
    "path": "src/utils/supplyUnits.ts",
    "disposition": "audited",
-   "digest": "3634114940085240c4c5338b75e13eda2f36d3f537c99ee277ea256a386fad6f",
-   "reason": "R3 ruled per comparison, all three exempt: `system` reaching this file is `binarySystemFor(units.volume)` on every rung (pinned by hooks/__tests__/useUnitPreference.precedence.test.tsx), and volume is the quantity supplies measure, so each comparison already reads the resolved token. Recorded structurally as three `units-exempt:` pragmas, which is why this file no longer appears in the units gate baseline.",
+   "digest": "4b2e7f0024c8097c36090554d7fd57ae7f8720f7267da0ba8506799d1390f4b4",
+   "reason": "R3 ruled per comparison, all three exempt, re-founded in fix round 1 after the original reason was proved false. These legs track `unit_preference`, NOT the resolved volume, because D8 gave supplies a qt/L vocabulary that `UnitSet` cannot express: there is no quart token for `units` to supply. Recorded structurally as three `units-exempt:` pragmas carrying an owner and a D8-amendment expiry, which is why this file no longer appears in the units gate baseline. See the file header for the account this knowingly leaves incoherent.",
    "tests": [
     "utils/__tests__/supplyUnits.test.ts"
+   ],
+   "findings": [
+    "R3 exempt, 3 comparisons, suppressed by `units-exempt:` pragmas and therefore ABSENT from the units gate baseline: canonicalToDisplay read leg, displayToCanonical write leg, supplyUnitLabel label leg. This entry exists so the three are enumerated somewhere a reader can list; the pragma suppresses silently and the baseline shrank 89 to 86.",
+    "KNOWN-INCOHERENT POPULATION, not corruption: `{unit_preference:'metric', overrides: UK imperial}` is a state the product creates on purpose (PUT /auth/me never clears an override column; resolve_units applies overrides for every account, custom or not). It reaches this file as system='metric' with units.volume='gal_uk', so supplies render litres while every other screen renders gallons and miles. Label, read and write all follow `system` together, so a round trip is exact and nothing stored is wrong.",
+    "DEFERRED DEFECT, UK instances, 20.1 percent: L_PER_QUART is the US quart (0.946352946); the UK quart is 4.54609/4 = 1.1365225. A UK user's quart of oil stores 0.946 L where they meant 1.137, the same shape as defect L1. Derivable today from UnitSet.secondary_gallon without new vocabulary; what blocks it is D8's silence about which quart it meant plus the stored data, since no column records which quart a row was written in."
+   ],
+   "owners": [
+    "deferred"
    ]
   },
   {

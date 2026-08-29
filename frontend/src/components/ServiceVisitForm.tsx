@@ -88,8 +88,13 @@ export default function ServiceVisitForm({
   // ★ `system` survives here for the SUPPLY quantities only. Spec D8 exempts
   // supplies from the resolved set (a quart is not one of the ten quantities),
   // and `canonicalToDisplay` / `displayToCanonical` still take the binary
-  // answer; plan 3b ruling R3 gives that decision to task 5. The odometer below
-  // reads `u.distance` instead, which is what this form was getting wrong.
+  // answer. Plan 3b ruling R3 gave that decision to task 5, which RULED IT:
+  // all three legs of `utils/supplyUnits.ts` are exempt, because D8's qt/L
+  // vocabulary is not in `UnitSet` and so `units` holds nothing they could
+  // read. They track `unit_preference` deliberately and move together. Read
+  // that file's header before changing this line; the exemption is owned by a
+  // D8 amendment now, not by a task. The odometer below reads `u.distance`
+  // instead, which is what this form was getting wrong.
   const { system } = useUnitPreference()
   const u = useUnitFormat()
   const { currencyCode, locale } = useCurrencyPreference()

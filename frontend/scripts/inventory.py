@@ -187,12 +187,21 @@ def scan_lines(files: list[Path], src: Path, patterns: dict) -> dict:
 # --------------------------------------------------------------------------
 # Keyed by the LAST TWO path segments so that `utils/units` and `types/units`
 # (two different modules whose basename is identical) never merge into one count.
+# ★ THIS LIST AND `SYMBOL_RX` BELOW ARE TWO HALVES OF ONE INVENTORY AND MUST MOVE
+# TOGETHER. Fix round 1 of phase 3b task 5 caught them out of step: `SYMBOL_RX`
+# gained `seedUnitField` and `canonicalFromUnitField` when the deleted binary
+# helpers came out of it, but `utils/unitFormat`, the module that DECLARES both,
+# was never added here. The symbol scan and the module scan then disagreed about
+# which files matter, which is the quieter half of the same failure the deleted
+# helpers were: a count that looks complete because each half was measured
+# honestly on its own.
 UNIT_MODULES = [
     "utils/units",
     "types/units",
     "utils/telemetryUnits",
     "utils/supplyUnits",
     "utils/decimalSafe",
+    "utils/unitFormat",
     "utils/gallonStandardStore",
     "hooks/useUnitPreference",
     "utils/formatUtils",
