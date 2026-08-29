@@ -687,19 +687,17 @@
   {
    "path": "src/components/PropaneRecordForm.tsx",
    "disposition": "audited",
-   "digest": "b096066698c2d6617bce59c4654c5acfe777ed137c9dd7e3457c52881126eae2",
-   "reason": "gate-detectable unit decisions, recorded not asserted clean (plan 3b task 1 ordering)",
+   "digest": "8e27b872c5af2cd559dfcf3886f2fd60e96949b5bac46bbaf5fd43ef96415648",
+   "reason": "the tank size through useUnitFormat with a seeded origin, and the nominal bottle name keyed by the resolved mass token. Volume and price are already on the resolved set (task 2); their two example hints stay with task 7",
    "tests": [
+    "components/__tests__/PropaneRecordForm.mixedUnits.test.tsx",
     "components/__tests__/PropaneRecordForm.test.tsx"
    ],
    "findings": [
-    "binary-conversion x1 (units gate baseline)",
-    "compare x4 (units gate baseline)",
-    "formatter-binary x2 (units gate baseline)",
-    "USER-VISIBLE LABEL CHANGE, pinned so it cannot ship silently: the tank-size field is labelled from UnitFormatter.getWeightUnit(system), which answers 'lbs', while getMassUnit and UNIT_ADAPTERS.lb both answer 'lb'. unitAdapters.ts records that its labels match the backend's table character for character precisely so a call-site migration is not a visible regression; 'lbs' is the one place the old binary API disagrees. Nothing pinned the string until task 2 added the assertion in components/__tests__/PropaneRecordForm.test.tsx, so task 3's migration would have changed it silently. Task 3 changes the assertion on purpose; task 9 puts the label change in the changelog."
+    "the volume and price EXAMPLE hints still read `system === 'imperial'`. They are INVISIBLE to the gate, not baselined: R5 exempts a `placeholder` JSX attribute structurally on the comparison leg (validate-units.ts isPlaceholderAttribute). They are wrong only for a gal_uk account, which reads a US-gallon example, and task 7 owns both fields with the entry-grid shift.",
+    "USER-VISIBLE LABEL CHANGE, SHIPPED: the tank-size field read 'lbs' from UnitFormatter.getWeightUnit(system) and now reads 'lb' from the mass adapter, which is what getMassUnit, UNIT_ADAPTERS.lb and the backend's table all say. Task 2 pinned the old string so it could not change silently; PropaneRecordForm.test.tsx now asserts 'lb' on purpose and task 9 puts it in the changelog."
    ],
    "owners": [
-    "task 3",
     "task 7",
     "task 9"
    ]
@@ -2822,7 +2820,7 @@
   {
    "path": "src/utils/units.ts",
    "disposition": "audited",
-   "digest": "ea5242b6b38594e909e4496e68f92c14fa2b9e7cb741f5f3d064a87d2f32d3d7",
+   "digest": "59fb1f19aa46678e1fbeffbad5ab929dfde911cd0bdea57d30a89d24a3dc6b1b",
    "reason": "gate-detectable unit decisions, recorded not asserted clean (plan 3b task 1 ordering)",
    "tests": [
     "utils/__tests__/unitFactorParity.test.ts",
@@ -2832,7 +2830,7 @@
    ],
    "findings": [
     "token-branch x7 (units gate baseline)",
-    "R2 CLOSED: all 16 comparisons decided per occurrence. Seven methods deleted (formatTemperature, formatPressure, formatWeight, formatTorque, getTemperatureUnit, getPressureUnit, getTorqueUnit) because no production file called them and a retained binary UnitSystem API is a trap. Nine exempt with an EXPIRY, each carrying `// units-exempt:` naming the owner of its call sites: task 6 holds formatDistance, formatFuelEconomy, formatFuelRate, getDistanceUnit, getFuelEconomyUnit, getFuelRateUnit, formatCostPerDistance and getCostPerDistanceLabel; task 3 holds getWeightUnit via PropaneRecordForm. The exemptions do not rest on the pragma prose: utils/__tests__/unitsBinaryApiSurface.test.ts derives the surface from the file and fails when a method outlives its last caller.",
+    "R2 CLOSED: all 16 comparisons decided per occurrence. Seven methods deleted (formatTemperature, formatPressure, formatWeight, formatTorque, getTemperatureUnit, getPressureUnit, getTorqueUnit) because no production file called them and a retained binary UnitSystem API is a trap. Nine exempt with an EXPIRY, each carrying `// units-exempt:` naming the owner of its call sites: task 6 holds formatDistance, formatFuelEconomy, formatFuelRate, getDistanceUnit, getFuelEconomyUnit, getFuelRateUnit, formatCostPerDistance and getCostPerDistanceLabel. The ninth, getWeightUnit, is GONE: task 3 moved PropaneRecordForm onto the mass adapter, the expiry test failed as designed, and the method followed, leaving eight. The exemptions do not rest on the pragma prose: utils/__tests__/unitsBinaryApiSurface.test.ts derives the surface from the file and fails when a method outlives its last caller.",
     "the 7 token branches are the resolved-set collapse (formatVolumePerDistance, getVolumePerDistanceLabel), owned by task 6",
     "ESLint: units.ts is no longer silenced whole-file. It left both the i18n-utility `off` block and UNITS_CONSTANT_EXEMPT; the factor table carries a twelve-line eslint-disable and nothing else does. Of the 12 findings that silence was hiding, 10 are the table and 2 are fixed."
    ],

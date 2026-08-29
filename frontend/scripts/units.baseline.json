@@ -84,24 +84,6 @@
   "count": 1
  },
  {
-  "file": "src/components/PropaneRecordForm.tsx",
-  "kind": "binary-conversion",
-  "text": "toCanonicalKg(...)",
-  "count": 1
- },
- {
-  "file": "src/components/PropaneRecordForm.tsx",
-  "kind": "compare",
-  "text": "system === 'imperial'",
-  "count": 4
- },
- {
-  "file": "src/components/PropaneRecordForm.tsx",
-  "kind": "formatter-binary",
-  "text": "UnitFormatter.getWeightUnit(...)",
-  "count": 2
- },
- {
   "file": "src/components/PropaneRecordList.tsx",
   "kind": "token-branch",
   "text": "volume: units.volume === 'L'",

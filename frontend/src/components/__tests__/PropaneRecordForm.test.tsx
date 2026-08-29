@@ -62,21 +62,22 @@ describe('PropaneRecordForm — structure', () => {
     expect(Array.from(select.options).slice(1).map((o) => o.value)).toEqual(['9.07', '14.97', '45.36', '190.51'])
   })
 
-  it('labels the tank-size field `lbs` for an imperial user, which is the string task 3 will change', () => {
-    // ★ A PIN, not an endorsement. `UnitFormatter.getWeightUnit('imperial')`
-    // answers 'lbs'; the mass adapter and `getMassUnit` both answer 'lb', and
-    // `unitAdapters.ts` records that its labels match the backend's table
-    // character for character precisely so a call-site migration is not a
-    // visible regression. `lbs` is the one place the old binary API disagrees.
+  it('labels the tank-size field `lb` for a pounds user, the string task 3 changed on purpose', () => {
+    // ★ THE DELIBERATE CHANGE. This assertion read '(lbs)' until plan 3b task 3
+    // migrated the field to the mass adapter. `UnitFormatter.getWeightUnit`
+    // answered 'lbs'; the mass adapter, `getMassUnit` and the backend's own
+    // table all answer 'lb', and `unitAdapters.ts` records that its labels
+    // match that table character for character precisely so a call-site
+    // migration is not a visible regression. 'lbs' was the one place the old
+    // binary API disagreed.
     //
-    // Nothing pinned this string, so plan 3b task 3's migration of these two
-    // call sites would have shipped a user-visible label change silently. This
-    // test makes it fail instead. When task 3 changes it, change this to 'lb'
-    // ON PURPOSE and put the label change in the changelog (task 9).
+    // Task 2 pinned the old string so this could not ship silently; the
+    // manifest row routes the user-visible label change to task 9's changelog.
     unitPrefMock.system = 'imperial'
     render(<PropaneRecordForm {...DEFAULT_PROPS} />)
     const label = document.querySelector('label[for="tank_size_kg"]') as HTMLLabelElement
-    expect(label.textContent).toContain('(lbs)')
+    expect(label.textContent).toContain('(lb)')
+    expect(label.textContent).not.toContain('(lbs)')
   })
 
   it('the footer submit button is wired via form= association (fails if it becomes an onClick button)', () => {

@@ -516,28 +516,29 @@ export class UnitConverter {
  * All format* methods accept the value in canonical SI metric form.
  * For imperial-preferring users, the metric value is converted at render time.
  *
- * ★ THE NINE REMAINING `UnitSystem` METHODS ARE EXEMPT WITH AN EXPIRY, and this
- * is the one place the scheme is written down (plan 3b, ruling R2).
+ * ★ THE EIGHT REMAINING `UnitSystem` METHODS ARE EXEMPT WITH AN EXPIRY, and
+ * this is the one place the scheme is written down (plan 3b, ruling R2).
  *
  * Each of them carries exactly one `system === '...'` comparison, which is why
- * the units gate derives the same nine names from this class that its
+ * the units gate derives the same eight names from this class that its
  * comparison leg counts in this file. The comparison is not the defect: the
  * parameter IS the decision, already made by the caller. The defect is that
  * `system` is collapsed from VOLUME (spec D8, `useUnitPreference.ts:98`), so a
  * `{volume:'L', distance:'mi'}` user reaches `formatDistance` as `'metric'` and
  * reads kilometres. That is a call-site decision, and the gate reports every
  * one of these call sites under its `formatter-binary` leg; migrating them is
- * task 6's work list (and task 3's, for `getWeightUnit`'s two in
- * `PropaneRecordForm`).
+ * task 6's work list.
  *
  * So each comparison carries `// units-exempt:` naming who owns its call sites.
  * A reason-bearing pragma silences anything (`validate-units.ts:486`), so the
  * exemptions do not rest on that prose:
  * `utils/__tests__/unitsBinaryApiSurface.test.ts` derives this surface from the
  * file and fails when a method outlives its last production caller. Seven
- * methods failed it at t=0 and are gone. When task 6 migrates the last
- * `formatDistance(km, system)` call site, the test fails again and the method
- * has to follow.
+ * methods failed it at t=0 and are gone, and `getWeightUnit` followed the
+ * moment task 3 moved `PropaneRecordForm` onto the mass adapter: the test
+ * failed, exactly as designed. When task 6 migrates the last
+ * `formatDistance(km, system)` call site, it fails again and that method has to
+ * follow too.
  *
  * The resolved-set replacement already exists for all ten quantities:
  * `useUnitFormat()` in a component, `makeUnitFormat(units)` outside one.
@@ -727,17 +728,12 @@ export class UnitFormatter {
   }
 
   /**
-   * Get weight unit label for input placeholders.
-   */
-  static getWeightUnit(system: UnitSystem): string {
-    // units-exempt: known-wrong for a pounds-and-litres user; getMassUnit below is its replacement and task 3 owns PropaneRecordForm's 2 call sites
-    return system === 'imperial' ? 'lbs' : 'kg';
-  }
-
-  /**
    * Get the mass unit label a resolved set names.
    *
-   * The resolved-set counterpart of `getWeightUnit`, and it exists because
+   * It replaced a binary `getWeightUnit(system)`, deleted by plan 3b task 3
+   * when `PropaneRecordForm` moved onto the mass adapter and left it with no
+   * production caller. That method also answered `'lbs'` where this one, the
+   * `lb` adapter and the backend's table all answer `'lb'`. It exists because
    * `priceToDisplay`'s `per_weight` denominator reads `units.mass`: the label
    * beside that field has to name the same unit. `system` cannot, being
    * D8-collapsed from VOLUME, so it answers "kg" for a user who chose pounds.

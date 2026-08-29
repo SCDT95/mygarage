@@ -206,9 +206,11 @@ describe('the binary UnitFormatter surface', () => {
 
   it('derives the binary methods from units.ts rather than listing them', () => {
     // A derivation that silently found nothing would make the real assertion
-    // below vacuously true, so the count is pinned. Nine is what plan 3b leaves
-    // after task 2 deletes the seven that no production file called; task 6 and
-    // task 3 retire the rest, and each retirement lowers this number.
+    // below vacuously true, so the count is pinned. Task 2 deleted the seven
+    // that no production file called, leaving nine; task 3 moved
+    // PropaneRecordForm onto the mass adapter, which retired `getWeightUnit`
+    // and left these eight. Task 6 retires the rest, and each retirement
+    // lowers this number.
     expect(binaryFormatterMethods()).toEqual([
       'formatCostPerDistance',
       'formatDistance',
@@ -218,7 +220,6 @@ describe('the binary UnitFormatter surface', () => {
       'getDistanceUnit',
       'getFuelEconomyUnit',
       'getFuelRateUnit',
-      'getWeightUnit',
     ])
   })
 

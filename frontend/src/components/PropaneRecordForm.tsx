@@ -5,11 +5,14 @@ import { zodResolver } from '@hookform/resolvers/zod'
 import { Save } from 'lucide-react'
 import FormModalWrapper from './FormModalWrapper'
 import type { FuelRecord, FuelRecordCreate, FuelRecordUpdate } from '../types/fuel'
+import type { UnitSet } from '../types/units'
 import { makePropaneRecordSchema, type PropaneRecordFormData } from '../schemas/propane'
 import { useCreatePropaneRecord, useUpdatePropaneRecord } from '../hooks/queries/usePropaneRecords'
 import { useUnitPreference } from '../hooks/useUnitPreference'
+import { useUnitFormat } from '../hooks/useUnitFormat'
 import { UnitConverter, UnitFormatter } from '../utils/units'
-import { toCanonicalKg, toCanonicalLiters, priceToDisplay, priceToCanonical, readNumber } from '../utils/decimalSafe'
+import { canonicalFromUnitField, seedUnitField, type UnitFieldOrigin } from '../utils/unitFormat'
+import { toCanonicalLiters, priceToDisplay, priceToCanonical, readNumber } from '../utils/decimalSafe'
 import { useOnUserEdit } from '../hooks/useOnUserEdit'
 import { formatDateForInput } from '../utils/dateUtils'
 import CurrencyInputPrefix from './common/CurrencyInputPrefix'
@@ -20,16 +23,23 @@ import { getActionErrorMessage } from '../utils/httpErrorHandler'
 // Propane density: 1 kg ≈ 1.968 L (1 gal ≈ 1.923 kg, 1 gal = 3.78541 L).
 const KG_TO_LITERS = 1.968
 
-// Tank sizes in kg (canonical). The nominal display size differs per system
-// (a 9.07 kg tank is sold as "20 lb"), so both are carried here; the unit
-// suffix and the "portable"/"RV" qualifier are resolved at render time via
-// UnitFormatter and t() — never baked into a translation value.
-const TANK_SIZES = [
-  { kg: 9.07,   sizeMetric: 9,   sizeImperial: 20,  kind: 'portable' },
-  { kg: 14.97,  sizeMetric: 15,  sizeImperial: 33,  kind: 'portable' },
-  { kg: 45.36,  sizeMetric: 45,  sizeImperial: 100, kind: 'rv' },
-  { kg: 190.51, sizeMetric: 190, sizeImperial: 420, kind: 'rv' },
-] as const
+// Tank sizes in kg (canonical). The nominal display size differs per MASS unit
+// (a 9.07 kg tank is sold as "20 lb"), so it is carried here keyed by the token
+// the client resolved, not chosen by a system collapsed from its volume: a
+// `{volume: 'L', mass: 'lb'}` account was offered "9 kg" bottles. `Record` over
+// the token means a mass unit added later cannot compile without its own
+// nominal name. The unit suffix and the "portable"/"RV" qualifier are resolved
+// at render time via the mass adapter and t() — never baked into a translation.
+const TANK_SIZES: readonly {
+  kg: number
+  nominal: Record<UnitSet['mass'], number>
+  kind: 'portable' | 'rv'
+}[] = [
+  { kg: 9.07,   nominal: { kg: 9,   lb: 20  }, kind: 'portable' },
+  { kg: 14.97,  nominal: { kg: 15,  lb: 33  }, kind: 'portable' },
+  { kg: 45.36,  nominal: { kg: 45,  lb: 100 }, kind: 'rv' },
+  { kg: 190.51, nominal: { kg: 190, lb: 420 }, kind: 'rv' },
+]
 
 interface PropaneRecordFormProps {
   vin: string
@@ -49,7 +59,39 @@ export default function PropaneRecordForm({
   const [error, setError] = useState<string | null>(null)
   const createMutation = useCreatePropaneRecord(vin)
   const updateMutation = useUpdatePropaneRecord(vin)
+  // ★ `system` survives here for the volume and price EXAMPLE hints only,
+  // which plan 3b ruling R4 gives to task 7 along with those two fields'
+  // entry-grid shift. Everything mass reads `u.mass`; volume and price read the
+  // resolved `units` (task 2).
   const { system, units } = useUnitPreference()
+  const u = useUnitFormat()
+
+  /**
+   * The canonical origin of the tank size, seeded once.
+   *
+   * The size used to be read and written on `useUnitPreference().system`, which
+   * spec D8 collapses from VOLUME, so a `{volume: 'L', mass: 'lb'}` account was
+   * offered kilogramme bottles and stored its pick as kilogrammes.
+   *
+   * The origin matters more here than the units do. `seedUnitField` writes
+   * `toFixed(precision)` and mass carries two decimals, so 9.07 kg seeds as
+   * '20.00' while the `<select>` can only hand back '20'. Converting that
+   * spelling stores 9.07184, which is why `canonicalFromUnitField` compares the
+   * quantity rather than the characters.
+   */
+  const [tankSizeOrigin] = useState<UnitFieldOrigin>(() =>
+    seedUnitField(readNumber(record?.tank_size_kg), u.mass)
+  )
+
+  /**
+   * One tank's `<select>` value, in the client's mass unit.
+   *
+   * Normalised through `Number` because the control round-trips its value that
+   * way: the option, the seeded default and the submitted value all have to be
+   * the same spelling of the same quantity, and reading them all out of
+   * `toInputValue` is what keeps them from drifting apart.
+   */
+  const tankOptionValue = (kg: number): string => String(Number(u.mass.toInputValue(kg)))
 
   // Extract vendor from notes if it was stored there
   const extractVendor = (notes?: string): string => {
@@ -100,14 +142,7 @@ export default function PropaneRecordForm({
       })(),
       vendor: extractVendor(record?.notes ?? undefined) || '',
       notes: record?.notes?.replace(/^Vendor: .+?(?:\n|$)/, '') || '',
-      tank_size_kg: (() => {
-        if (record?.tank_size_kg == null) return undefined
-        const kg = typeof record.tank_size_kg === 'string'
-          ? parseFloat(record.tank_size_kg)
-          : record.tank_size_kg
-        if (isNaN(kg)) return undefined
-        return system === 'imperial' ? UnitConverter.kgToLbs(kg) ?? undefined : kg
-      })(),
+      tank_size_kg: readNumber(tankSizeOrigin.display),
       tank_quantity: record?.tank_quantity ?? undefined,
     },
   })
@@ -123,8 +158,8 @@ export default function PropaneRecordForm({
   // because the handler recomputes the cost from the volume it just wrote
   // rather than waiting to be re-entered through its own setValue.
   const displayVolumeForTank = (tankSize: number, quantity: number): number | null => {
-    // tank_size_kg holds the user's displayed tank weight (kg or lb).
-    const kg = system === 'imperial' ? (UnitConverter.lbsToKg(tankSize) ?? tankSize) : tankSize
+    // tank_size_kg holds the user's displayed tank weight, in `units.mass`.
+    const kg = u.mass.toCanonical(tankSize) ?? tankSize
     const totalLiters = kg * quantity * KG_TO_LITERS
     // The tank row writes straight into propane_liters, so it has to land in
     // the SAME unit that field is entered and submitted in.
@@ -171,7 +206,14 @@ export default function PropaneRecordForm({
         liters: undefined,  // Never set for propane
         // ★ Volume and price convert through ONE resolved set (defect L1).
         propane_liters: toCanonicalLiters(data.propane_liters, units) ?? undefined,
-        tank_size_kg: toCanonicalKg(data.tank_size_kg, system) ?? undefined,
+        // Back through `units.mass`, and an untouched selection returns the
+        // canonical value it was seeded from rather than a re-conversion.
+        tank_size_kg:
+          canonicalFromUnitField(
+            String(readNumber(data.tank_size_kg) ?? ''),
+            tankSizeOrigin,
+            u.mass
+          ) ?? undefined,
         tank_quantity: data.tank_quantity,
         // Form's price field is per-volume math (cost = volume × price), so
         // store with basis='per_volume' and convert imperial $/gal entries
@@ -250,20 +292,19 @@ export default function PropaneRecordForm({
             <h3 className="text-sm font-medium text-text mb-3">{t('propane.tankInfo')}</h3>
 
             <div className="grid grid-cols-2 gap-4">
-              <Field id="tank_size_kg" label={t('propane.tankSize')} unit={UnitFormatter.getWeightUnit(system)}>
+              <Field id="tank_size_kg" label={t('propane.tankSize')} unit={u.mass.label}>
                 <Select
                   id="tank_size_kg"
                   {...register('tank_size_kg', { valueAsNumber: true })}
                   disabled={isSubmitting}
                   placeholder={t('propane.selectTankSize')}
                   options={TANK_SIZES.map((tank) => {
-                    const value = system === 'imperial' ? Math.round(UnitConverter.kgToLbs(tank.kg) ?? 0) : tank.kg
                     const label = t('propaneRecordForm.tankSizeOption', {
-                      size: system === 'imperial' ? tank.sizeImperial : tank.sizeMetric,
-                      unit: UnitFormatter.getWeightUnit(system),
+                      size: tank.nominal[units.mass],
+                      unit: u.mass.label,
                       kind: t(tank.kind === 'rv' ? 'propaneRecordForm.tankKindRv' : 'propaneRecordForm.tankKindPortable'),
                     })
-                    return { value: String(value), label }
+                    return { value: tankOptionValue(tank.kg), label }
                   })}
                 />
               </Field>
