@@ -28,6 +28,7 @@ import { useUnitFormat } from '../hooks/useUnitFormat'
 import {
   canonicalFromUnitField,
   seedUnitField,
+  NOT_AVAILABLE,
   type QuantityFormat,
   type UnitFieldOrigin,
 } from '../utils/unitFormat'
@@ -204,15 +205,10 @@ export default function FuelRecordForm({ vin, record, onClose, onSuccess }: Fuel
    * origin. Volume and price are deliberately NOT here; they are react-hook-
    * form number fields whose own round trip Task 2 already made exact.
    *
-   * ★ The setter exists for ONE path, and it is not a re-render. The OBC
-   * suggestion arrives canonical from the API and `acceptObcSuggestion` writes
-   * it into two fields the user reads in their own units, which makes that a
-   * second SEED rather than an edit. Leaving the load-time origin in place
-   * there would make the very next submit read the rounded display as a change
-   * and convert it back: accepting 8 L/100km would store 8.00047619048 for an MPG
-   * client, which is the same display-precision drift the origin exists to
-   * stop. Nothing else calls it, so the four origins still move only when the
-   * value behind them does.
+   * ★ The setter has exactly one caller, `acceptUnitField`, which is where a
+   * canonical value arriving after mount gets seeded; see its docstring for
+   * why that is a second seed rather than an edit. Nothing else moves an
+   * origin, so the four still change only when the value behind them does.
    *
    * ★ The spelling gap this used to rest a precision pin on is now closed in
    * the helper. `canonicalFromUnitField` decided "the user did not touch this"
@@ -445,25 +441,42 @@ export default function FuelRecordForm({ vin, record, onClose, onSuccess }: Fuel
   }
 
   /**
-   * Re-seed one OBC field from a canonical suggestion, in the client's units.
+   * Seed one unit-bearing react-hook-form field from a canonical value that
+   * arrived AFTER mount, recording where it came from.
    *
-   * The suggestion is canonical by contract (`routes/fuel.py` reads the drive
-   * session's own L/100km and km/h), so accepting it is a SEED and not an edit:
-   * it needs the load-time conversion AND a fresh origin. Without the origin
-   * the next submit reads the rounded display as a change and converts it back,
-   * which for an MPG client turns an accepted 8 L/100km into a stored 8.00047619048.
+   * ★ THE WHOLE POINT IS THAT THE TWO WRITES ARE ONE ACT. A value handed to
+   * the form by the API (an OBC suggestion, a parsed receipt) is canonical, so
+   * landing it is a second SEED and not a user edit: it needs the same
+   * conversion the load-time seed does AND a fresh origin. Leave the load-time
+   * origin in place and the next submit reads the rounded display as a change
+   * and converts it back, so an accepted 8 L/100km is stored as 8.00047619048
+   * for an MPG client. Setting the value without the origin is therefore not a
+   * smaller version of this, it is the defect; there is no call site where one
+   * without the other is right, which is why they live in one function rather
+   * than in a convention.
    *
-   * A quantity with no display for the suggested value writes nothing rather
-   * than clearing the field: `mpg` is reciprocal, so a canonical zero has no
-   * finite reading and `toInputValue` returns `''`.
+   * ★ It covers ALL THREE react-hook-form origins, not just the two this task
+   * added. The receipt path used to inline the value half and skip the origin
+   * half, so a draft odometer between two whole miles came back rounded; that
+   * was one unguarded seed sitting beside a guarded one, which is how the next
+   * unit-bearing field would have learned the wrong idiom. `outside_temp_c` is
+   * the one origin it cannot take: that field holds its canonical value in
+   * react-hook-form and its display in a separate string state, so it is
+   * written through `setOutsideTempDisplay` instead. See the deferral note on
+   * that field's `<Field>` below.
+   *
+   * An absent value writes nothing rather than clearing the field, and that
+   * covers two cases in one: a `null` from the API, and a quantity with no
+   * finite display for the value (`mpg` is reciprocal, so a canonical zero
+   * gives `toInputValue` nothing to return).
    *
    * @param name The form field to seed.
-   * @param canonical The suggested value, in canonical units.
+   * @param canonical The value in canonical units, or undefined for none.
    * @param quantity The formatter for that field's quantity.
    */
-  const acceptObcField = (
-    name: 'obc_l_per_100km' | 'obc_avg_speed_kmh',
-    canonical: number,
+  const acceptUnitField = (
+    name: 'odometer_km' | 'obc_l_per_100km' | 'obc_avg_speed_kmh',
+    canonical: number | undefined,
     quantity: QuantityFormat
   ) => {
     const origin = seedUnitField(canonical, quantity)
@@ -475,14 +488,11 @@ export default function FuelRecordForm({ vin, record, onClose, onSuccess }: Fuel
 
   const acceptObcSuggestion = () => {
     if (!obcSuggestion) return
-    const suggestedConsumption = readNumber(obcSuggestion.obc_l_per_100km)
-    if (suggestedConsumption !== undefined) {
-      acceptObcField('obc_l_per_100km', suggestedConsumption, u.consumption)
-    }
-    const suggestedSpeed = readNumber(obcSuggestion.obc_avg_speed_kmh)
-    if (suggestedSpeed !== undefined) {
-      acceptObcField('obc_avg_speed_kmh', suggestedSpeed, u.speed)
-    }
+    // The suggestion is canonical by contract: `routes/fuel.py` derives
+    // L/100km from the drive session's own litres and kilometres and reads its
+    // km/h average.
+    acceptUnitField('obc_l_per_100km', readNumber(obcSuggestion.obc_l_per_100km), u.consumption)
+    acceptUnitField('obc_avg_speed_kmh', readNumber(obcSuggestion.obc_avg_speed_kmh), u.speed)
     if (obcSuggestion.obc_trip_duration_s != null) {
       // Field is now a string (Phase 3.7); coerce the suggested seconds.
       setValue('obc_trip_duration_s', String(obcSuggestion.obc_trip_duration_s))
@@ -518,16 +528,14 @@ export default function FuelRecordForm({ vin, record, onClose, onSuccess }: Fuel
   const acceptReceiptDraft = () => {
     if (!receiptDraft) return
     if (receiptDraft.date) setValue('date', receiptDraft.date, { shouldValidate: true })
-    if (receiptDraft.odometer_km != null) {
-      // Through the SAME adapter and the same presentation the seed uses, so
-      // an accepted draft lands the value a seeded field would have shown.
-      // This path has its own seed calls rather than the form's, which is
-      // where both of Task 2's surviving mutants lived.
-      const display = readNumber(u.distance.toInputValue(Number(receiptDraft.odometer_km)))
-      if (display !== undefined) {
-        setValue('odometer_km', display, { shouldValidate: true })
-      }
-    }
+    // Through the SAME adapter and the same presentation the seed uses, so an
+    // accepted draft lands the value a seeded field would have shown. This
+    // used to be an inline copy of that, and the copy set the value without
+    // moving the ORIGIN, so a draft odometer between two whole miles came back
+    // rounded on save: 72420.5 km shows as 45000 mi and re-converts to
+    // 72420.3. Both of Task 2's surviving mutants lived in this function, and
+    // it is now the same call the OBC suggestion makes.
+    acceptUnitField('odometer_km', readNumber(receiptDraft.odometer_km), u.distance)
     if (receiptDraft.liters != null) {
       const raw = Number(receiptDraft.liters)
       const display = UnitConverter.litersToVolumeUnit(raw, units)
@@ -607,11 +615,14 @@ export default function FuelRecordForm({ vin, record, onClose, onSuccess }: Fuel
       filledAtValue = normTime ? joinFilledAt(data.date, normTime) : null
     }
 
+    // The three `registerDecimal` fields the origin arbitrates. `readNumber`
+    // absorbs the INVALID_NUMBER symbol, which throws on implicit coercion.
+    // The verbose `canonicalFromUnitField(String(x ?? ''), ...)` shape below is
+    // repeated rather than wrapped on purpose: nine call sites across seven
+    // forms spell the boundary exactly that way, and a local shorthand here
+    // would make this the one form that reads differently. The shape's real
+    // fix is a number-accepting overload on the helper, swept across all nine.
     const odometerTyped = readNumber(data.odometer_km)
-    // Same shape as the odometer above, and for the same two reasons: both are
-    // `registerDecimal` fields whose value can be the INVALID_NUMBER symbol
-    // that throws on implicit coercion, and both hold a DISPLAY value that the
-    // origin has to arbitrate before it becomes canonical.
     const obcConsumptionTyped = readNumber(data.obc_l_per_100km)
     const obcSpeedTyped = readNumber(data.obc_avg_speed_kmh)
 
@@ -1205,7 +1216,19 @@ export default function FuelRecordForm({ vin, record, onClose, onSuccess }: Fuel
                     (it forwards value/onChange/step/id via ...rest). This IS a real
                     display-boundary field: the label, the step and the conversion all
                     come from `units.temperature`, which is an independent choice from
-                    the volume `system` collapses. */}
+                    the volume `system` collapses.
+
+                    ★ AND IT IS NOW THE ONLY ONE OF FOUR SHAPED THIS WAY, which is a
+                    deferral rather than an oversight. The odometer and the two OBC
+                    fields are react-hook-form NUMBER fields holding a display value the
+                    origin arbitrates at submit, matching every sibling form in the repo;
+                    this one keeps its canonical Celsius in react-hook-form and its
+                    display in a separate string state, converting on each keystroke. It
+                    is therefore the one origin `acceptUnitField` cannot take. Unifying
+                    it is task-sized, not a rider: `makeFuelRecordSchema` bounds
+                    `outside_temp_c` at -60..70 CANONICAL degrees, so moving the field to
+                    display values changes what that range means, and
+                    FuelRecordForm.mixedUnits.test.tsx pins the current behaviour. */}
                 <Field id="outside_temp_display" label={t('fuel.outsideTemp')} unit={u.temperature.label} error={errors.outside_temp_c}>
                   <Input
                     type="number"
@@ -1249,9 +1272,9 @@ export default function FuelRecordForm({ vin, record, onClose, onSuccess }: Fuel
                     note used to say the round trip was canonical-symmetric and that no
                     conversion was needed in either direction; that claim is what let an
                     MPH client type 60 and have 60 km/h stored, a 38% error on a field
-                    nothing on the screen said was metric. It survived three phases
-                    because it is true of neither leg of the units gate: the surface
-                    holds no numeric literal and calls no formatter.
+                    nothing on the screen said was metric. THE SURFACE survived three
+                    phases because it reports to neither leg of the units gate: it holds
+                    no numeric literal and calls no formatter, so nothing enumerated it.
 
                     `obc_trip_duration_s` genuinely is invariant — seconds are not one of
                     the ten quantities — so it keeps a bare label and its own rendering. */}
@@ -1276,15 +1299,20 @@ export default function FuelRecordForm({ vin, record, onClose, onSuccess }: Fuel
                     <div className="rounded-md border border-(--accent-line) bg-(--accent-soft) p-2 flex items-center justify-between gap-2">
                       {/* The suggestion is canonical on the wire, so it is
                           rendered through the same tokens the fields below are
-                          labelled with — a preview in L/100km over a field
-                          labelled MPG is the same-screen disagreement, and it
-                          is what the user is being asked to approve. `format`
-                          carries its own absent marker, which is why the three
-                          em-dashes that used to be here are gone. */}
+                          labelled with. A preview in L/100km over a field
+                          labelled MPG is the same-screen disagreement, and this
+                          line is what the user is being asked to approve.
+
+                          Two of the three `?? '—'` markers that used to be here
+                          went as a side effect: `format` carries its own absent
+                          marker. The third is the trip duration, which is
+                          seconds and has no formatter, so it borrows the same
+                          constant rather than a matching literal that could
+                          drift away from its two neighbours. */}
                       <div id="obc_suggestion_preview" className="text-xs text-text">
                         {u.consumption.format(readNumber(obcSuggestion.obc_l_per_100km))} ·{' '}
                         {u.speed.format(readNumber(obcSuggestion.obc_avg_speed_kmh))} · s:{' '}
-                        {obcSuggestion.obc_trip_duration_s ?? 'N/A'}
+                        {obcSuggestion.obc_trip_duration_s ?? NOT_AVAILABLE}
                       </div>
                       <div className="flex gap-1">
                         <Button size="sm" variant="primary" onClick={acceptObcSuggestion}>{t('fuel.obcSuggestionAccept')}</Button>

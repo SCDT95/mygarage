@@ -475,21 +475,14 @@ describe('FuelRecordForm — cost field on NumberInput (Task 8)', () => {
 })
 
 describe('FuelRecordForm — OBC fields carry the resolved consumption and speed labels', () => {
-  // ★ WHAT THESE TWO ASSERTIONS ARE, since they did not change but their
-  // meaning did. They used to run under `system = 'imperial'` and were titled
-  // "stays canonical-labeled EVEN for imperial", pinning the B9 ruling that the
-  // OBC pair is entered in storage units whatever the client resolved. Phase 3b
-  // task 4 retired that ruling: the fields convert now, so an imperial client
-  // reads MPG and mph and a test demanding L/100km from one would pin the
-  // defect. They are re-expressed for a METRIC client, where `L/100km` and
-  // `km/h` ARE the resolved labels, and they survive as the tripwire that the
-  // metric leg still renders a label at all.
-  //
+  // ★ Same two assertions, re-pointed. They used to run under
+  // `system = 'imperial'` and pin the retired B9 ruling that the OBC pair is
+  // entered in storage units whatever the client resolved; left alone they
+  // would now pin the defect. Here they cover the metric leg and the only path
+  // that reaches these fields through the collapsed "More details" disclosure.
   // Deliberately green at t=0: the converting direction is red-first in
-  // FuelRecordForm.mixedUnits.test.tsx, which drives a client whose speed and
-  // consumption tokens disagree with the volume the binary system collapses
-  // from. This file's unit mock resolves one preset at a time and cannot
-  // express that disagreement.
+  // FuelRecordForm.mixedUnits.test.tsx, whose harness can express a client
+  // whose tokens disagree with each other. This file's mock cannot.
   beforeEach(() => {
     vi.clearAllMocks()
     localStorage.clear()                 // moreDetailsOpen persists in localStorage

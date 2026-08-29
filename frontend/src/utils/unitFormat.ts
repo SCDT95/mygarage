@@ -41,8 +41,16 @@ import { getActiveLocale } from '@/constants/i18n'
 import { UNIT_QUANTITIES, type UnitQuantity, type UnitSet } from '@/types/units'
 import { adapterFor, counterpartFor, type UnitAdapter, type UnitToken } from './unitAdapters'
 
-/** What `format` renders when there is no value to render. */
-const NOT_AVAILABLE = 'N/A'
+/**
+ * What `format` renders when there is no value to render.
+ *
+ * Exported because a value beside a formatted one has to spell absence the same
+ * way: the fuel form's OBC preview renders two quantities through `format` and
+ * a trip duration in seconds, which is not a quantity and has no formatter. A
+ * literal there would silently disagree the day this constant moves, and the
+ * module docstring above deliberately leaves that door open.
+ */
+export const NOT_AVAILABLE = 'N/A'
 
 /** One quantity's units, resolved for a particular client. */
 export interface QuantityFormat {

@@ -107,6 +107,24 @@ function postedPayload(): Record<string, unknown> {
 }
 
 /**
+ * The body of the UPDATE call.
+ *
+ * The twin of `postedPayload`, and it exists for the same reason: every edit
+ * case used to read `mockedApiPut.mock.calls[0][1]` inline, which throws an
+ * unreadable "cannot read properties of undefined" when the submit did not fire
+ * at all, where the named check says which call is missing.
+ */
+function putPayload(): Record<string, unknown> {
+  const call = mockedApiPut.mock.calls[0]
+  expect(call, 'no update PUT was made').toBeDefined()
+  return call[1] as Record<string, unknown>
+}
+
+/** The suggestion preview line, as one string. */
+const previewText = (): string =>
+  document.getElementById('obc_suggestion_preview')?.textContent ?? ''
+
+/**
  * A client whose VOLUME is metric but whose DISTANCE and TEMPERATURE are not.
  *
  * `binarySystemFor('L')` is `'metric'`, so every `system === 'imperial'` branch
@@ -155,6 +173,21 @@ const GALLONS_KMH_L100: UnitSet = {
   consumption: 'l_100km',
 }
 
+/**
+ * The stored record every OBC edit case opens.
+ *
+ * 10 L/100km and 100 km/h are chosen because BOTH round trips are lossy at the
+ * imperial tokens' display precision, which is what makes the origin visible:
+ * 62 mph converts back to 99.77908 km/h and 23.5 MPG to 10.009106383 L/100km.
+ */
+const OBC_RECORD = {
+  id: 21,
+  vin: VIN,
+  date: '2026-02-10',
+  obc_l_per_100km: 10,
+  obc_avg_speed_kmh: 100,
+}
+
 /** The receipt draft the backend hands back, or null to leave the panel off. */
 const receipt = { draft: null as Record<string, unknown> | null }
 
@@ -163,19 +196,19 @@ const obcSuggestion = { body: null as Record<string, unknown> | null }
 
 beforeEach(() => {
   vi.clearAllMocks()
-  mockedApiGet.mockImplementation((url: string) =>
-    url.includes('/settings/public')
-      ? Promise.resolve({
-          data: {
-            settings: [
-              { key: 'llm_receipt_parse_enabled', value: receipt.draft ? 'true' : 'false' },
-            ],
-          },
-        })
-      : url.includes('/fuel/obc-suggestion')
-        ? Promise.resolve({ data: obcSuggestion.body })
-        : Promise.resolve({ data: vehicle })
-  )
+  mockedApiGet.mockImplementation((url: string) => {
+    if (url.includes('/settings/public')) {
+      return Promise.resolve({
+        data: {
+          settings: [
+            { key: 'llm_receipt_parse_enabled', value: receipt.draft ? 'true' : 'false' },
+          ],
+        },
+      })
+    }
+    if (url.includes('/fuel/obc-suggestion')) return Promise.resolve({ data: obcSuggestion.body })
+    return Promise.resolve({ data: vehicle })
+  })
   mockedApiPost.mockImplementation((url: string) =>
     url.includes('parse-receipt')
       ? Promise.resolve({ data: { draft: receipt.draft, source: 'llm' } })
@@ -276,7 +309,7 @@ describe('FuelRecordForm — odometer and temperature follow their own tokens', 
     fireEvent.submit(drawerForm())
     await waitFor(() => expect(mockedApiPut).toHaveBeenCalled())
 
-    const payload = mockedApiPut.mock.calls[0][1] as Record<string, unknown>
+    const payload = putPayload()
     expect(payload.odometer_km).toBe(72420.3)
     expect(payload.outside_temp_c).toBe(20)
     expect(payload.liters).toBe(47.318)
@@ -307,7 +340,7 @@ describe('FuelRecordForm — odometer and temperature follow their own tokens', 
 
     fireEvent.submit(drawerForm())
     await waitFor(() => expect(mockedApiPut).toHaveBeenCalled())
-    const payload = mockedApiPut.mock.calls[0][1] as Record<string, unknown>
+    const payload = putPayload()
     expect(payload.odometer_km).toBe(72420.5)
     expect(payload.odometer_km).not.toBe(72420.3)
 
@@ -348,7 +381,7 @@ describe('FuelRecordForm — odometer and temperature follow their own tokens', 
     fireEvent.submit(drawerForm())
     await waitFor(() => expect(mockedApiPut).toHaveBeenCalled())
 
-    const payload = mockedApiPut.mock.calls[0][1] as Record<string, unknown>
+    const payload = putPayload()
     expect(payload.outside_temp_c).toBe(21.7)
     expect(payload.outside_temp_c).not.toBe(21.7222222222)
   })
@@ -410,7 +443,7 @@ describe('FuelRecordForm — odometer and temperature follow their own tokens', 
     fireEvent.submit(drawerForm())
     await waitFor(() => expect(mockedApiPut).toHaveBeenCalled())
 
-    const payload = mockedApiPut.mock.calls[0][1] as Record<string, unknown>
+    const payload = putPayload()
     expect(payload.odometer_km).toBe(72420)
     expect(payload.outside_temp_c).toBe(20)
   })
@@ -429,9 +462,11 @@ describe('FuelRecordForm — odometer and temperature follow their own tokens', 
   })
 
   it('★ the RECEIPT path lands the odometer in the client\'s distance unit', async () => {
-    // `acceptReceiptDraft` seeds through its OWN calls rather than the form's
-    // shared seed. That is the path the ledger says to look at first: both of
-    // Task 2's only surviving mutants sat in exactly this function.
+    // `acceptReceiptDraft` used to seed through its OWN calls rather than the
+    // form's shared seed. That is the path the ledger says to look at first:
+    // both of Task 2's only surviving mutants sat in exactly this function.
+    // Phase 3b task 4 moved it onto the same `acceptUnitField` the OBC
+    // suggestion uses; the case below is what that move added.
     //
     // The draft is canonical by contract (`receipt_parse_service.py:127` tells
     // the model to "Prefer metric: liters, odometer_km, price per liter").
@@ -455,6 +490,36 @@ describe('FuelRecordForm — odometer and temperature follow their own tokens', 
     fireEvent.submit(drawerForm())
     await waitFor(() => expect(mockedApiPost).toHaveBeenCalled())
     expect(postedPayload().odometer_km).toBe(72420.3)
+  })
+
+  it('★ the RECEIPT path moves the ORIGIN too, so a draft between two whole miles is not rounded', async () => {
+    // The case above cannot see the origin: 72420.3 km displays as 45000 mi and
+    // 45000 mi converts back to 72420.3 km, so seeding the value alone gives the
+    // right answer by luck of the rounding. This one breaks the tie.
+    //
+    //   72420.5 km / 1.60934 = 45000.1242745 mi, shown as 45000 (mi has no
+    //                          decimals)
+    //   45000 mi x 1.60934   = 72420.3 km, which is NOT what the receipt said
+    //
+    // Setting the field without recording where the value came from is the same
+    // defect the OBC suggestion had, and it sat here unguarded until the two
+    // paths were made one call.
+    units = LITRES_MILES_FAHRENHEIT
+    receipt.draft = { odometer_km: 72420.5 }
+
+    render(<FuelRecordForm {...DEFAULT_PROPS} />)
+    await waitFor(() => expect(field('receipt_text')).not.toBeNull())
+
+    fireEvent.change(field('receipt_text'), { target: { value: '45000 mi' } })
+    fireEvent.click(screen.getByRole('button', { name: 'fuel.parseReceipt' }))
+    fireEvent.click(await screen.findByRole('button', { name: 'fuel.receiptDraftAccept' }))
+    await waitFor(() => expect(field('odometer_km').value).toBe('45000'))
+
+    fireEvent.change(field('date'), { target: { value: '2026-02-10' } })
+    fireEvent.submit(drawerForm())
+    await waitFor(() => expect(mockedApiPost).toHaveBeenCalled())
+    expect(postedPayload().odometer_km).toBe(72420.5)
+    expect(postedPayload().odometer_km).not.toBe(72420.3)
   })
 
   it('a blank odometer and a cleared temperature post nothing rather than zero', async () => {
@@ -481,7 +546,7 @@ describe('FuelRecordForm — odometer and temperature follow their own tokens', 
     fireEvent.submit(drawerForm())
     await waitFor(() => expect(mockedApiPut).toHaveBeenCalled())
 
-    const payload = mockedApiPut.mock.calls[0][1] as Record<string, unknown>
+    const payload = putPayload()
     expect(payload.odometer_km).toBeUndefined()
     expect(payload.outside_temp_c).toBeUndefined()
   })
@@ -516,13 +581,7 @@ describe('FuelRecordForm — the OBC pair follows the speed and consumption toke
       <FuelRecordForm
         {...DEFAULT_PROPS}
         record={
-          {
-            id: 21,
-            vin: VIN,
-            date: '2026-02-10',
-            obc_l_per_100km: 10,
-            obc_avg_speed_kmh: 100,
-          } as never
+          OBC_RECORD as never
         }
       />
     )
@@ -552,13 +611,7 @@ describe('FuelRecordForm — the OBC pair follows the speed and consumption toke
       <FuelRecordForm
         {...DEFAULT_PROPS}
         record={
-          {
-            id: 22,
-            vin: VIN,
-            date: '2026-02-10',
-            obc_l_per_100km: 10,
-            obc_avg_speed_kmh: 100,
-          } as never
+          OBC_RECORD as never
         }
       />
     )
@@ -567,7 +620,7 @@ describe('FuelRecordForm — the OBC pair follows the speed and consumption toke
     fireEvent.submit(drawerForm())
     await waitFor(() => expect(mockedApiPut).toHaveBeenCalled())
 
-    const payload = mockedApiPut.mock.calls[0][1] as Record<string, unknown>
+    const payload = putPayload()
     expect(payload.obc_avg_speed_kmh).toBe(100)
     expect(payload.obc_avg_speed_kmh).not.toBe(99.77908)
     expect(payload.obc_l_per_100km).toBe(10)
@@ -635,7 +688,7 @@ describe('FuelRecordForm — the OBC pair follows the speed and consumption toke
 
     fireEvent.submit(drawerForm())
     await waitFor(() => expect(mockedApiPut).toHaveBeenCalled())
-    const payload = mockedApiPut.mock.calls[0][1] as Record<string, unknown>
+    const payload = putPayload()
     expect(payload.obc_l_per_100km).toBe(8.4)
     expect(payload.obc_avg_speed_kmh).toBe(47.4)
     expect(payload.obc_avg_speed_kmh).not.toBe(47)
@@ -671,7 +724,7 @@ describe('FuelRecordForm — the OBC pair follows the speed and consumption toke
     // RENDERED TEXT, in the reader's own units. The em-dash absent markers went
     // with it: `format` carries its own.
     await waitFor(() =>
-      expect(document.getElementById('obc_suggestion_preview')?.textContent).toBe(
+      expect(previewText()).toBe(
         '23.5 MPG · 62 mph · s: 3600'
       )
     )
@@ -690,10 +743,20 @@ describe('FuelRecordForm — the OBC pair follows the speed and consumption toke
   })
 
   it('an absent suggestion value previews as N/A rather than as an em-dash', async () => {
-    // The three `?? '—'` markers on this line were the only em-dashes in the
-    // frontend src tree. `QuantityFormat.format` returns 'N/A' for an absent
-    // value, which is what UnitFormatter has always rendered, so routing the
-    // preview through the tokens removed them as a side effect.
+    // `QuantityFormat.format` returns 'N/A' for an absent value, which is what
+    // UnitFormatter has always rendered, so routing the preview through the
+    // tokens retired two `?? '—'` markers as a side effect of doing the
+    // conversion; the third, on the duration, was changed by hand because
+    // seconds are not a quantity and have no formatter.
+    //
+    // ★ NOT a claim that these were the last em-dashes in the tree. They were
+    // handed to me as such and they were not: `git grep "'—'"` finds 19
+    // rendered literals across 8 files at 76c09bf, including one 157 lines
+    // above them in this same component's `common:select` placeholder, and
+    // three beside `u.tread.format(...)` / `u.pressure.format(...)` calls in
+    // TireList. The 16 that remain are a vocabulary decision (six files say
+    // '—', the formatter says 'N/A', DEFRecordList says both on one line),
+    // not a units one, and they want doing in one pass.
     units = LITRES_MPH_MPG
     obcSuggestion.body = {
       session_id: 5,
@@ -711,11 +774,11 @@ describe('FuelRecordForm — the OBC pair follows the speed and consumption toke
     fireEvent.click(screen.getByRole('button', { name: 'fuel.obcAutoFill' }))
 
     await waitFor(() =>
-      expect(document.getElementById('obc_suggestion_preview')?.textContent).toBe(
+      expect(previewText()).toBe(
         'N/A · N/A · s: N/A'
       )
     )
-    expect(document.getElementById('obc_suggestion_preview')?.textContent).not.toContain('—')
+    expect(previewText()).not.toContain('—')
   })
 
   it('clearing both OBC fields posts nothing rather than a converted zero', async () => {
@@ -728,13 +791,7 @@ describe('FuelRecordForm — the OBC pair follows the speed and consumption toke
       <FuelRecordForm
         {...DEFAULT_PROPS}
         record={
-          {
-            id: 24,
-            vin: VIN,
-            date: '2026-02-10',
-            obc_l_per_100km: 10,
-            obc_avg_speed_kmh: 100,
-          } as never
+          OBC_RECORD as never
         }
       />
     )
@@ -745,7 +802,7 @@ describe('FuelRecordForm — the OBC pair follows the speed and consumption toke
     fireEvent.submit(drawerForm())
     await waitFor(() => expect(mockedApiPut).toHaveBeenCalled())
 
-    const payload = mockedApiPut.mock.calls[0][1] as Record<string, unknown>
+    const payload = putPayload()
     expect(payload.obc_l_per_100km).toBeUndefined()
     expect(payload.obc_avg_speed_kmh).toBeUndefined()
   })
