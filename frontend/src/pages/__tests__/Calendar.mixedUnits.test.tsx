@@ -1,25 +1,39 @@
 /**
- * The calendar's three distance read sites, for a client whose choices disagree.
+ * The calendar's distance read sites, for a client whose choices disagree.
  *
  * ★ WHY THIS FILE EXISTS AT ALL. `Calendar.tsx` had NO test of any kind, and
- * three of task 6's twenty-seven call sites live in it: the upcoming-list
- * mileage badge, the remaining-distance badge (which also carried a
- * `system === 'imperial'` comparison and a raw `UnitConverter.kmToMiles`), and
- * the notes drawer's "due at". Its manifest row rested entirely on findings the
- * migration closes, so closing them left an `audited` row with no evidence at
- * all. This is the evidence.
+ * FOUR of task 6's twenty-seven call sites live in it, across three places a
+ * reader looks:
+ *
+ *   the upcoming-list mileage badge          `formatDistance`      1 site
+ *   the remaining-distance badge             `getDistanceUnit` +
+ *                                            `kmToMiles`, behind a
+ *                                            `system === 'imperial'`
+ *                                            comparison              2 sites
+ *   the notes drawer's "due at"              `formatDistance`      1 site
+ *
+ * ★ ALL THREE ARE DRIVEN, and the third one is why this sentence is a list
+ * rather than a number. An earlier revision of this docstring named all three
+ * and the test opened only two: the notes drawer never rendered, because the
+ * fixture carried `notes: null` and the button that opens it is conditional on
+ * notes existing. Half an inventory inside a docstring whose whole job is to
+ * state the scope. The fixture now carries notes and the third case clicks
+ * through to the drawer.
+ *
+ * Its manifest row rested entirely on findings the migration closes, so closing
+ * them left an `audited` row with no evidence at all. This is the evidence.
  *
  * ★ `system` is D8-collapsed from VOLUME, so a `{volume:'L', distance:'mi'}`
- * client read `'metric'` and saw kilometres on all three. Both directions are
+ * client read `'metric'` and saw kilometres on all four. Both directions are
  * asserted, because a fix that merely inverted the branch satisfies one.
  *
  * Schedule-X is stubbed out: this page renders its month grid through a third
- * party that owns its own DOM, and none of the three sites is inside it. The
- * upcoming list beside it is ordinary JSX.
+ * party that owns its own DOM, and none of the four sites is inside it. The
+ * upcoming list beside it, and the drawer it opens, are ordinary JSX.
  */
 
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { screen, waitFor } from '@testing-library/react'
+import { fireEvent, screen, waitFor } from '@testing-library/react'
 import { render } from '../../__tests__/test-utils'
 import type { UnitSet } from '@/types/units'
 
@@ -106,7 +120,9 @@ const EVENT = {
   status: 'due_soon',
   is_recurring: false,
   is_estimated: false,
-  notes: null,
+  // Load bearing: the notes button is conditional on this, and the drawer it
+  // opens holds the fourth call site.
+  notes: 'synthetic oil only',
 }
 
 beforeEach(() => {
@@ -143,5 +159,21 @@ describe('Calendar distance badges follow units.distance, not the collapsed syst
     await waitFor(() => expect(screen.getByText('80,467 km')).toBeInTheDocument())
     expect(screen.getByText('calendar.misc.distanceLeft 16,093 km')).toBeInTheDocument()
     expect(screen.queryByText('50,000 mi')).not.toBeInTheDocument()
+  })
+
+  it('the notes drawer reads the due mileage in the same unit as the badge behind it', async () => {
+    // The fourth site, and the one that most needed driving: it is behind a
+    // click, on a button that only exists when the event carries notes, so it
+    // is the site a docstring is most likely to claim and a test least likely
+    // to reach. Same 80467 km, same account, so the drawer and the list must
+    // agree; disagreeing between them is the shape this whole phase removes.
+    unitPrefMock.units = LITRES_MILES
+    render(<CalendarPage />)
+
+    const notes = await screen.findByTitle('calendar.misc.viewNotes')
+    fireEvent.click(notes)
+
+    expect(await screen.findByText('calendar.misc.dueAt 50,000 mi')).toBeInTheDocument()
+    expect(screen.queryByText('calendar.misc.dueAt 80,467 km')).not.toBeInTheDocument()
   })
 })

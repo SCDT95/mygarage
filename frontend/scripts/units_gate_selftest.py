@@ -447,9 +447,12 @@ MUTATIONS = [
         ],
         "★ ROUND 1's ACTUAL MISTAKE, built and run. A `format*` name rule is wrong "
         "in BOTH directions at once: it misses every label selector "
-        "(`getDistanceUnit`, `getFuelEconomyUnit`) and it flags `formatVolume`, "
-        "which takes a resolved set and is the destination. That is why the "
-        "callable set is derived as 'a parameter is a UnitSystem'.",
+        "(`getFuelEconomyUnit`, `getFuelRateUnit`, `getCostPerDistanceLabel`) and "
+        "it flags `formatVolume`, which takes a resolved set and is the "
+        "destination. That is why the callable set is derived as 'a parameter is "
+        "a UnitSystem'. The examples used to include `getDistanceUnit`; task 6 "
+        "retired that one, and an example naming a method the derivation can no "
+        "longer find teaches the next reader nothing.",
     ),
     Mutation(
         "M49-formatter-receiver-spelling",

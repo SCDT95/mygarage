@@ -530,6 +530,12 @@ export class UnitConverter {
  * of these call sites under its `formatter-binary` leg.
  *
  * So each comparison carries `// units-exempt:` naming who owns its call sites.
+ * ★ THOSE OWNERS ARE SUCCESSORS, NOT THE TASK THAT WROTE THEM. They all said
+ * "task 6" until task 6 finished and the name stopped pointing at anybody; the
+ * six that remain now name **task 6b** for the fuel-economy and fuel-rate
+ * surface and **task 7** for the cost-per-distance surface, which is price. A
+ * pragma is the version a reader of this file actually sees, so an owner here
+ * going stale is worse than one going stale in the manifest.
  * A reason-bearing pragma silences anything (`EXEMPT_PRAGMA` in `validate-units.ts`), so the
  * exemptions do not rest on that prose:
  * `utils/__tests__/unitsBinaryApiSurface.test.ts` derives this surface from the
@@ -597,7 +603,7 @@ export class UnitFormatter {
     const lNum = typeof lPer100km === 'string' ? parseFloat(lPer100km) : lPer100km;
     if (isNaN(lNum) || lNum === 0) return 'N/A';
 
-    // units-exempt: binary display API; its 18 call sites are task 6's, and unitsBinaryApiSurface.test.ts deletes this method when the last one goes
+    // units-exempt: binary display API; its 18 call sites are task 6b's (the fuel-economy and fuel-rate family), and unitsBinaryApiSurface.test.ts deletes this method when the last one goes
     if (system === 'metric') {
       const primary = `${lNum.toFixed(1)} L/100km`;
       if (showBoth) {
@@ -643,7 +649,7 @@ export class UnitFormatter {
     const LITERS_PER_GALLON =
       UnitConverter.LITERS_PER_SECONDARY_GALLON[UnitConverter.getGallonStandard()];
 
-    // units-exempt: binary display API; its 4 call sites are task 6's, and unitsBinaryApiSurface.test.ts deletes this method when the last one goes
+    // units-exempt: binary display API; its 4 call sites are task 6b's (the fuel-economy and fuel-rate family), and unitsBinaryApiSurface.test.ts deletes this method when the last one goes
     if (system === 'metric') {
       const primary = `${lNum.toFixed(2)} L/hr`;
       if (showBoth) {
@@ -674,7 +680,7 @@ export class UnitFormatter {
    * Get fuel economy unit label for input placeholders.
    */
   static getFuelEconomyUnit(system: UnitSystem): string {
-    // units-exempt: label for the same binary decision; 3 call sites, task 6, expiry enforced by unitsBinaryApiSurface.test.ts
+    // units-exempt: label for the same binary decision; 3 call sites, task 6b, expiry enforced by unitsBinaryApiSurface.test.ts
     return system === 'imperial' ? 'MPG' : 'L/100km';
   }
 
@@ -682,7 +688,7 @@ export class UnitFormatter {
    * Get fuel-rate (engine-hours economy) unit label for input placeholders.
    */
   static getFuelRateUnit(system: UnitSystem): string {
-    // units-exempt: label for the same binary decision; 4 call sites, task 6, expiry enforced by unitsBinaryApiSurface.test.ts
+    // units-exempt: label for the same binary decision; 4 call sites, task 6b, expiry enforced by unitsBinaryApiSurface.test.ts
     return system === 'imperial' ? 'GPH' : 'L/hr';
   }
 
@@ -777,7 +783,7 @@ export class UnitFormatter {
     // ESLint exemption is why nobody saw it. The 1000 and the 100 are not
     // conversion factors: they are how many of the user's distance units the
     // cost is quoted over, and `getCostPerDistanceLabel` names them in prose.
-    // units-exempt: binary display API; 3 call sites in FuelRecordList and Analytics are task 6's, expiry enforced by unitsBinaryApiSurface.test.ts
+    // units-exempt: binary display API; 3 call sites in FuelRecordList and Analytics are task 7's (price), expiry enforced by unitsBinaryApiSurface.test.ts
     const value = system === 'imperial'
       ? costPerKm * UnitConverter.MILES_TO_KM * 1000  // $/km -> $/1000 mi
       : costPerKm * 100;                              // $/km -> $/100 km
@@ -794,7 +800,7 @@ export class UnitFormatter {
    * Returns "Cost/1k Miles" or "Cost/100 km".
    */
   static getCostPerDistanceLabel(system: UnitSystem): string {
-    // units-exempt: label for the same binary decision; 3 call sites, task 6, expiry enforced by unitsBinaryApiSurface.test.ts
+    // units-exempt: label for the same binary decision; 3 call sites, task 7 (price), expiry enforced by unitsBinaryApiSurface.test.ts
     return system === 'imperial' ? 'Cost/1k Miles' : 'Cost/100 km';
   }
 

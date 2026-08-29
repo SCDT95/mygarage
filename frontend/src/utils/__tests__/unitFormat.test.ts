@@ -105,12 +105,13 @@ describe('format', () => {
 describe('formatPrimary', () => {
   it('renders the primary alone even when show-both is ON', () => {
     // ★ WHY THIS EXISTS. The binary `formatDistance(km, system, showBoth)` took
-    // the counterpart as an ARGUMENT, so eleven read sites passed `false` to
-    // suppress it: chart tooltips, dense table cells and inline spans where a
-    // parenthesised second unit is noise. `format` reads show-both off the
-    // resolved set instead, so migrating those sites onto it would start
-    // rendering a counterpart nobody asked for at that site. This is the
-    // capability that would otherwise have been silently dropped.
+    // the counterpart as an ARGUMENT, and 13 of its 21 read sites declined it:
+    // 9 passed `false` outright and 4 left the argument off, which defaults to
+    // the same thing. They are chart tooltips, dense table cells and inline
+    // spans, where a parenthesised second unit is noise. `format` reads
+    // show-both off the resolved set instead, so migrating those sites onto it
+    // would start rendering a counterpart nobody asked for at that site. This
+    // is the capability that would otherwise have been silently dropped.
     const both = makeUnitFormat(IMPERIAL, true)
     // 1,609.34 km / 1.60934 = 1000 mi, counterpart km at 0 decimals.
     expect(both.distance.format(1609.34)).toBe('1,000 mi (1,609 km)')

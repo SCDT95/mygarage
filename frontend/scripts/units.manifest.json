@@ -43,7 +43,7 @@
     "fuel.mpgTip and fuel.electricTip name MPG and kWh/100mi unconditionally."
    ],
    "owners": [
-    "task 6"
+    "task 6b"
    ],
    "tests": [
     "components/__tests__/ReminderForm.distanceCopy.test.tsx"
@@ -68,7 +68,7 @@
     "units.showBothDescription still frames show-both as \"imperial and metric\" with a fixed 25 MPG (9.4 L/100km) example, but counterparts are resolved PER QUANTITY by counterpartFor and the example is only what an mpg_us account sees. Same shape as R1 one notch down: an example rather than a claim about this account's units, and no comparison selects it so neither gate leg reports it. Deferred by task 2b rather than absorbed; the cheap honest fix is to stop naming the two systems (\"Display each value with its counterpart unit as well\") in all seven bundles, not to compose a second list."
    ],
    "owners": [
-    "task 6"
+    "task 6b"
    ]
   },
   {
@@ -89,7 +89,8 @@
     "vehicleHelp.costAnalysis.costPerMile* and vehicleHelp.fuelEconomy.*Mpg* are imperial-only help copy rendered unconditionally by AnalyticsHelpModal."
    ],
    "owners": [
-    "task 6"
+    "task 6b",
+    "task 7"
    ],
    "tests": [
     "__tests__/volumeTotalLabelLocales.test.ts"
@@ -110,7 +111,7 @@
     "fuel.mpgTip and fuel.electricTip name MPG and kWh/100mi unconditionally."
    ],
    "owners": [
-    "task 6"
+    "task 6b"
    ],
    "tests": [
     "components/__tests__/ReminderForm.distanceCopy.test.tsx"
@@ -135,7 +136,7 @@
     "units.showBothDescription still frames show-both as \"imperial and metric\" with a fixed 25 MPG (9.4 L/100km) example, but counterparts are resolved PER QUANTITY by counterpartFor and the example is only what an mpg_us account sees. Same shape as R1 one notch down: an example rather than a claim about this account's units, and no comparison selects it so neither gate leg reports it. Deferred by task 2b rather than absorbed; the cheap honest fix is to stop naming the two systems (\"Display each value with its counterpart unit as well\") in all seven bundles, not to compose a second list."
    ],
    "owners": [
-    "task 6"
+    "task 6b"
    ]
   },
   {
@@ -184,7 +185,7 @@
     "units.showBothDescription still frames show-both as \"imperial and metric\" with a fixed 25 MPG (9.4 L/100km) example, but counterparts are resolved PER QUANTITY by counterpartFor and the example is only what an mpg_us account sees. Same shape as R1 one notch down: an example rather than a claim about this account's units, and no comparison selects it so neither gate leg reports it. Deferred by task 2b rather than absorbed; the cheap honest fix is to stop naming the two systems (\"Display each value with its counterpart unit as well\") in all seven bundles, not to compose a second list."
    ],
    "owners": [
-    "task 6"
+    "task 6b"
    ]
   },
   {
@@ -233,7 +234,7 @@
     "units.showBothDescription still frames show-both as \"imperial and metric\" with a fixed 25 MPG (9.4 L/100km) example, but counterparts are resolved PER QUANTITY by counterpartFor and the example is only what an mpg_us account sees. Same shape as R1 one notch down: an example rather than a claim about this account's units, and no comparison selects it so neither gate leg reports it. Deferred by task 2b rather than absorbed; the cheap honest fix is to stop naming the two systems (\"Display each value with its counterpart unit as well\") in all seven bundles, not to compose a second list."
    ],
    "owners": [
-    "task 6"
+    "task 6b"
    ]
   },
   {
@@ -285,7 +286,7 @@
     "units.showBothDescription still frames show-both as \"imperial and metric\" with a fixed 25 MPG (9.4 L/100km) example, but counterparts are resolved PER QUANTITY by counterpartFor and the example is only what an mpg_us account sees. Same shape as R1 one notch down: an example rather than a claim about this account's units, and no comparison selects it so neither gate leg reports it. Deferred by task 2b rather than absorbed; the cheap honest fix is to stop naming the two systems (\"Display each value with its counterpart unit as well\") in all seven bundles, not to compose a second list."
    ],
    "owners": [
-    "task 6"
+    "task 6b"
    ]
   },
   {
@@ -334,7 +335,7 @@
     "units.showBothDescription still frames show-both as \"imperial and metric\" with a fixed 25 MPG (9.4 L/100km) example, but counterparts are resolved PER QUANTITY by counterpartFor and the example is only what an mpg_us account sees. Same shape as R1 one notch down: an example rather than a claim about this account's units, and no comparison selects it so neither gate leg reports it. Deferred by task 2b rather than absorbed; the cheap honest fix is to stop naming the two systems (\"Display each value with its counterpart unit as well\") in all seven bundles, not to compose a second list."
    ],
    "owners": [
-    "task 6"
+    "task 6b"
    ]
   },
   {
@@ -388,7 +389,8 @@
     "renders vehicleHelp.costAnalysis.costPerMileLabel/Desc, vehicleHelp.fuelEconomy.{mpgCalc,averageMpg,recentMpg}Label and vehicleHelp.tips.includeMileage unconditionally, so a metric user reads 'Average MPG:' beside an L/100km figure. Same class as R1's settings copy, and NOT in the plan's inventory."
    ],
    "owners": [
-    "task 6"
+    "task 6b",
+    "task 7"
    ]
   },
   {
@@ -536,7 +538,8 @@
     "formatter-binary x7 (units gate baseline)"
    ],
    "owners": [
-    "task 6"
+    "task 6b",
+    "task 7"
    ]
   },
   {
@@ -918,13 +921,14 @@
    "digest": "ce4bc71b011c8575ffa42ab1c7543680ba9bff638dde27aece0700d69ebcfe3e",
    "reason": "gate-detectable unit decisions, recorded not asserted clean (plan 3b task 1 ordering). Task 6 migrated the DISTANCE sites onto the resolved `units.distance` token; what remains is the fuel-economy, fuel-rate and cost-per-distance surface, which still takes the collapsed binary system.",
    "tests": [
-    "components/__tests__/VehicleStatisticsCard.test.tsx"
+    "components/__tests__/VehicleStatisticsCard.test.tsx",
+    "components/__tests__/distanceReadSites.mixedUnits.test.tsx"
    ],
    "findings": [
     "formatter-binary x5 (units gate baseline)"
    ],
    "owners": [
-    "task 6"
+    "task 6b"
    ]
   },
   {
@@ -1693,7 +1697,7 @@
     "formatter-binary x3 (units gate baseline)"
    ],
    "owners": [
-    "task 6"
+    "task 6b"
    ]
   },
   {
@@ -2017,7 +2021,8 @@
     "USER-VISIBLE COPY CHANGE, SHIPPED by task 6, for the changelog: the propane and DEF volume-total captions read \"Total (L)\" / \"Total (gal)\" rather than \"Total Liters\" / \"Total Gallons\". One interpolating totalVolume key replaces the pair in all seven bundles, and the pair is deleted rather than left unreferenced."
    ],
    "owners": [
-    "task 6",
+    "task 6b",
+    "task 7",
     "task 9"
    ],
    "tests": [
@@ -2041,7 +2046,7 @@
     "USER-VISIBLE COPY CHANGE, SHIPPED by task 6, for the changelog: the reminder mileage field is labelled \"Distance Until Due\" rather than \"Miles Until Due\", and its validation message follows. reminder.milesUntilDue / reminder.milesRequired are renamed to reminder.distanceUntilDue / reminder.distanceRequired in all seven bundles; six of the seven had prose naming a unit the suffix beside it could contradict."
    ],
    "owners": [
-    "task 6",
+    "task 6b",
     "task 9"
    ],
    "tests": [
@@ -2066,10 +2071,12 @@
    "findings": [
     "events.card.milesBefore ('miles before') and events.card.milestonesDesc ('100k miles') are imperial-only copy rendered by EventNotificationsCard.",
     "units.showBothDescription still frames show-both as \"imperial and metric\" with a fixed 25 MPG (9.4 L/100km) example, but counterparts are resolved PER QUANTITY by counterpartFor and the example is only what an mpg_us account sees. Same shape as R1 one notch down: an example rather than a claim about this account's units, and no comparison selects it so neither gate leg reports it. Deferred by task 2b rather than absorbed; the cheap honest fix is to stop naming the two systems (\"Display each value with its counterpart unit as well\") in all seven bundles, not to compose a second list.",
-    "For task 9's changelog entry: units.metricDescription's \"bar\" was ACCURATE when written. At v2.25.0 the app rendered `${bar.toFixed(2)} bar`; it became false at 6f04e53 when metric-canonical landed and the metric preset resolved kpa. The entry should describe it as drift from this workstream's own earlier phase, not as an original error."
+    "For task 9's changelog entry: units.metricDescription's \"bar\" was ACCURATE when written. At v2.25.0 the app rendered `${bar.toFixed(2)} bar`; it became false at 6f04e53 when metric-canonical landed and the metric preset resolved kpa. The entry should describe it as drift from this workstream's own earlier phase, not as an original error.",
+    "OWNER SPLIT recorded by task 6 fix round 1: units.showBothDescription belongs to task 6b with the rest of the show-both copy, but events.card.milesBefore and events.card.milestonesDesc are DISTANCE copy with no named successor, so this row still reads \"task 6\" for those two. Re-own them when that work is assigned rather than inventing a holder for them now."
    ],
    "owners": [
     "task 6",
+    "task 6b",
     "task 9"
    ]
   },
@@ -2120,7 +2127,8 @@
     "formatter-binary x20 (units gate baseline)"
    ],
    "owners": [
-    "task 6"
+    "task 6b",
+    "task 7"
    ]
   },
   {
@@ -2797,7 +2805,7 @@
   {
    "path": "src/utils/unitFormat.ts",
    "disposition": "audited",
-   "digest": "b2a3a1f90428ac297888d56537deede388f2b065863d516645493094e49c55cc",
+   "digest": "ad4e168c264b828fa4e947280a3a0b5e2d4cebdc337a22eb86bbbf1e7a4574a6",
    "reason": "makeUnitFormat plus the origin-preserving pair seedUnitField / canonicalFromUnitField, and resolvedUnitSummary, which lists a resolved set's ten labels for the settings description (plan 3b R1). Re-read for task 6: formatPrimary renders one unit even when show-both is on, because the binary distance API took the counterpart as an argument and eleven read sites passed false to suppress it. It also now holds formatVolumePerDistance and volumePerDistanceLabel, moved out of utils/units.ts by task 6: both halves of that compound unit come from adapterFor, where the retired pair derived the DISTANCE half from units.volume. That collapse is the category the units gate deliberately cannot detect (call-site identical to the correct formatVolume(units)), so it was carried here rather than in the baseline.",
    "tests": [
     "utils/__tests__/unitFormat.test.ts"
@@ -2806,7 +2814,7 @@
   {
    "path": "src/utils/units.ts",
    "disposition": "audited",
-   "digest": "5f0f658627f2d74cb0fe0d3bb5cad8905e5c0ed3273f151deaa563a32021085f",
+   "digest": "340e12eeb096d49b6af8e25e428709c15bda4319266bee4f715dad1ec7671cc8",
    "reason": "gate-detectable unit decisions, recorded not asserted clean (plan 3b task 1 ordering)",
    "tests": [
     "utils/__tests__/unitFactorParity.test.ts",
@@ -2823,7 +2831,8 @@
    ],
    "owners": [
     "task 2",
-    "task 6",
+    "task 6b",
+    "task 7",
     "task 9"
    ]
   },

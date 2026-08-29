@@ -83,12 +83,18 @@ export interface QuantityFormat {
    *
    * ★ It exists because the capability would otherwise have been silently
    * dropped in the migration. The binary `formatDistance(km, system, showBoth)`
-   * took the counterpart as an ARGUMENT, and eleven read sites passed `false`
-   * to suppress it: chart tooltips, dense table cells, inline spans where a
-   * parenthesised second unit is noise rather than information. `format` reads
-   * show-both off the resolved set, so moving those sites onto it would start
-   * rendering a counterpart nobody asked for AT THAT SITE. Show-both is a
-   * preference about a reading, not about every reading.
+   * took the counterpart as an ARGUMENT, and 13 of its 21 read sites declined
+   * it: 9 passed `false` outright and 4 left the argument off, which defaulted
+   * to the same thing. They are chart tooltips, dense table cells and inline
+   * spans, where a parenthesised second unit is noise rather than information.
+   * `format` reads show-both off the resolved set, so moving those sites onto
+   * it would start rendering a counterpart nobody asked for AT THAT SITE.
+   * Show-both is a preference about a reading, not about every reading.
+   *
+   * (An earlier revision of this comment said "eleven of the 27 sites", which
+   * was wrong twice: 27 counts the whole binary-distance surface, and 6 of
+   * those are `getDistanceUnit` / `kmToMiles` sites with no `showBoth`
+   * parameter to decline.)
    */
   formatPrimary(canonical: number | null | undefined): string
   /** Canonical to a labelled string, with the counterpart when show-both is on. */

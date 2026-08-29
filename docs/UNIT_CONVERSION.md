@@ -21,7 +21,7 @@ MyGarage includes a comprehensive unit conversion system that allows users to vi
 
 ## Overview
 
-The unit conversion system supports per-user preferences, allowing different users to work with their preferred unit system. All data is stored in Imperial units (the canonical format) and converted on-the-fly for display and input.
+The unit conversion system supports per-user preferences, allowing different users to work with their preferred unit system. Values are converted on-the-fly for display and input. (This paragraph used to add "All data is stored in Imperial units (the canonical format)". That has been false since `6f04e53`: storage is metric-canonical. The sentence was deleted rather than the paragraph, because a contributor greps for "canonical" and lands here, not on the banner at the top.)
 
 ### Supported Units
 
@@ -78,9 +78,12 @@ Unit conversion is automatically applied across the entire application:
 ### Architecture Pattern: Canonical Storage
 
 MyGarage uses a **canonical storage pattern** where:
-1. All data is stored in **Imperial units** in the database
+1. All data is stored in **SI metric units** in the database (km, L, kg, kPa, °C,
+   Nm, mm). It was Imperial when this document was written; `6f04e53` inverted
+   it, and the two flow diagrams below were corrected with this list.
 2. Conversion happens at the **API boundary** (frontend ↔ backend)
-3. Users see and enter data in their **preferred units**
+3. Users see and enter data in their **preferred units**, resolved per quantity
+   rather than per system, so one reader can hold litres and miles at once.
 
 **Benefits:**
 - No data migration required when changing preferences
@@ -92,24 +95,24 @@ MyGarage uses a **canonical storage pattern** where:
 
 #### Input Flow (User → Database)
 ```
-User enters: 100 km
+User enters: 100 mi
 ↓
-Frontend converts: km → miles (62.137 mi)
+Frontend converts: mi → km (160.934 km)
 ↓
-API receives: 62.137 mi
+API receives: 160.934 km
 ↓
-Database stores: 62.137 (imperial)
+Database stores: 160.934 (canonical metric)
 ```
 
 #### Output Flow (Database → User)
 ```
-Database returns: 62.137 (imperial)
+Database returns: 160.934 (canonical metric)
 ↓
-API sends: 62.137 mi
+API sends: 160.934 km
 ↓
-Frontend converts: miles → km (100 km)
+Frontend converts: km → mi (100 mi)
 ↓
-User sees: 100 km
+User sees: 100 mi
 ```
 
 ### Conversion Utilities
@@ -129,9 +132,9 @@ Provides static methods for bidirectional conversion.
 > rewrite of this document is deferred. Read `frontend/src/utils/units.ts`.
 
 ```typescript
-// Distance conversions
-UnitConverter.milesToKm(miles: number): number
-UnitConverter.kmToMiles(km: number): number
+// Distance conversions: NONE. `milesToKm` and `kmToMiles` were deleted by
+// plan 3b task 6 once their last call site moved onto the resolved
+// `units.distance` adapter. Convert distance through `UNIT_ADAPTERS`.
 
 // Volume conversions
 UnitConverter.gallonsToLiters(gallons: number): number
@@ -162,9 +165,9 @@ Located in `frontend/src/utils/units.ts`
 Provides display formatting with unit labels:
 
 ```typescript
-// Format distance with unit label
-UnitFormatter.formatDistance(miles: number, system: 'imperial' | 'metric', showBoth: boolean): string
-// Returns: "100 mi" or "161 km" or "100 mi (161 km)"
+// Format distance with unit label: GONE. `formatDistance` was deleted by
+// plan 3b task 6. Use `useUnitFormat().distance.format(km)`, or
+// `.formatPrimary(km)` where the counterpart would be noise.
 
 // Format volume with unit label
 UnitFormatter.formatVolume(gallons: number, system: 'imperial' | 'metric', showBoth: boolean): string
@@ -175,8 +178,9 @@ UnitFormatter.formatFuelEconomy(mpg: number, system: 'imperial' | 'metric', show
 // Returns: "25 MPG" or "9.4 L/100km" or "25 MPG (9.4 L/100km)"
 
 // Get unit labels only
-UnitFormatter.getDistanceUnit(system: 'imperial' | 'metric'): string  // "mi" or "km"
-UnitFormatter.getVolumeUnit(system: 'imperial' | 'metric'): string    // "gal" or "L"
+// `getDistanceUnit` was deleted by plan 3b task 6; the label is
+// `useUnitFormat().distance.label`.
+UnitFormatter.getVolumeUnit(units: UnitSet): string    // "gal" or "L"
 UnitFormatter.getFuelEconomyUnit(system: 'imperial' | 'metric'): string  // "MPG" or "L/100km"
 ```
 
@@ -212,69 +216,36 @@ MPG = 235.214 / L/100km
 
 ## Form Implementation Pattern
 
-### Input Forms (Two-way Conversion)
+### Input Forms and Display Components
 
-Forms must handle conversion in both directions:
+★ **Two worked examples used to sit here and they are deleted, not moved.** They
+taught the shape this phase exists to remove: a `system === 'metric'` branch
+around `UnitConverter.milesToKm` / `kmToMiles` on submit, a
+`UnitFormatter.getDistanceUnit(system)` label, and a
+`UnitFormatter.formatDistance(record.mileage, system, showBoth)` read. All four
+of those functions were deleted by plan 3b task 6, so the examples could not be
+copied even if they were right, and `system` is collapsed from the user's VOLUME
+choice, so they were wrong for anyone holding litres and miles at once.
 
-```typescript
-import { useUnitPreference } from '../hooks/useUnitPreference'
-import { UnitConverter, UnitFormatter } from '../utils/units'
-
-function MyForm({ record }) {
-  const { system } = useUnitPreference()
-
-  // 1. Convert defaultValues when loading existing record
-  const defaultValues = {
-    mileage: system === 'metric' && record?.mileage
-      ? UnitConverter.milesToKm(record.mileage) ?? undefined
-      : record?.mileage ?? undefined,
-  }
-
-  // 2. Convert onSubmit before sending to API
-  const onSubmit = (data) => {
-    const payload = {
-      mileage: system === 'metric' && data.mileage
-        ? UnitConverter.kmToMiles(data.mileage) ?? data.mileage
-        : data.mileage,
-    }
-    // Send payload to API...
-  }
-
-  // 3. Use dynamic labels and placeholders
-  return (
-    <form onSubmit={handleSubmit(onSubmit)}>
-      <label>
-        Mileage ({UnitFormatter.getDistanceUnit(system)})
-      </label>
-      <input
-        placeholder={system === 'imperial' ? '45000' : '72420'}
-        {...register('mileage')}
-      />
-    </form>
-  )
-}
-```
-
-### Display Components (Read-only)
-
-Display components only need to format values:
+The live pattern, in one line each:
 
 ```typescript
-import { useUnitPreference } from '../hooks/useUnitPreference'
-import { UnitFormatter } from '../utils/units'
+const u = useUnitFormat()
 
-function MyDisplay({ record }) {
-  const { system, showBoth } = useUnitPreference()
-
-  return (
-    <div>
-      <p>{UnitFormatter.formatDistance(record.mileage, system, showBoth)}</p>
-      <p>{UnitFormatter.formatVolume(record.volume, system, showBoth)}</p>
-      <p>{UnitFormatter.formatFuelEconomy(record.mpg, system, showBoth)}</p>
-    </div>
-  )
-}
+// display, honouring the reader's show-both preference
+<p>{u.distance.format(record.odometer_km)}</p>
+// display, where a parenthesised counterpart would be noise
+<p>{u.distance.formatPrimary(record.odometer_km)}</p>
+// a label
+<Field label={t('common:mileage')} unit={u.distance.label}>
+// entry and storage, origin-preserving so an untouched save does not reconvert
+const origin = seedUnitField(record.odometer_km, u.distance)
+const canonical = canonicalFromUnitField(typed, origin, u.distance)
 ```
+
+`seedUnitField` and `canonicalFromUnitField` are in
+`frontend/src/utils/unitFormat.ts`. Read a migrated form
+(`OdometerRecordForm.tsx`, `ReminderForm.tsx`) rather than this document.
 
 ### Chart Components
 

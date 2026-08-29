@@ -143,6 +143,13 @@ const OWNERS = new Set([
   'task 4',
   'task 5',
   'task 6',
+  // ★ Added when task 6 closed, and the reason is the enum working rather than
+  // the enum bending. Task 6 finished holding 23 rows, so "task 6" stopped
+  // naming anybody who would act on them; the fuel-economy and fuel-rate family
+  // moved to 6b and the price family to task 7. Widening the enum is the
+  // sanctioned way to add an owner precisely because it is a CODE change in the
+  // diff, where free text produced twelve spellings across 47 rows.
+  'task 6b',
   'task 7',
   'task 8',
   'task 9',
