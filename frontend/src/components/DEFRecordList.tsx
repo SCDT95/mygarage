@@ -9,6 +9,7 @@ import type { DEFRecord } from '../types/def'
 import DEFRecordForm from './DEFRecordForm'
 import { useUnitPreference } from '../hooks/useUnitPreference'
 import { useUnitFormat } from '../hooks/useUnitFormat'
+import { formatVolumePerDistance, volumePerDistanceLabel } from '../utils/unitFormat'
 import { UnitFormatter } from '../utils/units'
 import { useDEFRecords, useDEFAnalytics, useDeleteDEFRecord } from '../hooks/queries/useDEFRecords'
 import { useQueryClient } from '@tanstack/react-query'
@@ -190,8 +191,8 @@ export default function DEFRecordList({ vin, readOnly = false }: DEFRecordListPr
                 <Droplets aria-hidden="true" className="w-3 h-3" />
                 <span>{t('defList.consumption')}</span>
               </div>
-              <Mono size="2xl" weight="bold">{UnitFormatter.formatVolumePerDistance(parseNum(analytics.liters_per_1000_km) ?? 0, units)}</Mono>
-              <p className="text-xs text-text-mute">{UnitFormatter.getVolumePerDistanceLabel(units)}</p>
+              <Mono size="2xl" weight="bold">{formatVolumePerDistance(units, parseNum(analytics.liters_per_1000_km) ?? 0)}</Mono>
+              <p className="text-xs text-text-mute">{volumePerDistanceLabel(units)}</p>
             </Card>
           )}
 

@@ -169,7 +169,7 @@ const DEF_RECORD = {
 } as unknown as DEFRecord
 const DEF_ANALYTICS = {
   record_count: 2, estimated_km_remaining: CANONICAL_KM, estimated_days_remaining: null,
-  liters_per_1000_km: null, avg_cost_per_liter: null, total_cost: null, total_liters: null,
+  liters_per_1000_km: '3.4', avg_cost_per_liter: null, total_cost: null, total_liters: null,
   data_confidence: 'high',
 }
 const FLEET: FleetHealth = {
@@ -242,7 +242,7 @@ describe.each(SITES)('$name', ({ mount }) => {
   })
 })
 
-describe('the two label sites that render the unit on its own', () => {
+describe('the sites that render a unit label of their own', () => {
   it('OdometerRecordList column header interpolates the resolved distance label', () => {
     unitPrefMock.units = LITRES_MILES
     render(<OdometerRecordList vin="V1" onAddClick={vi.fn()} onEditClick={vi.fn()} />)
@@ -260,5 +260,28 @@ describe('the two label sites that render the unit on its own', () => {
     const card = screen.getByText(/Est\./).closest('div')?.parentElement as HTMLElement
     expect(within(card).getByText(/Est\. mi Left/)).toBeInTheDocument()
     expect(within(card).getByText('50,000')).toBeInTheDocument()
+  })
+
+  it('the DEF consumption card quotes the rate in BOTH of the reader units', () => {
+    // The compound the units gate cannot see: `formatVolumePerDistance(units)`
+    // was CALL-SITE IDENTICAL to the correct `formatVolume(units)` and derived
+    // its DISTANCE half from `units.volume`. For this account it answered
+    // '3.4' under an 'L/1,000 km' label while the odometer column beside it
+    // read miles. 3.4 x 1.60934 = 5.471756, one decimal 5.5.
+    unitPrefMock.units = LITRES_MILES
+    render(<DEFRecordList vin="V1" />)
+    expect(screen.getByText('5.5')).toBeInTheDocument()
+    expect(screen.getByText('L/1,000 mi')).toBeInTheDocument()
+    expect(screen.queryByText('L/1,000 km')).not.toBeInTheDocument()
+  })
+
+  it('and the mirror: a gallons-and-kilometres account gets gal per 1,000 km', () => {
+    // 3.4 L / 3.78541 = 0.898 US gal per 1,000 km, one decimal 0.9. The retired
+    // helper multiplied by 1.60934 anyway and answered 1.4 under 'gal/1,000 mi'.
+    unitPrefMock.units = GALLONS_KM
+    render(<DEFRecordList vin="V1" />)
+    expect(screen.getByText('0.9')).toBeInTheDocument()
+    expect(screen.getByText('gal/1,000 km')).toBeInTheDocument()
+    expect(screen.queryByText('gal/1,000 mi')).not.toBeInTheDocument()
   })
 })

@@ -9,6 +9,7 @@ import api from '../services/api'
 import { getActionErrorMessage } from '../utils/httpErrorHandler'
 import { useUnitPreference } from '../hooks/useUnitPreference'
 import { useUnitFormat } from '../hooks/useUnitFormat'
+import { formatVolumePerDistance, volumePerDistanceLabel } from '../utils/unitFormat'
 import { NON_MOTORIZED_TYPES } from '../schemas/vehicle'
 import { UnitConverter, UnitFormatter } from '../utils/units'
 import { withBase } from '../utils/basePath'
@@ -1654,7 +1655,7 @@ export default function Analytics() {
               <p className="text-sm text-garage-text-muted mb-1">{t('vehicle.consumptionRate')}</p>
               <p className="text-2xl font-bold text-primary">
                 {defAnalysis.liters_per_1000_km
-                  ? `${UnitFormatter.formatVolumePerDistance(parseFloat(defAnalysis.liters_per_1000_km), units)} ${UnitFormatter.getVolumePerDistanceLabel(units)}`
+                  ? `${formatVolumePerDistance(units, parseFloat(defAnalysis.liters_per_1000_km))} ${volumePerDistanceLabel(units)}`
                   : '-'}
               </p>
             </div>

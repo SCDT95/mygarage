@@ -133,37 +133,13 @@ describe('UnitFormatter summary card helpers', () => {
     })
   })
 
-  describe('formatVolumePerDistance', () => {
-    it('converts the volume half on the resolved token', () => {
-      expect(UnitFormatter.formatVolumePerDistance(4.7, METRIC)).toBe('4.7')
-      // (4.7 / 3.78541) * 1.60934 = 2.0 gal/1000mi
-      expect(UnitFormatter.formatVolumePerDistance(4.7, US)).toBe('2.0')
-      // (4.7 / 4.54609) * 1.60934 = 1.66 -> 1.7
-      expect(UnitFormatter.formatVolumePerDistance(4.7, UK)).toBe('1.7')
-    })
-
-    it('keeps the DISTANCE half on the binary system the volume token collapses to', () => {
-      // Deliberate: the neighbouring "Est. km Left" cell on the same DEF card
-      // still branches on `system`, which spec D8 derives from VOLUME. Reading
-      // `units.distance` here instead would put miles next to kilometres for a
-      // custom user, which is the same-screen defect this task exists to
-      // remove. Distance moves in 3b, as one file, with its neighbours.
-      const litreVolumeMileDistance = makeUnitSet({ distance: 'mi' })
-      expect(UnitFormatter.formatVolumePerDistance(4.7, litreVolumeMileDistance)).toBe('4.7')
-      expect(UnitFormatter.getVolumePerDistanceLabel(litreVolumeMileDistance)).toBe('L/1,000 km')
-      // The mirror case: a gallon volume with a kilometre distance still
-      // converts BOTH halves, because the volume token is what decides.
-      const gallonVolumeKmDistance = makeUnitSet({ volume: 'gal_uk', distance: 'km' })
-      expect(UnitFormatter.formatVolumePerDistance(4.7, gallonVolumeKmDistance)).toBe('1.7')
-      expect(UnitFormatter.getVolumePerDistanceLabel(gallonVolumeKmDistance)).toBe('gal/1,000 mi')
-    })
-  })
-
-  describe('getVolumePerDistanceLabel', () => {
-    it('names the resolved volume unit over the collapsed distance one', () => {
-      expect(UnitFormatter.getVolumePerDistanceLabel(US)).toBe('gal/1,000 mi')
-      expect(UnitFormatter.getVolumePerDistanceLabel(UK)).toBe('gal/1,000 mi')
-      expect(UnitFormatter.getVolumePerDistanceLabel(METRIC)).toBe('L/1,000 km')
-    })
-  })
+  // ★ `formatVolumePerDistance` and `getVolumePerDistanceLabel` WERE COVERED
+  // HERE, with a case named "keeps the DISTANCE half on the binary system the
+  // volume token collapses to". That was an honest description of what the code
+  // did and it pinned the defect: a `{volume:'L', distance:'mi'}` account read
+  // '4.7' under an 'L/1,000 km' label. Plan 3b task 6 moved both functions to
+  // `utils/unitFormat.ts`, where `adapterFor` supplies BOTH halves from the
+  // resolved set, and their cases moved with them into
+  // `utils/__tests__/unitFormat.test.ts` — including the two mixed sets, which
+  // the retired pair could not express at all.
 })

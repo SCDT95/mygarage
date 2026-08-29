@@ -798,35 +798,18 @@ export class UnitFormatter {
     return system === 'imperial' ? 'Cost/1k Miles' : 'Cost/100 km';
   }
 
-  /**
-   * Format volume consumption per distance for summary cards.
-   * Input: liters per 1,000 km (canonical metric L/1000km).
-   * Output: "3.4" (L/1,000 km) or "2.1" (gal/1,000 mi).
-   */
-  static formatVolumePerDistance(litersPer1kKm: number, units: UnitSet): string {
-    if (units.volume === 'L') {
-      return `${litersPer1kKm.toFixed(1)}`;
-    }
-    // L/1000km → gal/1000mi. The VOLUME half follows the resolved token (this
-    // line held the second hardcoded 3.78541). The DISTANCE half deliberately
-    // does NOT read `units.distance`: it stays on the binary system the volume
-    // token collapses to (spec D8), because the neighbouring cells on the same
-    // DEF card still branch on `system`, and putting miles here next to their
-    // kilometres would manufacture the same-screen disagreement this change
-    // exists to remove. Distance migrates in 3b, per file, with its neighbours.
-    const galPer1kMi =
-      (litersPer1kKm / UnitConverter.LITERS_PER_VOLUME_UNIT[units.volume]) *
-      UnitConverter.MILES_TO_KM;
-    return `${galPer1kMi.toFixed(1)}`;
-  }
-
-  /**
-   * Get the sub-label for volume-per-distance cards.
-   * Returns "gal/1,000 mi" or "L/1,000 km".
-   */
-  static getVolumePerDistanceLabel(units: UnitSet): string {
-    return units.volume === 'L' ? 'L/1,000 km' : 'gal/1,000 mi';
-  }
+  // ★ `formatVolumePerDistance` and `getVolumePerDistanceLabel` USED TO BE HERE,
+  // and where they went is the point rather than a filing detail. Both derived
+  // BOTH halves of a compound unit from `units.volume`, so a
+  // `{volume:'L', distance:'mi'}` account read a per-kilometre rate beside an
+  // odometer column reading miles. The first one's comment promised "Distance
+  // migrates in 3b, per file, with its neighbours"; plan 3b task 6 kept that
+  // promise, and they now live in `utils/unitFormat.ts` where `adapterFor` can
+  // supply BOTH halves from the resolved set. They could not stay here: this
+  // module cannot import the adapter table (see the `import type` note at the
+  // top), so the distance half would have needed a second dispatch beside
+  // `LITERS_PER_VOLUME_UNIT`, and a second copy of a unit decision is the
+  // defect this workstream keeps unpicking.
 }
 
 /**

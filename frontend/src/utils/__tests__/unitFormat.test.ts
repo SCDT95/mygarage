@@ -12,15 +12,21 @@ import { describe, it, expect } from 'vitest'
 import {
   canonicalFromUnitField,
   formatAtPrecision,
+  formatVolumePerDistance,
   makeUnitFormat,
   resolvedUnitSummary,
   seedUnitField,
+  volumePerDistanceLabel,
   type UnitFieldOrigin,
 } from '../unitFormat'
 import { UNIT_QUANTITIES, presetUnitsFor, type UnitSet } from '@/types/units'
 
 const IMPERIAL = presetUnitsFor('imperial', 'us')
 const METRIC = presetUnitsFor('metric', 'us')
+/** Litres, but miles: the set the retired helper could not express. */
+const LITRES_MILES: UnitSet = { ...METRIC, distance: 'mi' }
+/** The mirror: gallons, but kilometres. */
+const GALLONS_KM: UnitSet = { ...IMPERIAL, distance: 'km' }
 
 describe('makeUnitFormat', () => {
   it('answers for every quantity and nothing else', () => {
@@ -123,6 +129,57 @@ describe('formatPrimary', () => {
     expect(both.tread.formatPrimary(7.5)).toBe('9/32 in')
     expect(both.distance.formatPrimary(null)).toBe('N/A')
     expect(both.consumption.formatPrimary(0)).toBe('N/A')
+  })
+})
+
+describe('volume per distance', () => {
+  // ★ WHAT THE RETIRED HELPER DID. `UnitFormatter.formatVolumePerDistance` took
+  // the resolved set and then derived BOTH halves of the compound unit from
+  // `units.volume`: a litre set answered per 1,000 km, anything else answered
+  // per 1,000 mi. It is the one shape the units gate deliberately cannot see,
+  // because `formatVolume(units)` is correct and this was CALL-SITE IDENTICAL.
+  // The two mixed sets below are the whole point: neither answer it could give
+  // was right for them.
+
+  it('renders a metric set per 1,000 km and an imperial one per 1,000 mi', () => {
+    // The two controls. Both were already right, and both must stay right, or
+    // the fix is a different bug rather than a fix.
+    expect(formatVolumePerDistance(METRIC, 3.4)).toBe('3.4')
+    expect(volumePerDistanceLabel(METRIC)).toBe('L/1,000 km')
+    // 3.78541 L is one US gallon; per 1,000 km is 1.60934 per 1,000 mi.
+    expect(formatVolumePerDistance(IMPERIAL, 3.78541)).toBe('1.6')
+    expect(volumePerDistanceLabel(IMPERIAL)).toBe('gal/1,000 mi')
+  })
+
+  it('★ a litres-and-miles set reads litres per 1,000 MILES', () => {
+    // 3.4 L/1,000 km x 1.60934 km/mi = 5.471756, one decimal 5.5. The retired
+    // helper answered '3.4' under an 'L/1,000 km' label, because both halves
+    // read the volume token.
+    expect(formatVolumePerDistance(LITRES_MILES, 3.4)).toBe('5.5')
+    expect(formatVolumePerDistance(LITRES_MILES, 3.4)).not.toBe('3.4')
+    expect(volumePerDistanceLabel(LITRES_MILES)).toBe('L/1,000 mi')
+  })
+
+  it('★ a gallons-and-kilometres set reads gallons per 1,000 KILOMETRES', () => {
+    // The mirror, so nothing above is satisfied by an inverted branch. One US
+    // gallon per 1,000 km stays one gallon per 1,000 km; the retired helper
+    // multiplied by 1.60934 anyway and answered '1.6' under 'gal/1,000 mi'.
+    expect(formatVolumePerDistance(GALLONS_KM, 3.78541)).toBe('1.0')
+    expect(formatVolumePerDistance(GALLONS_KM, 3.78541)).not.toBe('1.6')
+    expect(volumePerDistanceLabel(GALLONS_KM)).toBe('gal/1,000 km')
+  })
+
+  it('takes the gallon flavour from the resolved token, not from an assumption', () => {
+    // 4.54609 L is one IMPERIAL gallon; per 1,000 km is 1.60934 per 1,000 mi.
+    const uk = presetUnitsFor('imperial', 'uk')
+    expect(formatVolumePerDistance(uk, 4.54609)).toBe('1.6')
+    expect(volumePerDistanceLabel(uk)).toBe('gal/1,000 mi')
+    // The three expectations `unitsSummaryHelpers.test.ts` held before these
+    // functions moved, carried over unchanged so the move cannot lose them.
+    // 4.7 / 3.78541 x 1.60934 = 1.998; 4.7 / 4.54609 x 1.60934 = 1.664.
+    expect(formatVolumePerDistance(METRIC, 4.7)).toBe('4.7')
+    expect(formatVolumePerDistance(IMPERIAL, 4.7)).toBe('2.0')
+    expect(formatVolumePerDistance(uk, 4.7)).toBe('1.7')
   })
 })
 

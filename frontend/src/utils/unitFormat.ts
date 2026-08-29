@@ -252,6 +252,78 @@ export function resolvedUnitSummary(units: UnitSet): string {
 }
 
 /**
+ * How many of the reader's distance units a consumption rate is quoted over.
+ *
+ * Not a conversion factor: it is the denominator the DEF and propane cards have
+ * always shown, and `volumePerDistanceLabel` spells it out beside the number.
+ */
+const VOLUME_PER_DISTANCE_OVER = 1000
+
+/** Decimal places a volume-per-distance rate is read at. */
+const VOLUME_PER_DISTANCE_PRECISION = 1
+
+/**
+ * Render a volume-per-distance rate in the reader's OWN two units.
+ *
+ * ★ IT TAKES BOTH HALVES FROM THE RESOLVED SET, and that is the whole change.
+ * `UnitFormatter.formatVolumePerDistance` lived in `utils/units.ts` and derived
+ * the DISTANCE half from `units.volume`: a litre set rendered per 1,000 km and
+ * every other set rendered per 1,000 mi. So a `{volume:'L', distance:'mi'}`
+ * account read a kilometre rate on the same DEF card whose odometer column read
+ * miles, and neither answer the helper could give was right for it. Its own
+ * comment promised "Distance migrates in 3b, per file, with its neighbours";
+ * this is that migration, landed in the same change as those neighbours.
+ *
+ * ★ AND IT IS THE SHAPE THE UNITS GATE DELIBERATELY CANNOT SEE.
+ * `formatVolume(units)` is correct and this was CALL-SITE IDENTICAL to it, so
+ * no lexical rule separates them (`validate-units.ts` says so at length); it
+ * was carried by `units.manifest.json` instead, which is reviewed rather than
+ * matched. Nothing mechanical would have found it.
+ *
+ * ★ WHY IT MOVED FILES RATHER THAN GROWING A SECOND TABLE. `utils/units.ts`
+ * cannot import `adapterFor`: `unitAdapters.ts` builds its table from
+ * `UnitConverter` at module scope, so a runtime import back would form a cycle
+ * (that file's `import type` comment states the hazard). Left there, the
+ * distance half would have needed a `KM_PER_DISTANCE_UNIT` map beside
+ * `LITERS_PER_VOLUME_UNIT`, a second dispatch of a decision the adapter table
+ * already makes, and a second copy of a unit decision is the defect this
+ * workstream keeps unpicking. Here both halves come from `adapterFor`, so there
+ * is nothing to drift.
+ *
+ * @param units The client's resolved unit set.
+ * @param litersPer1kKm The canonical rate, litres per 1,000 km.
+ * @returns The rate in the set's own units, at one decimal, with NO label.
+ */
+export function formatVolumePerDistance(units: UnitSet, litersPer1kKm: number): string {
+  const volume = adapterFor(units, 'volume').toDisplay(litersPer1kKm) ?? 0
+  // Per 1,000 km to per 1,000 of the reader's own distance unit. One mile is
+  // 1.60934 km, so the same volume covers that many fewer of them and the rate
+  // rises by the same factor. The canonical length of one display unit is
+  // exactly what the distance adapter's `toCanonical(1)` answers, so no factor
+  // is spelled here.
+  const canonicalPerDistanceUnit = adapterFor(units, 'distance').toCanonical(1) ?? 1
+  return formatAtPrecision(volume * canonicalPerDistanceUnit, VOLUME_PER_DISTANCE_PRECISION)
+}
+
+/**
+ * The compound label a volume-per-distance rate is read under.
+ *
+ * Composed from the two adapters rather than selected from two fixed strings,
+ * for the reason `resolvedUnitSummary` gives at length: a second table of unit
+ * names is a parallel vocabulary that can disagree with what the screens
+ * render. `getVolumePerDistanceLabel` was such a selection and could produce
+ * only `'L/1,000 km'` or `'gal/1,000 mi'`; the two mixed spellings a custom
+ * account can hold were not expressible at all.
+ *
+ * @param units The client's resolved unit set.
+ * @returns e.g. `'gal/1,000 mi'`, `'L/1,000 km'`, or `'L/1,000 mi'`.
+ */
+export function volumePerDistanceLabel(units: UnitSet): string {
+  const over = formatAtPrecision(VOLUME_PER_DISTANCE_OVER, 0)
+  return `${adapterFor(units, 'volume').label}/${over} ${adapterFor(units, 'distance').label}`
+}
+
+/**
  * Populate a unit-bearing form field, remembering where its value came from.
  *
  * @param canonical The stored canonical value, or null for an empty field.
