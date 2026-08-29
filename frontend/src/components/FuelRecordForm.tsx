@@ -199,16 +199,17 @@ export default function FuelRecordForm({ vin, record, onClose, onSuccess }: Fuel
    * origin. Volume and price are deliberately NOT here; they are react-hook-
    * form number fields whose own round trip Task 2 already made exact.
    *
-   * ★ One assumption is worth stating rather than defending against.
-   * `canonicalFromUnitField` decides "the user did not touch this" by string
-   * comparison against `toInputValue`, i.e. `toFixed(precision)`. The
-   * temperature field HOLDS that string, so it compares like with like; the
-   * odometer is a react-hook-form NUMBER, so its submit can only offer
-   * `String(number)`. The two spellings agree exactly while `mi` and `km`
-   * carry no decimals, and would part company over a trailing zero if a
-   * distance unit were ever given one. That precision is pinned by a test
-   * rather than papered over here, because a normalising branch would be a
-   * guard no test in this repo can kill.
+   * ★ The spelling gap this used to rest a precision pin on is now closed in
+   * the helper. `canonicalFromUnitField` decided "the user did not touch this"
+   * by string comparison against `toInputValue`, i.e. `toFixed(precision)`.
+   * The temperature field HOLDS that string; the odometer is a
+   * react-hook-form NUMBER, so its submit can only offer `String(number)`, and
+   * the two spellings agreed only because `mi` and `km` carry no decimals.
+   * Phase 3b task 3 hit the same gap on propane's two-decimal mass field,
+   * where the sidestep does not reach, and made the helper compare the
+   * QUANTITY instead. The `UNIT_ADAPTERS.mi.precision` pin in
+   * FuelRecordForm.mixedUnits.test.tsx is kept as documentation of the
+   * displayed precision, not as the thing holding this together.
    */
   const [unitOrigins] = useState<{
     odometer_km: UnitFieldOrigin

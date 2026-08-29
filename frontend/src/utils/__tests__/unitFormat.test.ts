@@ -237,6 +237,35 @@ describe('canonicalFromUnitField', () => {
     expect(canonicalFromUnitField('8', origin, metric.tread)).toBe(8)
   })
 
+  it('returns the ORIGINAL canonical when the control hands back its own spelling of the seeded value', () => {
+    // ★ The spelling gap, which is a data defect and not a tidiness one.
+    // `toInputValue` writes `toFixed(precision)`, so 9.07 kg seeds a lb field
+    // as '20.00'. A <select> option value and a react-hook-form NUMBER field
+    // both round-trip through `Number`, so the only string they can offer back
+    // is '20'. String equality alone reads that as an EDIT and reconverts:
+    // 20 lb is 9.07184 kg, so a user who opened a propane record and saved it
+    // untouched moved the stored tank size.
+    //
+    // Phase 3a task 3c met this on the fuel odometer and dodged it by pinning
+    // `mi` and `km` to zero decimals, where the two spellings coincide. Mass
+    // carries two decimals, so the dodge does not reach it and the comparison
+    // has to be about the QUANTITY rather than about the characters.
+    const um = makeUnitFormat({ ...METRIC, mass: 'lb' })
+    const origin = seedUnitField(9.07, um.mass)
+    expect(origin.display).toBe('20.00')
+    expect(canonicalFromUnitField('20', origin, um.mass)).toBe(9.07)
+    // The number the string comparison alone would have stored.
+    expect(canonicalFromUnitField('20', origin, um.mass)).not.toBe(9.07184)
+    // A real edit still converts: 21 lb x 0.453592 = 9.525432 kg.
+    expect(canonicalFromUnitField('21', origin, um.mass)).toBe(9.525432)
+    // ★ Folded here rather than standing alone, because on its own it holds at
+    // t=0 and would assert nothing. `Number('')` is 0, so a numeric untouched
+    // test that skipped the empty-origin guard would read a typed 0 as
+    // "unchanged" and store null where the user entered a real zero.
+    const blank: UnitFieldOrigin = { canonical: null, display: '' }
+    expect(canonicalFromUnitField('0', blank, um.mass)).toBe(0)
+  })
+
   it('honours a per-quantity override rather than the preset it came from', () => {
     // A custom user with metric everything but imperial tread.
     const custom: UnitSet = { ...METRIC, tread: 'in32' }

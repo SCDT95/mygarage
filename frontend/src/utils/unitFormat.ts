@@ -249,6 +249,21 @@ export function seedUnitField(
  * back yields `7.14375 mm`, so re-converting would corrupt a field the user
  * never edited. See the module docstring.
  *
+ * ★ "Untouched" is a question about the QUANTITY, not about the characters,
+ * and that distinction is a data defect rather than a nicety. `seedUnitField`
+ * writes `toFixed(precision)`, so 9.07 kg seeds a pound field as `'20.00'`; a
+ * `<select>` option value and a react-hook-form NUMBER field both round-trip
+ * through `Number`, so the only string either can offer back is `'20'`. On
+ * characters alone that reads as an edit and reconverts, storing 9.07184 kg in
+ * a record the user only opened. Phase 3a task 3c met this on the fuel
+ * odometer and sidestepped it by pinning `mi` and `km` to zero decimals, where
+ * the two spellings coincide; mass carries two, so the sidestep does not reach
+ * it. Comparing numerically covers both and needs no per-unit precision to
+ * hold.
+ *
+ * The empty-origin guard is load bearing: `Number('')` is 0, so without it a
+ * field that started empty would read a typed `0` as unchanged and store null.
+ *
  * @param typed What the input currently holds.
  * @param origin What `seedUnitField` recorded for this field.
  * @param quantity The formatter for the field's quantity.
@@ -262,5 +277,6 @@ export function canonicalFromUnitField(
 ): number | null {
   if (typed === origin.display) return origin.canonical
   if (typed.trim() === '') return null
+  if (origin.display !== '' && Number(typed) === Number(origin.display)) return origin.canonical
   return quantity.toCanonical(Number(typed))
 }

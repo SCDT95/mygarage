@@ -284,15 +284,15 @@ describe('FuelRecordForm — odometer and temperature follow their own tokens', 
     expect(payload.odometer_km).toBe(72420.5)
     expect(payload.odometer_km).not.toBe(72420.3)
 
-    // ★ The assumption the mechanism above rests on, pinned rather than
-    // defended against. `canonicalFromUnitField` compares the field against
-    // `toInputValue`, which is `toFixed(precision)`; the odometer is a
-    // react-hook-form NUMBER, so the submit can only offer `String(number)`.
-    // Those two spellings agree exactly at zero decimals and would part
-    // company over a trailing zero ('45000.10' vs '45000.1'), silently
-    // re-converting every untouched save. Folded into this case rather than
-    // standing alone, because on its own it holds at t=0 and would assert
-    // nothing.
+    // ★ The displayed precision, pinned. This used to be the thing holding
+    // the untouched-save mechanism together: `canonicalFromUnitField`
+    // compared the field against `toInputValue`'s `toFixed(precision)` and the
+    // odometer, a react-hook-form NUMBER, can only offer `String(number)`, so
+    // the two spellings agreed only at zero decimals. Phase 3b task 3 met the
+    // same gap on propane's two-decimal mass field and made the helper compare
+    // the quantity, so this now pins what the user reads rather than what the
+    // submit depends on. Folded into this case rather than standing alone,
+    // because on its own it holds at t=0 and would assert nothing.
     expect(UNIT_ADAPTERS.mi.precision).toBe(0)
     expect(UNIT_ADAPTERS.km.precision).toBe(0)
   })
