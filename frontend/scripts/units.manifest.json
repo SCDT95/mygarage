@@ -2849,8 +2849,8 @@
   {
    "path": "src/utils/unitFormat.ts",
    "disposition": "audited",
-   "digest": "3bc32be180015dc0c593e8162f598fb779d58b25a937a86db4c59280eaa674f9",
-   "reason": "makeUnitFormat plus the origin-preserving pair seedUnitField / canonicalFromUnitField, and resolvedUnitSummary, which lists a resolved set's ten labels for the settings description (plan 3b R1)",
+   "digest": "5d1d724e066dc725fe234d2853f89375871c756b318a155d054a32197ee8aa1f",
+   "reason": "makeUnitFormat plus the origin-preserving pair seedUnitField / canonicalFromUnitField, and resolvedUnitSummary, which lists a resolved set's ten labels for the settings description (plan 3b R1). Re-read for task 6: formatPrimary renders one unit even when show-both is on, because the binary distance API took the counterpart as an argument and eleven read sites passed false to suppress it.",
    "tests": [
     "utils/__tests__/unitFormat.test.ts"
    ]

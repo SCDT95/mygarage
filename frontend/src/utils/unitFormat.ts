@@ -78,6 +78,19 @@ export interface QuantityFormat {
    * marker, and `'N/A'` beside a unit label would read as a value.
    */
   toDisplayText(canonical: number | null | undefined): string
+  /**
+   * Canonical to a labelled string in THIS unit only, never the counterpart.
+   *
+   * ★ It exists because the capability would otherwise have been silently
+   * dropped in the migration. The binary `formatDistance(km, system, showBoth)`
+   * took the counterpart as an ARGUMENT, and eleven read sites passed `false`
+   * to suppress it: chart tooltips, dense table cells, inline spans where a
+   * parenthesised second unit is noise rather than information. `format` reads
+   * show-both off the resolved set, so moving those sites onto it would start
+   * rendering a counterpart nobody asked for AT THAT SITE. Show-both is a
+   * preference about a reading, not about every reading.
+   */
+  formatPrimary(canonical: number | null | undefined): string
   /** Canonical to a labelled string, with the counterpart when show-both is on. */
   format(canonical: number | null | undefined): string
 }
@@ -167,6 +180,9 @@ function quantityFormat(units: UnitSet, quantity: UnitQuantity, showBoth: boolea
     toDisplayText(canonical) {
       const display = adapter.toDisplay(canonical)
       return display === null ? '' : formatAtPrecision(display, adapter.precision)
+    },
+    formatPrimary(canonical) {
+      return render(adapter, canonical)
     },
     format(canonical) {
       // Null short-circuits BEFORE the counterpart, or an absent value renders

@@ -96,6 +96,36 @@ describe('format', () => {
   })
 })
 
+describe('formatPrimary', () => {
+  it('renders the primary alone even when show-both is ON', () => {
+    // ★ WHY THIS EXISTS. The binary `formatDistance(km, system, showBoth)` took
+    // the counterpart as an ARGUMENT, so eleven read sites passed `false` to
+    // suppress it: chart tooltips, dense table cells and inline spans where a
+    // parenthesised second unit is noise. `format` reads show-both off the
+    // resolved set instead, so migrating those sites onto it would start
+    // rendering a counterpart nobody asked for at that site. This is the
+    // capability that would otherwise have been silently dropped.
+    const both = makeUnitFormat(IMPERIAL, true)
+    // 1,609.34 km / 1.60934 = 1000 mi, counterpart km at 0 decimals.
+    expect(both.distance.format(1609.34)).toBe('1,000 mi (1,609 km)')
+    expect(both.distance.formatPrimary(1609.34)).toBe('1,000 mi')
+  })
+
+  it('is the same string as format when show-both is off', () => {
+    const single = makeUnitFormat(IMPERIAL)
+    for (const quantity of UNIT_QUANTITIES) {
+      expect(single[quantity].formatPrimary(240)).toBe(single[quantity].format(240))
+    }
+  })
+
+  it('keeps the slash-label spacing rule and the absent marker', () => {
+    const both = makeUnitFormat(IMPERIAL, true)
+    expect(both.tread.formatPrimary(7.5)).toBe('9/32 in')
+    expect(both.distance.formatPrimary(null)).toBe('N/A')
+    expect(both.consumption.formatPrimary(0)).toBe('N/A')
+  })
+})
+
 describe('step', () => {
   it('follows the unit precision rather than a fixed 0.1', () => {
     // The tread inputs carried step="0.1" while in32 is a whole-number unit,
