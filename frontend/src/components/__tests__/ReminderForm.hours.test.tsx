@@ -28,9 +28,17 @@ vi.mock('../../hooks/useReminders', () => ({
 // entered value passes straight through un-converted (toCanonicalKm is a
 // no-op under metric), keeping the numbers exact without deriving
 // mi->km conversion constants.
-vi.mock('../../hooks/useUnitPreference', () => ({
-  useUnitPreference: () => ({ system: 'metric', showBoth: false }),
-}))
+vi.mock('../../hooks/useUnitPreference', async () => {
+  const { METRIC_UNITS } = await import('@/__tests__/factories')
+  return {
+    useUnitPreference: () => ({
+      system: 'metric',
+      showBoth: false,
+      units: METRIC_UNITS,
+      gallonStandard: 'us',
+    }),
+  }
+})
 vi.mock('sonner', () => ({ toast: { success: vi.fn(), error: vi.fn() } }))
 
 const mockedApiGet = vi.fn()

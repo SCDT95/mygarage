@@ -72,36 +72,6 @@
   "count": 1
  },
  {
-  "file": "src/components/LineItemEditor.tsx",
-  "kind": "compare",
-  "text": "system === 'imperial'",
-  "count": 4
- },
- {
-  "file": "src/components/LineItemEditor.tsx",
-  "kind": "formatter-binary",
-  "text": "UnitFormatter.getDistanceUnit(...)",
-  "count": 3
- },
- {
-  "file": "src/components/OdometerRecordForm.tsx",
-  "kind": "binary-conversion",
-  "text": "toCanonicalKm(...)",
-  "count": 1
- },
- {
-  "file": "src/components/OdometerRecordForm.tsx",
-  "kind": "compare",
-  "text": "system === 'imperial'",
-  "count": 1
- },
- {
-  "file": "src/components/OdometerRecordForm.tsx",
-  "kind": "formatter-binary",
-  "text": "UnitFormatter.getDistanceUnit(...)",
-  "count": 1
- },
- {
   "file": "src/components/OdometerRecordList.tsx",
   "kind": "formatter-binary",
   "text": "UnitFormatter.formatDistance(...)",
@@ -138,45 +108,9 @@
   "count": 1
  },
  {
-  "file": "src/components/ReminderForm.tsx",
-  "kind": "binary-conversion",
-  "text": "toCanonicalKm(...)",
-  "count": 2
- },
- {
-  "file": "src/components/ReminderForm.tsx",
-  "kind": "compare",
-  "text": "system === 'imperial'",
-  "count": 2
- },
- {
-  "file": "src/components/ReminderForm.tsx",
-  "kind": "formatter-binary",
-  "text": "UnitFormatter.getDistanceUnit(...)",
-  "count": 5
- },
- {
   "file": "src/components/ReminderList.tsx",
   "kind": "formatter-binary",
   "text": "UnitFormatter.formatDistance(...)",
-  "count": 1
- },
- {
-  "file": "src/components/ServiceVisitForm.tsx",
-  "kind": "binary-conversion",
-  "text": "toCanonicalKm(...)",
-  "count": 1
- },
- {
-  "file": "src/components/ServiceVisitForm.tsx",
-  "kind": "compare",
-  "text": "system === 'imperial'",
-  "count": 1
- },
- {
-  "file": "src/components/ServiceVisitForm.tsx",
-  "kind": "formatter-binary",
-  "text": "UnitFormatter.getDistanceUnit(...)",
   "count": 1
  },
  {
@@ -243,24 +177,6 @@
   "file": "src/components/VehicleStatisticsCard.tsx",
   "kind": "formatter-binary",
   "text": "UnitFormatter.getFuelRateUnit(...)",
-  "count": 1
- },
- {
-  "file": "src/components/WarrantyForm.tsx",
-  "kind": "binary-conversion",
-  "text": "toCanonicalKm(...)",
-  "count": 1
- },
- {
-  "file": "src/components/WarrantyForm.tsx",
-  "kind": "compare",
-  "text": "system === 'imperial'",
-  "count": 1
- },
- {
-  "file": "src/components/WarrantyForm.tsx",
-  "kind": "formatter-binary",
-  "text": "UnitFormatter.getDistanceUnit(...)",
   "count": 1
  },
  {

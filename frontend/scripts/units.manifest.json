@@ -40,7 +40,7 @@
   {
    "path": "public/locales/de/forms.json",
    "disposition": "audited",
-   "digest": "cd28f1b63a13c0f684d1ed6f213a75c590adf1fb3028aa78df740c3660305fa6",
+   "digest": "7e6c20c879f9af88c0de09ba071ea6637fee10bece02b7b738a8428db757fc6d",
    "reason": "fuel.receiptTextPlaceholder is a plausible EXAMPLE receipt (ruling R5's exempt class): there is no canonical value behind it to convert.",
    "findings": [
     "fuel.mpgTip and fuel.electricTip name MPG and kWh/100mi unconditionally, and reminder.milesRequired says 'Miles until due' for every user."
@@ -104,7 +104,7 @@
   {
    "path": "public/locales/fr/forms.json",
    "disposition": "audited",
-   "digest": "88dbc1c66a595fa886bc8472584d811a13c2f7ddffd7996636832fe60661738e",
+   "digest": "d50f7804f58b01a83cebe59a4061b0002a28688e36ad97695f32ec302693b347",
    "reason": "fuel.receiptTextPlaceholder is a plausible EXAMPLE receipt (ruling R5's exempt class): there is no canonical value behind it to convert.",
    "findings": [
     "fuel.mpgTip and fuel.electricTip name MPG and kWh/100mi unconditionally, and reminder.milesRequired says 'Miles until due' for every user."
@@ -162,7 +162,7 @@
   {
    "path": "public/locales/pl/forms.json",
    "disposition": "no unit behaviour",
-   "digest": "cc1620d23122c504e53a1eaca2077b2423b9e69e5b77c68c9f581e921ea9a9b3",
+   "digest": "ca6ace4408d76507347abf132073f9922fa4fd1e8f65313dca190c71ec5eca91",
    "reason": "no unit behaviour: dispositioned under the CORRECTED scan: every unit stem, token, quantity name and canonical field suffix this codebase uses, matched case-insensitively with NO word boundary. The earlier word-boundary version was a floor (it called AnalyticsHelpModal.tsx clean while it renders \"Average MPG:\" to every user) and it was superseded before any disposition in this file was written. This file matched 12 of them; every hit was read in context and none is a unit decision or a unit-bearing quantity."
   },
   {
@@ -208,7 +208,7 @@
   {
    "path": "public/locales/pt-BR/forms.json",
    "disposition": "no unit behaviour",
-   "digest": "fb77c3760362c5b6fdc694480439bae67eca0475ee7b4f7caaa59aa5a0a8d11c",
+   "digest": "a7e845c0cab982967f5b23be0d1a023fe28fde4f4e9d71b706d6d45c5cd27aac",
    "reason": "no unit behaviour: dispositioned under the CORRECTED scan: every unit stem, token, quantity name and canonical field suffix this codebase uses, matched case-insensitively with NO word boundary. The earlier word-boundary version was a floor (it called AnalyticsHelpModal.tsx clean while it renders \"Average MPG:\" to every user) and it was superseded before any disposition in this file was written. This file matched 12 of them; every hit was read in context and none is a unit decision or a unit-bearing quantity."
   },
   {
@@ -260,7 +260,7 @@
   {
    "path": "public/locales/ru/forms.json",
    "disposition": "no unit behaviour",
-   "digest": "3558403ce1c70f6b84fcce02a60f9ebaeee364c01b1891790f2b793ba70adf45",
+   "digest": "21fa25904fabb1ea85e7e6ba22bbd3b26d63b69b0773c27cfdb9e6904177a31a",
    "reason": "no unit behaviour: dispositioned under the CORRECTED scan: every unit stem, token, quantity name and canonical field suffix this codebase uses, matched case-insensitively with NO word boundary. The earlier word-boundary version was a floor (it called AnalyticsHelpModal.tsx clean while it renders \"Average MPG:\" to every user) and it was superseded before any disposition in this file was written. This file matched 10 of them; every hit was read in context and none is a unit decision or a unit-bearing quantity."
   },
   {
@@ -306,7 +306,7 @@
   {
    "path": "public/locales/uk/forms.json",
    "disposition": "no unit behaviour",
-   "digest": "1812443125d30e2d02b010dc6593317ea5c769559a2df350364aea5e5e79e9d5",
+   "digest": "07aae315cfbe729ecda4dce06fe5ceb3c1be6c8032aad36fbd0161f3ac769bb0",
    "reason": "no unit behaviour: dispositioned under the CORRECTED scan: every unit stem, token, quantity name and canonical field suffix this codebase uses, matched case-insensitively with NO word boundary. The earlier word-boundary version was a floor (it called AnalyticsHelpModal.tsx clean while it renders \"Average MPG:\" to every user) and it was superseded before any disposition in this file was written. This file matched 10 of them; every hit was read in context and none is a unit decision or a unit-bearing quantity."
   },
   {
@@ -601,15 +601,11 @@
   {
    "path": "src/components/LineItemEditor.tsx",
    "disposition": "audited",
-   "digest": "1da9ffb277eae62076539483477497f92232e316b94d628aa33d78d1c386c0dc",
-   "reason": "gate-detectable unit decisions, recorded not asserted clean (plan 3b task 1 ordering)",
-   "findings": [
-    "compare x4 (units gate baseline)",
-    "formatter-binary x3 (units gate baseline)",
-    "a 500-mile reminder stores 500 km"
-   ],
-   "owners": [
-    "task 3"
+   "digest": "3df433e8016c8a46d32f691146b4b41f220086d64fd985b619a8d988ece2e64a",
+   "reason": "the reminder mileage it WRITES into due_mileage_km, through useUnitFormat. An earlier plan revision filed this component as display-only",
+   "tests": [
+    "components/__tests__/LineItemEditor.mixedUnits.test.tsx",
+    "components/__tests__/ServiceVisitForm.mixedUnits.test.tsx"
    ]
   },
   {
@@ -639,18 +635,11 @@
   {
    "path": "src/components/OdometerRecordForm.tsx",
    "disposition": "audited",
-   "digest": "bc3d9cf38cb6cfba81eb388ea93c706074a7b9ea52d969f54fec195b2d903710",
-   "reason": "gate-detectable unit decisions, recorded not asserted clean (plan 3b task 1 ordering)",
+   "digest": "15d0b1cbc41c517d89ded580c2469866c15660e5622e34e4e7f8a84662fdfcdd",
+   "reason": "the reading through useUnitFormat with a seeded origin; the example hint is one canonical reading rendered in the resolved unit",
    "tests": [
+    "components/__tests__/OdometerRecordForm.mixedUnits.test.tsx",
     "components/__tests__/OdometerRecordForm.test.tsx"
-   ],
-   "findings": [
-    "binary-conversion x1 (units gate baseline)",
-    "compare x1 (units gate baseline)",
-    "formatter-binary x1 (units gate baseline)"
-   ],
-   "owners": [
-    "task 3"
    ]
   },
   {
@@ -752,18 +741,12 @@
   {
    "path": "src/components/ReminderForm.tsx",
    "disposition": "audited",
-   "digest": "6ed6dae25e4b920bfa6dbe8d8d989e461233962c55badd16dbe2df530db717e9",
-   "reason": "gate-detectable unit decisions, recorded not asserted clean (plan 3b task 1 ordering)",
+   "digest": "80c530a5285a1edd5bd91b77efd04ba438aa8057ba87b5c8694f258ed9ac9bca",
+   "reason": "the interval, the baseline and every target hint through useUnitFormat, with a seeded origin on the edit interval",
    "tests": [
-    "components/__tests__/ReminderForm.test.tsx"
-   ],
-   "findings": [
-    "binary-conversion x2 (units gate baseline)",
-    "compare x2 (units gate baseline)",
-    "formatter-binary x5 (units gate baseline)"
-   ],
-   "owners": [
-    "task 3"
+    "components/__tests__/ReminderForm.mixedUnits.test.tsx",
+    "components/__tests__/ReminderForm.test.tsx",
+    "components/__tests__/ReminderForm.hours.test.tsx"
    ]
   },
   {
@@ -802,19 +785,19 @@
   {
    "path": "src/components/ServiceVisitForm.tsx",
    "disposition": "audited",
-   "digest": "c022aaff25d0510feb1c2275528f79627e480e2d6dee9d150dd70177bd1e9282",
-   "reason": "gate-detectable unit decisions, recorded not asserted clean (plan 3b task 1 ordering)",
+   "digest": "794acbf3fb747b00812cfcfc2e46c6cb3f6b79e08b4a1efa6dbc6ec8899ef462",
+   "reason": "the odometer through useUnitFormat with a seeded origin. `system` survives for the SUPPLY quantities only (D8 exempts supplies; ruling R3 gives canonicalToDisplay/displayToCanonical to task 5)",
    "tests": [
+    "components/__tests__/ServiceVisitForm.mixedUnits.test.tsx",
     "components/__tests__/ServiceVisitForm.test.tsx",
-    "components/__tests__/ServiceVisitForm.supplies.test.tsx"
+    "components/__tests__/ServiceVisitForm.supplies.test.tsx",
+    "components/__tests__/ServiceVisitForm.hours.test.tsx"
    ],
    "findings": [
-    "binary-conversion x1 (units gate baseline)",
-    "compare x1 (units gate baseline)",
-    "formatter-binary x1 (units gate baseline)"
+    "supply quantities still convert on the binary system (D8 exemption), owned by task 5"
    ],
    "owners": [
-    "task 3"
+    "task 5"
    ]
   },
   {
@@ -967,18 +950,11 @@
   {
    "path": "src/components/WarrantyForm.tsx",
    "disposition": "audited",
-   "digest": "70b7504fc08b3f1ed7b36e93e9ecb2d6c6a14563ebd04d43ee555501b4fd6630",
-   "reason": "gate-detectable unit decisions, recorded not asserted clean (plan 3b task 1 ordering)",
+   "digest": "ca5d3e9f3cde93ec28fe77cfd47ccaac5d8dc155dd54ce8c277b91edc066602c",
+   "reason": "the mileage limit through useUnitFormat with a seeded origin",
    "tests": [
+    "components/__tests__/WarrantyForm.mixedUnits.test.tsx",
     "components/__tests__/WarrantyForm.test.tsx"
-   ],
-   "findings": [
-    "binary-conversion x1 (units gate baseline)",
-    "compare x1 (units gate baseline)",
-    "formatter-binary x1 (units gate baseline)"
-   ],
-   "owners": [
-    "task 3"
    ]
   },
   {
@@ -2070,7 +2046,7 @@
   {
    "path": "src/locales/en/forms.json",
    "disposition": "audited",
-   "digest": "d344abc42c905e9c9e831abf38b5292706a4ad9310470f5c2fb8d2deb5720b54",
+   "digest": "e32982133d8ddd598b08c4eece59523320c381f181573dc7864fb075ed5e1160",
    "reason": "fuel.receiptTextPlaceholder is a plausible EXAMPLE receipt (ruling R5's exempt class): there is no canonical value behind it to convert.",
    "findings": [
     "fuel.mpgTip and fuel.electricTip name MPG and kWh/100mi unconditionally, and reminder.milesRequired says 'Miles until due' for every user."
