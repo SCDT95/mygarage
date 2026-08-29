@@ -134,8 +134,32 @@ const GALLONS_KM_CELSIUS: UnitSet = {
   temperature: 'c',
 }
 
+/**
+ * A client whose VOLUME is metric but whose SPEED and CONSUMPTION are not.
+ *
+ * The two sets above already mix SPEED against the binary system, but each of
+ * them leaves CONSUMPTION agreeing with it. The OBC pair needs one set where
+ * both of its quantities disagree at once, or a fix that reached only one of
+ * them would still pass.
+ */
+const LITRES_MPH_MPG: UnitSet = {
+  ...METRIC_UNITS,
+  speed: 'mph',
+  consumption: 'mpg_us',
+}
+
+/** The mirror: gallons, but km/h and L/100km. */
+const GALLONS_KMH_L100: UnitSet = {
+  ...IMPERIAL_UNITS,
+  speed: 'kmh',
+  consumption: 'l_100km',
+}
+
 /** The receipt draft the backend hands back, or null to leave the panel off. */
 const receipt = { draft: null as Record<string, unknown> | null }
+
+/** The drive session `/fuel/obc-suggestion` matches, canonical on the wire. */
+const obcSuggestion = { body: null as Record<string, unknown> | null }
 
 beforeEach(() => {
   vi.clearAllMocks()
@@ -148,7 +172,9 @@ beforeEach(() => {
             ],
           },
         })
-      : Promise.resolve({ data: vehicle })
+      : url.includes('/fuel/obc-suggestion')
+        ? Promise.resolve({ data: obcSuggestion.body })
+        : Promise.resolve({ data: vehicle })
   )
   mockedApiPost.mockImplementation((url: string) =>
     url.includes('parse-receipt')
@@ -157,6 +183,7 @@ beforeEach(() => {
   )
   mockedApiPut.mockResolvedValue({ data: {} })
   receipt.draft = null
+  obcSuggestion.body = null
   units = METRIC_UNITS
   // The outside-temp field lives inside the collapsed "More details" panel.
   localStorage.setItem('fuel_form:more_details_expanded', '1')
@@ -457,5 +484,269 @@ describe('FuelRecordForm — odometer and temperature follow their own tokens', 
     const payload = mockedApiPut.mock.calls[0][1] as Record<string, unknown>
     expect(payload.odometer_km).toBeUndefined()
     expect(payload.outside_temp_c).toBeUndefined()
+  })
+})
+
+describe('FuelRecordForm — the OBC pair follows the speed and consumption tokens', () => {
+  /**
+   * Task 4: the onboard-computer readings, per quantity.
+   *
+   * `obc_l_per_100km` and `obc_avg_speed_kmh` were hardcoded to their canonical
+   * units at every boundary — seed, label, suggestion preview, suggestion
+   * acceptance and submit — so an MPH client typed the 60 their trip computer
+   * showed and the app stored 60 km/h, 37.3 mph, a 38% error. The surface
+   * survived three phases because it reports to neither leg of the units gate:
+   * it holds no numeric literal and calls no formatter.
+   *
+   * Expected values are hand-written and derived in comments, never computed
+   * through the code under test:
+   *
+   *   100 km/h / 1.60934   = 62.137273665 mph, shown as 62 (mph has no decimals)
+   *   62 mph x 1.60934     = 99.77908 km/h, which is NOT what was stored
+   *   235.214 / 10         = 23.5214 MPG, shown as 23.5 (MPG carries one)
+   *   235.214 / 23.5       = 10.009106383 L/100km, which is NOT what was stored
+   *   60 mph x 1.60934     = 96.5604 km/h
+   *   235.214 / 30         = 7.84046666667 L/100km
+   */
+
+  it('★ EDIT: an MPG/MPH client reads both OBC values, and their labels, in its own units', async () => {
+    units = LITRES_MPH_MPG
+
+    render(
+      <FuelRecordForm
+        {...DEFAULT_PROPS}
+        record={
+          {
+            id: 21,
+            vin: VIN,
+            date: '2026-02-10',
+            obc_l_per_100km: 10,
+            obc_avg_speed_kmh: 100,
+          } as never
+        }
+      />
+    )
+    await waitFor(() => expect(mockedApiGet).toHaveBeenCalled())
+
+    expect(field('obc_l_per_100km').value).toBe('23.5')
+    expect(field('obc_avg_speed_kmh').value).toBe('62')
+
+    // A right number under a wrong label is the same-screen defect, and here it
+    // was worse than that: the label said km/h and the field MEANT km/h, so the
+    // reader had no way to tell their own unit was being ignored.
+    expect(labelText('obc_l_per_100km')).toBe('fuel.obcConsumption (MPG)')
+    expect(labelText('obc_avg_speed_kmh')).toBe('fuel.obcAvgSpeed (mph)')
+
+    // And the binary answer disagrees with both, so neither can be passing
+    // because the D8 collapse happened to agree with the tokens.
+    expect(binarySystemFor(units.volume)).toBe('metric')
+  })
+
+  it('★ EDIT: an untouched OBC pair posts the stored canonical values byte-identically', async () => {
+    // Display precision is lossy in BOTH quantities, so re-converting what the
+    // field reads would move a record every time a user opened it to fix the
+    // notes: 62 mph is 99.77908 km/h and 23.5 MPG is 10.009106383 L/100km.
+    units = LITRES_MPH_MPG
+
+    render(
+      <FuelRecordForm
+        {...DEFAULT_PROPS}
+        record={
+          {
+            id: 22,
+            vin: VIN,
+            date: '2026-02-10',
+            obc_l_per_100km: 10,
+            obc_avg_speed_kmh: 100,
+          } as never
+        }
+      />
+    )
+    await waitFor(() => expect(field('obc_avg_speed_kmh').value).toBe('62'))
+
+    fireEvent.submit(drawerForm())
+    await waitFor(() => expect(mockedApiPut).toHaveBeenCalled())
+
+    const payload = mockedApiPut.mock.calls[0][1] as Record<string, unknown>
+    expect(payload.obc_avg_speed_kmh).toBe(100)
+    expect(payload.obc_avg_speed_kmh).not.toBe(99.77908)
+    expect(payload.obc_l_per_100km).toBe(10)
+    expect(payload.obc_l_per_100km).not.toBe(10.009106383)
+  })
+
+  it('★ CREATE: the 60 mph an MPH client types is stored as 96.5604 km/h, not as 60', async () => {
+    // The headline defect, driven end to end.
+    units = LITRES_MPH_MPG
+
+    render(<FuelRecordForm {...DEFAULT_PROPS} />)
+    await waitFor(() => expect(mockedApiGet).toHaveBeenCalled())
+
+    fireEvent.change(field('date'), { target: { value: '2026-02-10' } })
+    fireEvent.change(field('obc_avg_speed_kmh'), { target: { value: '60' } })
+    fireEvent.change(field('obc_l_per_100km'), { target: { value: '30' } })
+    fireEvent.submit(drawerForm())
+
+    await waitFor(() => expect(mockedApiPost).toHaveBeenCalled())
+    const payload = postedPayload()
+    expect(payload.obc_avg_speed_kmh).toBe(96.5604)
+    expect(payload.obc_avg_speed_kmh).not.toBe(60)
+    expect(payload.obc_l_per_100km).toBe(7.84046666667)
+    expect(payload.obc_l_per_100km).not.toBe(30)
+  })
+
+  it('the MIRROR client, gallons with km/h and L/100km, reads and writes the other way', async () => {
+    // Same form, `system === 'imperial'`, and both quantities must ignore it.
+    // Without this case every assertion above could be satisfied by code that
+    // simply inverted the binary branch.
+    //
+    // ★ AND IT IS NOT A NO-OP FOR THIS CLIENT, which is the trap a mirror walks
+    // into: "the same units the column is in" is not "no boundary". Both stored
+    // values are chosen to prove it.
+    //
+    //   47.4 km/h is READ at the token's precision, which is zero decimals, so
+    //   the field shows 47 where the raw canonical showed 47.4. The origin is
+    //   what puts 47.4 back on the wire.
+    //   8.4 L/100km seeds as '8.40' (two decimals) while a react-hook-form
+    //   NUMBER field can only offer back '8.4'. On characters alone that reads
+    //   as an edit, which is why the untouched check compares the QUANTITY.
+    units = GALLONS_KMH_L100
+
+    render(
+      <FuelRecordForm
+        {...DEFAULT_PROPS}
+        record={
+          {
+            id: 23,
+            vin: VIN,
+            date: '2026-02-10',
+            obc_l_per_100km: 8.4,
+            obc_avg_speed_kmh: 47.4,
+          } as never
+        }
+      />
+    )
+    await waitFor(() => expect(mockedApiGet).toHaveBeenCalled())
+
+    expect(field('obc_l_per_100km').value).toBe('8.4')
+    expect(field('obc_avg_speed_kmh').value).toBe('47')
+    expect(labelText('obc_l_per_100km')).toBe('fuel.obcConsumption (L/100km)')
+    expect(labelText('obc_avg_speed_kmh')).toBe('fuel.obcAvgSpeed (km/h)')
+    expect(binarySystemFor(units.volume)).toBe('imperial')
+
+    fireEvent.submit(drawerForm())
+    await waitFor(() => expect(mockedApiPut).toHaveBeenCalled())
+    const payload = mockedApiPut.mock.calls[0][1] as Record<string, unknown>
+    expect(payload.obc_l_per_100km).toBe(8.4)
+    expect(payload.obc_avg_speed_kmh).toBe(47.4)
+    expect(payload.obc_avg_speed_kmh).not.toBe(47)
+  })
+
+  it('★ the SUGGESTION previews in the client\'s units and accepting it stores the canonical value exactly', async () => {
+    // The suggestion is canonical on the wire (`routes/fuel.py` reads the drive
+    // session's own L/100km and km/h). Previewing it raw put a metric number
+    // under an "L/100km:" caption over two fields the user reads in MPG and
+    // mph, and accepting it wrote that metric number straight into them.
+    //
+    // Accepting is a SEED, not an edit, so it must also move the origin: with
+    // the load-time origin left in place the next submit reads 23.5 as a change
+    // and converts it back to 10.009106383.
+    units = LITRES_MPH_MPG
+    obcSuggestion.body = {
+      session_id: 4,
+      ended_at: '2026-02-10T09:30:00',
+      distance_km: 120,
+      obc_l_per_100km: 10,
+      obc_avg_speed_kmh: 100,
+      obc_trip_duration_s: 3600,
+    }
+
+    render(<FuelRecordForm {...DEFAULT_PROPS} />)
+    await waitFor(() => expect(mockedApiGet).toHaveBeenCalled())
+
+    // The auto-fill button is gated on a fill-up timestamp.
+    fireEvent.change(field('date'), { target: { value: '2026-02-10' } })
+    fireEvent.change(field('filled_at_time'), { target: { value: '09:45' } })
+    fireEvent.click(screen.getByRole('button', { name: 'fuel.obcAutoFill' }))
+
+    // RENDERED TEXT, in the reader's own units. The em-dash absent markers went
+    // with it: `format` carries its own.
+    await waitFor(() =>
+      expect(document.getElementById('obc_suggestion_preview')?.textContent).toBe(
+        '23.5 MPG · 62 mph · s: 3600'
+      )
+    )
+
+    fireEvent.click(screen.getByRole('button', { name: 'fuel.obcSuggestionAccept' }))
+    await waitFor(() => expect(field('obc_l_per_100km').value).toBe('23.5'))
+    expect(field('obc_avg_speed_kmh').value).toBe('62')
+
+    fireEvent.submit(drawerForm())
+    await waitFor(() => expect(mockedApiPost).toHaveBeenCalled())
+    const payload = postedPayload()
+    expect(payload.obc_l_per_100km).toBe(10)
+    expect(payload.obc_l_per_100km).not.toBe(10.009106383)
+    expect(payload.obc_avg_speed_kmh).toBe(100)
+    expect(payload.obc_avg_speed_kmh).not.toBe(99.77908)
+  })
+
+  it('an absent suggestion value previews as N/A rather than as an em-dash', async () => {
+    // The three `?? '—'` markers on this line were the only em-dashes in the
+    // frontend src tree. `QuantityFormat.format` returns 'N/A' for an absent
+    // value, which is what UnitFormatter has always rendered, so routing the
+    // preview through the tokens removed them as a side effect.
+    units = LITRES_MPH_MPG
+    obcSuggestion.body = {
+      session_id: 5,
+      ended_at: '2026-02-10T09:30:00',
+      distance_km: null,
+      obc_l_per_100km: null,
+      obc_avg_speed_kmh: null,
+      obc_trip_duration_s: null,
+    }
+
+    render(<FuelRecordForm {...DEFAULT_PROPS} />)
+    await waitFor(() => expect(mockedApiGet).toHaveBeenCalled())
+    fireEvent.change(field('date'), { target: { value: '2026-02-10' } })
+    fireEvent.change(field('filled_at_time'), { target: { value: '09:45' } })
+    fireEvent.click(screen.getByRole('button', { name: 'fuel.obcAutoFill' }))
+
+    await waitFor(() =>
+      expect(document.getElementById('obc_suggestion_preview')?.textContent).toBe(
+        'N/A · N/A · s: N/A'
+      )
+    )
+    expect(document.getElementById('obc_suggestion_preview')?.textContent).not.toContain('—')
+  })
+
+  it('clearing both OBC fields posts nothing rather than a converted zero', async () => {
+    // The null branch of both boundaries. A blank field that posts 0 through a
+    // conversion is worse than one that posts 0: 0 mph would arrive as 0 km/h
+    // and 0 MPG has no finite reading at all.
+    units = LITRES_MPH_MPG
+
+    render(
+      <FuelRecordForm
+        {...DEFAULT_PROPS}
+        record={
+          {
+            id: 24,
+            vin: VIN,
+            date: '2026-02-10',
+            obc_l_per_100km: 10,
+            obc_avg_speed_kmh: 100,
+          } as never
+        }
+      />
+    )
+    await waitFor(() => expect(field('obc_avg_speed_kmh').value).toBe('62'))
+
+    fireEvent.change(field('obc_l_per_100km'), { target: { value: '' } })
+    fireEvent.change(field('obc_avg_speed_kmh'), { target: { value: '' } })
+    fireEvent.submit(drawerForm())
+    await waitFor(() => expect(mockedApiPut).toHaveBeenCalled())
+
+    const payload = mockedApiPut.mock.calls[0][1] as Record<string, unknown>
+    expect(payload.obc_l_per_100km).toBeUndefined()
+    expect(payload.obc_avg_speed_kmh).toBeUndefined()
   })
 })

@@ -25,7 +25,12 @@ import { useAuth } from '../contexts/AuthContext'
 import { UnitConverter, UnitFormatter } from '../utils/units'
 import { toCanonicalLiters, priceToDisplay, priceToCanonical, readNumber } from '../utils/decimalSafe'
 import { useUnitFormat } from '../hooks/useUnitFormat'
-import { canonicalFromUnitField, seedUnitField, type UnitFieldOrigin } from '../utils/unitFormat'
+import {
+  canonicalFromUnitField,
+  seedUnitField,
+  type QuantityFormat,
+  type UnitFieldOrigin,
+} from '../utils/unitFormat'
 import { useOnUserEdit } from '../hooks/useOnUserEdit'
 import { getUsageTracking } from '../utils/usageTracking'
 import CurrencyInputPrefix from './common/CurrencyInputPrefix'
@@ -199,6 +204,16 @@ export default function FuelRecordForm({ vin, record, onClose, onSuccess }: Fuel
    * origin. Volume and price are deliberately NOT here; they are react-hook-
    * form number fields whose own round trip Task 2 already made exact.
    *
+   * ★ The setter exists for ONE path, and it is not a re-render. The OBC
+   * suggestion arrives canonical from the API and `acceptObcSuggestion` writes
+   * it into two fields the user reads in their own units, which makes that a
+   * second SEED rather than an edit. Leaving the load-time origin in place
+   * there would make the very next submit read the rounded display as a change
+   * and convert it back: accepting 8 L/100km would store 8.00047619048 for an MPG
+   * client, which is the same display-precision drift the origin exists to
+   * stop. Nothing else calls it, so the four origins still move only when the
+   * value behind them does.
+   *
    * ★ The spelling gap this used to rest a precision pin on is now closed in
    * the helper. `canonicalFromUnitField` decided "the user did not touch this"
    * by string comparison against `toInputValue`, i.e. `toFixed(precision)`.
@@ -211,12 +226,16 @@ export default function FuelRecordForm({ vin, record, onClose, onSuccess }: Fuel
    * FuelRecordForm.mixedUnits.test.tsx is kept as documentation of the
    * displayed precision, not as the thing holding this together.
    */
-  const [unitOrigins] = useState<{
+  const [unitOrigins, setUnitOrigins] = useState<{
     odometer_km: UnitFieldOrigin
     outside_temp_c: UnitFieldOrigin
+    obc_l_per_100km: UnitFieldOrigin
+    obc_avg_speed_kmh: UnitFieldOrigin
   }>(() => ({
     odometer_km: seedUnitField(readNumber(record?.odometer_km), u.distance),
     outside_temp_c: seedUnitField(readNumber(record?.outside_temp_c), u.temperature),
+    obc_l_per_100km: seedUnitField(readNumber(record?.obc_l_per_100km), u.consumption),
+    obc_avg_speed_kmh: seedUnitField(readNumber(record?.obc_avg_speed_kmh), u.speed),
   }))
 
   const {
@@ -278,8 +297,12 @@ export default function FuelRecordForm({ vin, record, onClose, onSuccess }: Fuel
       driver_user_id: readNumber(record?.driver_user_id),
       driver_name_freetext: record?.driver_name_freetext || '',
       outside_temp_c: unitOrigins.outside_temp_c.canonical ?? undefined,
-      obc_l_per_100km: readNumber(record?.obc_l_per_100km),
-      obc_avg_speed_kmh: readNumber(record?.obc_avg_speed_kmh),
+      // Seeded in `units.consumption` and `units.speed`, and the submit
+      // converts back through the SAME adapters. Storage is L/100km and km/h;
+      // an MPH client reading 100 km/h as 60 and having 60 stored back was a
+      // 38% error in a field nothing on this screen even hinted was metric.
+      obc_l_per_100km: readNumber(unitOrigins.obc_l_per_100km.display),
+      obc_avg_speed_kmh: readNumber(unitOrigins.obc_avg_speed_kmh.display),
       // Phase 3.7 — field accepts HH:MM or HH:MM:SS strings as well as
       // raw seconds; default to the stored canonical seconds as a
       // string so users can either edit verbatim or paste a fresh
@@ -421,13 +444,44 @@ export default function FuelRecordForm({ vin, record, onClose, onSuccess }: Fuel
     }
   }
 
+  /**
+   * Re-seed one OBC field from a canonical suggestion, in the client's units.
+   *
+   * The suggestion is canonical by contract (`routes/fuel.py` reads the drive
+   * session's own L/100km and km/h), so accepting it is a SEED and not an edit:
+   * it needs the load-time conversion AND a fresh origin. Without the origin
+   * the next submit reads the rounded display as a change and converts it back,
+   * which for an MPG client turns an accepted 8 L/100km into a stored 8.00047619048.
+   *
+   * A quantity with no display for the suggested value writes nothing rather
+   * than clearing the field: `mpg` is reciprocal, so a canonical zero has no
+   * finite reading and `toInputValue` returns `''`.
+   *
+   * @param name The form field to seed.
+   * @param canonical The suggested value, in canonical units.
+   * @param quantity The formatter for that field's quantity.
+   */
+  const acceptObcField = (
+    name: 'obc_l_per_100km' | 'obc_avg_speed_kmh',
+    canonical: number,
+    quantity: QuantityFormat
+  ) => {
+    const origin = seedUnitField(canonical, quantity)
+    const display = readNumber(origin.display)
+    if (display === undefined) return
+    setValue(name, display, { shouldValidate: true })
+    setUnitOrigins((prev) => ({ ...prev, [name]: origin }))
+  }
+
   const acceptObcSuggestion = () => {
     if (!obcSuggestion) return
-    if (obcSuggestion.obc_l_per_100km != null) {
-      setValue('obc_l_per_100km', Number(obcSuggestion.obc_l_per_100km))
+    const suggestedConsumption = readNumber(obcSuggestion.obc_l_per_100km)
+    if (suggestedConsumption !== undefined) {
+      acceptObcField('obc_l_per_100km', suggestedConsumption, u.consumption)
     }
-    if (obcSuggestion.obc_avg_speed_kmh != null) {
-      setValue('obc_avg_speed_kmh', Number(obcSuggestion.obc_avg_speed_kmh))
+    const suggestedSpeed = readNumber(obcSuggestion.obc_avg_speed_kmh)
+    if (suggestedSpeed !== undefined) {
+      acceptObcField('obc_avg_speed_kmh', suggestedSpeed, u.speed)
     }
     if (obcSuggestion.obc_trip_duration_s != null) {
       // Field is now a string (Phase 3.7); coerce the suggested seconds.
@@ -554,6 +608,12 @@ export default function FuelRecordForm({ vin, record, onClose, onSuccess }: Fuel
     }
 
     const odometerTyped = readNumber(data.odometer_km)
+    // Same shape as the odometer above, and for the same two reasons: both are
+    // `registerDecimal` fields whose value can be the INVALID_NUMBER symbol
+    // that throws on implicit coercion, and both hold a DISPLAY value that the
+    // origin has to arbitrate before it becomes canonical.
+    const obcConsumptionTyped = readNumber(data.obc_l_per_100km)
+    const obcSpeedTyped = readNumber(data.obc_avg_speed_kmh)
 
     try {
       // Convert user-entered values to canonical metric (SI) for the API.
@@ -614,8 +674,23 @@ export default function FuelRecordForm({ vin, record, onClose, onSuccess }: Fuel
         payment_method: data.payment_method,
         trip_type: data.trip_type,
         outside_temp_c: data.outside_temp_c,
-        obc_l_per_100km: data.obc_l_per_100km,
-        obc_avg_speed_kmh: data.obc_avg_speed_kmh,
+        // Back through `units.consumption` and `units.speed`. An untouched
+        // field returns the canonical value it was seeded from: 100 km/h shows
+        // as 62 mph and 62 mph converts back to 99.77908 km/h, so a user who
+        // opened a record to fix its notes would otherwise shave the recorded
+        // average speed every time.
+        obc_l_per_100km:
+          canonicalFromUnitField(
+            String(obcConsumptionTyped ?? ''),
+            unitOrigins.obc_l_per_100km,
+            u.consumption
+          ) ?? undefined,
+        obc_avg_speed_kmh:
+          canonicalFromUnitField(
+            String(obcSpeedTyped ?? ''),
+            unitOrigins.obc_avg_speed_kmh,
+            u.speed
+          ) ?? undefined,
         // The backend pre-validator (app/schemas/fuel.py) accepts the
         // raw HH:MM/HH:MM:SS string and parses it to seconds. The
         // openapi-generated FuelRecordCreate still types this as
@@ -1165,10 +1240,21 @@ export default function FuelRecordForm({ vin, record, onClose, onSuccess }: Fuel
 
                 {/* OBC subsection — box + buttons retokenized (G4c). B9: these three are
                     genuine USER-INPUT fields (not display-of-canonical), so they compose
-                    <Input> inside <Field> (M1) with FIXED canonical unit labels (B9 — see
-                    the note after this block). The two numeric fields carry unit="L/100km"
-                    / unit="km/h" because the round-trip is canonical-symmetric (no
-                    conversion either direction). */}
+                    <Input> inside <Field> (M1).
+
+                    The two numeric ones are UNIT-BEARING. Storage is L/100km and km/h,
+                    but the reading the user copies off their trip computer is in
+                    `units.consumption` and `units.speed`, so the labels come from those
+                    tokens and both fields go through the origin-preserving pair. This
+                    note used to say the round trip was canonical-symmetric and that no
+                    conversion was needed in either direction; that claim is what let an
+                    MPH client type 60 and have 60 km/h stored, a 38% error on a field
+                    nothing on the screen said was metric. It survived three phases
+                    because it is true of neither leg of the units gate: the surface
+                    holds no numeric literal and calls no formatter.
+
+                    `obc_trip_duration_s` genuinely is invariant — seconds are not one of
+                    the ten quantities — so it keeps a bare label and its own rendering. */}
                 <div className="rounded-md border border-border bg-surface-2 p-3 space-y-3">
                   <div className="flex items-center justify-between">
                     <h4 className="text-sm font-medium text-text">{t('fuel.obcTitle')}</h4>
@@ -1188,10 +1274,17 @@ export default function FuelRecordForm({ vin, record, onClose, onSuccess }: Fuel
 
                   {obcSuggestion && (
                     <div className="rounded-md border border-(--accent-line) bg-(--accent-soft) p-2 flex items-center justify-between gap-2">
-                      <div className="text-xs text-text">
-                        L/100km: {obcSuggestion.obc_l_per_100km ?? '—'} · km/h:{' '}
-                        {obcSuggestion.obc_avg_speed_kmh ?? '—'} · s:{' '}
-                        {obcSuggestion.obc_trip_duration_s ?? '—'}
+                      {/* The suggestion is canonical on the wire, so it is
+                          rendered through the same tokens the fields below are
+                          labelled with — a preview in L/100km over a field
+                          labelled MPG is the same-screen disagreement, and it
+                          is what the user is being asked to approve. `format`
+                          carries its own absent marker, which is why the three
+                          em-dashes that used to be here are gone. */}
+                      <div id="obc_suggestion_preview" className="text-xs text-text">
+                        {u.consumption.format(readNumber(obcSuggestion.obc_l_per_100km))} ·{' '}
+                        {u.speed.format(readNumber(obcSuggestion.obc_avg_speed_kmh))} · s:{' '}
+                        {obcSuggestion.obc_trip_duration_s ?? 'N/A'}
                       </div>
                       <div className="flex gap-1">
                         <Button size="sm" variant="primary" onClick={acceptObcSuggestion}>{t('fuel.obcSuggestionAccept')}</Button>
@@ -1203,10 +1296,10 @@ export default function FuelRecordForm({ vin, record, onClose, onSuccess }: Fuel
                   {obcMessage && <p className="text-xs text-text-mute">{obcMessage}</p>}
 
                   <div className="grid grid-cols-3 gap-2">
-                    <Field id="obc_l_per_100km" label={t('fuel.obcConsumption')} unit="L/100km">
+                    <Field id="obc_l_per_100km" label={t('fuel.obcConsumption')} unit={u.consumption.label}>
                       <NumberInput id="obc_l_per_100km" {...registerDecimal(register, 'obc_l_per_100km')} disabled={isSubmitting} />
                     </Field>
-                    <Field id="obc_avg_speed_kmh" label={t('fuel.obcAvgSpeed')} unit="km/h">
+                    <Field id="obc_avg_speed_kmh" label={t('fuel.obcAvgSpeed')} unit={u.speed.label}>
                       <NumberInput id="obc_avg_speed_kmh" {...registerDecimal(register, 'obc_avg_speed_kmh')} disabled={isSubmitting} />
                     </Field>
                     <Field id="obc_trip_duration_s" label={t('fuel.obcDuration')}>
