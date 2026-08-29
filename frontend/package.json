@@ -22,6 +22,7 @@
     "enumerate:fuel-consumption": "bun run scripts/enumerate-fuel-consumption.ts",
     "enumerate:unit-disagreements": "bun run scripts/enumerate-unit-disagreements.ts",
     "enumerate:unit-copy": "bun run scripts/enumerate-unit-copy.ts",
+    "enumerate:doc-unit-claims": "bun run scripts/enumerate-doc-unit-claims.ts",
     "validate:units-corpus": "python3 scripts/units_gate_corpus.py",
     "validate:units-selftest": "python3 scripts/units_gate_selftest.py",
     "validate:units-manifest": "bun run scripts/validate-units-manifest.ts",
