@@ -781,10 +781,34 @@ describe('FuelRecordForm — the OBC pair follows the speed and consumption toke
     expect(previewText()).not.toContain('—')
   })
 
-  it('clearing both OBC fields posts nothing rather than a converted zero', async () => {
-    // The null branch of both boundaries. A blank field that posts 0 through a
-    // conversion is worse than one that posts 0: 0 mph would arrive as 0 km/h
-    // and 0 MPG has no finite reading at all.
+  it('clearing both OBC fields OMITS the keys, which on an UPDATE leaves the stored values in place', async () => {
+    // ★ WHAT THIS PINS, AND WHAT IT DOES NOT BLESS. It was first written as
+    // "posts nothing rather than a converted zero", which read as approval.
+    // Read the assertions instead: they say the two keys are ABSENT from the
+    // payload, and absence is not neutral on this route.
+    // `fuel_service.update_fuel_record` does `model_dump(exclude_unset=True)`
+    // (app/services/fuel_service.py:799), so an omitted key means KEEP THE OLD
+    // VALUE. A user who clears an OBC reading and saves gets a success and
+    // finds the reading still there on reopening. The clear cannot clear.
+    //
+    // The half that is genuinely right, and the reason the case exists: a
+    // blank unit-bearing field must not post a CONVERTED ZERO. `Number('')` is
+    // 0, so without `canonicalFromUnitField`'s blank arm an empty speed field
+    // would post 0 km/h as a real reading. It posts nothing instead.
+    //
+    // The other half is a defect, pre-existing and NOT this task's: the same
+    // `?? undefined` shape covers `odometer_km` and `outside_temp_c`, and an
+    // earlier task's test ("a blank odometer and a cleared temperature post
+    // nothing rather than zero") reads the same way. The fix is 30 lines above
+    // in this same payload, on `station_address_book_id`: send `null`, not
+    // `undefined`. Sweeping it across every nullable field in every form's
+    // update payload is update semantics, not units, and is routed as its own
+    // work. Until then this test's name is the disclosure.
+    //
+    // An MPG client typing `0` is a FACET of the same defect, not a separate
+    // one: `mpg` is reciprocal, `toCanonical(0)` is null, the key is omitted,
+    // and the previous consumption survives the save. The field keeps showing
+    // the typed 0, so nothing on screen says the save did not take.
     units = LITRES_MPH_MPG
 
     render(

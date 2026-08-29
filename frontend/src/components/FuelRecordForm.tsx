@@ -58,10 +58,16 @@ export function joinFilledAt(date: string, time: string): string {
   return `${date}T${time}`
 }
 
+/**
+ * The fields this form CONSUMES from `/fuel/obc-suggestion`, not the wire shape.
+ *
+ * `distance_km` was declared here and never read; the response still carries it
+ * and `ObcSuggestionResponse` in the generated types is where the wire contract
+ * lives. A field nothing reads is a claim that something does.
+ */
 interface ObcSuggestion {
   session_id: number
   ended_at: string
-  distance_km: number | string | null
   obc_l_per_100km: number | string | null
   obc_avg_speed_kmh: number | string | null
   obc_trip_duration_s: number | null

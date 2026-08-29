@@ -533,7 +533,7 @@
   {
    "path": "src/components/FuelRecordForm.tsx",
    "disposition": "audited",
-   "digest": "1997be8584bb2d2a7f6d72ac579f8e4d2c869ad71d9c7d2f33058b186117c7f2",
+   "digest": "7d6f4153f046ca42b8857475763379d378da3f5b2027863df8ac386f8a56bcf1",
    "reason": "gate-detectable unit decisions, recorded not asserted clean (plan 3b task 1 ordering)",
    "tests": [
     "components/__tests__/FuelRecordForm.mixedUnits.test.tsx",
