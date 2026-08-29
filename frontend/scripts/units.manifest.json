@@ -553,7 +553,7 @@
   {
    "path": "src/components/HoursRecordForm.tsx",
    "disposition": "no unit behaviour",
-   "digest": "61c2b581925f758cd8b45661972692ee5e4a98106f20355f1bede0d985665993",
+   "digest": "a242bab5fd9b7d4d4e2436650d13d9a5851852fa09fe01195391a7764f2d8957",
    "reason": "no unit behaviour: dispositioned under the CORRECTED scan: every unit stem, token, quantity name and canonical field suffix this codebase uses, matched case-insensitively with NO word boundary. The earlier word-boundary version was a floor (it called AnalyticsHelpModal.tsx clean while it renders \"Average MPG:\" to every user) and it was superseded before any disposition in this file was written. This file matched 4 of them; every hit was read in context and none is a unit decision or a unit-bearing quantity."
   },
   {
@@ -2289,7 +2289,7 @@
   {
    "path": "src/schemas/odometer.ts",
    "disposition": "audited",
-   "digest": "3114527e52d98dc7e1646a56fbfc61bfc5732340376f094c672bf2832079c51b",
+   "digest": "76475c51271f77642892607cb269b43a120895d57bbb3e06f22f9a0238f985b2",
    "reason": "as schemas/shared.ts",
    "tests": [
     "schemas/__tests__/odometer.test.ts"
@@ -2322,7 +2322,7 @@
   {
    "path": "src/schemas/shared.ts",
    "disposition": "audited",
-   "digest": "cea8a020a1314bd506cc76a61000d866069f93c01255b3f4d8267f72e86fa2e0",
+   "digest": "bcc0ce9fdc56011c95d3bdbba3e0dd7590208610b65b107d868ea6dc12f1562d",
    "reason": "numeric field factories; the bounds are dimensionless ranges applied to a DISPLAY value and no conversion happens in the schema layer",
    "tests": [
     "schemas/__tests__/shared.test.ts"

@@ -96,8 +96,9 @@ export const makeNumericField = (t: TFunction, opts: NumericFieldOptions) =>
 
 // Numeric validators - required number fields
 // Odometer stored in km (Decimal) on backend; form accepts decimals. Imperial
-// users enter miles (displayed via UnitConverter) and the submit path converts
-// to km via toCanonicalKm.
+// users enter miles (displayed via `u.distance`, the resolved-set formatter)
+// and the submit path converts to km via `canonicalFromUnitField`, not
+// toCanonicalKm, which this path no longer calls.
 export const makeOdometerSchema = (t: TFunction) =>
   makeNumericField(t, {
     min: 0,
