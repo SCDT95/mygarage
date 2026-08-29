@@ -69,9 +69,13 @@ Both halves of the app convert, and they mirror each other module for module.
 | Derived rates | `app/utils/unit_derived.py` | (in `unitFormat.ts`) |
 | Per-render context | `app/utils/render_context.py` | `useUnitFormat()` |
 
-The conversion layer returns numbers and never a string; the composition layer
-returns strings and never does arithmetic. Keeping them apart is what lets a
-chart, a form field, a CSV column and a PDF share one conversion.
+The conversion layer returns numbers and never a string. The composition layer
+returns strings and does no arithmetic ON A SINGLE QUANTITY: it asks an adapter.
+The one place it computes is a DERIVED rate, where two adapters have to be
+combined and there is no single adapter to ask (`formatVolumePerDistance`
+multiplies a converted volume by the distance adapter's own factor). Keeping the
+layers apart is what lets a chart, a form field, a CSV column and a PDF share one
+conversion.
 
 The backend converts for everything it renders itself: PDF reports
 (`app/utils/pdf_*.py`), notifications

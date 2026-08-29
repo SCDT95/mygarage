@@ -130,21 +130,35 @@ export function useUnitPreference(): UnitPreference {
     getGallonStandard,
     getGallonStandardServerSnapshot,
   );
-  // ★ Subscribed for the REPAINT, not for a value this hook returns.
+  // ★ Subscribed for a REPAINT that nothing needs any more. READ THE DATE.
   //
-  // `useResolvedGallonSync` applies the signed-in account's gallon to
-  // `UnitConverter`'s mutable statics and deliberately does NOT write the
-  // browser-owned store, so the subscription above never fires for it. Every
-  // consumption and fuel-rate reader still takes the binary `system` and reads
-  // those statics, which means the fix would change what the next conversion
-  // returns and repaint nothing: a mounted badge kept rendering US MPG beside a
-  // volume column that had already moved to imperial gallons.
+  // Why it was added: `useResolvedGallonSync` applies the signed-in account's
+  // gallon to `UnitConverter`'s mutable statics and deliberately does NOT write
+  // the browser-owned store, so the subscription above never fired for it. Every
+  // consumption and fuel-rate reader took the binary `system` and read those
+  // statics, so the dispatch fix changed what the next conversion returned and
+  // repainted nothing: a mounted badge kept rendering US MPG beside a volume
+  // column that had already moved to imperial gallons. This hook is the one call
+  // every unit-rendering component makes, so subscribing HERE reached all of them
+  // without touching one of them.
   //
-  // This hook is the one call every unit-rendering component already makes, so
-  // subscribing HERE reaches all of them without touching one of them, which is
-  // the same argument that made the dispatch fix the right shape. The value is
-  // discarded because `gallonStandard` below is resolved per rung, not read
-  // from the converter.
+  // ★ WHAT CHANGED, AND THIS SENTENCE IS THE POINT: after plan 3b task 6b, ZERO
+  // readers take that path. Consumption and the fuel rate resolve through
+  // `units.consumption` and `units.volume`, which the adapter table builds from
+  // `readonly` constants, so no screen can observe the mutable statics at all.
+  // `gallonsToLiters`, `litersToGallons`, `mpgToL100km`, `l100kmToMpg`,
+  // `lPer100kmToMpg` and `toCanonicalMetricString` have no production caller
+  // between them, and this subscription is the ONLY consumer of
+  // `subscribeToConverterGallon`. The statics still move (the store and
+  // `useResolvedGallonSync` write them); nothing reads them.
+  //
+  // So this is a closed loop, kept deliberately rather than by oversight: cutting
+  // it reaches `App`'s provider, `gallonStandardStore`, `utils/units.ts` and three
+  // test files, it is gallon-standard machinery rather than the consumption
+  // family task 6b owned, and neither units gate can see a subscription. Whoever
+  // retires `imperial_gallon_standard` should take it. The value is discarded
+  // because `gallonStandard` below is resolved per rung, not read from the
+  // converter.
   useSyncExternalStore(
     subscribeToConverterGallon,
     getConverterGallon,

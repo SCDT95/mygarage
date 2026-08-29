@@ -97,7 +97,18 @@ export interface QuantityFormat {
    * parameter to decline.)
    */
   formatPrimary(canonical: number | null | undefined): string
-  /** Canonical to a labelled string, with the counterpart when show-both is on. */
+  /**
+   * Canonical to a labelled string, with the counterpart when show-both is on.
+   *
+   * ★ The short-circuit below is about an ABSENT PRIMARY, not about a complete
+   * pair, so a present primary whose COUNTERPART is undefined renders
+   * `'0.00 L/100km (N/A)'`. That is reachable exactly once per quantity: a
+   * linear primary at zero paired with a reciprocal counterpart. It is the
+   * honest reading (the primary really is zero and the counterpart really has
+   * no finite value) and `unitFormatFuelRate.test.ts` pins it, because an
+   * unasserted boundary is one somebody later "fixes" into `'N/A'` and loses a
+   * true number.
+   */
   format(canonical: number | null | undefined): string
 }
 

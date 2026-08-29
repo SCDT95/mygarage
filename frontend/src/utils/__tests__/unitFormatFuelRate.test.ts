@@ -168,6 +168,26 @@ describe('consumption, through the resolved token', () => {
     expect(makeUnitFormat(METRIC).consumption.formatPrimary(0)).toBe('0.00 L/100km')
   })
 
+  it('★ composes a HALF-ABSENT pair at zero, and that is the honest reading', () => {
+    // The asymmetry above meets show-both here and the result is
+    // '0.00 L/100km (N/A)': the primary is a real value, so the null
+    // short-circuit correctly declines to fire, and the counterpart genuinely
+    // has none. Task 6b's changelog note said consumption keeps `N/A` at zero
+    // "by construction", which is true of the RECIPROCAL tokens only; a metric
+    // reader with show-both on sees this string, and it was neither documented
+    // nor asserted until fix round 1.
+    //
+    // Reachable rather than theoretical: the backend's `calculate_l_per_100km`
+    // guards `liters > 0` and `distance_km > 0` and then rounds to two places,
+    // so a bad odometer entry can round to 0.00.
+    expect(makeUnitFormat(METRIC, true).consumption.format(0)).toBe('0.00 L/100km (N/A)')
+    // And one ulp away it is a normal pair, so the line above is the boundary
+    // case rather than a broken counterpart.
+    expect(makeUnitFormat(METRIC, true).consumption.format(0.001)).toBe(
+      '0.00 L/100km (235,214.0 MPG)',
+    )
+  })
+
   it('returns N/A for an absent or unreadable value', () => {
     expect(makeUnitFormat(METRIC).consumption.formatPrimary(null)).toBe('N/A')
     expect(makeUnitFormat(IMPERIAL).consumption.formatPrimary(undefined)).toBe('N/A')

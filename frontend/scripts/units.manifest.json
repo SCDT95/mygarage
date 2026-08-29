@@ -1923,8 +1923,8 @@
   {
    "path": "src/hooks/useUnitPreference.ts",
    "disposition": "audited",
-   "digest": "e1330408c2f233161a8bd40f5fa9233b665f219ca2b3ec692e5e2cee5534ebb4",
-   "reason": "resolves the unit set; `system` is the collapsed binary this phase is migrating away from, which is the hook working as documented rather than a defect in it",
+   "digest": "e22f34c7158549957cff2219b05c84bbee77fe140d935b526ed422cf44e96408",
+   "reason": "resolves the unit set; `system` is the collapsed binary this phase is migrating away from, which is the hook working as documented rather than a defect in it Fix round 1 corrected the rationale above the `subscribeToConverterGallon` subscription: it still said every consumption and fuel-rate reader takes the binary system and reads `UnitConverter`'s mutable statics, which task 6b made false for all of them. The subscription is kept and is now documented as a closed loop with no consumer, for the gallon-standard retirement to take.",
    "tests": [
     "hooks/__tests__/useUnitPreference.custom.test.tsx",
     "hooks/__tests__/useUnitPreference.precedence.test.tsx"
@@ -2731,8 +2731,8 @@
   {
    "path": "src/utils/unitFormat.ts",
    "disposition": "audited",
-   "digest": "de1a1f34e9fda4a09a895d77f67fe61a9a52b0eea8ac2f7f29a8a67cf59c3eee",
-   "reason": "makeUnitFormat plus the origin-preserving pair seedUnitField / canonicalFromUnitField, and resolvedUnitSummary, which lists a resolved set's ten labels for the settings description (plan 3b R1). Re-read for task 6: formatPrimary renders one unit even when show-both is on, because the binary distance API took the counterpart as an argument and eleven read sites passed false to suppress it. It also now holds formatVolumePerDistance and volumePerDistanceLabel, moved out of utils/units.ts by task 6: both halves of that compound unit come from adapterFor, where the retired pair derived the DISTANCE half from units.volume. That collapse is the category the units gate deliberately cannot detect (call-site identical to the correct formatVolume(units)), so it was carried here rather than in the baseline. Task 6b added `formatFuelRate(units, lPerHr, showBoth)` and `fuelRateLabel(units)`: a fuel rate is volume per a DIMENSIONLESS engine hour, so it composes the volume adapter with a fixed `/hr` suffix rather than being an eleventh quantity, mirroring `backend/app/utils/unit_derived.py::format_fuel_rate`. The suffix is applied to each representation independently, never to a completed show-both string, which is why it cannot be a `QuantityFormat` member.",
+   "digest": "c60f438b7860eaabf517eeb80b258277c09366d6f032c95cdf1e0cb34e8d59da",
+   "reason": "makeUnitFormat plus the origin-preserving pair seedUnitField / canonicalFromUnitField, and resolvedUnitSummary, which lists a resolved set's ten labels for the settings description (plan 3b R1). Re-read for task 6: formatPrimary renders one unit even when show-both is on, because the binary distance API took the counterpart as an argument and eleven read sites passed false to suppress it. It also now holds formatVolumePerDistance and volumePerDistanceLabel, moved out of utils/units.ts by task 6: both halves of that compound unit come from adapterFor, where the retired pair derived the DISTANCE half from units.volume. That collapse is the category the units gate deliberately cannot detect (call-site identical to the correct formatVolume(units)), so it was carried here rather than in the baseline. Task 6b added `formatFuelRate(units, lPerHr, showBoth)` and `fuelRateLabel(units)`: a fuel rate is volume per a DIMENSIONLESS engine hour, so it composes the volume adapter with a fixed `/hr` suffix rather than being an eleventh quantity, mirroring `backend/app/utils/unit_derived.py::format_fuel_rate`. The suffix is applied to each representation independently, never to a completed show-both string, which is why it cannot be a `QuantityFormat` member. `format`'s docstring now states the one reachable HALF-ABSENT composition: a linear primary at zero paired with a reciprocal counterpart renders '0.00 L/100km (N/A)', because the null short-circuit is about an absent PRIMARY. Pinned by unitFormatFuelRate.test.ts so nobody 'fixes' it into 'N/A' and loses a true number.",
    "tests": [
     "utils/__tests__/unitFormat.test.ts",
     "utils/__tests__/unitFormatFuelRate.test.ts"
