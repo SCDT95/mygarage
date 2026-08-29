@@ -270,18 +270,6 @@
   "count": 1
  },
  {
-  "file": "src/utils/supplyUnits.ts",
-  "kind": "compare",
-  "text": "system === 'imperial'",
-  "count": 1
- },
- {
-  "file": "src/utils/supplyUnits.ts",
-  "kind": "compare",
-  "text": "system === 'metric'",
-  "count": 2
- },
- {
   "file": "src/utils/units.ts",
   "kind": "token-branch",
   "text": "mass: units.mass === 'kg'",

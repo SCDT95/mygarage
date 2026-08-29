@@ -2823,17 +2823,10 @@
   {
    "path": "src/utils/supplyUnits.ts",
    "disposition": "audited",
-   "digest": "4a291c8374130372998ed2eee58f25b22cf907ecc51ae88ca1b141e3f272a82d",
-   "reason": "gate-detectable unit decisions, recorded not asserted clean (plan 3b task 1 ordering)",
+   "digest": "3634114940085240c4c5338b75e13eda2f36d3f537c99ee277ea256a386fad6f",
+   "reason": "R3 ruled per comparison, all three exempt: `system` reaching this file is `binarySystemFor(units.volume)` on every rung (pinned by hooks/__tests__/useUnitPreference.precedence.test.tsx), and volume is the quantity supplies measure, so each comparison already reads the resolved token. Recorded structurally as three `units-exempt:` pragmas, which is why this file no longer appears in the units gate baseline.",
    "tests": [
     "utils/__tests__/supplyUnits.test.ts"
-   ],
-   "findings": [
-    "compare x3 (units gate baseline)",
-    "R3: D8 exempts supplies from the quarts conversion, which says nothing about the comparisons"
-   ],
-   "owners": [
-    "task 5"
    ]
   },
   {
