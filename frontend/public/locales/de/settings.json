@@ -27,8 +27,7 @@
     "imperial": "Imperial",
     "metric": "Metrisch",
     "resolvedDescription": "Verwendete Einheiten: {{units}}",
-    "showBoth": "Beide Einheiten anzeigen",
-    "showBothDescription": "Werte sowohl imperial als auch metrisch anzeigen (z. B. \"25 MPG (9.4 L/100km)\")"
+    "showBoth": "Beide Einheiten anzeigen"
   },
   "language": {
     "label": "Sprache",
@@ -328,9 +327,7 @@
       "warrantyExpiringLabel": "Garantie läuft ab",
       "warrantyExpiringDesc": "Benachrichtigen, bevor die Garantie abläuft",
       "milestonesLabel": "Kilometerstand-Meilensteine",
-      "milestonesDesc": "Benachrichtigen beim Erreichen bedeutender Meilensteine des Kilometerstands (z. B. 100k Meilen)",
       "daysBefore": "Tage vorher",
-      "milesBefore": "Meilen vorher",
       "advanced": "Erweitert",
       "advancedDesc": "Wiederholungsversuch-Einstellungen für Benachrichtigungen mit hoher Priorität",
       "retryAttempts": "Wiederholungsversuche",

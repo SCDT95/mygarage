@@ -59,6 +59,19 @@ import type { UnitSet } from '@/types/units'
 /** The composed description, as the component asks for it. */
 const DESCRIPTION_KEY = 'units.resolvedDescription'
 
+/**
+ * The show-both toggle's description, which task 6b also made composed.
+ *
+ * It used to read 'Display values in both imperial and metric (e.g., "25 MPG
+ * (9.4 L/100km)")'. Both halves were wrong for a resolved set: the counterpart
+ * is chosen per QUANTITY rather than per system, and the example was fixed in
+ * one direction, so a metric reader was shown the reverse of what the toggle
+ * would actually do to their screen. The example is now rendered through their
+ * own consumption formatter with show-both ON, which is the toggle's effect
+ * demonstrated rather than described.
+ */
+const SHOW_BOTH_KEY = 'units.showBothDescription'
+
 /** Hand-written from `UNIT_ADAPTERS`, in `UNIT_QUANTITIES` order. */
 const IMPERIAL_TEXT = 'Using these units: mi, mph, ft, gal, MPG, PSI, °F, lb, lb-ft, /32 in'
 const METRIC_TEXT = 'Using these units: km, km/h, m, L, L/100km, kPa, °C, kg, Nm, mm'
@@ -109,7 +122,9 @@ import api from '@/services/api'
 import SettingsSystemTab from '../SettingsSystemTab'
 
 h.resolve = (key, opts) =>
-  key === DESCRIPTION_KEY ? i18n.t(`settings:${key}`, opts ?? {}) : key
+  key === DESCRIPTION_KEY || key === SHOW_BOTH_KEY
+    ? i18n.t(`settings:${key}`, opts ?? {})
+    : key
 
 const mockedApi = vi.mocked(api)
 
@@ -295,5 +310,61 @@ describe('SettingsSystemTab — D3: an override column beats the preset', () => 
       description: IMPERIAL_TEXT,
       gallonPanel: true,
     })
+  })
+})
+
+describe('SettingsSystemTab — the show-both example demonstrates the reader\'s own pair', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    localStorage.clear()
+    h.user = null
+    mockedApi.get.mockImplementation((url: string) => {
+      if (url === '/settings') {
+        return Promise.resolve({ data: { settings: [{ key: 'timezone', value: 'UTC' }] } })
+      }
+      if (url === '/auth/users/count') return Promise.resolve({ data: { count: 2 } })
+      if (url === '/dashboard') return Promise.resolve({ data: { total_vehicles: 0 } })
+      if (url === '/health') return Promise.resolve({ data: { authenticator_detected: false } })
+      return Promise.resolve({ data: {} })
+    })
+    mockedApi.post.mockResolvedValue({ data: { settings: [], total: 0 } })
+  })
+
+  /** Mount as `user` and read the show-both sentence back. */
+  async function sentenceFor(user: User): Promise<string> {
+    h.user = user
+    renderTab()
+    const paragraph = await screen.findByText(/^Show each value with its counterpart/)
+    return paragraph.textContent ?? ''
+  }
+
+  it('★ shows an MPG-primary example to an MPG account', async () => {
+    // The sample is 25 US MPG, converted to canonical 9.40856 L/100km.
+    const sentence = await sentenceFor(
+      makeUser({ unit_preference: 'custom', resolved_units: IMPERIAL_UNITS }),
+    )
+    expect(sentence).toBe(
+      'Show each value with its counterpart in parentheses, for example 25.0 MPG (9.41 L/100km).',
+    )
+  })
+
+  it('★ shows the REVERSE pair to a metric account, which the fixed example could not', async () => {
+    const sentence = await sentenceFor(
+      makeUser({ unit_preference: 'custom', resolved_units: METRIC_UNITS }),
+    )
+    expect(sentence).toBe(
+      'Show each value with its counterpart in parentheses, for example 9.41 L/100km (25.0 MPG).',
+    )
+  })
+
+  it('★ shows the UK gallon\'s MPG to a UK account, not the US one', async () => {
+    // 282.481 / 9.40856 = 30.0. The retired sentence said 25 MPG to everyone,
+    // which is not even the right number for this reader.
+    const sentence = await sentenceFor(
+      makeUser({ unit_preference: 'custom', resolved_units: UK_IMPERIAL_UNITS }),
+    )
+    expect(sentence).toBe(
+      'Show each value with its counterpart in parentheses, for example 30.0 MPG (9.41 L/100km).',
+    )
   })
 })

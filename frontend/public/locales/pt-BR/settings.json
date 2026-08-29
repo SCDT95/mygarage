@@ -27,8 +27,7 @@
     "imperial": "Imperial",
     "metric": "Métrico",
     "resolvedDescription": "Unidades utilizadas: {{units}}",
-    "showBoth": "Mostrar ambos os sistemas",
-    "showBothDescription": "Exibir valores em unidades imperiais e métricas (ex: \"25 MPG (9.4 l/100km)\")"
+    "showBoth": "Mostrar ambos os sistemas"
   },
   "language": {
     "label": "Idioma",

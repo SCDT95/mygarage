@@ -355,8 +355,8 @@
       "totalCostDesc": "Sum of all service and fuel expenses tracked.",
       "avgMonthlyLabel": "Average Monthly Cost:",
       "avgMonthlyDesc": "Total cost divided by months of tracking.",
-      "costPerMileLabel": "Cost Per Mile:",
-      "costPerMileDesc": "Total cost divided by total miles driven (if mileage data available).",
+      "costPerDistanceLabel": "Cost Per Distance:",
+      "costPerDistanceDesc": "Total cost divided by total distance driven (if odometer data is available).",
       "serviceBreakdownLabel": "Service Type Breakdown:",
       "serviceBreakdownDesc": "Shows which types of services cost the most."
     },
@@ -390,12 +390,12 @@
     },
     "fuelEconomy": {
       "title": "Fuel Economy",
-      "mpgCalcLabel": "MPG Calculation:",
-      "mpgCalcDesc": "Automatically calculated from consecutive full-tank fill-ups. Partial fills are not used in MPG calculations.",
-      "averageMpgLabel": "Average MPG:",
-      "averageMpgDesc": "Mean fuel economy across all full-tank fill-ups.",
-      "recentMpgLabel": "Recent MPG:",
-      "recentMpgDesc": "Average of the last 5 full-tank fill-ups.",
+      "economyCalcLabel": "{{unit}} Calculation:",
+      "economyCalcDesc": "Automatically calculated from consecutive full-tank fill-ups. Partial fills are not used.",
+      "averageEconomyLabel": "Average {{unit}}:",
+      "averageEconomyDesc": "Mean fuel economy across all full-tank fill-ups.",
+      "recentEconomyLabel": "Recent {{unit}}:",
+      "recentEconomyDesc": "Average of the last 5 full-tank fill-ups.",
       "note": "Declining fuel economy may indicate maintenance needs (air filter, spark plugs, tire pressure) or driving habit changes. Significant drops warrant investigation."
     },
     "vendorSpending": {
@@ -439,8 +439,8 @@
     "tips": {
       "title": "Tips for Best Results",
       "enterAllRecords": "Enter all service and fuel records for complete analytics",
-      "includeMileage": "Include mileage data for cost-per-mile calculations",
-      "markFullTank": "Mark fuel fill-ups as \"full tank\" for accurate MPG tracking",
+      "includeOdometer": "Include odometer data for cost-per-distance calculations",
+      "markFullTank": "Mark fuel fill-ups as \"full tank\" for accurate {{unit}} tracking",
       "addVendorNames": "Add vendor names to identify spending patterns",
       "trackMonths": "Track at least 3-6 months of data for meaningful trends",
       "reviewAnomalies": "Review anomalies to understand unusual expenses"

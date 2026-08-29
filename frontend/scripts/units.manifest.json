@@ -22,7 +22,7 @@
   {
    "path": "public/locales/de/analytics.json",
    "disposition": "audited",
-   "digest": "2288edf12b600881ee7bc96c97fa4a16158da79fae6c0c56a182af3c2e590775",
+   "digest": "9a76a9707f5868f267d8b5e9f273c2d19089fd316f40cd1f4f4e7b3958691e2e",
    "reason": "the MPG help copy is untranslated here and falls back to English; the digest forces a re-review when it is translated. Task 6 replaced the raw `units.volume === 'L'` prose selection with the same `{{unit}}` interpolation the volume COLUMN already used, so the two cannot disagree: totalLiters / totalGallons are gone and totalVolume takes getVolumeUnit(units).",
    "tests": [
     "__tests__/volumeTotalLabelLocales.test.ts"
@@ -37,16 +37,11 @@
   {
    "path": "public/locales/de/forms.json",
    "disposition": "audited",
-   "digest": "67d0864bbeae7ce4d4bf748b1abcb27e8d2be51397739ff6c5e72d2a4af7b6bd",
-   "reason": "fuel.receiptTextPlaceholder is a plausible EXAMPLE receipt (ruling R5's exempt class): there is no canonical value behind it to convert. Task 6 fixed the reminder distance copy: reminder.milesUntilDue / reminder.milesRequired are renamed to reminder.distanceUntilDue / reminder.distanceRequired and their prose no longer names a unit, so the unit comes only from u.distance.label. Covered by components/__tests__/ReminderForm.distanceCopy.test.tsx, which resolves this bundle and asserts the RENDERED prose rather than a key.",
+   "digest": "d0fcf9009135d73a61b0492015df2a2c30535d3eb9530647900bafe72c52b3bd",
+   "reason": "fuel.receiptTextPlaceholder is a plausible EXAMPLE receipt (ruling R5's exempt class): there is no canonical value behind it to convert. Task 6 fixed the reminder distance copy: reminder.milesUntilDue / reminder.milesRequired are renamed to reminder.distanceUntilDue / reminder.distanceRequired and their prose no longer names a unit, so the unit comes only from u.distance.label. Covered by components/__tests__/ReminderForm.distanceCopy.test.tsx, which resolves this bundle and asserts the RENDERED prose rather than a key. Task 6b removed this bundle's stale copies of the unit-naming keys it corrected rather than leaving them saying the old thing in another language, so those keys fall back to the corrected English; a missing key is non-blocking in validate-translations.ts, and English that is true beats a translation that is not. Re-translating them is a translation pass, not unit work. __tests__/unitCopy.resolvedProse.test.tsx walks every bundle on disk and fails if any of them names a unit unconditionally again.",
    "tests": [
-    "components/__tests__/ReminderForm.distanceCopy.test.tsx"
-   ],
-   "findings": [
-    "fuel.mpgTip and fuel.electricTip name MPG and kWh/100mi unconditionally."
-   ],
-   "owners": [
-    "task 6b"
+    "components/__tests__/ReminderForm.distanceCopy.test.tsx",
+    "__tests__/unitCopy.resolvedProse.test.tsx"
    ]
   },
   {
@@ -58,17 +53,12 @@
   {
    "path": "public/locales/de/settings.json",
    "disposition": "audited",
-   "digest": "a3c0eeba414f5a029bd356f95158bf439c03e97779005cf42991e2bdbf7db861",
-   "reason": "units.resolvedDescription is COMPOSED from the resolved set, so it carries no unit names of its own: the labels are interpolated from UNIT_ADAPTERS, which is the same table every rendered quantity reads (plan 3b R1). units.gallonUs / units.gallonUk state literal conversion facts and units.showBothDescription is an example; none is a converted quantity.",
+   "digest": "9d8faa4f2de1e4ff9c99e028f5f97221fe5802e75a8a2e6654e2c52da905b351",
+   "reason": "units.resolvedDescription is COMPOSED from the resolved set, so it carries no unit names of its own: the labels are interpolated from UNIT_ADAPTERS, which is the same table every rendered quantity reads (plan 3b R1). units.gallonUs / units.gallonUk state literal conversion facts and units.showBothDescription is an example; none is a converted quantity. Task 6b removed this bundle's stale copies of the unit-naming keys it corrected rather than leaving them saying the old thing in another language, so those keys fall back to the corrected English; a missing key is non-blocking in validate-translations.ts, and English that is true beats a translation that is not. Re-translating them is a translation pass, not unit work. __tests__/unitCopy.resolvedProse.test.tsx walks every bundle on disk and fails if any of them names a unit unconditionally again.",
    "tests": [
     "__tests__/unitDescriptionLocales.test.ts",
-    "components/tabs/__tests__/SettingsSystemTab.units.test.tsx"
-   ],
-   "findings": [
-    "units.showBothDescription still frames show-both as \"imperial and metric\" with a fixed 25 MPG (9.4 L/100km) example, but counterparts are resolved PER QUANTITY by counterpartFor and the example is only what an mpg_us account sees. Same shape as R1 one notch down: an example rather than a claim about this account's units, and no comparison selects it so neither gate leg reports it. Deferred by task 2b rather than absorbed; the cheap honest fix is to stop naming the two systems (\"Display each value with its counterpart unit as well\") in all seven bundles, not to compose a second list."
-   ],
-   "owners": [
-    "task 6b"
+    "components/tabs/__tests__/SettingsSystemTab.units.test.tsx",
+    "__tests__/unitCopy.resolvedProse.test.tsx"
    ]
   },
   {
@@ -83,17 +73,11 @@
   {
    "path": "public/locales/fr/analytics.json",
    "disposition": "audited",
-   "digest": "48caca96e222e16430b074f44931e38803d7c6eb5b293caf30385de450549d22",
-   "reason": "reviewed at this snapshot. Task 6 replaced the raw `units.volume === 'L'` prose selection with the same `{{unit}}` interpolation the volume COLUMN already used, so the two cannot disagree: totalLiters / totalGallons are gone and totalVolume takes getVolumeUnit(units).",
+   "digest": "891a0447b7949e5ac5412436fa35241b2e27df8d43ab4c3dcca634b054ceccfd",
+   "reason": "reviewed at this snapshot. Task 6 replaced the raw `units.volume === 'L'` prose selection with the same `{{unit}}` interpolation the volume COLUMN already used, so the two cannot disagree: totalLiters / totalGallons are gone and totalVolume takes getVolumeUnit(units). Task 6b removed this bundle's stale copies of the unit-naming keys it corrected rather than leaving them saying the old thing in another language, so those keys fall back to the corrected English; a missing key is non-blocking in validate-translations.ts, and English that is true beats a translation that is not. Re-translating them is a translation pass, not unit work. __tests__/unitCopy.resolvedProse.test.tsx walks every bundle on disk and fails if any of them names a unit unconditionally again.",
    "tests": [
-    "__tests__/volumeTotalLabelLocales.test.ts"
-   ],
-   "findings": [
-    "vehicleHelp.costAnalysis.costPerMile* and vehicleHelp.fuelEconomy.*Mpg* are imperial-only help copy rendered unconditionally by AnalyticsHelpModal."
-   ],
-   "owners": [
-    "task 6b",
-    "task 7"
+    "__tests__/volumeTotalLabelLocales.test.ts",
+    "__tests__/unitCopy.resolvedProse.test.tsx"
    ]
   },
   {
@@ -105,16 +89,11 @@
   {
    "path": "public/locales/fr/forms.json",
    "disposition": "audited",
-   "digest": "d601254ee11c2d9466673a4011ef181ce1ff85a7494f7df1ac6c08e5fe648010",
-   "reason": "fuel.receiptTextPlaceholder is a plausible EXAMPLE receipt (ruling R5's exempt class): there is no canonical value behind it to convert. Task 6 fixed the reminder distance copy: reminder.milesUntilDue / reminder.milesRequired are renamed to reminder.distanceUntilDue / reminder.distanceRequired and their prose no longer names a unit, so the unit comes only from u.distance.label. Covered by components/__tests__/ReminderForm.distanceCopy.test.tsx, which resolves this bundle and asserts the RENDERED prose rather than a key.",
+   "digest": "96b710ba1219a147dff54e5acb5fe4f2d302a2e7ec54d9fbc23428dc1aed6084",
+   "reason": "fuel.receiptTextPlaceholder is a plausible EXAMPLE receipt (ruling R5's exempt class): there is no canonical value behind it to convert. Task 6 fixed the reminder distance copy: reminder.milesUntilDue / reminder.milesRequired are renamed to reminder.distanceUntilDue / reminder.distanceRequired and their prose no longer names a unit, so the unit comes only from u.distance.label. Covered by components/__tests__/ReminderForm.distanceCopy.test.tsx, which resolves this bundle and asserts the RENDERED prose rather than a key. Task 6b removed this bundle's stale copies of the unit-naming keys it corrected rather than leaving them saying the old thing in another language, so those keys fall back to the corrected English; a missing key is non-blocking in validate-translations.ts, and English that is true beats a translation that is not. Re-translating them is a translation pass, not unit work. __tests__/unitCopy.resolvedProse.test.tsx walks every bundle on disk and fails if any of them names a unit unconditionally again.",
    "tests": [
-    "components/__tests__/ReminderForm.distanceCopy.test.tsx"
-   ],
-   "findings": [
-    "fuel.mpgTip and fuel.electricTip name MPG and kWh/100mi unconditionally."
-   ],
-   "owners": [
-    "task 6b"
+    "components/__tests__/ReminderForm.distanceCopy.test.tsx",
+    "__tests__/unitCopy.resolvedProse.test.tsx"
    ]
   },
   {
@@ -126,17 +105,12 @@
   {
    "path": "public/locales/fr/settings.json",
    "disposition": "audited",
-   "digest": "2dd255ba93576ea194727c7cbbff8c0c779a40baac408923800d1fa7f749bba8",
-   "reason": "units.resolvedDescription is COMPOSED from the resolved set, so it carries no unit names of its own: the labels are interpolated from UNIT_ADAPTERS, which is the same table every rendered quantity reads (plan 3b R1). units.gallonUs / units.gallonUk state literal conversion facts and units.showBothDescription is an example; none is a converted quantity.",
+   "digest": "721748bd8bdad1ee9feecfdddb322e53370cbc0b2a7c251bd04b18938b0cd21e",
+   "reason": "units.resolvedDescription is COMPOSED from the resolved set, so it carries no unit names of its own: the labels are interpolated from UNIT_ADAPTERS, which is the same table every rendered quantity reads (plan 3b R1). units.gallonUs / units.gallonUk state literal conversion facts and units.showBothDescription is an example; none is a converted quantity. Task 6b removed this bundle's stale copies of the unit-naming keys it corrected rather than leaving them saying the old thing in another language, so those keys fall back to the corrected English; a missing key is non-blocking in validate-translations.ts, and English that is true beats a translation that is not. Re-translating them is a translation pass, not unit work. __tests__/unitCopy.resolvedProse.test.tsx walks every bundle on disk and fails if any of them names a unit unconditionally again.",
    "tests": [
     "__tests__/unitDescriptionLocales.test.ts",
-    "components/tabs/__tests__/SettingsSystemTab.units.test.tsx"
-   ],
-   "findings": [
-    "units.showBothDescription still frames show-both as \"imperial and metric\" with a fixed 25 MPG (9.4 L/100km) example, but counterparts are resolved PER QUANTITY by counterpartFor and the example is only what an mpg_us account sees. Same shape as R1 one notch down: an example rather than a claim about this account's units, and no comparison selects it so neither gate leg reports it. Deferred by task 2b rather than absorbed; the cheap honest fix is to stop naming the two systems (\"Display each value with its counterpart unit as well\") in all seven bundles, not to compose a second list."
-   ],
-   "owners": [
-    "task 6b"
+    "components/tabs/__tests__/SettingsSystemTab.units.test.tsx",
+    "__tests__/unitCopy.resolvedProse.test.tsx"
    ]
   },
   {
@@ -163,7 +137,7 @@
   {
    "path": "public/locales/pl/forms.json",
    "disposition": "no unit behaviour",
-   "digest": "028f6f76c76e1f00fad14581f53b29fe5e59a263534334bc6b816b355d773f93",
+   "digest": "deab17a17ec63c52d0cf8c8066b8254a4355f68bd76c2a61bb205d7e672e67c0",
    "reason": "no unit behaviour: dispositioned under the CORRECTED scan: every unit stem, token, quantity name and canonical field suffix this codebase uses, matched case-insensitively with NO word boundary. The earlier word-boundary version was a floor (it called AnalyticsHelpModal.tsx clean while it renders \"Average MPG:\" to every user) and it was superseded before any disposition in this file was written. This file matched 12 of them; every hit was read in context and none is a unit decision or a unit-bearing quantity. Re-read for task 6: the two reminder distance keys were renamed off miles* to distance*; both Polish values were already unit-neutral ('Przebieg do terminu', 'Wymagany przebieg') and are unchanged."
   },
   {
@@ -175,17 +149,12 @@
   {
    "path": "public/locales/pl/settings.json",
    "disposition": "audited",
-   "digest": "6190358bfcf6bacc543acc111bf765e2346971e74bc740d7f4befe58fb86342f",
-   "reason": "units.resolvedDescription is COMPOSED from the resolved set, so it carries no unit names of its own: the labels are interpolated from UNIT_ADAPTERS, which is the same table every rendered quantity reads (plan 3b R1). units.gallonUs / units.gallonUk state literal conversion facts and units.showBothDescription is an example; none is a converted quantity.",
+   "digest": "fdd03dc816c7229e6700f59a32a9cd8cba8c5663fe007248bcc2a7a04bb62c5c",
+   "reason": "units.resolvedDescription is COMPOSED from the resolved set, so it carries no unit names of its own: the labels are interpolated from UNIT_ADAPTERS, which is the same table every rendered quantity reads (plan 3b R1). units.gallonUs / units.gallonUk state literal conversion facts and units.showBothDescription is an example; none is a converted quantity. Task 6b removed this bundle's stale copies of the unit-naming keys it corrected rather than leaving them saying the old thing in another language, so those keys fall back to the corrected English; a missing key is non-blocking in validate-translations.ts, and English that is true beats a translation that is not. Re-translating them is a translation pass, not unit work. __tests__/unitCopy.resolvedProse.test.tsx walks every bundle on disk and fails if any of them names a unit unconditionally again.",
    "tests": [
     "__tests__/unitDescriptionLocales.test.ts",
-    "components/tabs/__tests__/SettingsSystemTab.units.test.tsx"
-   ],
-   "findings": [
-    "units.showBothDescription still frames show-both as \"imperial and metric\" with a fixed 25 MPG (9.4 L/100km) example, but counterparts are resolved PER QUANTITY by counterpartFor and the example is only what an mpg_us account sees. Same shape as R1 one notch down: an example rather than a claim about this account's units, and no comparison selects it so neither gate leg reports it. Deferred by task 2b rather than absorbed; the cheap honest fix is to stop naming the two systems (\"Display each value with its counterpart unit as well\") in all seven bundles, not to compose a second list."
-   ],
-   "owners": [
-    "task 6b"
+    "components/tabs/__tests__/SettingsSystemTab.units.test.tsx",
+    "__tests__/unitCopy.resolvedProse.test.tsx"
    ]
   },
   {
@@ -209,7 +178,7 @@
   {
    "path": "public/locales/pt-BR/forms.json",
    "disposition": "audited",
-   "digest": "7028289bfe07f964ef4b26103f225de8c06b5ed7d3f165c39b2644835fd039ea",
+   "digest": "69d85b95c423ff6d2e0282fd0b1358acc89f724410d701ca8d72bc273ee59772",
    "reason": "re-dispositioned off 'no unit behaviour' (task 3 fix round 1 MEDIUM-2): that disposition was false. reminder.milesUntilDue ('Quilômetros até o vencimento', literally 'Kilometers until due') and reminder.milesRequired ('Quilometragem obrigatória') are both unconditional distance-unit copy, read beside units.distance's own label regardless of which unit the account actually uses; milesUntilDue additionally names the wrong unit outright. Task 6 fixed the reminder distance copy: reminder.milesUntilDue / reminder.milesRequired are renamed to reminder.distanceUntilDue / reminder.distanceRequired and their prose no longer names a unit, so the unit comes only from u.distance.label. Covered by components/__tests__/ReminderForm.distanceCopy.test.tsx, which resolves this bundle and asserts the RENDERED prose rather than a key.",
    "tests": [
     "components/__tests__/ReminderForm.distanceCopy.test.tsx"
@@ -224,17 +193,12 @@
   {
    "path": "public/locales/pt-BR/settings.json",
    "disposition": "audited",
-   "digest": "5e5ed0632f41ffe67a929524a4c69e6cf9ade66112d03de68bfd77c8ad623803",
-   "reason": "units.resolvedDescription is COMPOSED from the resolved set, so it carries no unit names of its own: the labels are interpolated from UNIT_ADAPTERS, which is the same table every rendered quantity reads (plan 3b R1). units.gallonUs / units.gallonUk state literal conversion facts and units.showBothDescription is an example; none is a converted quantity.",
+   "digest": "bdb9062796a8fb373c392190008c09b06886a245943ca495e2da20e01bb55604",
+   "reason": "units.resolvedDescription is COMPOSED from the resolved set, so it carries no unit names of its own: the labels are interpolated from UNIT_ADAPTERS, which is the same table every rendered quantity reads (plan 3b R1). units.gallonUs / units.gallonUk state literal conversion facts and units.showBothDescription is an example; none is a converted quantity. Task 6b removed this bundle's stale copies of the unit-naming keys it corrected rather than leaving them saying the old thing in another language, so those keys fall back to the corrected English; a missing key is non-blocking in validate-translations.ts, and English that is true beats a translation that is not. Re-translating them is a translation pass, not unit work. __tests__/unitCopy.resolvedProse.test.tsx walks every bundle on disk and fails if any of them names a unit unconditionally again.",
    "tests": [
     "__tests__/unitDescriptionLocales.test.ts",
-    "components/tabs/__tests__/SettingsSystemTab.units.test.tsx"
-   ],
-   "findings": [
-    "units.showBothDescription still frames show-both as \"imperial and metric\" with a fixed 25 MPG (9.4 L/100km) example, but counterparts are resolved PER QUANTITY by counterpartFor and the example is only what an mpg_us account sees. Same shape as R1 one notch down: an example rather than a claim about this account's units, and no comparison selects it so neither gate leg reports it. Deferred by task 2b rather than absorbed; the cheap honest fix is to stop naming the two systems (\"Display each value with its counterpart unit as well\") in all seven bundles, not to compose a second list."
-   ],
-   "owners": [
-    "task 6b"
+    "components/tabs/__tests__/SettingsSystemTab.units.test.tsx",
+    "__tests__/unitCopy.resolvedProse.test.tsx"
    ]
   },
   {
@@ -261,7 +225,7 @@
   {
    "path": "public/locales/ru/forms.json",
    "disposition": "audited",
-   "digest": "f4b9e01cb3d22293ef05b751b26dc7f7a2b5e345c1d70bbdcf49deb6aff9de74",
+   "digest": "ff1102017b166314152f37f5d1b321614c7d19b3a67612cfe6c98ca5afa5503e",
    "reason": "re-dispositioned off 'no unit behaviour' (task 3 fix round 1 MEDIUM-2): that disposition was false. reminder.milesUntilDue ('Миль до исполнения') and reminder.milesRequired ('Требуется пробег') are both unconditional distance-unit copy, read beside units.distance's own label regardless of which unit the account actually uses. Task 6 fixed the reminder distance copy: reminder.milesUntilDue / reminder.milesRequired are renamed to reminder.distanceUntilDue / reminder.distanceRequired and their prose no longer names a unit, so the unit comes only from u.distance.label. Covered by components/__tests__/ReminderForm.distanceCopy.test.tsx, which resolves this bundle and asserts the RENDERED prose rather than a key.",
    "tests": [
     "components/__tests__/ReminderForm.distanceCopy.test.tsx"
@@ -276,17 +240,12 @@
   {
    "path": "public/locales/ru/settings.json",
    "disposition": "audited",
-   "digest": "553cac09e7f04eb632b529a5619158e075cb3ad150681b28ff9e7dcdaca6e2bb",
-   "reason": "units.resolvedDescription is COMPOSED from the resolved set, so it carries no unit names of its own: the labels are interpolated from UNIT_ADAPTERS, which is the same table every rendered quantity reads (plan 3b R1). units.gallonUs / units.gallonUk state literal conversion facts and units.showBothDescription is an example; none is a converted quantity.",
+   "digest": "40230921e0a103682247a916b31294461933c526dc3fa3f4f3cad5c86502e18d",
+   "reason": "units.resolvedDescription is COMPOSED from the resolved set, so it carries no unit names of its own: the labels are interpolated from UNIT_ADAPTERS, which is the same table every rendered quantity reads (plan 3b R1). units.gallonUs / units.gallonUk state literal conversion facts and units.showBothDescription is an example; none is a converted quantity. Task 6b removed this bundle's stale copies of the unit-naming keys it corrected rather than leaving them saying the old thing in another language, so those keys fall back to the corrected English; a missing key is non-blocking in validate-translations.ts, and English that is true beats a translation that is not. Re-translating them is a translation pass, not unit work. __tests__/unitCopy.resolvedProse.test.tsx walks every bundle on disk and fails if any of them names a unit unconditionally again.",
    "tests": [
     "__tests__/unitDescriptionLocales.test.ts",
-    "components/tabs/__tests__/SettingsSystemTab.units.test.tsx"
-   ],
-   "findings": [
-    "units.showBothDescription still frames show-both as \"imperial and metric\" with a fixed 25 MPG (9.4 L/100km) example, but counterparts are resolved PER QUANTITY by counterpartFor and the example is only what an mpg_us account sees. Same shape as R1 one notch down: an example rather than a claim about this account's units, and no comparison selects it so neither gate leg reports it. Deferred by task 2b rather than absorbed; the cheap honest fix is to stop naming the two systems (\"Display each value with its counterpart unit as well\") in all seven bundles, not to compose a second list."
-   ],
-   "owners": [
-    "task 6b"
+    "components/tabs/__tests__/SettingsSystemTab.units.test.tsx",
+    "__tests__/unitCopy.resolvedProse.test.tsx"
    ]
   },
   {
@@ -310,7 +269,7 @@
   {
    "path": "public/locales/uk/forms.json",
    "disposition": "audited",
-   "digest": "0b54b7bf7fc6961a3f8573d082ed10bd5eba3ca77cc7a035958eca33a112ac33",
+   "digest": "f6eb3cdb7d7ad315e3eb46248c6ff7b0d64f59d0665f5b2be1d0589cd4c07621",
    "reason": "re-dispositioned off 'no unit behaviour' (task 3 fix round 1 MEDIUM-2): that disposition was false. reminder.milesUntilDue ('Миль до виконання') and reminder.milesRequired ('Потрібен пробіг') are both unconditional distance-unit copy, read beside units.distance's own label regardless of which unit the account actually uses. Task 6 fixed the reminder distance copy: reminder.milesUntilDue / reminder.milesRequired are renamed to reminder.distanceUntilDue / reminder.distanceRequired and their prose no longer names a unit, so the unit comes only from u.distance.label. Covered by components/__tests__/ReminderForm.distanceCopy.test.tsx, which resolves this bundle and asserts the RENDERED prose rather than a key.",
    "tests": [
     "components/__tests__/ReminderForm.distanceCopy.test.tsx"
@@ -325,17 +284,12 @@
   {
    "path": "public/locales/uk/settings.json",
    "disposition": "audited",
-   "digest": "65b86d9dba967ce835b9416f1b6af5b8c26ab403d6877ee52ebb136ee5ffdc57",
-   "reason": "units.resolvedDescription is COMPOSED from the resolved set, so it carries no unit names of its own: the labels are interpolated from UNIT_ADAPTERS, which is the same table every rendered quantity reads (plan 3b R1). units.gallonUs / units.gallonUk state literal conversion facts and units.showBothDescription is an example; none is a converted quantity.",
+   "digest": "0d5d0c6990a4adaed1de6f904dab7e5f8effcdbbb671bb99dc59b362955c8fde",
+   "reason": "units.resolvedDescription is COMPOSED from the resolved set, so it carries no unit names of its own: the labels are interpolated from UNIT_ADAPTERS, which is the same table every rendered quantity reads (plan 3b R1). units.gallonUs / units.gallonUk state literal conversion facts and units.showBothDescription is an example; none is a converted quantity. Task 6b removed this bundle's stale copies of the unit-naming keys it corrected rather than leaving them saying the old thing in another language, so those keys fall back to the corrected English; a missing key is non-blocking in validate-translations.ts, and English that is true beats a translation that is not. Re-translating them is a translation pass, not unit work. __tests__/unitCopy.resolvedProse.test.tsx walks every bundle on disk and fails if any of them names a unit unconditionally again.",
    "tests": [
     "__tests__/unitDescriptionLocales.test.ts",
-    "components/tabs/__tests__/SettingsSystemTab.units.test.tsx"
-   ],
-   "findings": [
-    "units.showBothDescription still frames show-both as \"imperial and metric\" with a fixed 25 MPG (9.4 L/100km) example, but counterparts are resolved PER QUANTITY by counterpartFor and the example is only what an mpg_us account sees. Same shape as R1 one notch down: an example rather than a claim about this account's units, and no comparison selects it so neither gate leg reports it. Deferred by task 2b rather than absorbed; the cheap honest fix is to stop naming the two systems (\"Display each value with its counterpart unit as well\") in all seven bundles, not to compose a second list."
-   ],
-   "owners": [
-    "task 6b"
+    "components/tabs/__tests__/SettingsSystemTab.units.test.tsx",
+    "__tests__/unitCopy.resolvedProse.test.tsx"
    ]
   },
   {
@@ -383,14 +337,10 @@
   {
    "path": "src/components/AnalyticsHelpModal.tsx",
    "disposition": "audited",
-   "digest": "24cd2cd926a56be08d02f9e5b2d13721a39d1890e37d176d5ea8176ccf4d3d44",
-   "reason": "no unit conversion of its own; the defect is imperial-only help copy",
-   "findings": [
-    "renders vehicleHelp.costAnalysis.costPerMileLabel/Desc, vehicleHelp.fuelEconomy.{mpgCalc,averageMpg,recentMpg}Label and vehicleHelp.tips.includeMileage unconditionally, so a metric user reads 'Average MPG:' beside an L/100km figure. Same class as R1's settings copy, and NOT in the plan's inventory."
-   ],
-   "owners": [
-    "task 6b",
-    "task 7"
+   "digest": "ba6b81efebb7b1ec1a19db9af078a14c634e47125feb5e6bd916e540912aea88",
+   "reason": "no unit conversion of its own; the defect WAS imperial-only help copy, fixed by task 6b. The four fuel-economy sentences interpolate `u.consumption.label`, so an L/100km account reads 'Average L/100km:'. The cost-per-distance pair names the QUANTITY rather than a unit, deliberately: the denominator a cost rate is quoted over is task 7's decision and this copy must not pre-empt it, but it must also stop naming the mile to a reader who does not use one.",
+   "tests": [
+    "__tests__/unitCopy.resolvedProse.test.tsx"
    ]
   },
   {
@@ -510,8 +460,8 @@
   {
    "path": "src/components/FuelRecordForm.tsx",
    "disposition": "audited",
-   "digest": "4511128a4843aa116163841a3f8b4a0ce19623e9f6512b0ab8c7cf5844703995",
-   "reason": "gate-detectable unit decisions, recorded not asserted clean (plan 3b task 1 ordering). R7 CLOSED: the receipt preview rendered the draft's CANONICAL litres with a hardcoded \"L\" beside it, so a gallons account read one number and then watched the field it accepted into show another. It goes through u.volume.formatPrimary, the same adapter the field is seeded from.",
+   "digest": "6128f0a5652caf9378f5f2582f7802f2ba44bd64530d3ea8a3de4dd7b848dd7b",
+   "reason": "gate-detectable unit decisions, recorded not asserted clean (plan 3b task 1 ordering). R7 CLOSED: the receipt preview rendered the draft's CANONICAL litres with a hardcoded \"L\" beside it, so a gallons account read one number and then watched the field it accepted into show another. It goes through u.volume.formatPrimary, the same adapter the field is seeded from. Task 6b interpolated the resolved consumption label into fuel.mpgTip, which told every reader \"MPG is only calculated for full tank fill-ups\" beside a figure they may read in L/100km, and dropped the kWh/100mi claim from fuel.electricTip: no code in this repo computes that figure in any unit.",
    "tests": [
     "components/__tests__/FuelRecordForm.mixedUnits.test.tsx",
     "components/__tests__/FuelRecordForm.gallonUnits.test.tsx"
@@ -521,8 +471,7 @@
     "USER-VISIBLE DISPLAY CHANGE, SHIPPED by task 6, for the changelog: the parsed-receipt preview shows the volume in the reader's own unit (\"12.50 gal\") rather than the canonical litres it had always printed (\"47.318 L\"), so it now agrees with the field that accepting it fills in."
    ],
    "owners": [
-    "task 6",
-    "task 7",
+    "task 8",
     "task 9"
    ]
   },
@@ -1118,16 +1067,11 @@
   {
    "path": "src/components/notifications/EventNotificationsCard.tsx",
    "disposition": "audited",
-   "digest": "9381d604e0f982258afdb94aca71849e83bdccd4f0ce5404ecd40531b0c802a8",
-   "reason": "`notify_service_miles` is an INERT setting: `backend/app/services/settings_init.py` defines its default of 500 and NOTHING reads it, unlike `notify_insurance_days` and `notify_warranty_days`, which `backend/app/tasks/scheduled.py` consumes. So the label is a live defect and the threshold semantics are a question that does not exist yet. Recorded because the first version of this row asserted a server-side comparison against canonical km that grep shows is not there.",
+   "digest": "dbec9777a5b6d6dd16b6673f6d6792cdd875c75065c33db8aa0a33ae43ab7236",
+   "reason": "`notify_service_miles` is an INERT setting: `backend/app/services/settings_init.py` defines its default of 500 and NOTHING reads it, unlike `notify_insurance_days` and `notify_warranty_days`, which `backend/app/tasks/scheduled.py` consumes. Task 6b fixed the LABEL, which was the live half, and deliberately did not add a unit selector for a value nothing consumes: the suffix now reads the account's own `u.distance.label`, so a kilometre reader is no longer told their number is miles. The stored value stays unit-ambiguous, and whatever eventually reads it has to decide that; the label is what the user believed they typed.",
    "tests": [
-    "components/notifications/__tests__/EventNotificationsCard.test.tsx"
-   ],
-   "findings": [
-    "events.card.milesBefore renders 'miles before' as the suffix of notify_service_miles for every user, and events.card.milestonesDesc says '100k miles'. NOT in the plan's inventory."
-   ],
-   "owners": [
-    "task 6"
+    "components/notifications/__tests__/EventNotificationsCard.test.tsx",
+    "__tests__/unitCopy.resolvedProse.test.tsx"
    ]
   },
   {
@@ -1385,8 +1329,8 @@
   {
    "path": "src/components/tabs/SettingsSystemTab.tsx",
    "disposition": "audited",
-   "digest": "3aec86178d8496b9e8ec25ed87c8896cc8a42bd6e4157e9e0d1c1a2ee4410457",
-   "reason": "the unit description is COMPOSED from the resolved set in EVERY branch (plan 3b R1 plus spec D3: an override column beats the preset regardless of which preset is set), so the card no longer selects one of two fixed sentences and no longer reads unit_preference for the two preset values. The gallon panel is derived from the same expression. The three comparisons left are R1's structural exemptions, recorded not asserted clean until the task 8 gate flip.",
+   "digest": "f790ef9265a1faaac6be7080a5236ee3847223ae5581e63ed340043002cd90fa",
+   "reason": "the unit description is COMPOSED from the resolved set in EVERY branch (plan 3b R1 plus spec D3: an override column beats the preset regardless of which preset is set), so the card no longer selects one of two fixed sentences and no longer reads unit_preference for the two preset values. The gallon panel is derived from the same expression. The three comparisons left are R1's structural exemptions, recorded not asserted clean until the task 8 gate flip. Task 6b did the same to the show-both toggle's description: it framed the feature as \"both imperial and metric\" with a fixed 25 MPG (9.4 L/100km) example, where counterparts resolve PER QUANTITY, so the example is now rendered through this account's own consumption formatter with show-both on.",
    "tests": [
     "components/tabs/__tests__/SettingsSystemTab.units.test.tsx"
    ],
@@ -2001,17 +1945,17 @@
   {
    "path": "src/locales/en/analytics.json",
    "disposition": "audited",
-   "digest": "3bf59066677cafac83b4e1425f5b4339b7c44117a978bd7d645046c4100dc9e0",
-   "reason": "reviewed at this snapshot. Task 6 replaced the raw `units.volume === 'L'` prose selection with the same `{{unit}}` interpolation the volume COLUMN already used, so the two cannot disagree: totalLiters / totalGallons are gone and totalVolume takes getVolumeUnit(units).",
+   "digest": "f92651d106aa5b3dc38bfbc76f0a5c8c41d785935f90f5c64f74b990da42cd9b",
+   "reason": "reviewed at this snapshot. Task 6 replaced the raw `units.volume === 'L'` prose selection with the same `{{unit}}` interpolation the volume COLUMN already used, so the two cannot disagree: totalLiters / totalGallons are gone and totalVolume takes getVolumeUnit(units). Task 6b then fixed the imperial-only help copy: the four fuel-economy keys interpolate {{unit}} and were renamed off \"Mpg\", and the cost-per-mile pair was renamed to costPerDistance* and reworded to name the quantity.",
    "tests": [
-    "__tests__/volumeTotalLabelLocales.test.ts"
+    "__tests__/volumeTotalLabelLocales.test.ts",
+    "__tests__/unitCopy.resolvedProse.test.tsx"
    ],
    "findings": [
-    "vehicleHelp.costAnalysis.costPerMile* and vehicleHelp.fuelEconomy.*Mpg* are imperial-only help copy rendered unconditionally by AnalyticsHelpModal.",
-    "USER-VISIBLE COPY CHANGE, SHIPPED by task 6, for the changelog: the propane and DEF volume-total captions read \"Total (L)\" / \"Total (gal)\" rather than \"Total Liters\" / \"Total Gallons\". One interpolating totalVolume key replaces the pair in all seven bundles, and the pair is deleted rather than left unreferenced."
+    "USER-VISIBLE COPY CHANGE, SHIPPED by task 6, for the changelog: the propane and DEF volume-total captions read \"Total (L)\" / \"Total (gal)\" rather than \"Total Liters\" / \"Total Gallons\". One interpolating totalVolume key replaces the pair in all seven bundles, and the pair is deleted rather than left unreferenced.",
+    "USER-VISIBLE COPY CHANGE, SHIPPED by task 6b, for the changelog: the analytics help modal names the reader's own consumption unit (\"Average L/100km:\") and says \"Cost Per Distance\" rather than \"Cost Per Mile\". Nine keys were renamed off their imperial spellings; the six translated bundles had their stale copies removed and fall back to the corrected English."
    ],
    "owners": [
-    "task 6b",
     "task 7",
     "task 9"
    ]
@@ -2025,18 +1969,18 @@
   {
    "path": "src/locales/en/forms.json",
    "disposition": "audited",
-   "digest": "c17d599f7d1804251e9b593d660cd4d5bbdb17ef0e3b1d782a672039d23cd6fb",
+   "digest": "224ed3e5b1b8f76e37ee6ff0f60b4f2a59a01e274fd8aec9da5c3090dc0ab77c",
    "reason": "fuel.receiptTextPlaceholder is a plausible EXAMPLE receipt (ruling R5's exempt class): there is no canonical value behind it to convert. Task 6 fixed the reminder distance copy: reminder.milesUntilDue / reminder.milesRequired are renamed to reminder.distanceUntilDue / reminder.distanceRequired and their prose no longer names a unit, so the unit comes only from u.distance.label. Covered by components/__tests__/ReminderForm.distanceCopy.test.tsx, which resolves this bundle and asserts the RENDERED prose rather than a key.",
    "tests": [
-    "components/__tests__/ReminderForm.distanceCopy.test.tsx"
+    "components/__tests__/ReminderForm.distanceCopy.test.tsx",
+    "__tests__/unitCopy.resolvedProse.test.tsx"
    ],
    "findings": [
-    "fuel.mpgTip and fuel.electricTip name MPG and kWh/100mi unconditionally.",
     "USER-VISIBLE COPY CHANGE, SHIPPED: task 3 deleted four placeholder keys (mileageAbsolutePlaceholderImperial/Metric, lastDoneMileagePlaceholderImperial/Metric) across all seven forms.json files and added reminderForm.mileageExamplePlaceholder in their place. No orphaned key and no dangling reference remain. Task 3 fix round 1 LOW-4.",
-    "USER-VISIBLE COPY CHANGE, SHIPPED by task 6, for the changelog: the reminder mileage field is labelled \"Distance Until Due\" rather than \"Miles Until Due\", and its validation message follows. reminder.milesUntilDue / reminder.milesRequired are renamed to reminder.distanceUntilDue / reminder.distanceRequired in all seven bundles; six of the seven had prose naming a unit the suffix beside it could contradict."
+    "USER-VISIBLE COPY CHANGE, SHIPPED by task 6, for the changelog: the reminder mileage field is labelled \"Distance Until Due\" rather than \"Miles Until Due\", and its validation message follows. reminder.milesUntilDue / reminder.milesRequired are renamed to reminder.distanceUntilDue / reminder.distanceRequired in all seven bundles; six of the seven had prose naming a unit the suffix beside it could contradict.",
+    "USER-VISIBLE COPY CHANGE, SHIPPED by task 6b, for the changelog: the fuel form's tip names the reader's own consumption unit, and the electric tip no longer promises a \"kWh/100mi\" figure that nothing in this repo computes."
    ],
    "owners": [
-    "task 6b",
     "task 9"
    ]
   },
@@ -2049,21 +1993,18 @@
   {
    "path": "src/locales/en/settings.json",
    "disposition": "audited",
-   "digest": "032ab6d4c6be6de3dc3cbb7ca9ca0121c5d765fb818f9e62911eadede1bc32f9",
-   "reason": "units.resolvedDescription is COMPOSED from the resolved set, so it carries no unit names of its own: the labels are interpolated from UNIT_ADAPTERS, which is the same table every rendered quantity reads (plan 3b R1). units.gallonUs / units.gallonUk state literal conversion facts and units.showBothDescription is an example; none is a converted quantity.",
+   "digest": "06414d03511462af61193d1e25ca9a9018bd943d9d79a37b03143d7bca2f76b0",
+   "reason": "units.resolvedDescription is COMPOSED from the resolved set, so it carries no unit names of its own: the labels are interpolated from UNIT_ADAPTERS, which is the same table every rendered quantity reads (plan 3b R1). Task 6b composed units.showBothDescription the same way, replacing its fixed 25 MPG example with one rendered through the reader's own consumption formatter, and moved events.card.milesBefore onto the reader's distance label. units.gallonUs / units.gallonUk state literal conversion facts, and units.gallonStandardDescription names the gallon on purpose: that IS the setting's subject. What it stopped saying is \"when the unit system is Imperial\", which is not a thing a resolved set has.",
    "tests": [
     "__tests__/unitDescriptionLocales.test.ts",
-    "components/tabs/__tests__/SettingsSystemTab.units.test.tsx"
+    "components/tabs/__tests__/SettingsSystemTab.units.test.tsx",
+    "__tests__/unitCopy.resolvedProse.test.tsx"
    ],
    "findings": [
-    "events.card.milesBefore ('miles before') and events.card.milestonesDesc ('100k miles') are imperial-only copy rendered by EventNotificationsCard.",
-    "units.showBothDescription still frames show-both as \"imperial and metric\" with a fixed 25 MPG (9.4 L/100km) example, but counterparts are resolved PER QUANTITY by counterpartFor and the example is only what an mpg_us account sees. Same shape as R1 one notch down: an example rather than a claim about this account's units, and no comparison selects it so neither gate leg reports it. Deferred by task 2b rather than absorbed; the cheap honest fix is to stop naming the two systems (\"Display each value with its counterpart unit as well\") in all seven bundles, not to compose a second list.",
     "For task 9's changelog entry: units.metricDescription's \"bar\" was ACCURATE when written. At v2.25.0 the app rendered `${bar.toFixed(2)} bar`; it became false at 6f04e53 when metric-canonical landed and the metric preset resolved kpa. The entry should describe it as drift from this workstream's own earlier phase, not as an original error.",
-    "OWNER SPLIT recorded by task 6 fix round 1: units.showBothDescription belongs to task 6b with the rest of the show-both copy, but events.card.milesBefore and events.card.milestonesDesc are DISTANCE copy with no named successor, so this row still reads \"task 6\" for those two. Re-own them when that work is assigned rather than inventing a holder for them now."
+    "USER-VISIBLE COPY CHANGE, SHIPPED by task 6b, for the changelog: the show-both description demonstrates the reader's own pair instead of a fixed \"25 MPG (9.4 L/100km)\"; the service-reminder lead field reads \"km before\" for a kilometre account; and the odometer-milestone description no longer says \"(e.g., 100k miles)\". That example was wrong twice: the scheduled job fires every 10,000 km (backend/app/tasks/scheduled.py:187), so the figure named the wrong unit AND a magnitude sixteen times the real boundary. Whether milestones should instead be round numbers in the READER's unit is a product question, left open."
    ],
    "owners": [
-    "task 6",
-    "task 6b",
     "task 9"
    ]
   },

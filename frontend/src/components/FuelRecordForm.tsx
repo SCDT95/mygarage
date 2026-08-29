@@ -1116,7 +1116,7 @@ export default function FuelRecordForm({ vin, record, onClose, onSuccess }: Fuel
 
           {!isElectric && (
             <div className="rounded-lg border border-(--accent-line) bg-(--accent-soft) p-3">
-              <p className="text-sm text-(--accent-fg)"><strong>{t('common:tip')}:</strong> {t('fuel.mpgTip')}</p>
+              <p className="text-sm text-(--accent-fg)"><strong>{t('common:tip')}:</strong> {t('fuel.mpgTip', { unit: u.consumption.label })}</p>
             </div>
           )}
 

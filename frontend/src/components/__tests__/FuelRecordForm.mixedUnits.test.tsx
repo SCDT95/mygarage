@@ -853,3 +853,43 @@ describe('FuelRecordForm — the OBC pair follows the speed and consumption toke
     expect(payload.obc_avg_speed_kmh).toBeUndefined()
   })
 })
+
+describe('FuelRecordForm — the fuel-economy tip names the reader\'s own unit', () => {
+  /**
+   * Task 6b: `fuel.mpgTip` read "MPG is only calculated for full tank fill-ups"
+   * to everybody, in a form whose economy figures a litre account reads in
+   * L/100km. The local `t` mock above appends the interpolated `{{unit}}` in
+   * parentheses, so the assertions below can tell a right unit from a wrong one
+   * and from a dropped interpolation, which the global `t: (key) => key` mock
+   * cannot.
+   */
+
+  it('★ says L/100km to a litre-and-L/100km account', async () => {
+    units = METRIC_UNITS
+
+    render(<FuelRecordForm {...DEFAULT_PROPS} />)
+
+    expect(await screen.findByText('fuel.mpgTip (L/100km)')).toBeInTheDocument()
+    expect(screen.queryByText('fuel.mpgTip (MPG)')).not.toBeInTheDocument()
+    // A dropped interpolation renders the bare key, which is neither.
+    expect(screen.queryByText('fuel.mpgTip')).not.toBeInTheDocument()
+  })
+
+  it('says MPG to an MPG account, so the fix is not a blanket rename', async () => {
+    units = IMPERIAL_UNITS
+
+    render(<FuelRecordForm {...DEFAULT_PROPS} />)
+
+    expect(await screen.findByText('fuel.mpgTip (MPG)')).toBeInTheDocument()
+  })
+
+  it('★ follows CONSUMPTION, not the volume the binary system is collapsed from', async () => {
+    // Litres for volume, MPG for economy: `binarySystemFor('L')` is 'metric',
+    // so nothing derived from the volume token can reach this answer.
+    units = LITRES_MPH_MPG
+
+    render(<FuelRecordForm {...DEFAULT_PROPS} />)
+
+    expect(await screen.findByText('fuel.mpgTip (MPG)')).toBeInTheDocument()
+  })
+})

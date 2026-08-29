@@ -350,8 +350,6 @@
       "totalCostDesc": "Summe aller erfassten Service- und Kraftstoffausgaben.",
       "avgMonthlyLabel": "Durchschnittliche monatliche Kosten:",
       "avgMonthlyDesc": "Gesamtkosten geteilt durch die Anzahl der erfassten Monate.",
-      "costPerMileLabel": "Kosten pro Meile:",
-      "costPerMileDesc": "Gesamtkosten geteilt durch die gefahrenen Gesamtmeilen (sofern Kilometerstandsdaten verfügbar sind).",
       "serviceBreakdownLabel": "Aufschlüsselung nach Serviceart:",
       "serviceBreakdownDesc": "Zeigt, welche Servicearten die höchsten Kosten verursachen."
     },
@@ -385,12 +383,6 @@
     },
     "fuelEconomy": {
       "title": "Kraftstoffverbrauch",
-      "mpgCalcLabel": "Verbrauchsberechnung:",
-      "mpgCalcDesc": "Wird automatisch anhand aufeinanderfolgender Vollbetankungen berechnet. Teilbetankungen werden bei der Verbrauchsberechnung nicht berücksichtigt.",
-      "averageMpgLabel": "Durchschnittlicher Verbrauch:",
-      "averageMpgDesc": "Mittelwert des Kraftstoffverbrauchs über alle Vollbetankungen hinweg.",
-      "recentMpgLabel": "Aktueller Verbrauch:",
-      "recentMpgDesc": "Durchschnitt der letzten 5 Vollbetankungen.",
       "note": "Ein verschlechterter Kraftstoffverbrauch kann auf Wartungsbedarf hindeuten (Luftfilter, Zündkerzen, Reifendruck) oder auf Änderungen der Fahrgewohnheiten. Deutliche Einbrüche sollten untersucht werden."
     },
     "vendorSpending": {
@@ -434,8 +426,6 @@
     "tips": {
       "title": "Tipps für beste Ergebnisse",
       "enterAllRecords": "Trage alle Service- und Kraftstoffeinträge ein, um vollständige Analysen zu erhalten",
-      "includeMileage": "Nimm Kilometerstandsdaten auf, um Berechnungen der Kosten pro Meile zu ermöglichen",
-      "markFullTank": "Markiere Betankungen als \"Vollbetankung\" für eine genaue Verbrauchserfassung",
       "addVendorNames": "Füge Dienstleisternamen hinzu, um Ausgabenmuster zu erkennen",
       "trackMonths": "Erfasse Daten über mindestens 3–6 Monate, um aussagekräftige Trends zu erhalten",
       "reviewAnomalies": "Überprüfe Anomalien, um ungewöhnliche Ausgaben zu verstehen"

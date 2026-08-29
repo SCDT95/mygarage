@@ -4,7 +4,7 @@ import { Server, CheckCircle, AlertCircle, Info, Shield, Users, AlertTriangle, K
 import { useAuth } from '@/contexts/AuthContext'
 import { useSettings } from '@/contexts/SettingsContext'
 import type { DashboardResponse } from '@/types/dashboard'
-import { binarySystemFor, type UnitPreference } from '@/types/units'
+import { binarySystemFor, presetUnitsFor, type UnitPreference } from '@/types/units'
 import { asTimeFormat } from '@/hooks/useTimeFormat'
 import { useUnitPreference } from '@/hooks/useUnitPreference'
 import api from '@/services/api'
@@ -14,7 +14,7 @@ import {
   setGallonStandard as applyGallonStandard,
 } from '@/utils/gallonStandardStore'
 import { formatCurrency } from '@/utils/formatUtils'
-import { resolvedUnitSummary } from '@/utils/unitFormat'
+import { makeUnitFormat, resolvedUnitSummary } from '@/utils/unitFormat'
 import { SUPPORTED_LANGUAGES, SUPPORTED_CURRENCIES, languageToLocale } from '@/constants/i18n'
 import OIDCModal from '@/components/modals/OIDCModal'
 import FamilyManagementModal from '@/components/modals/FamilyManagementModal'
@@ -25,6 +25,21 @@ type RawSetting = {
   key: string
   value?: string | null
 }
+
+/**
+ * The fuel economy the show-both example is built from, in US MPG.
+ *
+ * ★ A ROUND NUMBER IN A UNIT, CONVERTED, rather than the canonical figure
+ * spelled out. Writing 9.4160546 here reads as a conversion factor, and
+ * `eslint`'s `no-restricted-syntax` guard says so: a high-precision literal in
+ * a component is how this workstream's duplicated unit vocabularies started.
+ * Twenty-five is a recognisable economy and the consumption adapter turns it
+ * into canonical L/100km, so no factor is spelled here at all.
+ *
+ * It is a DISPLAY sample and converts like any other canonical value; nothing
+ * is stored from it.
+ */
+const SHOW_BOTH_EXAMPLE_MPG = 25
 
 export default function SettingsSystemTab() {
   const { t } = useTranslation('settings')
@@ -107,6 +122,20 @@ export default function SettingsSystemTab() {
   // expression, not two answers to the same question.
   const { units: resolvedUnits } = useUnitPreference()
   const displaySystem = binarySystemFor(resolvedUnits.volume)
+  // ★ The show-both example is COMPOSED from the reader's own set, not written
+  // into the copy. The sentence used to read 'Display values in both imperial
+  // and metric (e.g., "25 MPG (9.4 L/100km)")', which is wrong twice over
+  // post-3b: the counterpart resolves per QUANTITY rather than per system, and
+  // a reader whose consumption is L/100km was shown the reversed example. One
+  // canonical figure through the resolved consumption formatter says what this
+  // toggle will actually do to this account.
+  const showBothExample = makeUnitFormat(resolvedUnits, true).consumption.format(
+    // 25 US MPG as canonical L/100km, through the US preset's own consumption
+    // adapter. The reader's set then renders it in whatever it holds.
+    makeUnitFormat(presetUnitsFor('imperial', 'us')).consumption.toCanonical(
+      SHOW_BOTH_EXAMPLE_MPG
+    )
+  )
   const [autoArchiveDays, setAutoArchiveDays] = useState('0')
   const [autoArchiveSaving, setAutoArchiveSaving] = useState(false)
 
@@ -751,7 +780,7 @@ export default function SettingsSystemTab() {
               disabled={unitPreferenceSaving}
             />
             <p className="mt-1 text-sm text-garage-text-muted">
-              {t('units.showBothDescription')}
+              {t('units.showBothDescription', { example: showBothExample })}
             </p>
           </div>
 
