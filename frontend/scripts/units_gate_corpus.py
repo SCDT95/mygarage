@@ -697,6 +697,93 @@ SCRIPT_POSITIVE = [
         "M67-augmentation-only-the-production-class",
         ext=".ts",
     ),
+    # ---- task 8: the precondition. Shapes the exact-text predicate missed. ----
+    #
+    # ★ ALL FOUR ARE binary-conversion RATHER THAN compare, and that is the
+    # point rather than a convenience. `takesBinarySystem` is what builds BOTH
+    # binary vocabularies, so a shape it cannot read is a helper whose entire
+    # call-site population is invisible: no `imperial` literal, no
+    # `UnitFormatter` receiver, nothing at the call site to see. Three of the
+    # nineteen production declarations carrying the type were in these shapes
+    # when task 8 started, two of them live components on the supplies path.
+    Case(
+        "S-P38-aliased-import-annotation",
+        "import type { UnitSystem as Sys } from '@/utils/units'\n"
+        + HOOK_IMPORT
+        + "export function toCanonicalFathoms(value: number, s: Sys): number {\n"
+        "  return convert(value, s)\n"
+        "}\n"
+        "export function submit(entered: number): number {\n"
+        "  const { system } = useUnitPreference()\n"
+        "  return toCanonicalFathoms(entered, system)\n"
+        "}\n",
+        1,
+        "binary-conversion",
+        "an aliased import renames the annotation and nothing else. The old "
+        "predicate compared the annotation TEXT to the literal 'UnitSystem', so "
+        "one `as Sys` retired the whole leg for that helper.",
+        "M68-exact-annotation-text-only",
+        ext=".ts",
+    ),
+    Case(
+        "S-P39-union-annotation",
+        "import type { UnitSystem } from '@/utils/units'\n"
+        + HOOK_IMPORT
+        + "export function toCanonicalFurlongs(value: number, s: UnitSystem | undefined): number {\n"
+        "  return convert(value, s)\n"
+        "}\n"
+        "export function submit(entered: number): number {\n"
+        "  const { system } = useUnitPreference()\n"
+        "  return toCanonicalFurlongs(entered, system)\n"
+        "}\n",
+        1,
+        "binary-conversion",
+        "a nullable binary system is a binary system, which the comparison leg "
+        "learned in round 2 (`NULLISH_MEMBERS`) and the derivation had not.",
+        "M68-exact-annotation-text-only",
+        ext=".ts",
+    ),
+    Case(
+        "S-P40-inline-props-annotation",
+        "import type { UnitSystem } from '@/utils/units'\n"
+        + HOOK_IMPORT
+        + "export function toCanonicalChains(value: number, opts: { system: UnitSystem }): number {\n"
+        "  return convert(value, opts.system)\n"
+        "}\n"
+        "export function submit(entered: number): number {\n"
+        "  const { system } = useUnitPreference()\n"
+        "  return toCanonicalChains(entered, { system })\n"
+        "}\n",
+        1,
+        "binary-conversion",
+        "an inline props object, the shape SupplyHistoryModal's PurchaseForm "
+        "and AdjustmentForm both use. The decision is identical; only the "
+        "punctuation differs.",
+        "M68-exact-annotation-text-only",
+        ext=".ts",
+    ),
+    Case(
+        "S-P41-named-props-interface",
+        "import type { UnitSystem } from '@/utils/units'\n"
+        + HOOK_IMPORT
+        + "interface ChainOpts {\n"
+        "  system: UnitSystem\n"
+        "}\n"
+        "export function toCanonicalRods(value: number, opts: ChainOpts): number {\n"
+        "  return convert(value, opts.system)\n"
+        "}\n"
+        "export function submit(entered: number): number {\n"
+        "  const { system } = useUnitPreference()\n"
+        "  return toCanonicalRods(entered, { system })\n"
+        "}\n",
+        1,
+        "binary-conversion",
+        "the same shape one indirection further out, which is how "
+        "SupplyHistoryModal's PurchaseRow spells it. Resolving it needs the "
+        "file's own interface declarations, not just its parameter text.",
+        "M69-props-types-unresolved",
+        ext=".ts",
+    ),
     Case(
         "S-P36-double-quoted-union",
         'type Sys = "imperial" | "metric"\n'
@@ -931,6 +1018,49 @@ SCRIPT_NEGATIVE = [
         "annotation rather than production code, kept because the branch is "
         "otherwise unexercised and returning UNKNOWN instead would flag it.",
         pinned_by="M60-all-nullish-is-unknown",
+        ext=".ts",
+    ),
+    # ---- task 8: the two boundaries the widened predicate must NOT cross ----
+    Case(
+        "S-N17-exempt-binary-declaration",
+        "import type { UnitSystem } from '@/utils/units'\n"
+        + HOOK_IMPORT
+        + "// units-exempt: the ruling lives at the declaration, not on each call site.\n"
+        "export function toCanonicalPerches(value: number, s: UnitSystem): number {\n"
+        "  return convert(value, s)\n"
+        "}\n"
+        "export function submit(entered: number): number {\n"
+        "  const { system } = useUnitPreference()\n"
+        "  return toCanonicalPerches(entered, system)\n"
+        "}\n",
+        0,
+        why="★ task 8's declaration-level hatch, and the ONLY pragma in this "
+        "gate that silences findings in OTHER files. It exists because making "
+        "the vocabulary tree-wide turned `supplyUnits.ts`'s three exported "
+        "binary helpers into sixteen call-site findings across six files, all "
+        "of them one deferred ruling (R3). Character-identical to S-P32 apart "
+        "from the pragma line, so the case measures the hatch and nothing else.",
+        pinned_by="M70-declaration-exemption-ignored / M10b-drop-line-above-pragma",
+        ext=".ts",
+    ),
+    Case(
+        "S-N18-binary-inside-a-generic-argument",
+        "import type { UnitSystem } from '@/utils/units'\n"
+        + HOOK_IMPORT
+        + "export function tally(value: number, seen: Record<string, UnitSystem>): number {\n"
+        "  return value + Object.keys(seen).length\n"
+        "}\n"
+        "export function submit(entered: number): number {\n"
+        "  const { system } = useUnitPreference()\n"
+        "  return tally(entered, { a: system })\n"
+        "}\n",
+        0,
+        why="★ the residual the widened predicate DECLARES rather than hides: a "
+        "type ARGUMENT is a container of the binary type, not a parameter that "
+        "decides on one, so a map of systems is not a binary API. Recursing "
+        "into type arguments would flag this, which is why the boundary is "
+        "pinned from the far side instead of being left to prose.",
+        pinned_by="M71-recurse-into-type-arguments / M53-every-exported-helper-is-binary",
         ext=".ts",
     ),
 ]

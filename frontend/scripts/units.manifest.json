@@ -2706,7 +2706,7 @@
   {
    "path": "src/utils/supplyUnits.ts",
    "disposition": "audited",
-   "digest": "4b2e7f0024c8097c36090554d7fd57ae7f8720f7267da0ba8506799d1390f4b4",
+   "digest": "90779c13c285a637357acb175078612480a51d8481cc896f9b87ad63e2d874bd",
    "reason": "R3 ruled per comparison, all three exempt, re-founded in fix round 1 after the original reason was proved false. These legs track `unit_preference`, NOT the resolved volume, because D8 gave supplies a qt/L vocabulary that `UnitSet` cannot express: there is no quart token for `units` to supply. Recorded structurally as three `units-exempt:` pragmas carrying an owner and a D8-amendment expiry, which is why this file no longer appears in the units gate baseline. See the file header for the account this knowingly leaves incoherent.",
    "tests": [
     "utils/__tests__/supplyUnits.test.ts"
@@ -2714,7 +2714,8 @@
    "findings": [
     "R3 exempt, 3 comparisons, suppressed by `units-exempt:` pragmas and therefore ABSENT from the units gate baseline: canonicalToDisplay read leg, displayToCanonical write leg, supplyUnitLabel label leg. This entry exists so the three are enumerated somewhere a reader can list; the pragma suppresses silently and the baseline shrank 89 to 86.",
     "KNOWN-INCOHERENT POPULATION, not corruption: `{unit_preference:'metric', overrides: UK imperial}` is a state the product creates on purpose (PUT /auth/me never clears an override column; resolve_units applies overrides for every account, custom or not). It reaches this file as system='metric' with units.volume='gal_uk', so supplies render litres while every other screen renders gallons and miles. Label, read and write all follow `system` together, so a round trip is exact and nothing stored is wrong.",
-    "DEFERRED DEFECT, UK instances, 20.1 percent: L_PER_QUART is the US quart (0.946352946); the UK quart is 4.54609/4 = 1.1365225. A UK user's quart of oil stores 0.946 L where they meant 1.137, the same shape as defect L1. Derivable today from UnitSet.secondary_gallon without new vocabulary; what blocks it is D8's silence about which quart it meant plus the stored data, since no column records which quart a row was written in."
+    "DEFERRED DEFECT, UK instances, 20.1 percent: L_PER_QUART is the US quart (0.946352946); the UK quart is 4.54609/4 = 1.1365225. A UK user's quart of oil stores 0.946 L where they meant 1.137, the same shape as defect L1. Derivable today from UnitSet.secondary_gallon without new vocabulary; what blocks it is D8's silence about which quart it meant plus the stored data, since no column records which quart a row was written in.",
+    "★ TASK 8 MADE THESE THREE EXPORTS VISIBLE, AND THEY ARE THE R8 CLASS ONE MODULE OVER. Until the units gate's binary-conversion vocabulary went tree-wide it was derived from `decimalSafe.ts` alone, so `canonicalToDisplay`, `displayToCanonical` and `supplyUnitLabel` were invisible to every leg of it for the whole of phase 3b: an exported helper taking the collapsed `UnitSystem`, called from a different file, produced zero findings in both. Closing it reported 16 call sites across 6 files (SupplyHistoryModal.tsx 7, SuppliesUsedTab.tsx 2, Supplies.tsx 2, ServiceVisitForm.tsx 3, SupplyUsedPicker.tsx 1, plus the two import lines), and `displayToCanonical` is a WRITE. The three in-body pragmas already ruled the comparisons; three further `units-exempt:` pragmas now sit on the DECLARATIONS, which keeps one deferred ruling at one site instead of copied onto sixteen call sites. Deleting any one lights that helper's call sites up in the files that call it, proven by removing the write leg's and watching ServiceVisitForm.tsx and SupplyHistoryModal.tsx report three. Owner: deferred, with the other three."
    ],
    "owners": [
     "deferred"

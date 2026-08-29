@@ -438,8 +438,8 @@ MUTATIONS = [
     Mutation(
         "M45-formatter-format-prefix-only",
         "gate",
-        "        if (takesBinarySystem(member, source)) binary.add(member.name.getText(source))",
-        "        if (member.name.getText(source).startsWith('format')) binary.add(member.name.getText(source))",
+        "        if (!takesBinarySystem(member, source, ctx)) continue",
+        "        if (!member.name.getText(source).startsWith('format')) continue",
         "script",
         [
             "S-N7-formatter-resolved-set",
@@ -485,8 +485,8 @@ MUTATIONS = [
     Mutation(
         "M51-every-static-method-is-binary",
         "gate",
-        "        if (takesBinarySystem(member, source)) binary.add(member.name.getText(source))",
-        "        binary.add(member.name.getText(source))",
+        "        if (!takesBinarySystem(member, source, ctx)) continue",
+        "        if (false) continue",
         "script",
         ["S-N7-formatter-resolved-set"],
         "T4-R7's mirror on the new leg: a detector that flags every formatter call "
@@ -498,22 +498,41 @@ MUTATIONS = [
         "      if (binaryHelpersHere.has(called)) {",
         "      if (false && binaryHelpersHere.has(called)) {",
         "script",
-        ["S-P32-binary-conversion-call"],
+        [
+            "S-P32-binary-conversion-call",
+            "S-P38-aliased-import-annotation",
+            "S-P39-union-annotation",
+            "S-P40-inline-props-annotation",
+            "S-P41-named-props-interface",
+        ],
         "R8's whole point: the function that WRITES the wrong number, invisible to "
-        "both of the originally proposed legs",
+        "both of the originally proposed legs. ★ ONE case until task 8 and FIVE "
+        "after it, because the four shapes the old predicate could not read are "
+        "all this leg: an annotation `takesBinarySystem` cannot see is a helper "
+        "whose whole call-site population is invisible, and there is nothing at "
+        "those call sites for the other legs to catch instead.",
     ),
     Mutation(
         "M53-every-exported-helper-is-binary",
         "gate",
-        "      if (takesBinarySystem(node, source)) binary.add(node.name.getText(source))",
-        "      binary.add(node.name.getText(source))",
+        "      if (takesBinarySystem(node, source, ctx)) {",
+        "      if ((node.parameters ?? []).length > 0) {",
         "script",
-        ["S-N9-set-conversion-helper"],
+        ["S-N9-set-conversion-helper", "S-N18-binary-inside-a-generic-argument"],
         "a resolved-set helper sits in the same file as the binary ones did: the "
         "leg cannot key on the module or on a name prefix. The case spelled "
         "`toCanonicalLiters` until task 7 deleted it and now spells "
         "`seedPriceField`, which is what a negative naming a live symbol costs "
-        "and is cheaper than a negative that can no longer be made positive",
+        "and is cheaper than a negative that can no longer be made positive. "
+        "★ THE ZERO-PARAMETER CARVE-OUT IS DELIBERATE and is task 8's doing. This "
+        "used to drop the predicate outright, which was narrow while the "
+        "vocabulary came from `decimalSafe.ts` alone; tree-wide it also admits "
+        "`useUnitPreference`, which every fixture calls through HOOK_IMPORT, so "
+        "the mutation flipped twenty cases for a reason having nothing to do with "
+        "the annotation. Requiring one parameter keeps the subject exactly where "
+        "it was. ★ S-N18 flips with it, measured rather than reasoned: `tally` "
+        "takes a `Record<string, UnitSystem>` and IS called, so any predicate "
+        "that stops reading the annotation admits it too.",
     ),
     Mutation(
         "M47-drop-token-branch-leg",
@@ -655,6 +674,69 @@ MUTATIONS = [
         "S-P37 exists for exactly this mutation, and this mutation exists so the "
         "`onlyClass === null` argument is not a guard nothing can kill.",
     ),
+    # ---------------- task 8: the precondition's own mutations ----------------
+    Mutation(
+        "M68-exact-annotation-text-only",
+        "gate",
+        "  return (node.parameters ?? []).some((p) => typeIsBinarySystem(p.type, source, ctx))",
+        "  return (node.parameters ?? []).some((p) => p.type?.getText(source).trim() === BINARY_SYSTEM_TYPE)",
+        "script",
+        [
+            "S-P38-aliased-import-annotation",
+            "S-P39-union-annotation",
+            "S-P40-inline-props-annotation",
+            "S-P41-named-props-interface",
+        ],
+        "★ THE PREDICATE AS TASK 5 LEFT IT, run rather than described. It compares "
+        "the annotation's TEXT to one literal, so an `as Sys` import, a "
+        "`| undefined`, an inline props object and a named props interface all "
+        "walk past it, and with them the ENTIRE call-site population of whatever "
+        "they annotate: a helper the vocabulary never learned reports nothing at "
+        "any of its call sites and the gate prints a tick. Three of the nineteen "
+        "production declarations carrying the type were in these shapes when task "
+        "8 started, two of them live components on the supplies path.",
+    ),
+    Mutation(
+        "M69-props-types-unresolved",
+        "gate",
+        "    const body = ctx.local.get(name)",
+        "    const body = undefined as TsNode | undefined",
+        "script",
+        ["S-P41-named-props-interface"],
+        "the narrower survivor M68 hides: handle inline `{ system: UnitSystem }` "
+        "and stop there, and the three inline shapes pass while a props type given "
+        "a NAME one line up is still invisible. That is the spelling "
+        "`SupplyHistoryModal`'s PurchaseRow actually uses, so the case that dies "
+        "here is the production one.",
+    ),
+    Mutation(
+        "M70-declaration-exemption-ignored",
+        "gate",
+        "  return exemptedAtLine(lines, line)",
+        "  return false",
+        "script",
+        ["S-N17-exempt-binary-declaration"],
+        "the declaration-level hatch is the ONLY pragma in this gate that silences "
+        "findings in other files, so it needs a mutation that can kill it. Without "
+        "one it would be a guard nothing could fail, which is the shape this "
+        "workstream has ruled a survivor wearing a guard's name.",
+    ),
+    Mutation(
+        "M71-recurse-into-type-arguments",
+        "gate",
+        "  if (type.kind === ts.SyntaxKind.TypeReference) {\n    const name = referenceName(type, source)",
+        "  if (type.kind === ts.SyntaxKind.TypeReference) {\n"
+        "    const args = (type as unknown as { typeArguments?: TsNode[] }).typeArguments ?? []\n"
+        "    if (args.some((t) => typeIsBinarySystem(t, source, ctx, depth + 1, seen))) return true\n"
+        "    const name = referenceName(type, source)",
+        "script",
+        ["S-N18-binary-inside-a-generic-argument"],
+        "the far side of the widened predicate's stated boundary. A type ARGUMENT "
+        "holds the binary type rather than deciding on it, so `Record<string, "
+        "UnitSystem>` is not a binary API; widening one step further makes it one. "
+        "The boundary is pinned from outside rather than left in prose, because a "
+        "residual nothing can fail is a residual nobody will notice moving.",
+    ),
     Mutation(
         "M63-rename-the-binary-type-refuses",
         "gate",
@@ -684,6 +766,10 @@ MUTATIONS = [
             "S-P32-binary-conversion-call",
             "S-P35-aliased-formatter-receiver",
             "S-P37-binary-formatter-on-a-foreign-class",
+            "S-P38-aliased-import-annotation",
+            "S-P39-union-annotation",
+            "S-P40-inline-props-annotation",
+            "S-P41-named-props-interface",
         ],
         "★ and the SURVIVOR it prevents, built and run. Take away the direct check "
         "AND the accidental cover (which is what retiring the last binary formatter "
@@ -698,11 +784,31 @@ MUTATIONS = [
         "conversion leg in the same instant, and S-P32 goes quiet with them. "
         "FIVE since task 7, which added a fourth formatter positive; the guard it "
         "takes away is now the one over the walk's static-method receipt, because "
-        "the binary set the old one guarded is legitimately empty.",
+        "the binary set the old one guarded is legitimately empty. ★ NINE since "
+        "task 8, and it now has to take away a THIRD cover to stay a survivor. "
+        "The tree-wide vocabulary is derived from the modules that MENTION the "
+        "type, so renaming it leaves that walk with no module at all, and "
+        "`deriveBinarySurface` refuses on the empty list. That cover is real and "
+        "does not expire: the type is spelled wherever it is used, so a rename "
+        "empties the walk on the day it lands. The four cases task 8 added go "
+        "quiet with the rest, because an annotation the predicate cannot read is "
+        "the same blindness spelled differently.",
         also=[
             ("requireBinarySystemType()\n", ""),
             (
                 "  requireNonEmpty(statics, `static ${FORMATTER_CLASS} method`, UNITS_SOURCE)\n",
+                "",
+            ),
+            (
+                """  if (paths.length === 0) {
+    throw new Error(
+      `no module under ${relative(ROOT, SRC_DIR)} mentions ${BINARY_SYSTEM_TYPE}, so the ` +
+        'tree-wide binary vocabulary would be empty and both binary legs would report ' +
+        'zero findings for every file. Refusing to run: the type is declared in ' +
+        `${relative(ROOT, UNITS_SOURCE)}, so at minimum that module must be here.`,
+    )
+  }
+""",
                 "",
             ),
         ],
@@ -809,8 +915,8 @@ MUTATIONS = [
     Mutation(
         "M10a-drop-same-line-pragma",
         "gate",
-        "    if (EXEMPT_PRAGMA.test(lines[line - 1] ?? '') || EXEMPT_PRAGMA.test(lines[line - 2] ?? '')) {",
-        "    if (EXEMPT_PRAGMA.test(lines[line - 2] ?? '')) {",
+        "  return EXEMPT_PRAGMA.test(lines[line - 1] ?? '') || EXEMPT_PRAGMA.test(lines[line - 2] ?? '')",
+        "  return EXEMPT_PRAGMA.test(lines[line - 2] ?? '')",
         "script",
         ["S-N4-pragma"],
         "R4 requires the escape hatch, so each of its two positions needs a test",
@@ -818,12 +924,19 @@ MUTATIONS = [
     Mutation(
         "M10b-drop-line-above-pragma",
         "gate",
-        "    if (EXEMPT_PRAGMA.test(lines[line - 1] ?? '') || EXEMPT_PRAGMA.test(lines[line - 2] ?? '')) {",
-        "    if (EXEMPT_PRAGMA.test(lines[line - 1] ?? '')) {",
+        "  return EXEMPT_PRAGMA.test(lines[line - 1] ?? '') || EXEMPT_PRAGMA.test(lines[line - 2] ?? '')",
+        "  return EXEMPT_PRAGMA.test(lines[line - 1] ?? '')",
         "script",
-        ["S-N4-pragma"],
+        ["S-N4-pragma", "S-N17-exempt-binary-declaration"],
         "the first version of this mutation disabled only the other position and "
-        "flipped nothing, which is what a corpus covering one position looks like",
+        "flipped nothing, which is what a corpus covering one position looks like. "
+        "★ Task 8 gave this position a second tenant: `declarationExempt` marks a "
+        "binary DECLARATION through the same helper, and a documented export "
+        "carries its pragma above the `export` keyword because the line before "
+        "that is the docstring's closing `*/`. So the line-above position now "
+        "silences a call-site population in other modules as well, and S-N17 "
+        "measures it. Measured, not reasoned: the first run of this edit reported "
+        "the extra case.",
     ),
     Mutation(
         "M32-pragma-without-reason",
@@ -1375,6 +1488,97 @@ def baseline_proof(tmpdir: Path) -> list[str]:
     return failures
 
 
+def crossfile_proof() -> list[str]:
+    """Task 8's precondition, proved against the REAL tree rather than a fixture.
+
+    ★ WHY IT CANNOT BE A CORPUS CASE. The corpus scans fixtures under
+    `scripts/`, and the whole subject here is a vocabulary derived from
+    `frontend/src`: a helper declared in one module and called from ANOTHER.
+    One file is all `--scan` can ever see, so the leg that closes the
+    cross-file hole is, to the corpus, a guard nothing can kill.
+
+    Three runs of the real gate over the real tree, and the third is the one
+    that matters:
+
+      BASE          as committed: green.
+      HATCH OFF     `declarationExempt` always false, so `supplyUnits.ts`'s
+                    three exported binary helpers re-enter the vocabulary. The
+                    gate must FAIL and must name a call site in a file OTHER
+                    than the one that declares them, which is the cross-file
+                    reach itself.
+      HATCH OFF +   and the same run with the vocabulary reverted to
+      SINGLE FILE   `decimalSafe.ts` alone, which is what task 5 left. It must
+                    go GREEN, because those helpers were never in the
+                    vocabulary at all. That silence IS the defect task 8's
+                    precondition names, reproduced on demand.
+    """
+    failures: list[str] = []
+
+    def run(gate: Path) -> tuple[int, str]:
+        p = subprocess.run(
+            ["bun", "run", str(gate.relative_to(FRONTEND))],
+            cwd=FRONTEND,
+            capture_output=True,
+            text=True,
+        )
+        return p.returncode, p.stdout + p.stderr
+
+    HATCH_OFF = ("  return exemptedAtLine(lines, line)", "  return false")
+    SINGLE_FILE = (
+        "const BINARY_CONVERSION_HELPERS = BINARY_SURFACE.helpers",
+        "const BINARY_CONVERSION_HELPERS = deriveBinaryConversionHelpers()",
+    )
+    try:
+        rc, out = run(GATE_SRC)
+        ok = rc == 0
+        if not ok:
+            failures.append(f"crossfile: the committed gate is not green: {out[-300:]}")
+        print(f"  crossfile BASE      {'green' if ok else '*** ' + out[-120:] + ' ***'}")
+
+        dst, n = write_mutant("gate", *HATCH_OFF)
+        if n != 1:
+            failures.append(f"crossfile: HATCH OFF matched {n} times, expected 1")
+        else:
+            rc, out = run(dst)
+            # The three helpers are declared in utils/supplyUnits.ts. A finding
+            # anywhere else is the cross-file reach; a finding only in that file
+            # would prove nothing the same-file augmentation did not already do.
+            elsewhere = [
+                line
+                for line in out.splitlines()
+                if "[binary-conversion]" in line and "supplyUnits.ts" not in line
+            ]
+            ok = rc == 1 and len(elsewhere) > 0
+            if not ok:
+                failures.append(
+                    "crossfile: with the declaration hatch off the gate was expected to "
+                    f"fail on call sites outside the declaring module: rc={rc} {out[-300:]}"
+                )
+            print(
+                f"  crossfile HATCH OFF {'fails on ' + str(len(elsewhere)) + ' call site key(s) outside supplyUnits.ts' if ok else '*** PASSED ***'}"
+            )
+        GATE_MUTANT.unlink(missing_ok=True)
+
+        dst, n = write_mutant("gate", *HATCH_OFF, also=[SINGLE_FILE])
+        if n != 1:
+            failures.append(f"crossfile: SINGLE FILE matched {n} times, expected 1")
+        else:
+            rc, out = run(dst)
+            ok = rc == 0
+            if not ok:
+                failures.append(
+                    "crossfile: a decimalSafe-only vocabulary was expected to be BLIND "
+                    f"to them: rc={rc} {out[-300:]}"
+                )
+            print(
+                f"  crossfile PRE-TASK8 {'silent, which is the hole' if ok else '*** it saw them ***'}"
+                "   <- what the flip would have claimed clean"
+            )
+    finally:
+        GATE_MUTANT.unlink(missing_ok=True)
+    return failures
+
+
 def walk_proof(tmpdir: Path) -> list[str]:
     """The tree walk's exclusions, which `--scan` can never reach."""
     failures: list[str] = []
@@ -1533,6 +1737,10 @@ def main() -> int:
         print("-" * 78)
         failures += walk_proof(tmpdir)
 
+        print("\nTask 8's precondition: the cross-file vocabulary, on the real tree")
+        print("-" * 78)
+        failures += crossfile_proof()
+
         print("\nR4: the baseline counts occurrences rather than storing a set")
         print("-" * 78)
         failures += baseline_proof(tmpdir)
@@ -1551,8 +1759,9 @@ def main() -> int:
     print(
         f"SELFTEST: all {len(MUTATIONS)} scan mutations and {len(WALK_MUTATIONS)} walk "
         "mutations ran and flipped exactly their own cases; the scope is proved four "
-        "ways and names only real files; the baseline counts; and both "
-        "positive controls stayed silent on correct code"
+        "ways and names only real files; the baseline counts; the cross-file "
+        "vocabulary reaches call sites in other modules and a single-file one does "
+        "not; and both positive controls stayed silent on correct code"
     )
     return 0
 

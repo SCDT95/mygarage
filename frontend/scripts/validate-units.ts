@@ -21,11 +21,10 @@
  *                          canonical (`toCanonicalKm(500, system)` stored 500
  *                          km for a `{volume:'L', distance:'mi'}` user, because
  *                          `system` collapses from volume). Task 5 deleted all
- *                          three such helpers, so this leg's vocabulary is
- *                          empty on `decimalSafe.ts` today and it fires only on
- *                          a helper a scanned file declares for itself. What
- *                          that leaves open is the named task 8 precondition
- *                          below; read it before trusting this leg.
+ *                          three such helpers from `decimalSafe.ts`; task 8
+ *                          made the vocabulary TREE-WIDE and found three more
+ *                          in `utils/supplyUnits.ts` with sixteen call sites,
+ *                          one of them a write. Read `deriveBinarySurface`.
  *   token-branch           `units.volume === 'L' ? km : miles`, which collapses
  *                          DISTANCE out of VOLUME with no system literal
  *                          anywhere.
@@ -40,31 +39,42 @@
  * matched. Forced-unit sites (`` `${liters} L` ``) have no lexical form at all
  * and belong there too.
  *
- * ★ NAMED PRECONDITION FOR TASK 8'S CLEAN-ROOM FLIP. Two gaps in the
- * `binary-conversion` leg are known, measured and deliberately NOT closed in
- * task 5. Together they are the R8 defect class one module over, and the flip
- * must not ship while they are open, because that is the moment this gate
- * starts claiming completeness instead of recording a baseline.
+ * ★ THE TASK 8 PRECONDITION, CLOSED, AND WHAT CLOSING IT FOUND. Two gaps in the
+ * `binary-conversion` leg were known, measured and deliberately left open by
+ * task 5. Together they were the R8 defect class one module over, and the
+ * clean-room flip could not ship while they were open, because that is the
+ * moment this gate starts claiming completeness instead of recording a
+ * baseline. Both are closed; the residuals each leaves are named, not implied.
  *
- *   1. CROSS-FILE IS STILL BLIND. Task 5 added the scanned file's own
- *      declarations to the vocabulary, which closes the same-file shape only.
- *      A binary conversion helper declared in any module OTHER than
- *      `decimalSafe.ts` and called from a DIFFERENT file produces zero findings
- *      in both files when its body delegates rather than comparing. Verified by
- *      fixture, not reasoned. With `decimalSafe.ts` now declaring none, that is
- *      the entire remaining population of this leg.
+ *   1. CROSS-FILE WAS BLIND, AND IT WAS HIDING A LIVE POPULATION. The
+ *      vocabulary came from `decimalSafe.ts` plus whatever the scanned file
+ *      declared for itself, so a binary conversion helper declared in any other
+ *      module and called from a DIFFERENT file produced zero findings in both.
+ *      `deriveBinarySurface` now walks every module under `src/` that mentions
+ *      the type. The first run turned up `utils/supplyUnits.ts`:
+ *      `canonicalToDisplay`, `displayToCanonical` and `supplyUnitLabel`, all
+ *      three taking the collapsed system, sixteen call sites across six files,
+ *      and `displayToCanonical` WRITES. They are ruled (R3, deferred pending
+ *      the D8 amendment that would give supplies a resolved token) rather than
+ *      repaired, and the ruling is recorded once at each declaration; see
+ *      `declarationExempt` for why the pragma sits there and not on sixteen
+ *      call sites. RESIDUAL: the walk reads a text prefilter, whose one hole is
+ *      an aliased re-export, and that is refused rather than tolerated.
  *
- *   2. THE PREDICATE MATCHES ANNOTATION TEXT EXACTLY. `takesBinarySystem`
- *      compares `p.type.getText().trim()` to the literal `'UnitSystem'`, so an
+ *   2. THE PREDICATE MATCHED ANNOTATION TEXT EXACTLY. `takesBinarySystem`
+ *      compared `p.type.getText().trim()` to the literal `'UnitSystem'`, so an
  *      aliased import (`import type { UnitSystem as Sys }`), a union
- *      (`UnitSystem | undefined`) and a destructured props object holding
- *      `system: UnitSystem` all evade it. Three of the nineteen production
- *      declarations carrying a `UnitSystem` are already in evading shapes, two
- *      of them live components on the supplies path. Inside `decimalSafe.ts`
- *      the exact-list `exported` receipt in
- *      `utils/__tests__/unitsBinaryApiSurface.test.ts` catches every one of
- *      them anyway, which is why widening this predicate was NOT done here;
- *      outside that file nothing does.
+ *      (`UnitSystem | undefined`) and a props object holding
+ *      `system: UnitSystem` all evaded it; three of the nineteen production
+ *      declarations carrying the type were in those shapes, two of them live
+ *      components on the supplies path. `typeIsBinarySystem` reads the
+ *      annotation as a TYPE now: unions, intersections, parentheses, inline
+ *      type literals, and named `type`/`interface` declarations the same file
+ *      makes. RESIDUALS, both stated at that function and pinned from the far
+ *      side by corpus case S-N18: a binary type inside a generic ARGUMENT
+ *      (`Record<string, UnitSystem>`) is a container rather than a decision and
+ *      is deliberately not matched, and a props type IMPORTED from another
+ *      module is not resolved.
  *
  * ★ WHY THIS IS A SCRIPT AND NOT AN ESLINT SELECTOR (plan ruling R3).
  * `no-restricted-syntax` registers purely syntactic selectors against
@@ -124,6 +134,11 @@
  *   bun run scripts/validate-units.ts --baseline <p>   # use another baseline
  *   bun run scripts/validate-units.ts --src <dir>      # walk another tree (selftest)
  *   bun run scripts/validate-units.ts --derived        # print the derived sets
+ *
+ * ★ `--derived` also prints EXEMPT_BINARY_DECLARATIONS, and the gate's success
+ * line counts them. One `// units-exempt:` on a binary declaration silences
+ * every call site of it in every module, which no other use of the hatch does,
+ * so the number is printed beside the tick rather than buried.
  * Exit code: 1 when any key's occurrence count exceeds its baseline.
  */
 
@@ -177,6 +192,12 @@ interface TsNode {
   members?: TsNode[]
   /** Method and function parameters, likewise. */
   parameters?: TsNode[]
+  /** Union and intersection members, for the widened binary-system predicate. */
+  types?: TsNode[]
+  /** A type reference's name, so `A.B` can be read without its arguments. */
+  typeName?: TsNode
+  /** An import specifier's ORIGINAL name when it was imported under an alias. */
+  propertyName?: TsNode
   modifiers?: { kind: number }[]
   getText: (source?: TsSourceFile) => string
   getStart: (source?: TsSourceFile) => number
@@ -289,6 +310,79 @@ const LITERAL_KINDS = new Set([
   ts.SyntaxKind.NoSubstitutionTemplateLiteral,
 ])
 
+/**
+ * The escape hatch, and it must carry a reason.
+ *
+ * Round 1 tested `line.includes('units-exempt')`, so a bare marker with no
+ * justification silenced a finding while the docstring and the failure message
+ * both promised "with the reason". Requiring the comment introducer and a
+ * colon also stops the marker matching inside an ordinary string literal.
+ */
+const EXEMPT_PRAGMA = /(?:^|\s)\/\/\s*units-exempt:\s*\S/
+
+/**
+ * True when a line, or the line above it, carries a reason-bearing exemption.
+ *
+ * One rule, two callers: `record()` uses it on the line a finding sits on, and
+ * `declarationExempt` uses it on the line a declaration starts on. Keeping it
+ * as one function is what stops the two drifting into two different escape
+ * hatches with one name.
+ */
+function exemptedAtLine(lines: string[], line: number): boolean {
+  return EXEMPT_PRAGMA.test(lines[line - 1] ?? '') || EXEMPT_PRAGMA.test(lines[line - 2] ?? '')
+}
+
+/**
+ * The WHOLE text of a parsed source, as lines.
+ *
+ * ★ NOT `source.getText()`, and the difference is not cosmetic. `getText()` on
+ * a node returns the text from its `getStart()` to its end, and a SourceFile's
+ * start is AFTER its leading trivia, so on a module opening with a docstring it
+ * silently returns fewer lines than the file has: `supplyUnits.ts` gave 82 for
+ * a 140-line file. Every line lookup was then off by the size of the header and
+ * two of the three declaration exemptions below did not fire, while the third
+ * did, which is the shape of bug that gets shipped. `text` is the source's own
+ * full string and is checked rather than defaulted, because a build that did
+ * not expose it would put the offset back without a word.
+ */
+function sourceLines(source: TsSourceFile): string[] {
+  if (typeof source.text !== 'string') {
+    throw new Error(
+      'this TypeScript build exposes no SourceFile.text, so the line lookup behind ' +
+        'every `// units-exempt:` pragma would silently read the wrong lines. Refusing ' +
+        'to run.',
+    )
+  }
+  return source.text.split('\n')
+}
+
+/**
+ * True when a binary DECLARATION is exempted where it is declared.
+ *
+ * ★ THIS ONE PRAGMA SILENCES A CALL-SITE POPULATION IN OTHER FILES, which is
+ * unlike every other use of the hatch and is the reason it is spelled out here
+ * rather than folded in quietly. Task 8 made the conversion and formatter
+ * vocabularies TREE-WIDE, so `supplyUnits.ts`'s three exported helpers stopped
+ * being invisible and their sixteen call sites across six files became
+ * findings in one step. Those sixteen are one ruling (R3, deferred pending the
+ * D8 amendment that would give supplies a resolved token), and one ruling
+ * belongs at one site. Marking the DECLARATION keeps the reason where the
+ * decision was actually made, and deleting that one line lights all sixteen
+ * back up.
+ *
+ * The cost is real and is not hidden: the gate's success line prints how many
+ * declarations are exempted this way, and `--derived` names them, so the hatch
+ * cannot grow without the number moving.
+ *
+ * The pragma must sit on the declaration's own first line or the line directly
+ * above it, which for a documented export means between the closing `*\/` and
+ * the `export` keyword.
+ */
+function declarationExempt(node: TsNode, source: TsSourceFile, lines: string[]): boolean {
+  const line = source.getLineAndCharacterOfPosition(node.getStart(source)).line + 1
+  return exemptedAtLine(lines, line)
+}
+
 // ---------------------------------------------------------------------------
 // Derived vocabularies (plan 3b ruling R8, and exit criterion 2)
 // ---------------------------------------------------------------------------
@@ -368,8 +462,137 @@ function isExported(node: TsNode): boolean {
   return (node.modifiers ?? []).some((m) => m.kind === ts.SyntaxKind.ExportKeyword)
 }
 
-function takesBinarySystem(node: TsNode, source: TsSourceFile): boolean {
-  return (node.parameters ?? []).some((p) => p.type?.getText(source).trim() === BINARY_SYSTEM_TYPE)
+/**
+ * Every local spelling of the binary system type, plus the file's own type names.
+ *
+ * ★ TASK 8 PRECONDITION, HALF 2. Until this existed `takesBinarySystem`
+ * compared `p.type.getText().trim()` to the literal `'UnitSystem'`, so three
+ * shapes evaded it and three of the nineteen production declarations carrying
+ * the type were already in them:
+ *
+ *   import type { UnitSystem as Sys }   an aliased import
+ *   system: UnitSystem | undefined      a union
+ *   ({ system }: LedgerRowProps)        a props object, named or inline
+ *
+ * The third is the one that mattered: `SupplyHistoryModal.tsx` spells it three
+ * times, twice as an inline type literal and once through a named interface,
+ * and `ServiceVisitForm.tsx` once more. A predicate that reads only the
+ * annotation's own text cannot see any of them.
+ *
+ * `names` holds the spellings that MEAN the binary type here: the type's own
+ * name, every alias an import gave it, and every local `type X = UnitSystem`.
+ * `local` holds this file's `type` and `interface` bodies so a parameter
+ * annotated with a props type can be resolved to the members it declares.
+ */
+interface BinaryTypeContext {
+  names: Set<string>
+  local: Map<string, TsNode>
+}
+
+/** The last segment of a type reference's name, so `U.UnitSystem` reads as `UnitSystem`. */
+function referenceName(type: TsNode, source: TsSourceFile): string | null {
+  if (type.kind !== ts.SyntaxKind.TypeReference) return null
+  const text = (type.typeName ?? type).getText(source).trim()
+  const last = text.split('.').pop() ?? ''
+  return last.length > 0 ? last : null
+}
+
+function binaryTypeContext(source: TsSourceFile): BinaryTypeContext {
+  const names = new Set<string>([BINARY_SYSTEM_TYPE])
+  const local = new Map<string, TsNode>()
+  const aliasBodies = new Map<string, TsNode>()
+  const walk = (node: TsNode): void => {
+    if (node.kind === ts.SyntaxKind.ImportSpecifier) {
+      const original = (node.propertyName ?? node.name)?.text ?? ''
+      const localName = node.name?.text ?? ''
+      if (original === BINARY_SYSTEM_TYPE && localName.length > 0) names.add(localName)
+    }
+    if (node.kind === ts.SyntaxKind.TypeAliasDeclaration && node.name?.text && node.type) {
+      local.set(node.name.text, node.type)
+      aliasBodies.set(node.name.text, node.type)
+    }
+    if (node.kind === ts.SyntaxKind.InterfaceDeclaration && node.name?.text) {
+      local.set(node.name.text, node)
+    }
+    ts.forEachChild(node, walk)
+  }
+  walk(source)
+  // `type Sys = UnitSystem` is a third spelling, and it can chain. Iterate to a
+  // fixpoint rather than one hop, with a bound so a cycle terminates.
+  for (let pass = 0; pass < 8; pass += 1) {
+    let grew = false
+    for (const [name, body] of aliasBodies) {
+      if (names.has(name)) continue
+      const referenced = referenceName(body, source)
+      if (referenced !== null && names.has(referenced)) {
+        names.add(name)
+        grew = true
+      }
+    }
+    if (!grew) break
+  }
+  return { names, local }
+}
+
+/**
+ * True when a type annotation names the binary system type ANYWHERE inside it.
+ *
+ * ★ WHAT IS DELIBERATELY OUT, stated rather than left to be discovered:
+ * generic type ARGUMENTS (`Record<string, UnitSystem>`), array and tuple
+ * element types, and indexed accesses (`Props['system']`). Each of them is a
+ * container of the type rather than a parameter that decides on one, and
+ * widening to them would make `(rows: Map<string, UnitSystem>)` a binary API,
+ * which it is not. None of the nineteen production declarations is in one of
+ * those shapes; a helper that hides a `UnitSystem` inside a generic argument
+ * would still evade this, and that is the residual.
+ *
+ * Props objects ARE in, both inline and through a named `type`/`interface`
+ * declared in the same file: that is the shape two live components on the
+ * supplies path already use, and a React component taking `{ system }` decides
+ * on it exactly as a positional parameter would. A props type IMPORTED from
+ * another module is not resolved, and is the second residual.
+ */
+function typeIsBinarySystem(
+  type: TsNode | undefined,
+  source: TsSourceFile,
+  ctx: BinaryTypeContext,
+  depth = 0,
+  seen: Set<string> = new Set(),
+): boolean {
+  if (type === undefined || depth > 8) return false
+  if (type.kind === ts.SyntaxKind.UnionType || type.kind === ts.SyntaxKind.IntersectionType) {
+    return (type.types ?? []).some((t) => typeIsBinarySystem(t, source, ctx, depth + 1, seen))
+  }
+  if (type.kind === ts.SyntaxKind.ParenthesizedType) {
+    return typeIsBinarySystem(type.type, source, ctx, depth + 1, seen)
+  }
+  if (
+    type.kind === ts.SyntaxKind.TypeLiteral ||
+    type.kind === ts.SyntaxKind.InterfaceDeclaration
+  ) {
+    return (type.members ?? []).some((m) =>
+      typeIsBinarySystem(m.type, source, ctx, depth + 1, seen),
+    )
+  }
+  if (type.kind === ts.SyntaxKind.TypeReference) {
+    const name = referenceName(type, source)
+    if (name === null) return false
+    if (ctx.names.has(name)) return true
+    if (seen.has(name)) return false
+    const body = ctx.local.get(name)
+    if (body === undefined) return false
+    seen.add(name)
+    return typeIsBinarySystem(body, source, ctx, depth + 1, seen)
+  }
+  return ctx.names.has(type.getText(source).trim())
+}
+
+function takesBinarySystem(
+  node: TsNode,
+  source: TsSourceFile,
+  ctx: BinaryTypeContext,
+): boolean {
+  return (node.parameters ?? []).some((p) => typeIsBinarySystem(p.type, source, ctx))
 }
 
 /**
@@ -438,9 +661,12 @@ function requireBinarySystemType(): void {
 function formatterMethodsIn(
   source: TsSourceFile,
   onlyClass: string | null,
-): { binary: Set<string>; statics: Set<string> } {
+): { binary: Set<string>; statics: Set<string>; exempt: Set<string> } {
+  const ctx = binaryTypeContext(source)
+  const lines = sourceLines(source)
   const binary = new Set<string>()
   const statics = new Set<string>()
+  const exempt = new Set<string>()
   const walk = (node: TsNode): void => {
     if (
       node.kind === ts.SyntaxKind.ClassDeclaration &&
@@ -450,13 +676,15 @@ function formatterMethodsIn(
         if (member.kind !== ts.SyntaxKind.MethodDeclaration || !isStatic(member)) continue
         if (!member.name) continue
         statics.add(member.name.getText(source))
-        if (takesBinarySystem(member, source)) binary.add(member.name.getText(source))
+        if (!takesBinarySystem(member, source, ctx)) continue
+        if (declarationExempt(member, source, lines)) exempt.add(member.name.getText(source))
+        else binary.add(member.name.getText(source))
       }
     }
     ts.forEachChild(node, walk)
   }
   walk(source)
-  return { binary, statics }
+  return { binary, statics, exempt }
 }
 
 /**
@@ -485,6 +713,124 @@ function deriveBinaryFormatterMethods(): Set<string> {
 }
 
 /**
+ * Every module under `src/` that could possibly DECLARE a binary unit API.
+ *
+ * ★ A TEXT PREFILTER, AND WHY IT IS SOUND RATHER THAN A SHORTCUT. Parsing all
+ * 337 production modules costs 221 ms, which the gate could afford once but the
+ * corpus cannot: it runs `--scan` 53 times and the selftest runs the corpus
+ * once per mutation, so a full parse per invocation adds roughly fourteen
+ * minutes to a run that already takes eleven. The prefilter costs 3 ms and
+ * keeps 8 files.
+ *
+ * It is sound because the binary type has exactly ONE declaration site
+ * (`utils/units.ts`, and `supplyUnits.ts`'s header records the commit that
+ * deleted the second copy), so any module declaring a parameter of that type
+ * must name the identifier to import it: directly, under an alias
+ * (`import type { UnitSystem as Sys }`, whose import line still spells it), or
+ * through a namespace (`U.UnitSystem`, likewise).
+ *
+ * ★ THE ONE HOLE, CLOSED BY REFUSAL RATHER THAN BY HOPE. An ALIASED RE-EXPORT
+ * (`export type { UnitSystem as Sys } from './units'`) would let the next
+ * module import `Sys` while containing no occurrence of the real name, and the
+ * prefilter would skip it silently. So the walk refuses when it sees one. A
+ * plain re-export is fine: its consumers still spell the original name.
+ */
+function binaryDeclarationSources(): string[] {
+  return walkDir(SRC_DIR).filter((path) => readFileSync(path, 'utf-8').includes(BINARY_SYSTEM_TYPE))
+}
+
+/** What one tree-wide walk of the binary declaration surface found. */
+interface BinarySurface {
+  /** Static methods, on any class, taking a binary system: the formatter leg. */
+  formatters: Set<string>
+  /** Exported function declarations taking one: the R8 conversion leg. */
+  helpers: Set<string>
+  /** Declarations a reason-bearing pragma removed from both sets above. */
+  exempt: Set<string>
+  /** The walk's own receipt: how many modules the prefilter kept. */
+  files: number
+}
+
+/**
+ * The binary unit API declared ANYWHERE under `src/`, not just in two files.
+ *
+ * ★ THIS IS TASK 8'S PRECONDITION, HALF 1, AND WHAT IT FOUND. Until now the
+ * conversion vocabulary was derived from `decimalSafe.ts` alone plus whatever
+ * the scanned file declared for itself, so a binary conversion helper declared
+ * in any OTHER module and called from a DIFFERENT file produced zero findings
+ * in both. Task 5 emptied `decimalSafe.ts`, which left that leg with no
+ * population at all and made the blindness total.
+ *
+ * Closing it surfaced a live one immediately: `utils/supplyUnits.ts` exports
+ * `canonicalToDisplay`, `displayToCanonical` and `supplyUnitLabel`, all three
+ * taking the collapsed `UnitSystem`, with sixteen call sites across six files,
+ * and `displayToCanonical` is a WRITE. That is R8's defect class one module
+ * over, exactly as the precondition predicted, and it was invisible to every
+ * leg of this gate for the whole of phase 3b. It is ruled (R3, deferred
+ * pending the D8 amendment) rather than repaired, and the ruling is recorded
+ * at the three declarations with `// units-exempt:` so the sixteen call sites
+ * do not each need their own copy of it. See `declarationExempt`.
+ *
+ * The formatter leg gets the same widening in the same walk. It adds nothing
+ * today (no class outside `units.ts` declares a static binary method), and
+ * that is the point: the hole was symmetric and closing only the half with a
+ * population is how the other half becomes next year's finding.
+ */
+function deriveBinarySurface(): BinarySurface {
+  const formatters = new Set<string>()
+  const helpers = new Set<string>()
+  const exempt = new Set<string>()
+  const paths = binaryDeclarationSources()
+  for (const path of paths) {
+    const source = parseForDerivation(path)
+    refuseAliasedReExport(source, path)
+    const methods = formatterMethodsIn(source, null)
+    for (const name of methods.binary) formatters.add(name)
+    for (const name of methods.exempt) exempt.add(name)
+    const functions = conversionHelpersIn(source)
+    for (const name of functions.binary) helpers.add(name)
+    for (const name of functions.exempt) exempt.add(name)
+  }
+  if (paths.length === 0) {
+    throw new Error(
+      `no module under ${relative(ROOT, SRC_DIR)} mentions ${BINARY_SYSTEM_TYPE}, so the ` +
+        'tree-wide binary vocabulary would be empty and both binary legs would report ' +
+        'zero findings for every file. Refusing to run: the type is declared in ' +
+        `${relative(ROOT, UNITS_SOURCE)}, so at minimum that module must be here.`,
+    )
+  }
+  return { formatters, helpers, exempt, files: paths.length }
+}
+
+/**
+ * Refuse an aliased re-export of the binary type, which would blind the prefilter.
+ *
+ * `export type { UnitSystem as Sys } from './units'` is legal and would make
+ * `binaryDeclarationSources` skip every module importing `Sys`, silently. The
+ * codebase has none today and `supplyUnits.ts`'s header explains why it must
+ * not gain one; this is that prose made executable.
+ */
+function refuseAliasedReExport(source: TsSourceFile, path: string): void {
+  const walk = (node: TsNode): void => {
+    if (node.kind === ts.SyntaxKind.ExportSpecifier) {
+      const original = (node.propertyName ?? node.name)?.text ?? ''
+      const exposed = node.name?.text ?? ''
+      if (original === BINARY_SYSTEM_TYPE && exposed !== BINARY_SYSTEM_TYPE) {
+        throw new Error(
+          `${relative(ROOT, path)} re-exports ${BINARY_SYSTEM_TYPE} as ${exposed}. A module ` +
+            `importing ${exposed} would never spell ${BINARY_SYSTEM_TYPE}, so the text ` +
+            'prefilter in binaryDeclarationSources would skip it and any binary API it ' +
+            'declares would be invisible to both binary legs. Refusing to run. Import the ' +
+            'type from where it is declared, or drop the prefilter and parse the whole tree.',
+        )
+      }
+    }
+    ts.forEachChild(node, walk)
+  }
+  walk(source)
+}
+
+/**
  * The exported function declarations of one source, split by shape.
  *
  * `binary` is the R8 vocabulary; `exported` is everything the walk visited,
@@ -494,18 +840,25 @@ function deriveBinaryFormatterMethods(): Set<string> {
 function conversionHelpersIn(source: TsSourceFile): {
   binary: Set<string>
   exported: Set<string>
+  exempt: Set<string>
 } {
+  const ctx = binaryTypeContext(source)
+  const lines = sourceLines(source)
   const binary = new Set<string>()
   const exported = new Set<string>()
+  const exempt = new Set<string>()
   const walk = (node: TsNode): void => {
     if (node.kind === ts.SyntaxKind.FunctionDeclaration && isExported(node) && node.name) {
       exported.add(node.name.getText(source))
-      if (takesBinarySystem(node, source)) binary.add(node.name.getText(source))
+      if (takesBinarySystem(node, source, ctx)) {
+        if (declarationExempt(node, source, lines)) exempt.add(node.name.getText(source))
+        else binary.add(node.name.getText(source))
+      }
     }
     ts.forEachChild(node, walk)
   }
   walk(source)
-  return { binary, exported }
+  return { binary, exported, exempt }
 }
 
 /**
@@ -611,8 +964,17 @@ function deriveQuantityTokens(): Map<string, Set<string>> {
 }
 
 requireBinarySystemType()
-const BINARY_FORMATTER_METHODS = deriveBinaryFormatterMethods()
-const BINARY_CONVERSION_HELPERS = deriveBinaryConversionHelpers()
+// The two single-file derivations stay, and they are not redundant with the
+// tree-wide one: each carries a `requireNonEmpty` RECEIPT over the file whose
+// surface a ruling governs (`UnitFormatter`'s statics under R2,
+// `decimalSafe.ts`'s exports under R8), so a gutted file or a changed AST shape
+// still fails loudly instead of shrinking the tree-wide set by two.
+deriveBinaryFormatterMethods()
+deriveBinaryConversionHelpers()
+const BINARY_SURFACE = deriveBinarySurface()
+const BINARY_FORMATTER_METHODS = BINARY_SURFACE.formatters
+const BINARY_CONVERSION_HELPERS = BINARY_SURFACE.helpers
+const EXEMPT_BINARY_DECLARATIONS = BINARY_SURFACE.exempt
 const QUANTITY_TOKENS = deriveQuantityTokens()
 
 export interface Finding {
@@ -931,16 +1293,6 @@ function quantityBranchOf(node: TsNode, source: TsSourceFile): string | null {
 }
 
 /**
- * The escape hatch, and it must carry a reason.
- *
- * Round 1 tested `line.includes('units-exempt')`, so a bare marker with no
- * justification silenced a finding while the docstring and the failure message
- * both promised "with the reason". Requiring the comment introducer and a
- * colon also stops the marker matching inside an ordinary string literal.
- */
-const EXEMPT_PRAGMA = /(?:^|\s)\/\/\s*units-exempt:\s*\S/
-
-/**
  * A source file thrown away by the parser is worse than a missing gate.
  *
  * Round 1 hardcoded `ScriptKind.TSX` for every file. `const x = <string>raw` is
@@ -1013,9 +1365,7 @@ export function scanSource(source: string, rel: string): Finding[] {
   const record = (node: TsNode, kind_: string, text: string): void => {
     const line = sf.getLineAndCharacterOfPosition(node.getStart(sf)).line + 1
     // Escape hatch: the offending line or the line directly above it.
-    if (EXEMPT_PRAGMA.test(lines[line - 1] ?? '') || EXEMPT_PRAGMA.test(lines[line - 2] ?? '')) {
-      return
-    }
+    if (exemptedAtLine(lines, line)) return
     findings.push({ file: rel, line, kind: kind_, text })
   }
 
@@ -1141,6 +1491,20 @@ function printReport(findings: Finding[]): void {
   console.log('')
 }
 
+/**
+ * What the tick does NOT cover, printed beside it.
+ *
+ * A gate's success line is the sentence people quote, so the one suppression
+ * that reaches ACROSS files is counted in it rather than left to `--derived`.
+ * Task 8 made the binary vocabularies tree-wide, and one `// units-exempt:` on
+ * a declaration then silences every call site of that declaration everywhere;
+ * the number moving is what stops that growing quietly.
+ */
+function exemptionCensus(): string {
+  const n = EXEMPT_BINARY_DECLARATIONS.size
+  return n === 0 ? '' : `, ${n} binary declaration(s) exempt at their declaration`
+}
+
 function main(): void {
   const argv = process.argv.slice(2)
   const args = new Set(argv)
@@ -1159,6 +1523,11 @@ function main(): void {
       `BINARY_CONVERSION_HELPERS (${BINARY_CONVERSION_HELPERS.size}): ` +
         [...BINARY_CONVERSION_HELPERS].sort().join(', '),
     )
+    console.log(
+      `EXEMPT_BINARY_DECLARATIONS (${EXEMPT_BINARY_DECLARATIONS.size}): ` +
+        [...EXEMPT_BINARY_DECLARATIONS].sort().join(', '),
+    )
+    console.log(`BINARY_DECLARATION_SOURCES (${BINARY_SURFACE.files})`)
     console.log(`QUANTITY_TOKENS (${QUANTITY_TOKENS.size}):`)
     for (const [quantity, tokens] of [...QUANTITY_TOKENS].sort()) {
       console.log(`   ${quantity.padEnd(14)}${[...tokens].sort().join(' ')}`)
@@ -1263,7 +1632,8 @@ function main(): void {
   const fixed = baselineTotal - findings.length
   console.log(
     `✓ No new unit-system branches (${findings.length} known, baseline ${baselineTotal}` +
-      `${fixed > 0 ? `, ${fixed} fixed, run --update to shrink the baseline` : ''}).`,
+      `${fixed > 0 ? `, ${fixed} fixed, run --update to shrink the baseline` : ''}` +
+      `${exemptionCensus()}).`,
   )
 }
 

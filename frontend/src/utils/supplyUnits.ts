@@ -72,6 +72,7 @@ const L_PER_QUART = 0.946352946
  * be a second guess at the same missing token, and it would silently change
  * which unit the incoherent account named in the header sees.
  */
+// units-exempt: R3 read leg, at the DECLARATION. Task 8 made the binary-conversion vocabulary tree-wide, so this export and its call sites became visible together; the ruling below is one ruling and it belongs here rather than copied onto each of the sixteen call sites in six files. Owner: deferred, pending the D8 amendment. Expires with the read leg's own pragma.
 export function canonicalToDisplay(
   value: number,
   unitType: SupplyUnitType,
@@ -96,6 +97,7 @@ export function canonicalToDisplay(
  * differently-conditioned display is a silent 5.7 percent per round trip, so if
  * these ever move they move in the same commit.
  */
+// units-exempt: R3 write leg, at the DECLARATION. This is the export that reaches storage, so its call sites are the ones a wrong answer would make permanent; they are exempt for the reason the read leg is and move with it, never alone. Owner: deferred, pending the D8 amendment.
 export function displayToCanonical(
   value: number,
   unitType: SupplyUnitType,
@@ -129,6 +131,7 @@ export function displayToCanonical(
  * on a UK instance, and no column records which quart a row was written in.
  * That is a spec amendment and a data decision, not a refactor.
  */
+// units-exempt: R3 label leg, at the DECLARATION. Ten of the sixteen call sites are this one, and every one of them is a label beside a value the two legs above already conditioned on the same signal. Owner: deferred, pending the D8 amendment, which also owns the 20.1 percent UK-quart defect in the docstring above.
 export function supplyUnitLabel(unitType: SupplyUnitType, system: UnitSystem): string {
   if (unitType === 'count') return ''
   // units-exempt: R3 label leg; the qt/L choice is not in UnitSet, so migrating this comparison changes nothing. Owner: deferred, pending the D8 amendment, which also owns the 20.1 percent UK-quart defect in the docstring above. Expires when D8 says which quart it meant.

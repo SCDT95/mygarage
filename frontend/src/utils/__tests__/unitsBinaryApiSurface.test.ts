@@ -68,9 +68,115 @@ function takesBinarySystem(
   node: { parameters?: ts.NodeArray<ts.ParameterDeclaration> },
   source: ts.SourceFile
 ): boolean {
-  return (node.parameters ?? []).some(
-    (p) => p.type?.getText(source).trim() === BINARY_SYSTEM_TYPE
-  )
+  const names = binarySpellings(source)
+  const local = localTypes(source)
+  return (node.parameters ?? []).some((p) => namesBinary(p.type, source, names, local))
+}
+
+/**
+ * Every local spelling of the binary type in one module.
+ *
+ * ★ Deliberately a SECOND implementation of `validate-units.ts`'s
+ * `binaryTypeContext`, in a different style, for the reason the parity
+ * assertions below give at length: two walks of one rule asserted to agree
+ * catch drift in either direction, where one consuming the other would narrow
+ * both in the same edit and say nothing.
+ */
+function binarySpellings(source: ts.SourceFile): Set<string> {
+  const names = new Set<string>([BINARY_SYSTEM_TYPE])
+  const aliases = new Map<string, ts.TypeNode>()
+  const walk = (node: ts.Node): void => {
+    if (ts.isImportSpecifier(node)) {
+      const original = (node.propertyName ?? node.name).text
+      if (original === BINARY_SYSTEM_TYPE) names.add(node.name.text)
+    }
+    if (ts.isTypeAliasDeclaration(node)) aliases.set(node.name.text, node.type)
+    ts.forEachChild(node, walk)
+  }
+  walk(source)
+  for (let pass = 0; pass < 8; pass += 1) {
+    let grew = false
+    for (const [name, body] of aliases) {
+      if (names.has(name)) continue
+      if (ts.isTypeReferenceNode(body) && names.has(lastSegment(body, source))) {
+        names.add(name)
+        grew = true
+      }
+    }
+    if (!grew) break
+  }
+  return names
+}
+
+/** The `type` and `interface` bodies a module declares, so a props type resolves. */
+function localTypes(source: ts.SourceFile): Map<string, ts.Node> {
+  const local = new Map<string, ts.Node>()
+  const walk = (node: ts.Node): void => {
+    if (ts.isTypeAliasDeclaration(node)) local.set(node.name.text, node.type)
+    if (ts.isInterfaceDeclaration(node)) local.set(node.name.text, node)
+    ts.forEachChild(node, walk)
+  }
+  walk(source)
+  return local
+}
+
+function lastSegment(node: ts.TypeReferenceNode, source: ts.SourceFile): string {
+  return node.typeName.getText(source).trim().split('.').pop() ?? ''
+}
+
+/**
+ * Whether an annotation names the binary type anywhere a PARAMETER decides on it.
+ *
+ * Unions, intersections, parentheses, inline props objects and named
+ * `type`/`interface` declarations count. A generic type ARGUMENT does not: it
+ * holds the type rather than deciding on one, which is the boundary the gate
+ * states and corpus case S-N18 pins from the far side.
+ */
+function namesBinary(
+  type: ts.Node | undefined,
+  source: ts.SourceFile,
+  names: Set<string>,
+  local: Map<string, ts.Node>,
+  depth = 0,
+  seen: Set<string> = new Set()
+): boolean {
+  if (type === undefined || depth > 8) return false
+  const recurse = (n: ts.Node | undefined): boolean =>
+    namesBinary(n, source, names, local, depth + 1, seen)
+  if (ts.isUnionTypeNode(type) || ts.isIntersectionTypeNode(type)) {
+    return type.types.some(recurse)
+  }
+  if (ts.isParenthesizedTypeNode(type)) return recurse(type.type)
+  if (ts.isTypeLiteralNode(type) || ts.isInterfaceDeclaration(type)) {
+    return type.members.some((m) => recurse(ts.isPropertySignature(m) ? m.type : undefined))
+  }
+  if (ts.isTypeReferenceNode(type)) {
+    const name = lastSegment(type, source)
+    if (names.has(name)) return true
+    if (seen.has(name)) return false
+    const body = local.get(name)
+    if (body === undefined) return false
+    seen.add(name)
+    return recurse(body)
+  }
+  return names.has(type.getText(source).trim())
+}
+
+/**
+ * True when a declaration carries a reason-bearing exemption where it is declared.
+ *
+ * ★ `sourceFile.text`, never `getText()`. `getText()` starts AFTER the file's
+ * leading trivia, so on a module opening with a docstring it returns fewer
+ * lines than the file has and every lookup is off by the header's height. That
+ * bug shipped for one commit inside the gate itself and silenced two of three
+ * exemptions while the third worked, which is the shape that reaches main.
+ */
+const EXEMPT_PRAGMA = /(?:^|\s)\/\/\s*units-exempt:\s*\S/
+
+function declarationExempt(node: ts.Node, source: ts.SourceFile): boolean {
+  const lines = source.text.split('\n')
+  const line = source.getLineAndCharacterOfPosition(node.getStart(source)).line + 1
+  return EXEMPT_PRAGMA.test(lines[line - 1] ?? '') || EXEMPT_PRAGMA.test(lines[line - 2] ?? '')
 }
 
 /**
@@ -237,6 +343,57 @@ function productionSources(): string[] {
   return out
 }
 
+/**
+ * The binary surface declared ANYWHERE under `src/`, walked independently.
+ *
+ * ★ WHY THE SCOPE MOVED. Task 8 made the gate's two binary vocabularies
+ * tree-wide, because a helper declared in one module and called from another
+ * produced no finding in either and that was the whole remaining population of
+ * the R8 leg. The parity assertions below are worth having only while the two
+ * derivations cover the SAME universe: a test still reading two files would
+ * agree with a gate reading the tree right up until somebody declares a binary
+ * API in a third one, which is the case the widening exists for.
+ *
+ * The prefilter matches the gate's and is sound for the same reason: the type
+ * has one declaration site, so a module using it must spell it to import it.
+ */
+function binarySurface(): { formatters: string[]; helpers: string[]; exempt: string[] } {
+  const formatters = new Set<string>()
+  const helpers = new Set<string>()
+  const exempt = new Set<string>()
+  for (const path of [UNITS, ...productionSources()]) {
+    if (!readFileSync(path, 'utf-8').includes(BINARY_SYSTEM_TYPE)) continue
+    const source = parse(path)
+    const walk = (node: ts.Node): void => {
+      if (ts.isClassDeclaration(node)) {
+        for (const member of node.members) {
+          if (!ts.isMethodDeclaration(member)) continue
+          if (!(member.modifiers ?? []).some((m) => m.kind === ts.SyntaxKind.StaticKeyword)) continue
+          if (!takesBinarySystem(member, source)) continue
+          const name = member.name.getText(source)
+          ;(declarationExempt(member, source) ? exempt : formatters).add(name)
+        }
+      }
+      if (
+        ts.isFunctionDeclaration(node) &&
+        node.name !== undefined &&
+        (node.modifiers ?? []).some((m) => m.kind === ts.SyntaxKind.ExportKeyword) &&
+        takesBinarySystem(node, source)
+      ) {
+        const name = node.name.getText(source)
+        ;(declarationExempt(node, source) ? exempt : helpers).add(name)
+      }
+      ts.forEachChild(node, walk)
+    }
+    walk(source)
+  }
+  return {
+    formatters: [...formatters].sort(),
+    helpers: [...helpers].sort(),
+    exempt: [...exempt].sort(),
+  }
+}
+
 /** Files where `UnitFormatter.<method>` is actually accessed, by method. */
 function callersByMethod(methods: string[]): Map<string, string[]> {
   const wanted = new Set(methods)
@@ -261,17 +418,58 @@ function callersByMethod(methods: string[]): Map<string, string[]> {
   return callers
 }
 
-describe('the binary UnitFormatter surface', () => {
-  it('derives the same set the units gate derives, in the other language', () => {
-    // The gate's `formatter-binary` leg only reports call sites for methods in
-    // ITS set. If the two derivations drift, one of them is reporting on a
-    // surface the other cannot see, and neither would say so. This matters most
-    // now that the set is EMPTY: `gateDerivedSet` throws when the gate does not
-    // print the line at all, so a gate that stopped deriving the set is not
-    // mistaken for one that derived it and found nothing.
-    expect(formatterMethods().binary).toEqual(gateDerivedSet('BINARY_FORMATTER_METHODS'))
+describe('the tree-wide binary surface (plan 3b task 8)', () => {
+  it('derives the same three sets the units gate derives, in the other language', () => {
+    // The gate's two binary legs report call sites only for names in these
+    // sets, so a drift in either direction is a leg reporting on a surface the
+    // other cannot see. Both walks now cover the same universe: every module
+    // under `src/` that mentions the type, rather than the two files that used
+    // to hold the whole population.
+    const surface = binarySurface()
+    expect(surface.formatters).toEqual(gateDerivedSet('BINARY_FORMATTER_METHODS'))
+    expect(surface.helpers).toEqual(gateDerivedSet('BINARY_CONVERSION_HELPERS'))
+    expect(surface.exempt).toEqual(gateDerivedSet('EXEMPT_BINARY_DECLARATIONS'))
   })
 
+  it('★ pins the exempt declarations to an exact list, because one silences many files', () => {
+    // ★ THE RECEIPT FOR THE ONLY SUPPRESSION IN THIS GATE THAT CROSSES A FILE
+    // BOUNDARY. A `// units-exempt:` on a binary DECLARATION removes it from
+    // the vocabulary, and with it every call site of it in every module:
+    // sixteen, across six files, for the three below. That is the right shape
+    // for one deferred ruling (R3, pending the D8 amendment that would give
+    // supplies a resolved token) and the wrong shape to let grow unnoticed, so
+    // the list is exact here rather than merely counted on the gate's tick.
+    //
+    // A fourth name appearing on this line is a fourth binary API somebody
+    // exempted. Read the pragma's reason before widening it.
+    expect(binarySurface().exempt).toEqual([
+      'canonicalToDisplay',
+      'displayToCanonical',
+      'supplyUnitLabel',
+    ])
+  })
+
+  it('★ finds no binary declaration that is not exempted', () => {
+    // The tree-wide statement of what the formatter and conversion blocks below
+    // each assert for one file. Empty is the goal state and it is reached: every
+    // remaining binary declaration in the tree carries a ruling at its own
+    // declaration, and anything added without one lands here first.
+    const surface = binarySurface()
+    expect([...surface.formatters, ...surface.helpers]).toEqual([])
+  })
+})
+
+// ★ THE PER-FILE PARITY ASSERTIONS MOVED UP, RATHER THAN BEING DROPPED. Each
+// describe below used to open by comparing its own single-file `binary` set
+// against the gate's derived set of the same name. Task 8 made the gate's sets
+// TREE-WIDE, so those two comparisons now hold two different universes side by
+// side and agree only while both are empty, which is the shape of an assertion
+// that stops meaning anything without failing. The tree-wide walk includes both
+// of these files, so `the tree-wide binary surface` above asserts strictly more
+// than they did. What stays here is what only a single-file walk can say: the
+// RECEIPT that the walk visited the file at all, and the emptiness that receipt
+// makes meaningful.
+describe('the binary UnitFormatter surface', () => {
   it('still reads the static methods, so the empty set below means something', () => {
     // The receipt. Task 2 deleted the seven binary methods that no production
     // file called, leaving nine; task 3 moved PropaneRecordForm onto the mass
@@ -321,15 +519,6 @@ describe('the binary UnitFormatter surface', () => {
 })
 
 describe('the binary conversion surface', () => {
-  it('derives the same set the units gate derives, in the other language', () => {
-    // Same parity argument as the formatter block: two AST walks of one rule in
-    // two languages, asserted to agree rather than one consuming the other.
-    // This is the leg that matters most while the set is empty, because an
-    // empty vocabulary is exactly the state in which a detector reports nothing
-    // and looks healthy doing it.
-    expect(conversionHelpers().binary).toEqual(gateDerivedSet('BINARY_CONVERSION_HELPERS'))
-  })
-
   it('still reads the exported helpers, so the empty set below means something', () => {
     // The receipt. This list is what a healthy walk over this file sees; if it
     // ever comes back empty, the assertion after it proves nothing at all.
