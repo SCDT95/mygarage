@@ -1425,7 +1425,7 @@
   {
    "path": "src/components/tabs/SettingsSystemTab.tsx",
    "disposition": "audited",
-   "digest": "bf64702d20be0650ef3d4b94cfc89f852ef8c28c5251a01c8cf5d5e328018155",
+   "digest": "3aec86178d8496b9e8ec25ed87c8896cc8a42bd6e4157e9e0d1c1a2ee4410457",
    "reason": "the unit description is COMPOSED from the resolved set in EVERY branch (plan 3b R1 plus spec D3: an override column beats the preset regardless of which preset is set), so the card no longer selects one of two fixed sentences and no longer reads unit_preference for the two preset values. The gallon panel is derived from the same expression. The three comparisons left are R1's structural exemptions, recorded not asserted clean until the task 8 gate flip.",
    "tests": [
     "components/tabs/__tests__/SettingsSystemTab.units.test.tsx"
@@ -1433,7 +1433,8 @@
    "findings": [
     "compare x3 (units gate baseline)",
     "R1's three structural exemptions: the two preset-selection controls (unitPreference === 'imperial' / 'metric') and the gallon-panel visibility (displaySystem === 'imperial'). Each is a choice BETWEEN units with no quantity to convert, so task 8 exempts them structurally or by exact match in the gate rather than with a reason-bearing pragma, which silences anything.",
-    "The composed description cannot distinguish US from UK gallons: gal_us and gal_uk both label \"gal\" and mpg_us and mpg_uk both label \"MPG\", so two accounts that convert at 3.785 L and 4.546 L read the same sentence. Incomplete rather than false. The gallon sub-panel below is only a partial mitigation because it renders the INSTANCE-wide imperial_gallon_standard setting, not this account's secondary_gallon. Deferred to phase 4, which owns the gallon key and the eleven Custom controls; a flavour suffix in UNIT_ADAPTERS.label would move every rendered volume in the app."
+    "The composed description cannot distinguish US from UK gallons: gal_us and gal_uk both label \"gal\" and mpg_us and mpg_uk both label \"MPG\", so two accounts that convert at 3.785 L and 4.546 L read the same sentence. Incomplete rather than false. The gallon sub-panel below is only a partial mitigation because it renders the INSTANCE-wide imperial_gallon_standard setting, not this account's secondary_gallon. Deferred to phase 4, which owns the gallon key and the eleven Custom controls; a flavour suffix in UNIT_ADAPTERS.label would move every rendered volume in the app.",
+    "The two preset buttons are visibly INERT for an account with override columns, which is the population migration 093 created: clicking Metric moves the highlight, fires the toast and stores the preference, and nothing the account renders changes, because eleven overrides beat the preset (D3). Correct and honest, and a direct consequence of composing from the resolved set, but the control demonstrably does nothing for those users. Phase 4 replaces this toggle with the eleven Custom controls, where it becomes addressable."
    ],
    "owners": [
     "task 8",

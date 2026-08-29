@@ -58,21 +58,34 @@ const RETIRED_KEYS = ['imperialDescription', 'metricDescription'] as const
 type UnitsBlock = Record<string, unknown>
 
 /**
- * The key and interpolation variable the component actually renders with.
+ * The key and interpolation variable a component source renders with.
  *
  * A hard error rather than a skipped assertion when it cannot be read: this
  * whole file derives from that one call, so a failed read means the assertions
  * below would be checking nothing.
  *
+ * ★ IT TAKES THE SOURCE AS A STRING so both refusals can be driven directly.
+ * They cannot be reached from the real file: a component with no interpolating
+ * call, or with two, is a component this guard exists to stop from shipping, so
+ * neither state can exist in a tree the suite is allowed to be green on.
+ * Deleting the two-call branch therefore left all 57 tests passing, which is a
+ * guard that reads as covered and is not. Reading a string instead makes both
+ * branches killable by the two cases below, and the one-line wrapper keeps the
+ * real file as the subject of everything else.
+ *
+ * @param source The component source to read.
+ * @param where The path to name in a refusal.
  * @returns The `units.*` key and the name inside its `{{...}}` placeholder.
  */
-function contractFromComponent(): { key: string; variable: string } {
-  const source = readFileSync(COMPONENT, 'utf-8')
+export function contractFromSource(
+  source: string,
+  where: string
+): { key: string; variable: string } {
   const matches = [...source.matchAll(/\bt\(\s*'units\.([A-Za-z]+)'\s*,\s*\{\s*([A-Za-z]+):/g)]
   if (matches.length === 0) {
     throw new Error(
-      'could not find an interpolating t(\'units.*\', { ... }) call in ' +
-        'src/components/tabs/SettingsSystemTab.tsx. The unit description is composed ' +
+      `could not find an interpolating t('units.*', { ... }) call in ${where}. ` +
+        'The unit description is composed ' +
         'from the resolved set (plan 3b R1), so a component that no longer interpolates ' +
         'has either regressed to a fixed string or renamed the call beyond this reader. ' +
         'Either way the locale assertions below would be checking nothing.'
@@ -80,7 +93,7 @@ function contractFromComponent(): { key: string; variable: string } {
   }
   if (matches.length > 1) {
     throw new Error(
-      `src/components/tabs/SettingsSystemTab.tsx now has ${matches.length} interpolating ` +
+      `${where} now has ${matches.length} interpolating ` +
         `units.* calls (${matches.map(m => `units.${m[1]}`).join(', ')}). This file takes ` +
         'the single one as its subject, so a second call would silently relocate every ' +
         'assertion below onto whichever came first and leave the real key unguarded in ' +
@@ -89,6 +102,11 @@ function contractFromComponent(): { key: string; variable: string } {
     )
   }
   return { key: matches[0][1], variable: matches[0][2] }
+}
+
+/** The same read, against the component this file is actually about. */
+function contractFromComponent(): { key: string; variable: string } {
+  return contractFromSource(readFileSync(COMPONENT, 'utf-8'), 'src/components/tabs/SettingsSystemTab.tsx')
 }
 
 const { key: DESCRIPTION_KEY, variable: DESCRIPTION_VARIABLE } = contractFromComponent()
@@ -110,6 +128,35 @@ function unitsBlockFor(language: string): UnitsBlock {
   }
   return parsed.units
 }
+
+describe('the reader this file rests on refuses an unusable component', () => {
+  // Neither state can be reached from the real component: one is a regression
+  // to a fixed string and the other is the relocation this guard exists to
+  // prevent, so both would have to SHIP to be reachable. Driving the reader
+  // with a source string is what makes the two refusals killable at all;
+  // deleting either branch previously left all 57 tests green.
+  const ONE_CALL = "  {t('units.resolvedDescription', { units: summary })}"
+
+  it('accepts exactly one interpolating units.* call, and reports it', () => {
+    expect(contractFromSource(ONE_CALL, 'fixture.tsx')).toStrictEqual({
+      key: 'resolvedDescription',
+      variable: 'units',
+    })
+  })
+
+  it('refuses a component that no longer interpolates a units.* key', () => {
+    expect(() => contractFromSource("  {t('units.resolvedDescription')}", 'fixture.tsx')).toThrow(
+      /could not find an interpolating .* call in fixture\.tsx/
+    )
+  })
+
+  it('refuses a SECOND interpolating units.* call rather than taking the first', () => {
+    const two = `  {t('units.showBothDescription', { units: 'x' })}\n${ONE_CALL}`
+    expect(() => contractFromSource(two, 'fixture.tsx')).toThrow(
+      /now has 2 interpolating units\.\* calls \(units\.showBothDescription, units\.resolvedDescription\)/
+    )
+  })
+})
 
 describe('the composed unit description ships in every locale', () => {
   it('checks every language the app can load, and no orphan directory', () => {

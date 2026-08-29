@@ -87,11 +87,20 @@ export default function SettingsSystemTab() {
   // panel for an account every other screen renders in gallons, miles and °F.
   // That is R1's defect surviving inside R1's own fix, one branch over.
   //
-  // The cost is that a preset click no longer repaints the copy before the
-  // `refreshUser()` round trip lands. That is the correct trade: the old
-  // behaviour was not "optimistic", it was a guess that is wrong for exactly
-  // the accounts this feature exists for, and for an account with overrides the
-  // honest answer to "what do I use" does not change when the preset does.
+  // The cost is that a preset click no longer repaints this sentence before the
+  // `refreshUser()` round trip lands. The button highlight and the toast are
+  // still immediate, because `setUnitPreference` runs before the await; only
+  // the description waits. That is the correct trade: the old behaviour was not
+  // "optimistic", it was a guess that is wrong for exactly the accounts this
+  // feature exists for.
+  //
+  // ★ And for an account with overrides the sentence does not change AT ALL,
+  // because eleven override columns beat the preset. The two buttons are
+  // therefore visibly inert for the population migration 093 created: the
+  // highlight moves, the toast fires, the server stores the new preference, and
+  // nothing the account renders changes. That is honest rather than broken, and
+  // it is recorded on this file's manifest row for phase 4, which replaces this
+  // toggle with the eleven Custom controls that can actually address it.
   //
   // `displaySystem` is derived FROM the same set rather than alongside it, so
   // the gallon panel below and the sentence above cannot disagree: one
