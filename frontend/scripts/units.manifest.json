@@ -22,13 +22,10 @@
   {
    "path": "public/locales/de/analytics.json",
    "disposition": "audited",
-   "digest": "a9d4b894ad554fcc51047fc40bb51c60992f11f450affe581d4a1a545ab39c4c",
-   "reason": "the MPG help copy is untranslated here and falls back to English; the digest forces a re-review when it is translated.",
-   "findings": [
-    "vehicle.totalLiters / vehicle.totalGallons are selected by a raw `units.volume === 'L'` branch in Analytics."
-   ],
-   "owners": [
-    "task 6"
+   "digest": "2288edf12b600881ee7bc96c97fa4a16158da79fae6c0c56a182af3c2e590775",
+   "reason": "the MPG help copy is untranslated here and falls back to English; the digest forces a re-review when it is translated. Task 6 replaced the raw `units.volume === 'L'` prose selection with the same `{{unit}}` interpolation the volume COLUMN already used, so the two cannot disagree: totalLiters / totalGallons are gone and totalVolume takes getVolumeUnit(units).",
+   "tests": [
+    "__tests__/volumeTotalLabelLocales.test.ts"
    ]
   },
   {
@@ -77,25 +74,25 @@
   {
    "path": "public/locales/de/vehicles.json",
    "disposition": "audited",
-   "digest": "00141e2da7a928712320aa5c8cfdda2fab8f61d765fb65f22173c581b1690270",
-   "reason": "windowSticker.misc.fuelEconomyMpg and the warranty placeholders reproduce a US Monroney label verbatim and are exempt for the same reason as WindowStickerUpload. defList.gallons and propaneList.gallons still EXIST in `en` and in these bundles; what changed is that no code reads them any more (both list headers moved to the `volumeUnit` interpolation, and their tests assert the old key is absent from the rendered header). Unreferenced keys, not stale translations: verified by grep, because the first version of this sentence said `en` had dropped them and `en` had not.",
-   "findings": [
-    "propaneList.totalGallons / propaneList.totalLiters (and vehicle.totalGallons / vehicle.totalLiters where present) are selected by a raw `units.volume === 'L'` branch in PropaneRecordList and Analytics."
-   ],
-   "owners": [
-    "task 6"
+   "digest": "2f08720f6bb0d439136b6df38dfea7d4ccd0a8eef52a29b6702760e9996e0d44",
+   "reason": "windowSticker.misc.fuelEconomyMpg and the warranty placeholders reproduce a US Monroney label verbatim and are exempt for the same reason as WindowStickerUpload. defList.gallons and propaneList.gallons still EXIST in `en` and in these bundles; what changed is that no code reads them any more (both list headers moved to the `volumeUnit` interpolation, and their tests assert the old key is absent from the rendered header). Unreferenced keys, not stale translations: verified by grep, because the first version of this sentence said `en` had dropped them and `en` had not. Task 6 replaced the raw `units.volume === 'L'` prose selection with the same `{{unit}}` interpolation the volume COLUMN already used, so the two cannot disagree: totalLiters / totalGallons are gone and totalVolume takes getVolumeUnit(units).",
+   "tests": [
+    "__tests__/volumeTotalLabelLocales.test.ts"
    ]
   },
   {
    "path": "public/locales/fr/analytics.json",
    "disposition": "audited",
-   "digest": "a1147fc89c683d0dea83a649e236c40d456ea18f3a0c1ab8f26859a785d7b9ef",
-   "reason": "reviewed at this snapshot",
+   "digest": "48caca96e222e16430b074f44931e38803d7c6eb5b293caf30385de450549d22",
+   "reason": "reviewed at this snapshot. Task 6 replaced the raw `units.volume === 'L'` prose selection with the same `{{unit}}` interpolation the volume COLUMN already used, so the two cannot disagree: totalLiters / totalGallons are gone and totalVolume takes getVolumeUnit(units).",
    "findings": [
-    "vehicleHelp.costAnalysis.costPerMile* and vehicleHelp.fuelEconomy.*Mpg* are imperial-only help copy rendered unconditionally by AnalyticsHelpModal; vehicle.totalLiters / vehicle.totalGallons are selected by a raw `units.volume === 'L'` branch in Analytics."
+    "vehicleHelp.costAnalysis.costPerMile* and vehicleHelp.fuelEconomy.*Mpg* are imperial-only help copy rendered unconditionally by AnalyticsHelpModal."
    ],
    "owners": [
     "task 6"
+   ],
+   "tests": [
+    "__tests__/volumeTotalLabelLocales.test.ts"
    ]
   },
   {
@@ -144,19 +141,16 @@
   {
    "path": "public/locales/fr/vehicles.json",
    "disposition": "audited",
-   "digest": "5d5463d35502f296b2a0499780ad62726363fdb948fe9173edc86a0e183c4c22",
-   "reason": "windowSticker.misc.fuelEconomyMpg and the warranty placeholders reproduce a US Monroney label verbatim and are exempt for the same reason as WindowStickerUpload. defList.gallons and propaneList.gallons still EXIST in `en` and in these bundles; what changed is that no code reads them any more (both list headers moved to the `volumeUnit` interpolation, and their tests assert the old key is absent from the rendered header). Unreferenced keys, not stale translations: verified by grep, because the first version of this sentence said `en` had dropped them and `en` had not.",
-   "findings": [
-    "propaneList.totalGallons / propaneList.totalLiters (and vehicle.totalGallons / vehicle.totalLiters where present) are selected by a raw `units.volume === 'L'` branch in PropaneRecordList and Analytics."
-   ],
-   "owners": [
-    "task 6"
+   "digest": "1471899f013e70ea3681a9eb27c8b1d259e9c51af453c03490cf974c16a1d5d7",
+   "reason": "windowSticker.misc.fuelEconomyMpg and the warranty placeholders reproduce a US Monroney label verbatim and are exempt for the same reason as WindowStickerUpload. defList.gallons and propaneList.gallons still EXIST in `en` and in these bundles; what changed is that no code reads them any more (both list headers moved to the `volumeUnit` interpolation, and their tests assert the old key is absent from the rendered header). Unreferenced keys, not stale translations: verified by grep, because the first version of this sentence said `en` had dropped them and `en` had not. Task 6 replaced the raw `units.volume === 'L'` prose selection with the same `{{unit}}` interpolation the volume COLUMN already used, so the two cannot disagree: totalLiters / totalGallons are gone and totalVolume takes getVolumeUnit(units).",
+   "tests": [
+    "__tests__/volumeTotalLabelLocales.test.ts"
    ]
   },
   {
    "path": "public/locales/pl/analytics.json",
    "disposition": "no unit behaviour",
-   "digest": "c5ba860f6160c09610d367c9ff04d2766ea7b15a06f4088ae8eb13ca866c9180",
+   "digest": "4ce0e17f678f789de280c56f9bde90a4b2fd4fab7e071bd70690c5bfb30afccb",
    "reason": "no unit behaviour: dispositioned under the CORRECTED scan: every unit stem, token, quantity name and canonical field suffix this codebase uses, matched case-insensitively with NO word boundary. The earlier word-boundary version was a floor (it called AnalyticsHelpModal.tsx clean while it renders \"Average MPG:\" to every user) and it was superseded before any disposition in this file was written. This file matched 1 of them; every hit was read in context and none is a unit decision or a unit-bearing quantity."
   },
   {
@@ -196,13 +190,13 @@
   {
    "path": "public/locales/pl/vehicles.json",
    "disposition": "no unit behaviour",
-   "digest": "764c2d2373b3b8be6aec85249958ef32d9ff9f9346d852a44eb3dd84793fcd37",
+   "digest": "cb4cbde8bc105393b8018b1f469aa89db3e0be74890ff705b2c2073c63c54f5d",
    "reason": "no unit behaviour: dispositioned under the CORRECTED scan: every unit stem, token, quantity name and canonical field suffix this codebase uses, matched case-insensitively with NO word boundary. The earlier word-boundary version was a floor (it called AnalyticsHelpModal.tsx clean while it renders \"Average MPG:\" to every user) and it was superseded before any disposition in this file was written. This file matched 10 of them; every hit was read in context and none is a unit decision or a unit-bearing quantity."
   },
   {
    "path": "public/locales/pt-BR/analytics.json",
    "disposition": "no unit behaviour",
-   "digest": "7fa8f2ea20dfbb03f997b69c3a7382edf4903277f5d17f3c6045e957ff0a8c5c",
+   "digest": "5d87a9a359f2cfa510e063cae584bdc0edc2ecc60786f3940d31e0bc3f5f0115",
    "reason": "no unit behaviour: dispositioned under the CORRECTED scan: every unit stem, token, quantity name and canonical field suffix this codebase uses, matched case-insensitively with NO word boundary. The earlier word-boundary version was a floor (it called AnalyticsHelpModal.tsx clean while it renders \"Average MPG:\" to every user) and it was superseded before any disposition in this file was written. This file matched 1 of them; every hit was read in context and none is a unit decision or a unit-bearing quantity."
   },
   {
@@ -245,19 +239,16 @@
   {
    "path": "public/locales/pt-BR/vehicles.json",
    "disposition": "audited",
-   "digest": "f264e06c0af81c6dab0e5852debd7d2ec4979f37c645169895981096ae594bc9",
-   "reason": "windowSticker.misc.fuelEconomyMpg and the warranty placeholders reproduce a US Monroney label verbatim and are exempt for the same reason as WindowStickerUpload. defList.gallons and propaneList.gallons still EXIST in `en` and in these bundles; what changed is that no code reads them any more (both list headers moved to the `volumeUnit` interpolation, and their tests assert the old key is absent from the rendered header). Unreferenced keys, not stale translations: verified by grep, because the first version of this sentence said `en` had dropped them and `en` had not.",
-   "findings": [
-    "propaneList.totalGallons / propaneList.totalLiters (and vehicle.totalGallons / vehicle.totalLiters where present) are selected by a raw `units.volume === 'L'` branch in PropaneRecordList and Analytics."
-   ],
-   "owners": [
-    "task 6"
+   "digest": "b07dc5e6b83dbf43363df428b4e33c34a2032d8b0e0be8e23c5b443759c4004d",
+   "reason": "windowSticker.misc.fuelEconomyMpg and the warranty placeholders reproduce a US Monroney label verbatim and are exempt for the same reason as WindowStickerUpload. defList.gallons and propaneList.gallons still EXIST in `en` and in these bundles; what changed is that no code reads them any more (both list headers moved to the `volumeUnit` interpolation, and their tests assert the old key is absent from the rendered header). Unreferenced keys, not stale translations: verified by grep, because the first version of this sentence said `en` had dropped them and `en` had not. Task 6 replaced the raw `units.volume === 'L'` prose selection with the same `{{unit}}` interpolation the volume COLUMN already used, so the two cannot disagree: totalLiters / totalGallons are gone and totalVolume takes getVolumeUnit(units).",
+   "tests": [
+    "__tests__/volumeTotalLabelLocales.test.ts"
    ]
   },
   {
    "path": "public/locales/ru/analytics.json",
    "disposition": "no unit behaviour",
-   "digest": "432010279b7144dad47a6e2e0e6100aaff737c1719bfe53bd65f1196acb7a231",
+   "digest": "c868d9545f7d83c99c3d82a6b9320e648de885ddb0dbbbf5b642eb435f7d8d1f",
    "reason": "no unit behaviour: dispositioned under the CORRECTED scan: every unit stem, token, quantity name and canonical field suffix this codebase uses, matched case-insensitively with NO word boundary. The earlier word-boundary version was a floor (it called AnalyticsHelpModal.tsx clean while it renders \"Average MPG:\" to every user) and it was superseded before any disposition in this file was written. This file matched 1 of them; every hit was read in context and none is a unit decision or a unit-bearing quantity."
   },
   {
@@ -300,13 +291,13 @@
   {
    "path": "public/locales/ru/vehicles.json",
    "disposition": "no unit behaviour",
-   "digest": "ea5316eed9b4821e5e15fa8420abdee3f24f120b322744a5f847a302c447a368",
+   "digest": "edb03aae4c021f4cabdff6e8648eefb1f44c975ed47df8f60630ad086042e805",
    "reason": "no unit behaviour: dispositioned under the CORRECTED scan: every unit stem, token, quantity name and canonical field suffix this codebase uses, matched case-insensitively with NO word boundary. The earlier word-boundary version was a floor (it called AnalyticsHelpModal.tsx clean while it renders \"Average MPG:\" to every user) and it was superseded before any disposition in this file was written. This file matched 10 of them; every hit was read in context and none is a unit decision or a unit-bearing quantity."
   },
   {
    "path": "public/locales/uk/analytics.json",
    "disposition": "no unit behaviour",
-   "digest": "3ffbbbebf8468cef83957d3f56a8bc2750d20b212c5c09f50931fad76892e2cf",
+   "digest": "2a978693cb0b656775e9040660157285d80e5cbebff4cb9c194eb07525cbf832",
    "reason": "no unit behaviour: dispositioned under the CORRECTED scan: every unit stem, token, quantity name and canonical field suffix this codebase uses, matched case-insensitively with NO word boundary. The earlier word-boundary version was a floor (it called AnalyticsHelpModal.tsx clean while it renders \"Average MPG:\" to every user) and it was superseded before any disposition in this file was written. This file matched 1 of them; every hit was read in context and none is a unit decision or a unit-bearing quantity."
   },
   {
@@ -349,7 +340,7 @@
   {
    "path": "public/locales/uk/vehicles.json",
    "disposition": "no unit behaviour",
-   "digest": "b4eca11f1d931a0a9eee6849e8748ade51fcb00c44f7335b0c7c1709e669de73",
+   "digest": "523e9497c62792d83341dda6e71e64884550790e55afebb576a5981bf2019aa8",
    "reason": "no unit behaviour: dispositioned under the CORRECTED scan: every unit stem, token, quantity name and canonical field suffix this codebase uses, matched case-insensitively with NO word boundary. The earlier word-boundary version was a floor (it called AnalyticsHelpModal.tsx clean while it renders \"Average MPG:\" to every user) and it was superseded before any disposition in this file was written. This file matched 10 of them; every hit was read in context and none is a unit decision or a unit-bearing quantity."
   },
   {
@@ -517,15 +508,14 @@
   {
    "path": "src/components/FuelRecordForm.tsx",
    "disposition": "audited",
-   "digest": "7d6f4153f046ca42b8857475763379d378da3f5b2027863df8ac386f8a56bcf1",
-   "reason": "gate-detectable unit decisions, recorded not asserted clean (plan 3b task 1 ordering)",
+   "digest": "4511128a4843aa116163841a3f8b4a0ce19623e9f6512b0ab8c7cf5844703995",
+   "reason": "gate-detectable unit decisions, recorded not asserted clean (plan 3b task 1 ordering). R7 CLOSED: the receipt preview rendered the draft's CANONICAL litres with a hardcoded \"L\" beside it, so a gallons account read one number and then watched the field it accepted into show another. It goes through u.volume.formatPrimary, the same adapter the field is seeded from.",
    "tests": [
     "components/__tests__/FuelRecordForm.mixedUnits.test.tsx",
     "components/__tests__/FuelRecordForm.gallonUnits.test.tsx"
    ],
    "findings": [
-    "token-branch x3 (units gate baseline)",
-    "R7: the receipt preview renders canonical litres with no selector"
+    "token-branch x3 (units gate baseline)"
    ],
    "owners": [
     "task 6",
@@ -715,17 +705,10 @@
   {
    "path": "src/components/PropaneRecordList.tsx",
    "disposition": "audited",
-   "digest": "6ef9ca50a33beb75c4c6a146bd80f556c3f221fd278732f37825d4448d5e1cd7",
-   "reason": "gate-detectable unit decisions, recorded not asserted clean (plan 3b task 1 ordering)",
+   "digest": "0760fa4f2112b9e75f07de0a22f59620624f448acc9937ade9281de3c1a0dfda",
+   "reason": "gate-detectable unit decisions, recorded not asserted clean (plan 3b task 1 ordering). Task 6 replaced the raw `units.volume === 'L'` prose selection with the same `{{unit}}` interpolation the volume COLUMN already used, so the two cannot disagree: totalLiters / totalGallons are gone and totalVolume takes getVolumeUnit(units).",
    "tests": [
     "components/__tests__/PropaneRecordList.test.tsx"
-   ],
-   "findings": [
-    "token-branch x1 (units gate baseline)",
-    "raw resolved-token branch selecting the total label"
-   ],
-   "owners": [
-    "task 6"
    ]
   },
   {
@@ -2025,13 +2008,16 @@
   {
    "path": "src/locales/en/analytics.json",
    "disposition": "audited",
-   "digest": "cf0ae700d136ca2179c92fa3009dfbb2dae32bce49c1891f7c72a90fc3546355",
-   "reason": "reviewed at this snapshot",
+   "digest": "3bf59066677cafac83b4e1425f5b4339b7c44117a978bd7d645046c4100dc9e0",
+   "reason": "reviewed at this snapshot. Task 6 replaced the raw `units.volume === 'L'` prose selection with the same `{{unit}}` interpolation the volume COLUMN already used, so the two cannot disagree: totalLiters / totalGallons are gone and totalVolume takes getVolumeUnit(units).",
    "findings": [
-    "vehicleHelp.costAnalysis.costPerMile* and vehicleHelp.fuelEconomy.*Mpg* are imperial-only help copy rendered unconditionally by AnalyticsHelpModal; vehicle.totalLiters / vehicle.totalGallons are selected by a raw `units.volume === 'L'` branch in Analytics."
+    "vehicleHelp.costAnalysis.costPerMile* and vehicleHelp.fuelEconomy.*Mpg* are imperial-only help copy rendered unconditionally by AnalyticsHelpModal."
    ],
    "owners": [
     "task 6"
+   ],
+   "tests": [
+    "__tests__/volumeTotalLabelLocales.test.ts"
    ]
   },
   {
@@ -2085,13 +2071,10 @@
   {
    "path": "src/locales/en/vehicles.json",
    "disposition": "audited",
-   "digest": "dac564592c8e3f434a99ec3e5fb515f69aad9db46b0472b9f3d1b6147b7d440d",
-   "reason": "windowSticker.misc.fuelEconomyMpg and the warranty placeholders reproduce a US Monroney label verbatim and are exempt for the same reason as WindowStickerUpload. defList.gallons and propaneList.gallons still EXIST in `en` and in these bundles; what changed is that no code reads them any more (both list headers moved to the `volumeUnit` interpolation, and their tests assert the old key is absent from the rendered header). Unreferenced keys, not stale translations: verified by grep, because the first version of this sentence said `en` had dropped them and `en` had not.",
-   "findings": [
-    "propaneList.totalGallons / propaneList.totalLiters (and vehicle.totalGallons / vehicle.totalLiters where present) are selected by a raw `units.volume === 'L'` branch in PropaneRecordList and Analytics."
-   ],
-   "owners": [
-    "task 6"
+   "digest": "eff5e5723a1c53bcf6684a130297b6321c56c6610a4d139f86ed793dd951709b",
+   "reason": "windowSticker.misc.fuelEconomyMpg and the warranty placeholders reproduce a US Monroney label verbatim and are exempt for the same reason as WindowStickerUpload. defList.gallons and propaneList.gallons still EXIST in `en` and in these bundles; what changed is that no code reads them any more (both list headers moved to the `volumeUnit` interpolation, and their tests assert the old key is absent from the rendered header). Unreferenced keys, not stale translations: verified by grep, because the first version of this sentence said `en` had dropped them and `en` had not. Task 6 replaced the raw `units.volume === 'L'` prose selection with the same `{{unit}}` interpolation the volume COLUMN already used, so the two cannot disagree: totalLiters / totalGallons are gone and totalVolume takes getVolumeUnit(units).",
+   "tests": [
+    "__tests__/volumeTotalLabelLocales.test.ts"
    ]
   },
   {
@@ -2115,17 +2098,15 @@
   {
    "path": "src/pages/Analytics.tsx",
    "disposition": "audited",
-   "digest": "0ba2d0cb24ff06d913196f8fbb0cdf18e3b1b4f301238733408fbd79ce898e6c",
-   "reason": "gate-detectable unit decisions, recorded not asserted clean (plan 3b task 1 ordering). Task 6 migrated the DISTANCE sites onto the resolved `units.distance` token; what remains is the fuel-economy, fuel-rate and cost-per-distance surface, which still takes the collapsed binary system.",
+   "digest": "2bc1e9bea8a2d975a1a28e6f1aac0025ffc29139a2e75a02f41d765445c0c805",
+   "reason": "gate-detectable unit decisions, recorded not asserted clean (plan 3b task 1 ordering). Task 6 migrated the DISTANCE sites onto the resolved `units.distance` token; what remains is the fuel-economy, fuel-rate and cost-per-distance surface, which still takes the collapsed binary system. Task 6 replaced the raw `units.volume === 'L'` prose selection with the same `{{unit}}` interpolation the volume COLUMN already used, so the two cannot disagree: totalLiters / totalGallons are gone and totalVolume takes getVolumeUnit(units). Both of its two sites are the identical expression PropaneRecordList renders, and that one IS driven by a render test (PropaneRecordList.test.tsx, both flavours); here the evidence is the gate, whose token-branch count for this file is now zero, plus validate-i18n-usage.ts, which fails if the new key is absent from English.",
    "tests": [
     "pages/__tests__/Analytics.anomalies.test.tsx",
     "pages/__tests__/Analytics.hours.test.tsx"
    ],
    "findings": [
     "compare x2 (units gate baseline)",
-    "formatter-binary x20 (units gate baseline)",
-    "token-branch x2 (units gate baseline)",
-    "raw resolved-token branches at the two volume-total labels"
+    "formatter-binary x20 (units gate baseline)"
    ],
    "owners": [
     "task 6"

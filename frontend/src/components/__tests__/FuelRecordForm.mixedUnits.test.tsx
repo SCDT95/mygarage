@@ -492,6 +492,28 @@ describe('FuelRecordForm — odometer and temperature follow their own tokens', 
     expect(postedPayload().odometer_km).toBe(72420.3)
   })
 
+  it('★ the RECEIPT PREVIEW reads in the client\'s own volume unit, not canonical litres', async () => {
+    // R7, and it is the one forced-unit site in this file rather than a
+    // conversion branch: the preview rendered `` `${draft.liters} L` ``. The
+    // draft is CANONICAL by contract, which is exactly why the accept path
+    // converts it through `litersToVolumeUnit` before seeding the field, so a
+    // gallons account read "47.318 L", accepted it, and watched the field it
+    // landed in say 12.50 gal: one quantity under two units, one click apart.
+    // 47.318 / 3.78541 = 12.4998... US gallons, at the gal adapter's 2 decimals.
+    units = GALLONS_KM_CELSIUS
+    receipt.draft = { odometer_km: 72420.3, liters: 47.318 }
+
+    render(<FuelRecordForm {...DEFAULT_PROPS} />)
+    await waitFor(() => expect(field('receipt_text')).not.toBeNull())
+
+    fireEvent.change(field('receipt_text'), { target: { value: '12.5 gal' } })
+    fireEvent.click(screen.getByRole('button', { name: 'fuel.parseReceipt' }))
+    await screen.findByRole('button', { name: 'fuel.receiptDraftAccept' })
+
+    expect(screen.getByText(/12\.50 gal/)).toBeInTheDocument()
+    expect(screen.queryByText(/47\.318 L/)).not.toBeInTheDocument()
+  })
+
   it('★ the RECEIPT path moves the ORIGIN too, so a draft between two whole miles is not rounded', async () => {
     // The case above cannot see the origin: 72420.3 km displays as 45000 mi and
     // 45000 mi converts back to 72420.3 km, so seeding the value alone gives the

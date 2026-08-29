@@ -457,8 +457,7 @@
     "pricePerUnit": "Preço por unidade",
     "recordCount": "{{count}} registro(s)",
     "title": "Registros de propano",
-    "totalGallons": "Total de galões",
-    "totalLiters": "Total de litros",
+    "totalVolume": "Total ({{unit}})",
     "totalSpent": "Total gasto",
     "vendor": "Fornecedor"
   },

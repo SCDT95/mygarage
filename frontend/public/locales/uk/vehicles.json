@@ -457,8 +457,7 @@
     "pricePerUnit": "Ціна за одиницю",
     "recordCount": "{{count}} запис(-ів)",
     "title": "Записи про пропан",
-    "totalGallons": "Всього галонів",
-    "totalLiters": "Всього літрів",
+    "totalVolume": "Всього ({{unit}})",
     "totalSpent": "Всього витрачено",
     "vendor": "Постачальник"
   },

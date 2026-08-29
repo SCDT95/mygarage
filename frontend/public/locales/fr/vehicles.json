@@ -751,8 +751,7 @@
     "recordCount": "{{count}} enregistrement(s)",
     "tableCaption": "Propane refill history",
     "title": "Enregistrements de propane",
-    "totalGallons": "Total gallons",
-    "totalLiters": "Total litres",
+    "totalVolume": "Total ({{unit}})",
     "totalSpent": "Total dépensé",
     "vendor": "Fournisseur",
     "volumeUnit": "Volume ({{unit}})"

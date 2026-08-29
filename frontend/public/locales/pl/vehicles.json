@@ -457,8 +457,7 @@
     "pricePerUnit": "Cena za jednostkę",
     "recordCount": "{{count}} rekord(ów)",
     "title": "Rejestr propanu",
-    "totalGallons": "Wszystkie galony",
-    "totalLiters": "Wszystkie litry",
+    "totalVolume": "Łącznie ({{unit}})",
     "totalSpent": "Łącznie wydano",
     "vendor": "Sprzedawca"
   },

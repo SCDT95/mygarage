@@ -882,7 +882,17 @@ export default function FuelRecordForm({ vin, record, onClose, onSuccess }: Fuel
                     {[
                       receiptDraft.date,
                       receiptDraft.station_name,
-                      receiptDraft.liters != null ? `${receiptDraft.liters} L` : null,
+                      // R7: the draft's `liters` is CANONICAL litres, which is why
+                      // `acceptReceiptDraft` converts it through `litersToVolumeUnit`
+                      // before seeding the field. This preview rendered it with a
+                      // hardcoded 'L' beside it, so a gallons account read the
+                      // canonical number under the wrong unit and then watched the
+                      // field it accepted into show a different one. Same adapter as
+                      // the field, `formatPrimary` because this line is a compact
+                      // dot-separated summary with no room for a counterpart.
+                      receiptDraft.liters != null
+                        ? u.volume.formatPrimary(Number(receiptDraft.liters))
+                        : null,
                       receiptDraft.kwh != null ? `${receiptDraft.kwh} kWh` : null,
                       receiptDraft.cost != null ? String(receiptDraft.cost) : null,
                     ]

@@ -725,8 +725,7 @@
     "pricePerUnit": "Preis/Einheit",
     "recordCount": "{{count}} Eintrag/Einträge",
     "title": "Propan-Einträge",
-    "totalGallons": "Gallonen Gesamt",
-    "totalLiters": "Liter Gesamt",
+    "totalVolume": "Gesamt ({{unit}})",
     "totalSpent": "Gesamtausgaben",
     "vendor": "Händler"
   },

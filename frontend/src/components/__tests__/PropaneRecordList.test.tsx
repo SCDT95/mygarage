@@ -97,6 +97,23 @@ describe('PropaneRecordList — DataTable rows scoped to the named table', () =>
     render(<PropaneRecordList vin="TEST12345678901234" />)
     expect(within(table()).getByRole('columnheader', { name: 'propaneList.volumeUnit (gal)' })).toBeInTheDocument()
   })
+
+  it('interpolates the same unit into the TOTALS caption, which used to be a raw token branch', () => {
+    // `units.volume === 'L' ? t('propaneList.totalLiters') : t('propaneList.totalGallons')`
+    // was a second vocabulary of unit names in PROSE, one the units gate reports
+    // under its token-branch leg and one that could disagree with the header
+    // three lines up. It is now the same `{{unit}}` interpolation the header
+    // uses, off the same `getVolumeUnit(units)`.
+    unitPrefMock.system = 'metric'
+    const metric = render(<PropaneRecordList vin="TEST12345678901234" />)
+    expect(screen.getByText('propaneList.totalVolume (L)')).toBeInTheDocument()
+    expect(screen.queryByText('propaneList.totalLiters')).not.toBeInTheDocument()
+    metric.unmount()
+    unitPrefMock.system = 'imperial'
+    render(<PropaneRecordList vin="TEST12345678901234" />)
+    expect(screen.getByText('propaneList.totalVolume (gal)')).toBeInTheDocument()
+    expect(screen.queryByText('propaneList.totalGallons')).not.toBeInTheDocument()
+  })
 })
 
 describe('PropaneRecordList — actions open the right form + fire the mutation', () => {
@@ -151,7 +168,7 @@ describe('PropaneRecordList — one gallon per page, taken from the user', () =>
     // $0.766/L is $3.48 per imperial gallon, $2.90 per US one.
     expect(within(table()).getByText('$3.48')).toBeInTheDocument()
     // The total tile and its label follow the same token.
-    expect(screen.getByText('propaneList.totalGallons')).toBeInTheDocument()
+    expect(screen.getByText('propaneList.totalVolume (gal)')).toBeInTheDocument()
     expect(screen.getByText('8.7 gal')).toBeInTheDocument()
     expect(screen.getByText('Avg Cost/gal')).toBeInTheDocument()
     expect(UnitConverter.getGallonStandard()).toBe('us')
@@ -165,7 +182,7 @@ describe('PropaneRecordList — one gallon per page, taken from the user', () =>
 
     expect(within(table()).getByRole('columnheader', { name: 'propaneList.volumeUnit (L)' })).toBeInTheDocument()
     expect(within(table()).getByText('39.75 L')).toBeInTheDocument()
-    expect(screen.getByText('propaneList.totalLiters')).toBeInTheDocument()
+    expect(screen.getByText('propaneList.totalVolume (L)')).toBeInTheDocument()
     expect(screen.getByText('39.8 L')).toBeInTheDocument()
     expect(screen.getByText('Avg Cost/L')).toBeInTheDocument()
   })

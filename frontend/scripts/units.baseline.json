@@ -42,12 +42,6 @@
   "count": 1
  },
  {
-  "file": "src/components/PropaneRecordList.tsx",
-  "kind": "token-branch",
-  "text": "volume: units.volume === 'L'",
-  "count": 1
- },
- {
   "file": "src/components/tabs/SettingsSystemTab.tsx",
   "kind": "compare",
   "text": "displaySystem === 'imperial'",
@@ -135,12 +129,6 @@
   "file": "src/pages/Analytics.tsx",
   "kind": "formatter-binary",
   "text": "UnitFormatter.getFuelRateUnit(...)",
-  "count": 2
- },
- {
-  "file": "src/pages/Analytics.tsx",
-  "kind": "token-branch",
-  "text": "volume: units.volume === 'L'",
   "count": 2
  },
  {

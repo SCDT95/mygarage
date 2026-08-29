@@ -1497,7 +1497,7 @@ export default function Analytics() {
               </p>
             </div>
             <div className="text-center p-4 bg-garage-bg rounded-lg">
-              <p className="text-sm text-garage-text-muted mb-1">{units.volume === 'L' ? t('vehicle.totalLiters') : t('vehicle.totalGallons')}</p>
+              <p className="text-sm text-garage-text-muted mb-1">{t('vehicle.totalVolume', { unit: UnitFormatter.getVolumeUnit(units) })}</p>
               <p className="text-2xl font-bold text-garage-text">
                 {UnitFormatter.formatVolumeShort(parseFloat(propane.total_liters), units)}
               </p>
@@ -1638,7 +1638,7 @@ export default function Analytics() {
               </p>
             </div>
             <div className="text-center p-4 bg-garage-bg rounded-lg">
-              <p className="text-sm text-garage-text-muted mb-1">{units.volume === 'L' ? t('vehicle.totalLiters') : t('vehicle.totalGallons')}</p>
+              <p className="text-sm text-garage-text-muted mb-1">{t('vehicle.totalVolume', { unit: UnitFormatter.getVolumeUnit(units) })}</p>
               <p className="text-2xl font-bold text-garage-text">
                 {UnitFormatter.formatVolumeShort(parseFloat(defAnalysis.total_liters), units)}
               </p>
