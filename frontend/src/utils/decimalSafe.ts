@@ -262,6 +262,16 @@ export interface PriceFieldOrigin extends UnitFieldOrigin {
  * would be a second display authority disagreeing with the list column beside
  * it, which reads through the same function.
  *
+ * ★ SO A METRIC ROW IS ASYMMETRIC, AND THAT IS A CHOICE RATHER THAN AN
+ * OVERSIGHT. In the same two-column entry grid, a metric VOLUME now shows two
+ * decimals (the `L` adapter's precision, which every rendered volume in the app
+ * uses) while a metric PRICE keeps whatever precision it was stored with. The
+ * two are not the same kind of number: volume has an adapter and a rendered
+ * counterpart everywhere else on the screen to agree with, and price has
+ * neither, so rounding it here would round it ONLY here. The stored value
+ * survives on both sides through the origin, which is the property that
+ * matters; the display precision is the thing that differs.
+ *
  * @param value The stored canonical price, as a number or an API string.
  * @param units The client's resolved unit set.
  * @param basis The basis the stored value is quoted under.

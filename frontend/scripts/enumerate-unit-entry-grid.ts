@@ -76,8 +76,14 @@ function loadTypeScript(): typeof TS {
 const ts = loadTypeScript()
 const SRC = join(ROOT, 'src')
 
-/** Which way a value is crossing the boundary. */
-type Direction = 'seed' | 'read'
+/**
+ * Which way a value is crossing the boundary.
+ *
+ * `display` is the third: a conversion that is CORRECT for a read and is the
+ * R4 defect when it seeds a field, so its direction is decided by where it is
+ * called rather than by its name. See `SEED_POSITION` below.
+ */
+type Direction = 'seed' | 'read' | 'display'
 
 /** One name the enumeration looks for, and where it is declared. */
 interface Vocabulary {
@@ -98,13 +104,22 @@ interface Vocabulary {
  * so a retired name contributes zero sites BECAUSE IT DOES NOT EXIST, and the
  * run says so, rather than because nothing was looking for it.
  *
- * `priceToDisplay` and `UnitConverter.litersToVolumeUnit` are deliberately NOT
- * here. Both are live display conversions with real read-only callers (list
- * columns, cards), so counting them would report correct code, and a tool that
- * reports correct code is one people learn to ignore. What made them dangerous
- * was being used to SEED a field with no origin, and that is a property of the
- * call site rather than of the name, which is the category `units.manifest.json`
- * carries and no lexical rule can.
+ * ★ AND THE `display` HALF, WHICH IS THE PART THIS FILE USED TO ARGUE AWAY.
+ * `priceToDisplay` and `UnitConverter.litersToVolumeUnit` are live display
+ * conversions with real read-only callers (list columns, cards), so reporting
+ * every call would report correct code, and a tool that reports correct code is
+ * one people learn to ignore. What made them dangerous was being used to SEED a
+ * field with no origin: every writer form did exactly that until task 7.
+ *
+ * An earlier version of this comment said that was "a property of the call site
+ * rather than of the name, which is the category `units.manifest.json` carries
+ * and no lexical rule can". The first half is right and the conclusion was not.
+ * This IS an AST walk over call sites, so a call-site property is precisely
+ * what it can decide, and answering with prose in a file that owns the
+ * mechanism is guard-by-convention. `SEED_POSITION` below is the rule instead:
+ * a call inside a `defaultValues` object literal, or passed as an argument to
+ * `setValue`, is a SEED, and every other call is a read. Today that reports
+ * zero seeds, which is a measurement rather than a claim.
  */
 const VOCABULARY: readonly Vocabulary[] = [
   {
@@ -149,7 +164,41 @@ const VOCABULARY: readonly Vocabulary[] = [
     retired: true,
     why: 'converted a display price straight to canonical: the R4 shift',
   },
+  {
+    name: 'priceToDisplay',
+    module: 'src/utils/decimalSafe.ts',
+    direction: 'display',
+    retired: false,
+    why: 'correct for a list cell; the R4 defect when it seeds a field',
+  },
+  {
+    name: 'litersToVolumeUnit',
+    module: 'src/utils/units.ts',
+    direction: 'display',
+    retired: false,
+    why: 'correct for a card; the R4 defect when it seeds a field',
+  },
 ]
+
+/**
+ * Where a `display` conversion becomes a SEED.
+ *
+ * Two shapes, both measured off the real writers rather than imagined: every
+ * form seeded either from a `defaultValues` object literal (the six
+ * react-hook-form writers) or through `setValue` (the receipt and OBC accept
+ * paths). A call in either position lands a converted value into a FIELD, which
+ * is the act that needs an origin beside it.
+ *
+ * Deliberately NOT a whole-file rule: `FuelRecordList` calls `priceToDisplay`
+ * in a table cell and that is correct, so a name-only or file-only rule would
+ * report it.
+ */
+const SEED_POSITION = {
+  /** The property whose object literal holds a react-hook-form seed. */
+  defaultsProperty: 'defaultValues',
+  /** The setter that writes one field after mount. */
+  setter: 'setValue',
+} as const
 
 /**
  * Directories excluded from the universe, with the reason.
@@ -187,14 +236,24 @@ function resolveVocabulary(): Resolution[] {
       ) {
         found.add(node.name.text)
       }
+      // Static class members too: `litersToVolumeUnit` lives on `UnitConverter`
+      // rather than being a bare export, and a resolver that could not see it
+      // would report a live name as DELETED, which is the same false clean this
+      // function's refusal below exists to prevent.
+      if (ts.isMethodDeclaration(node) && node.name !== undefined) {
+        const isStatic = (node.modifiers ?? []).some(
+          (m) => m.kind === ts.SyntaxKind.StaticKeyword,
+        )
+        if (isStatic) found.add(node.name.getText(source))
+      }
       ts.forEachChild(node, walk)
     }
     walk(source)
     if (found.size === 0) {
       throw new Error(
-        `${module} exports no function declarations. Every name below would resolve ` +
-          'as deleted and the enumeration would report zero call sites for a reason ' +
-          'that is not true. Refusing to run.',
+        `${module} declares no exported function and no static method. Every name ` +
+          'below would resolve as deleted and the enumeration would report zero call ' +
+          'sites for a reason that is not true. Refusing to run.',
       )
     }
     exportsByModule.set(module, found)
@@ -302,6 +361,8 @@ function scan(paths: string[], live: Map<string, Resolution>): Site[] {
   const sites: Site[] = []
   for (const path of paths) {
     const source = parse(path, readFileSync(path, 'utf-8'))
+    /** Ancestors of the node being visited, nearest last. */
+    const stack: TS.Node[] = []
     const walk = (node: TS.Node): void => {
       if (ts.isCallExpression(node)) {
         const name = calleeName(node.expression, source)
@@ -311,17 +372,54 @@ function scan(paths: string[], live: Map<string, Resolution>): Site[] {
             file: rel(path),
             line: source.getLineAndCharacterOfPosition(node.getStart(source)).line + 1,
             name: entry.name,
-            direction: entry.direction,
+            direction:
+              entry.direction === 'display' && inSeedPosition(stack, source)
+                ? 'seed'
+                : entry.direction,
             retired: entry.retired,
             text: node.getText(source).replace(/\s+/g, ' ').slice(0, 110),
           })
         }
       }
+      stack.push(node)
       ts.forEachChild(node, walk)
+      stack.pop()
     }
     walk(source)
   }
   return sites
+}
+
+/**
+ * Whether a call sits where its result lands in a FORM FIELD.
+ *
+ * Walks the ancestor chain rather than the node, because both shapes are about
+ * CONTEXT: the same `priceToDisplay(...)` expression is a correct table cell in
+ * one place and an origin-less seed in another. Stops at the enclosing function
+ * so a `setValue` three components up cannot claim an unrelated call.
+ *
+ * @param stack The ancestors of the call, nearest last.
+ * @param source The enclosing source file.
+ * @returns True when the call is a `defaultValues` entry or a `setValue` argument.
+ */
+function inSeedPosition(stack: readonly TS.Node[], source: TS.SourceFile): boolean {
+  for (let i = stack.length - 1; i >= 0; i -= 1) {
+    const node = stack[i]
+    if (ts.isFunctionDeclaration(node) || ts.isMethodDeclaration(node)) return false
+    if (
+      ts.isPropertyAssignment(node) &&
+      node.name.getText(source) === SEED_POSITION.defaultsProperty
+    ) {
+      return true
+    }
+    if (
+      ts.isCallExpression(node) &&
+      calleeName(node.expression, source) === SEED_POSITION.setter
+    ) {
+      return true
+    }
+  }
+  return false
 }
 
 /**
@@ -359,12 +457,17 @@ function main(): void {
 
   // The pairing, which is the reason this file exists in this shape. A file
   // that seeds and never reads back is the half-migration ruling R4 names.
+  //
+  // ★ `display` IS COUNTED SEPARATELY AND EXCLUDED FROM THE PAIRING, because a
+  // list column that renders a price is not half of anything: it reads a stored
+  // value and shows it, and there is no field for it to be read back out of. A
+  // display call that lands in a FIELD is classified `seed` by `scan`, and THAT
+  // one has to pair.
   const seeds = new Map<string, number>()
   const reads = new Map<string, number>()
-  for (const s of sites) {
-    const into = s.direction === 'seed' ? seeds : reads
-    into.set(s.file, (into.get(s.file) ?? 0) + 1)
-  }
+  const displays = new Map<string, number>()
+  const bucket = { seed: seeds, read: reads, display: displays }
+  for (const s of sites) bucket[s.direction].set(s.file, (bucket[s.direction].get(s.file) ?? 0) + 1)
   const unpaired = [...new Set([...seeds.keys(), ...reads.keys()])]
     .sort()
     .filter((f) => (seeds.get(f) ?? 0) === 0 || (reads.get(f) ?? 0) === 0)
@@ -393,11 +496,24 @@ function main(): void {
 
   const files = [...new Set(sites.map((s) => s.file))].sort()
   console.log(`\n  ${sites.length} site(s) across ${files.length} file(s), BY DIRECTION:\n`)
-  console.log('     seed  read  file')
+  console.log('     seed  read  disp  file')
   for (const file of files) {
     console.log(
-      `    ${String(seeds.get(file) ?? 0).padStart(5)} ${String(reads.get(file) ?? 0).padStart(5)}  ${file}`,
+      `    ${String(seeds.get(file) ?? 0).padStart(5)}` +
+        ` ${String(reads.get(file) ?? 0).padStart(5)}` +
+        ` ${String(displays.get(file) ?? 0).padStart(5)}  ${file}`,
     )
+  }
+  const seedingDisplays = sites.filter((s) => s.direction === 'seed' && s.name !== 'seedUnitField' && s.name !== 'seedPriceField')
+  console.log(
+    `\n  ${displays.size === 0 ? 0 : [...displays.values()].reduce((a, b) => a + b, 0)}` +
+      ' display conversion(s), of which ' +
+      `${seedingDisplays.length} sit in SEED POSITION (a \`${SEED_POSITION.defaultsProperty}\`` +
+      ` entry or a \`${SEED_POSITION.setter}\` argument), which is where they need an origin` +
+      (seedingDisplays.length === 0 ? '.' : ':'),
+  )
+  for (const s of seedingDisplays) {
+    console.log(`    ★ ${s.file}:${s.line}  ${s.name}   ${s.text}`)
   }
 
   console.log('')

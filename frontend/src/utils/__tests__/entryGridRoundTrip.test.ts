@@ -11,12 +11,21 @@
  *
  * ★ AND EVERY CASE CARRIES ITS OWN "THIS IS NOT VACUOUS" FLAG. Asserting that
  * the protocol returns the stored value is satisfied for free by any value
- * whose display happens to convert back exactly, and 14 of the 27 volume
+ * whose display happens to convert back exactly, and 9 of the 27 volume
  * combinations below are exactly that. So each case also computes the NAIVE
- * answer, which is what shipped: convert the display string back through the
- * same adapter, with no origin. The count of combinations where the two differ
- * is asserted, so a change that quietly made the naive path exact (a wider
- * display precision, say) would fail here rather than hollow the file out.
+ * answer: convert the display string back through the same adapter, with no
+ * origin. The count of combinations where the two differ is asserted, so a
+ * change that quietly made the naive path exact (a wider display precision,
+ * say) would fail here rather than hollow the file out.
+ *
+ * ★ `naive` IS THIS SEED WITH THE ORIGIN REMOVED, NOT WHAT SHIPPED, and the
+ * difference matters for the nine metric volume rows. What shipped seeded a
+ * metric volume field through `litersToVolumeUnit`, which returns the raw
+ * stored litres unrounded, so those nine did not move at all: the shipped
+ * count was 13 of 27 and this column's is 18. Both are true statements about
+ * different questions. This column answers "is the origin load bearing for
+ * this row, given the seed the field has NOW", which is the only question a
+ * committed test can keep answering once the old seed is deleted.
  *
  * Set `UNITS_MATRIX=1` to print the raw table. It is off by default because
  * 54 lines of stdout per suite run is noise; it is available at all because a

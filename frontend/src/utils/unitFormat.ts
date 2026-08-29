@@ -328,7 +328,16 @@ export function formatVolumePerDistance(units: UnitSet, litersPer1kKm: number): 
   // rises by the same factor. The canonical length of one display unit is
   // exactly what the distance adapter's `toCanonical(1)` answers, so no factor
   // is spelled here.
-  const canonicalPerDistanceUnit = adapterFor(units, 'distance').toCanonical(1) ?? 1
+  //
+  // ★ THE `?? 1` THAT USED TO BE HERE WAS A GUARD NO TEST COULD KILL, and it
+  // was worse than unkillable: `toCanonical` returns null only for an ABSENT or
+  // NaN input, and `1` is neither, so the fallback could never fire, and if it
+  // somehow did it would substitute a kilometre for a mile and report a wrong
+  // number confidently. Replacing it with `?? 1` -> `as number` survived the
+  // whole suite, which is this phase's own test for a predicate that should not
+  // exist. The assertion says what is true instead of pretending to handle what
+  // is not.
+  const canonicalPerDistanceUnit = adapterFor(units, 'distance').toCanonical(1)!
   return formatAtPrecision(volume * canonicalPerDistanceUnit, VOLUME_PER_DISTANCE_PRECISION)
 }
 
@@ -487,7 +496,11 @@ export function formatCostPerDistance(
   // display unit is exactly what the distance adapter's `toCanonical(1)`
   // answers, so no mile factor is spelled here; the old code spelled `1.60934`
   // inline, a fourteenth copy of a constant `UnitConverter` already declared.
-  const canonicalPerDistanceUnit = adapterFor(units, 'distance').toCanonical(1) ?? 1
+  // The non-null assertion rather than a `?? 1` fallback, for the reason
+  // `formatVolumePerDistance` states: `1` is neither absent nor NaN, so the
+  // fallback was unreachable, and a reachable one would quietly quote a mile
+  // rate as a kilometre rate.
+  const canonicalPerDistanceUnit = adapterFor(units, 'distance').toCanonical(1)!
   const over = COST_PER_DISTANCE_OVER[units.distance]
   return new Intl.NumberFormat(locale, {
     style: 'currency',
