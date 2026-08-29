@@ -258,6 +258,39 @@ describe('VehicleStatisticsCard', () => {
     expect(screen.queryByText('1.20 gal/hr')).not.toBeInTheDocument()
   })
 
+  it('★ the "Recent:" line reads the same token as the average above it', () => {
+    // ★ THIS LINE WAS EXECUTED BY NO TEST AT ALL until fix round 1: every
+    // fixture in the repo sets `recent_l_per_100km: null`, and a fixture that
+    // nulls a value cannot exercise the renderer that reads it. It is one of
+    // task 6b's 31 migrated sites, it sits three lines below the average the
+    // mutation table did pin, and rerouting it to `u.volume` compiled clean and
+    // left the whole suite green.
+    //
+    // It also needs a value DIFFERENT from the average, because the card hides
+    // the line when the two agree.
+    auth.user = makeUser({
+      unit_preference: 'custom',
+      resolved_units: { ...IMPERIAL_UNITS, consumption: 'l_100km' },
+    })
+
+    render(
+      <VehicleStatisticsCard
+        stats={{
+          ...STATS,
+          usage_unit: 'distance',
+          average_l_per_100km: '9.4160546',
+          recent_l_per_100km: '7.5',
+        }}
+      />
+    )
+
+    expect(screen.getByText('9.42 L/100km')).toBeInTheDocument()
+    expect(screen.getByText('vehicleStats.recent: 7.50 L/100km')).toBeInTheDocument()
+    // 7.5 L through the gal_us adapter, which is what the volume formatter
+    // would have rendered here.
+    expect(screen.queryByText(/1\.98 gal/)).not.toBeInTheDocument()
+  })
+
   it('never reads stats.current_hours (grep-style source check — the stale column is retired)', () => {
     const src = readFileSync(resolve(__dirname, '../VehicleStatisticsCard.tsx'), 'utf8')
     expect(src).not.toMatch(/current_hours/)
