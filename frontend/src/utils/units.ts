@@ -37,45 +37,32 @@ export type UnitSystem = 'imperial' | 'metric';
 export type GallonStandard = 'us' | 'uk';
 
 /**
- * Subscribers to `UnitConverter`'s ACTIVE gallon flavour.
+ * ★ THE CONVERTER-GALLON SUBSCRIPTION IS GONE, AND SO IS WHAT IT SERVED.
  *
- * ★ Separate from `gallonStandardStore` on purpose, and the distinction is the
- * whole reason this exists. That store owns the BROWSER's value: it persists to
- * localStorage and holds either an anonymous client's own choice or the
- * instance default. `useResolvedGallonSync` applies the signed-in ACCOUNT's
- * flavour to the converter and must not write that key, so the store's
- * notification path cannot carry the change. This one can, and it fires for
- * every writer of the static rather than only for the store's.
- */
-const converterGallonListeners = new Set<() => void>();
-
-/**
- * Subscribe to changes in the converter's active gallon flavour.
+ * A `converterGallonListeners` set, `subscribeToConverterGallon`,
+ * `getConverterGallon`, `getConverterGallonServerSnapshot`,
+ * `hooks/useResolvedGallonSync.ts` and one `useSyncExternalStore` in
+ * `useUnitPreference` used to sit here. They existed so a mounted component
+ * repainted when the mutable gallon factors below moved: every consumption and
+ * fuel-rate reader took the binary `system` and read those statics, so a
+ * changed flavour changed the next conversion and repainted nothing.
  *
- * @param listener Called after the flavour actually changes.
- * @returns The unsubscribe function.
- */
-export function subscribeToConverterGallon(listener: () => void): () => void {
-  converterGallonListeners.add(listener);
-  return () => {
-    converterGallonListeners.delete(listener);
-  };
-}
-
-/**
- * The converter's active gallon flavour, as a `useSyncExternalStore` snapshot.
+ * Plan 3b task 6b moved all thirty-one of those readers onto the resolved set,
+ * and the adapter table is built from the `readonly` constants, so no screen
+ * can observe the mutable statics at all. The sync ran on every load, wrote a
+ * value nothing read, and notified a subscriber that discarded it: a closed
+ * loop. Task 8 deleted it, since a clean-room gate that cannot see a dead unit
+ * loop is claiming more than it checks, and neither units gate can see a
+ * subscription.
  *
- * @returns 'us' or 'uk'. A primitive, so the snapshot is stable by value.
+ * ★ That mutable gallon IS defect L1's mechanism, the instance-driven factor
+ * that made a `gal_uk` user store 10 gal as 37.85 L. What survives here is the
+ * INSTANCE setting's write path (`gallonStandardStore` calls
+ * `setGallonStandard`) and the six methods that read the factors, all six of
+ * which have zero production callers. `utils/__tests__/unitsBinaryApiSurface.test.ts`
+ * enumerates them and holds the loop deleted; retiring the setting itself is
+ * phase 4's, and it is the change that can take the statics with it.
  */
-export function getConverterGallon(): GallonStandard {
-  return UnitConverter.getGallonStandard();
-}
-
-/** Server snapshot: nothing has resolved a flavour during prerender. */
-export function getConverterGallonServerSnapshot(): GallonStandard {
-  return 'us';
-}
-
 type Numeric = number | null | undefined;
 
 /**
@@ -171,23 +158,20 @@ export class UnitConverter {
   /**
    * Select US or UK imperial gallon (also updates MPG conversion).
    *
-   * Notifies `subscribeToConverterGallon` when the value actually moves, so a
-   * mounted component can repaint. Without that, writing these statics changes
-   * every subsequent conversion and repaints nothing, which is the failure
-   * `gallonStandardStore`'s docstring records: a component that had already
-   * mounted kept showing US gallons after the setting resolved.
+   * It used to notify a `subscribeToConverterGallon` listener set so a mounted
+   * component could repaint. Nothing renders off these statics since plan 3b
+   * task 6b, so there is nothing to repaint and task 8 deleted the whole loop;
+   * see the note above `type Numeric`. `gallonStandardStore` is the only
+   * caller, and what it writes is read by the six methods below, none of which
+   * a production module calls.
    */
   static setGallonStandard(standard: GallonStandard): void {
-    const changed = standard !== UnitConverter.getGallonStandard();
     if (standard === 'uk') {
       this.gallonsToLitersFactor = this.UK_GALLONS_TO_LITERS;
       this.mpgToL100kmFactor = this.UK_MPG_TO_L100KM;
     } else {
       this.gallonsToLitersFactor = this.US_GALLONS_TO_LITERS;
       this.mpgToL100kmFactor = this.US_MPG_TO_L100KM;
-    }
-    if (changed) {
-      for (const listener of converterGallonListeners) listener();
     }
   }
 

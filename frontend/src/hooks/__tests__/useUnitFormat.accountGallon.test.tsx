@@ -1,31 +1,31 @@
 /**
  * Which answer does a mounted consumption badge paint, and whose is it?
  *
- * ★ THIS FILE'S SUBJECT CHANGED WITH ITS SUBJECT'S SHAPE, so read the history
- * before trusting the name. Round 2 fixed the gallon DISPATCH and left a repaint
- * hole: `useResolvedGallonSync` writes `UnitConverter`'s mutable statics, every
+ * ★ THIS FILE'S SUBJECT HAS OUTLIVED TWO MECHANISMS, so read the history before
+ * trusting the name. Round 2 fixed the gallon DISPATCH and left a repaint hole:
+ * `useResolvedGallonSync` wrote `UnitConverter`'s mutable statics, every
  * consumption reader took the binary `system` and read those statics, and
  * nothing subscribed to them. So the next conversion was right and the pixels
- * were not: a mounted badge read `25.0 MPG` at the moment
- * `UnitConverter.getGallonStandard()` had already become `'uk'`, beside a volume
- * column that had already moved to imperial gallons.
+ * were not: a mounted badge read `25.0 MPG` at the moment the converter's
+ * flavour had already become `uk`, beside a volume column that had already
+ * moved to imperial gallons.
  *
- * Plan 3b task 6b DISSOLVED that hole rather than guarding it. The badge below
- * is the production shape again, and the production shape is now
- * `useUnitFormat().consumption`, which closes over the account's OWN resolved
- * tokens. There is no mutable global left in the path, so there is nothing to
- * repaint late: `mpg_uk` is `mpg_uk` on the first frame.
+ * Plan 3b task 6b DISSOLVED that hole rather than guarding it, and task 8 then
+ * deleted the sync, the subscription and the hook this file used to be named
+ * after: with nothing rendering off the mutable statics, writing them and
+ * repainting on them was a closed loop. What is asserted here never depended on
+ * either mechanism, which is exactly why it survives them, and the assertions
+ * that DID depend on the sync went with it rather than being kept as a test of
+ * a path no screen takes.
  *
- * What is left to assert is not vacuous, and it is the question a reader of the
- * old title was really asking: WHOSE gallon does the badge paint? Rung 1 of
- * `useUnitPreference` must answer with the account's `resolved_units`, and must
- * keep answering with them when the browser-owned store moves underneath it
- * mid-session. Regressing rung 1 to `presetUnitsFor(system, cachedGallonStandard)`
- * flips the third test below from 30.0 to 25.0.
- *
- * ★ The tree is still the PRODUCTION shape: `useResolvedGallonSync` runs in a
- * PARENT (App's `PreferenceSyncProvider`) and the badge is a CHILD, reached
- * through `children`, so a parent-side state bump cannot repaint it.
+ * The question is WHOSE gallon the badge paints. Rung 1 of `useUnitPreference`
+ * must answer with the account's `resolved_units`, and must keep answering with
+ * them when the browser-owned store moves underneath it mid-session. The store
+ * DISAGREES with the account in the first test (seeded `us`) and is moved to
+ * disagree in the third, so 30.0 MPG is false in both unless `resolved_units`
+ * wins: regressing rung 1 to `presetUnitsFor(system, cachedGallonStandard)`
+ * reads 25.0. The middle test is the anonymous control, where the browser value
+ * is the only answer there is.
  */
 
 import { describe, it, expect, vi, beforeEach } from 'vitest'
@@ -43,20 +43,12 @@ vi.mock('../../contexts/AuthContext', () => ({
 }))
 
 import { setGallonStandard as storeSet, getGallonStandard as storeGet } from '../../utils/gallonStandardStore'
-import { UnitConverter } from '../../utils/units'
 import { useUnitFormat } from '../useUnitFormat'
-import { useResolvedGallonSync } from '../useResolvedGallonSync'
 
 /** Flip away first: the store's setter no-ops on an unchanged value. */
 function seedStore(value: 'us' | 'uk'): void {
   storeSet(value === 'us' ? 'uk' : 'us')
   storeSet(value)
-}
-
-/** App's PreferenceSyncProvider, reduced to the hook under test. */
-function SyncProvider({ children }: { children: React.ReactNode }): React.ReactElement {
-  useResolvedGallonSync()
-  return <>{children}</>
 }
 
 /** A consumption consumer, shaped like VehicleStatisticsCard.tsx's strip. */
@@ -77,17 +69,12 @@ describe('a mounted consumption badge paints the account\'s own gallon', () => {
     seedStore('us')
     auth.user = makeUser({ unit_preference: 'custom', resolved_units: UK_IMPERIAL_UNITS })
 
-    render(
-      <SyncProvider>
-        <EconomyBadge />
-      </SyncProvider>
-    )
+    render(<EconomyBadge />)
 
     // Rung 1's `resolved_units` decides, so the badge is right on its first
     // frame. Before task 6b this line read '25.0 MPG' until a repaint the
-    // subscription in `useUnitPreference` had to arrange.
+    // deleted subscription in `useUnitPreference` had to arrange.
     expect(screen.getByTestId('mpg').textContent).toBe('30.0 MPG')
-    expect(UnitConverter.getGallonStandard()).toBe('uk')
 
     // ...and the browser-owned value is untouched, which is the constraint that
     // made a plain store write the wrong mechanism.
@@ -99,14 +86,9 @@ describe('a mounted consumption badge paints the account\'s own gallon', () => {
     seedStore('uk')
     auth.user = null
 
-    render(
-      <SyncProvider>
-        <EconomyBadge />
-      </SyncProvider>
-    )
+    render(<EconomyBadge />)
 
     expect(screen.getByTestId('mpg').textContent).toBe('30.0 MPG')
-    expect(UnitConverter.getGallonStandard()).toBe('uk')
     expect(storeGet()).toBe('uk')
   })
 
@@ -118,22 +100,17 @@ describe('a mounted consumption badge paints the account\'s own gallon', () => {
     seedStore('uk')
     auth.user = makeUser({ unit_preference: 'custom', resolved_units: UK_IMPERIAL_UNITS })
 
-    render(
-      <SyncProvider>
-        <EconomyBadge />
-      </SyncProvider>
-    )
+    render(<EconomyBadge />)
     expect(screen.getByTestId('mpg').textContent).toBe('30.0 MPG')
 
-    // `act` so the store's notification, the resulting render and the effect
-    // that re-asserts all flush before the assertions; without it this asserts
-    // against a frame React has not produced yet.
+    // `act` so the store's notification and the resulting render flush before
+    // the assertions; without it this asserts against a frame React has not
+    // produced yet.
     act(() => {
       storeSet('us')
     })
 
     expect(storeGet()).toBe('us')
-    expect(UnitConverter.getGallonStandard()).toBe('uk')
     expect(screen.getByTestId('mpg').textContent).toBe('30.0 MPG')
   })
 })

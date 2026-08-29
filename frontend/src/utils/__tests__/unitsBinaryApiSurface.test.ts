@@ -394,8 +394,8 @@ function binarySurface(): { formatters: string[]; helpers: string[]; exempt: str
   }
 }
 
-/** Files where `UnitFormatter.<method>` is actually accessed, by method. */
-function callersByMethod(methods: string[]): Map<string, string[]> {
+/** Files where `<className>.<method>` is actually accessed, by method. */
+function callersByMethod(methods: string[], className = FORMATTER_CLASS): Map<string, string[]> {
   const wanted = new Set(methods)
   const callers = new Map<string, string[]>(methods.map((m) => [m, []]))
   for (const path of productionSources()) {
@@ -404,7 +404,7 @@ function callersByMethod(methods: string[]): Map<string, string[]> {
       if (
         ts.isPropertyAccessExpression(node) &&
         ts.isIdentifier(node.expression) &&
-        node.expression.text === FORMATTER_CLASS &&
+        node.expression.text === className &&
         wanted.has(node.name.text)
       ) {
         const seen = callers.get(node.name.text)!
@@ -417,6 +417,135 @@ function callersByMethod(methods: string[]): Map<string, string[]> {
   }
   return callers
 }
+
+/** The class holding the instance-driven gallon and MPG factors. */
+const CONVERTER_CLASS = 'UnitConverter'
+
+/** The two mutable statics that carry defect L1's mechanism. */
+const MUTABLE_GALLON_FACTORS = ['gallonsToLitersFactor', 'mpgToL100kmFactor']
+
+/** Every exported function DECLARATION of one module, sorted. */
+function exportedFunctions(path: string): string[] {
+  const source = parse(path)
+  const names = new Set<string>()
+  const walk = (node: ts.Node): void => {
+    if (
+      ts.isFunctionDeclaration(node) &&
+      node.name !== undefined &&
+      (node.modifiers ?? []).some((m) => m.kind === ts.SyntaxKind.ExportKeyword)
+    ) {
+      names.add(node.name.text)
+    }
+    ts.forEachChild(node, walk)
+  }
+  walk(source)
+  return [...names].sort()
+}
+
+/**
+ * Every `UnitConverter` static that touches the mutable gallon factors.
+ *
+ * ★ TRANSITIVELY, and that is the whole reason this is derived rather than
+ * listed. `lPer100kmToMpg` names neither factor: it delegates to
+ * `l100kmToMpg`, which does. A list built by grepping the factor names is a
+ * FLOOR, and this workstream has produced sixteen of those; a list built by
+ * hand is worse. So a method touches the factors when it names one OR calls a
+ * sibling that does, iterated to a fixpoint.
+ */
+function factorTouchers(): string[] {
+  const source = parse(UNITS)
+  const mentions = new Map<string, boolean>()
+  const calls = new Map<string, Set<string>>()
+  const walk = (node: ts.Node): void => {
+    if (ts.isClassDeclaration(node) && node.name?.text === CONVERTER_CLASS) {
+      for (const member of node.members) {
+        if (!ts.isMethodDeclaration(member)) continue
+        if (!(member.modifiers ?? []).some((m) => m.kind === ts.SyntaxKind.StaticKeyword)) continue
+        const name = member.name.getText(source)
+        let direct = false
+        const siblings = new Set<string>()
+        const body = (child: ts.Node): void => {
+          if (ts.isIdentifier(child) && MUTABLE_GALLON_FACTORS.includes(child.text)) direct = true
+          if (
+            ts.isPropertyAccessExpression(child) &&
+            (child.expression.kind === ts.SyntaxKind.ThisKeyword ||
+              (ts.isIdentifier(child.expression) && child.expression.text === CONVERTER_CLASS))
+          ) {
+            siblings.add(child.name.text)
+          }
+          ts.forEachChild(child, body)
+        }
+        ts.forEachChild(member, body)
+        mentions.set(name, direct)
+        calls.set(name, siblings)
+      }
+    }
+    ts.forEachChild(node, walk)
+  }
+  walk(source)
+  if (mentions.size === 0) {
+    throw new Error(`walked ${CONVERTER_CLASS} and saw no static method; refusing to conclude`)
+  }
+  for (let pass = 0; pass < mentions.size; pass += 1) {
+    let grew = false
+    for (const [name, touches] of mentions) {
+      if (touches) continue
+      if ([...(calls.get(name) ?? [])].some((s) => mentions.get(s) === true)) {
+        mentions.set(name, true)
+        grew = true
+      }
+    }
+    if (!grew) break
+  }
+  return [...mentions].filter(([, t]) => t).map(([n]) => n).sort()
+}
+
+describe('the mutable gallon statics (plan 3b task 8)', () => {
+  it('★ keeps the converter-gallon subscription deleted', () => {
+    // ★ THE RE-ADD MUTATION, and the receipt that makes it fire. Task 8 deleted
+    // a closed loop: `hooks/useResolvedGallonSync.ts` wrote the factors below,
+    // `subscribeToConverterGallon` / `getConverterGallon` /
+    // `getConverterGallonServerSnapshot` published them, and one
+    // `useSyncExternalStore` in `useUnitPreference` subscribed and discarded the
+    // value. Nothing has rendered off those factors since task 6b, so the sync
+    // ran on every load and nothing read what it wrote.
+    //
+    // Neither units gate can see a subscription, so nothing else would notice it
+    // coming back. This enumerates the module's whole exported-function surface,
+    // which is what makes re-adding any of the three fail here.
+    expect(exportedFunctions(UNITS)).toEqual(['detectUnitSystemFromTimezone'])
+  })
+
+  it('★ leaves exactly one production caller on the factor surface, and it is the writer', () => {
+    // ★ DEFECT L1's MECHANISM, enumerated rather than asserted about. These are
+    // the statics whose answer moves with the INSTANCE gallon setting, which is
+    // what made a `gal_uk` account store 10 gal as 37.85 L. Every one of them is
+    // dead to production except the setter, which `gallonStandardStore` calls:
+    // the instance value is still written and still read by nobody.
+    //
+    // A second name on the `live` line is a module that has started rendering
+    // off process-global state again, which is the defect rather than a style
+    // point, and it is also the day the deleted repaint loop would be needed
+    // again. Retiring `imperial_gallon_standard` is phase 4's, and it is the
+    // change that can take the factors and these methods with it.
+    const touchers = factorTouchers()
+    expect(touchers).toEqual([
+      'gallonsToLiters',
+      'getGallonStandard',
+      'l100kmToMpg',
+      'lPer100kmToMpg',
+      'litersToGallons',
+      'mpgToL100km',
+      'setGallonStandard',
+      'toCanonicalMetricString',
+    ])
+    const live = [...callersByMethod(touchers, CONVERTER_CLASS)]
+      .filter(([, files]) => files.length > 0)
+      .map(([name]) => name)
+    expect(live).toEqual(['setGallonStandard'])
+  })
+})
+
 
 describe('the tree-wide binary surface (plan 3b task 8)', () => {
   it('derives the same three sets the units gate derives, in the other language', () => {

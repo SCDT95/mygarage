@@ -340,7 +340,7 @@
   {
    "path": "src/App.tsx",
    "disposition": "no unit behaviour",
-   "digest": "f4822388d5b8613cbc4b8910eb6a2485b117d27a049c1b40adbf42666b0e8d14",
+   "digest": "41d498dcb65e8d1dc2fb2bfacae7ec66f6e64305ce0cfba536e3f8374f47e919",
    "reason": "no unit behaviour: dispositioned under the CORRECTED scan: every unit stem, token, quantity name and canonical field suffix this codebase uses, matched case-insensitively with NO word boundary. The earlier word-boundary version was a floor (it called AnalyticsHelpModal.tsx clean while it renders \"Average MPG:\" to every user) and it was superseded before any disposition in this file was written. This file matched 2 of them; every hit was read in context and none is a unit decision or a unit-bearing quantity."
   },
   {
@@ -1893,16 +1893,6 @@
    "reason": "no unit behaviour: dispositioned under the CORRECTED scan: every unit stem, token, quantity name and canonical field suffix this codebase uses, matched case-insensitively with NO word boundary. The earlier word-boundary version was a floor (it called AnalyticsHelpModal.tsx clean while it renders \"Average MPG:\" to every user) and it was superseded before any disposition in this file was written. This file matched NONE of them."
   },
   {
-   "path": "src/hooks/useResolvedGallonSync.ts",
-   "disposition": "audited",
-   "digest": "e68dc4e1ad8e9c3f47dc80e319121c466de8b7bf191d95f97b4e52bb3d37f3c2",
-   "reason": "client gallon flavour into UnitConverter, with the repaint",
-   "tests": [
-    "hooks/__tests__/useResolvedGallonSync.test.tsx",
-    "hooks/__tests__/useResolvedGallonSync.repaint.test.tsx"
-   ]
-  },
-  {
    "path": "src/hooks/useThemePreference.ts",
    "disposition": "no unit behaviour",
    "digest": "0a828f586d870ad1b9daf160e6c9d6d39a585da45ef411b83bcb85013e5b1d59",
@@ -1932,11 +1922,12 @@
   {
    "path": "src/hooks/useUnitPreference.ts",
    "disposition": "audited",
-   "digest": "e22f34c7158549957cff2219b05c84bbee77fe140d935b526ed422cf44e96408",
-   "reason": "resolves the unit set; `system` is the collapsed binary this phase is migrating away from, which is the hook working as documented rather than a defect in it Fix round 1 corrected the rationale above the `subscribeToConverterGallon` subscription: it still said every consumption and fuel-rate reader takes the binary system and reads `UnitConverter`'s mutable statics, which task 6b made false for all of them. The subscription is kept and is now documented as a closed loop with no consumer, for the gallon-standard retirement to take.",
+   "digest": "a770520a7bdf8b5c32fda70de08e57d58d819ca0c1001342f432412655a9c728",
+   "reason": "resolves the unit set; `system` is the collapsed binary this phase is migrating away from, which is the hook working as documented rather than a defect in it. Fix round 1 corrected the rationale above the `subscribeToConverterGallon` subscription: it still said every consumption and fuel-rate reader takes the binary system and reads `UnitConverter`'s mutable statics, which task 6b made false for all of them. Task 8 then DELETED that subscription, with `hooks/useResolvedGallonSync.ts`, the three converter-gallon exports in `utils/units.ts` and the `App` provider call: a sync that wrote process-global factors no screen reads, published to one subscriber that discarded the value. `gallonStandard` here is resolved per rung and never came from the converter, so no behaviour moved. What still writes those factors is `gallonStandardStore`, and `utils/__tests__/unitsBinaryApiSurface.test.ts` now enumerates the eight methods that touch them and holds the caller count at one.",
    "tests": [
     "hooks/__tests__/useUnitPreference.custom.test.tsx",
-    "hooks/__tests__/useUnitPreference.precedence.test.tsx"
+    "hooks/__tests__/useUnitPreference.precedence.test.tsx",
+    "hooks/__tests__/useUnitFormat.accountGallon.test.tsx"
    ]
   },
   {
@@ -2752,7 +2743,7 @@
   {
    "path": "src/utils/units.ts",
    "disposition": "audited",
-   "digest": "218241334572cb7311723763c90bf3e771b988e25354b4b2bbd2912d334fa1e8",
+   "digest": "6dc0f3e7f2068dbdd09c57b0438a68701ba824bd28f0bb5261d2c83bd88042ec",
    "reason": "gate-detectable unit decisions, recorded not asserted clean (plan 3b task 1 ordering) Fix round 1 closed the other half of that i18n bug, which was one card to the LEFT: `UnitFormatter.getCostPerVolumeLabel` returned the English words 'Avg Cost/' glued to the unit symbol and `formatVolumeTotal` appended the English word 'total', neither through `t()`, so a German reader read `Kosten/100 km` beside `Avg Cost/gal` and `45,5 L gesamt`. Both statics are DELETED: their prose halves are `avgCostPerVolume` / `volumeTotal` keys in all seven bundles and their symbol halves are `getVolumeUnit` and `formatVolumeShort`. Every method left on UnitFormatter returns a number, a currency string or a bare unit symbol; none returns prose, and unitsBinaryApiSurface.test.ts's statics receipt is the list that says so.",
    "tests": [
     "utils/__tests__/unitFactorParity.test.ts",
@@ -2764,12 +2755,14 @@
     "R2 CLOSED AND DISCHARGED: every comparison decided per occurrence, and there is no `UnitSystem` method and no `// units-exempt:` pragma left on this file. Seven methods were deleted by task 2 (formatTemperature, formatPressure, formatWeight, formatTorque, getTemperatureUnit, getPressureUnit, getTorqueUnit) because no production file called them and a retained binary UnitSystem API is a trap. getWeightUnit followed in task 3 when PropaneRecordForm moved onto the mass adapter; formatDistance and getDistanceUnit followed in task 6 with their twenty-seven call sites, and the raw pair UnitConverter.kmToMiles / milesToKm went with them; the fuel-economy and fuel-rate family followed in task 6b with its thirty-one; and formatCostPerDistance / getCostPerDistanceLabel followed in task 7 with its five. Each retirement was announced by utils/__tests__/unitsBinaryApiSurface.test.ts failing first, which is what the exemptions rested on rather than the pragma prose.",
     "the five remaining token branches are volume and mass dispatch INSIDE resolved-set methods (litersToVolumeUnit, formatVolume, getVolumeUnit, getMassUnit, formatVolumeShort), each reading the quantity it is about. The ones that were NOT are gone from this file: task 6 moved formatVolumePerDistance and getVolumePerDistanceLabel (a DISTANCE derived from units.volume) and task 7 moved formatCostPerDistance and getCostPerDistanceLabel (the same collapse on a currency rate) to utils/unitFormat.ts, where adapterFor supplies both halves. formatCostPerVolume and getCostPerVolumeLabel stay, and the split is the rule rather than an accident: they need the litres-per-unit factor this class already holds and no adapter at all.",
     "ESLint: units.ts is no longer silenced whole-file. It left both the i18n-utility `off` block and UNITS_CONSTANT_EXEMPT; the factor table carries a twelve-line eslint-disable and nothing else does. Of the 12 findings that silence was hiding, 10 are the table and 2 are fixed.",
-    "USER-VISIBLE DISPLAY CHANGE, SHIPPED by task 6, for the changelog: an imperial reader's distances lose two decimal places. The retired UnitFormatter.formatDistance converted through UnitConverter.kmToMiles, which rounds to 2, and then called toLocaleString, so 160000 km read \"99,419.27 mi\"; the resolved `mi` adapter carries precision 0 and reads \"99,419 mi\". Metric was already Math.round and does not move. It affects every migrated read site (odometer rows and heroes, due mileages, warranty limits, predicted service points, chart tooltips), and it makes the display agree with the entry fields, which phase 3a already pinned to whole miles."
+    "USER-VISIBLE DISPLAY CHANGE, SHIPPED by task 6, for the changelog: an imperial reader's distances lose two decimal places. The retired UnitFormatter.formatDistance converted through UnitConverter.kmToMiles, which rounds to 2, and then called toLocaleString, so 160000 km read \"99,419.27 mi\"; the resolved `mi` adapter carries precision 0 and reads \"99,419 mi\". Metric was already Math.round and does not move. It affects every migrated read site (odometer rows and heroes, due mileages, warranty limits, predicted service points, chart tooltips), and it makes the display agree with the entry fields, which phase 3a already pinned to whole miles.",
+    "★ THE MUTABLE GALLON LOOP IS DELETED (task 8). `converterGallonListeners`, `subscribeToConverterGallon`, `getConverterGallon` and `getConverterGallonServerSnapshot` are gone from this module, with `hooks/useResolvedGallonSync.ts`, its call in `App.tsx` and the `useSyncExternalStore` in `useUnitPreference.ts` that was its only consumer. The loop existed so a mounted component repainted when the instance gallon moved the mutable factors; task 6b moved all thirty-one readers onto the resolved set, after which the sync wrote a value nothing read and the subscriber discarded it. Neither units gate can see a subscription, so the deletion is held instead by two receipts in utils/__tests__/unitsBinaryApiSurface.test.ts: this module's whole exported-function surface (re-adding any of the three fails it) and a TRANSITIVE enumeration of the eight statics that touch the factors, of which exactly one, the writer `setGallonStandard`, has a production caller. Both were failed on purpose before being kept. The factors themselves and those eight methods stay: they are `imperial_gallon_standard`'s, and retiring that setting is phase 4's. Owner: phase 4."
    ],
    "owners": [
     "task 2",
     "task 7",
-    "task 9"
+    "task 9",
+    "phase 4"
    ]
   },
   {
