@@ -18,6 +18,7 @@
     "validate:i18n-usage": "bun run scripts/validate-i18n-usage.ts",
     "validate:hardcoded-strings": "bun run scripts/validate-hardcoded-strings.ts",
     "validate:units": "bun run scripts/validate-units.ts",
+    "enumerate:binary-distance": "bun run scripts/enumerate-binary-distance.ts",
     "validate:units-corpus": "python3 scripts/units_gate_corpus.py",
     "validate:units-selftest": "python3 scripts/units_gate_selftest.py",
     "validate:units-manifest": "bun run scripts/validate-units-manifest.ts",
