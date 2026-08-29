@@ -22,8 +22,8 @@
   {
    "path": "public/locales/de/analytics.json",
    "disposition": "audited",
-   "digest": "9a76a9707f5868f267d8b5e9f273c2d19089fd316f40cd1f4f4e7b3958691e2e",
-   "reason": "the MPG help copy is untranslated here and falls back to English; the digest forces a re-review when it is translated. Task 6 replaced the raw `units.volume === 'L'` prose selection with the same `{{unit}}` interpolation the volume COLUMN already used, so the two cannot disagree: totalLiters / totalGallons are gone and totalVolume takes getVolumeUnit(units).",
+   "digest": "0a9f53688dbeec5b341ba9d3931ac2c50ba36d74c2f9366149b07a045176eeb7",
+   "reason": "the MPG help copy is untranslated here and falls back to English; the digest forces a re-review when it is translated. Task 6 replaced the raw `units.volume === 'L'` prose selection with the same `{{unit}}` interpolation the volume COLUMN already used, so the two cannot disagree: totalLiters / totalGallons are gone and totalVolume takes getVolumeUnit(units). Fix round 1 restored the strings whose MEANING never changed, under their new keys: task 6b's deletion rule (a translation of a changed sentence is a lie in another language) was applied to some that named no unit at all. German kept all seven; French kept only the three that are unit-neutral in French, since its 'Calcul du MPG :' and 'MPG moyen :' name the unit outright. Where the English gained a {{unit}} the placeholder was appended in parentheses, because validate-translations.ts blocks on a dropped interpolation.",
    "tests": [
     "__tests__/volumeTotalLabelLocales.test.ts"
    ]
@@ -73,8 +73,8 @@
   {
    "path": "public/locales/fr/analytics.json",
    "disposition": "audited",
-   "digest": "891a0447b7949e5ac5412436fa35241b2e27df8d43ab4c3dcca634b054ceccfd",
-   "reason": "reviewed at this snapshot. Task 6 replaced the raw `units.volume === 'L'` prose selection with the same `{{unit}}` interpolation the volume COLUMN already used, so the two cannot disagree: totalLiters / totalGallons are gone and totalVolume takes getVolumeUnit(units). Task 6b removed this bundle's stale copies of the unit-naming keys it corrected rather than leaving them saying the old thing in another language, so those keys fall back to the corrected English; a missing key is non-blocking in validate-translations.ts, and English that is true beats a translation that is not. Re-translating them is a translation pass, not unit work. __tests__/unitCopy.resolvedProse.test.tsx walks every bundle on disk and fails if any of them names a unit unconditionally again.",
+   "digest": "cee13fc96403bd2fe2b6d8c4f4eaebcd253b21420096d5c61807a28a51feb475",
+   "reason": "reviewed at this snapshot. Task 6 replaced the raw `units.volume === 'L'` prose selection with the same `{{unit}}` interpolation the volume COLUMN already used, so the two cannot disagree: totalLiters / totalGallons are gone and totalVolume takes getVolumeUnit(units). Task 6b removed this bundle's stale copies of the unit-naming keys it corrected rather than leaving them saying the old thing in another language, so those keys fall back to the corrected English; a missing key is non-blocking in validate-translations.ts, and English that is true beats a translation that is not. Re-translating them is a translation pass, not unit work. __tests__/unitCopy.resolvedProse.test.tsx walks every bundle on disk and fails if any of them names a unit unconditionally again. Fix round 1 restored the strings whose MEANING never changed, under their new keys: task 6b's deletion rule (a translation of a changed sentence is a lie in another language) was applied to some that named no unit at all. German kept all seven; French kept only the three that are unit-neutral in French, since its 'Calcul du MPG :' and 'MPG moyen :' name the unit outright. Where the English gained a {{unit}} the placeholder was appended in parentheses, because validate-translations.ts blocks on a dropped interpolation.",
    "tests": [
     "__tests__/volumeTotalLabelLocales.test.ts",
     "__tests__/unitCopy.resolvedProse.test.tsx"

@@ -240,6 +240,15 @@ function flatten(node: unknown, prefix = ''): { key: string; value: string }[] {
  * table this app owns, so the symbol half loses the `i` flag; the prose half
  * keeps it, because "Imperial" and "imperial" are the same word.
  *
+ * ★ AND THE BOUNDARY IS UNICODE-AWARE, which the first version was not.
+ * JavaScript's `\b` is defined over ASCII word characters, so every non-ASCII
+ * letter counts as a boundary: `L` matched the L in `Löschen` and `m` matched
+ * the m in Portuguese words, which made 9 of German's hits and effectively all
+ * of Brazilian Portuguese's false. That is the opposite of the property the
+ * seven-bundle framing sells, so the boundary is spelled with `\p{L}\p{N}`
+ * lookarounds under the `u` flag instead. The prose half gets the same
+ * treatment: `\bmile\b` would otherwise match inside an accented word.
+ *
  * @param term The vocabulary entry.
  * @param caseInsensitive Whether case may vary, true only for prose.
  * @returns Its regular expression.
@@ -247,7 +256,18 @@ function flatten(node: unknown, prefix = ''): { key: string; value: string }[] {
 function matcher(term: string, caseInsensitive: boolean): RegExp {
   const escaped = term.replace(/[.*+?^${}()|[\]\\/]/g, '\\$&')
   const wordish = /^[A-Za-z0-9]+$/.test(term)
-  return new RegExp(wordish ? `\\b${escaped}\\b` : escaped, caseInsensitive ? 'i' : '')
+  // A ONE-LETTER symbol may not be followed by an apostrophe. `L'` is French
+  // and Italian elision (`L'IA`, `L'authentification`), never a unit, and it
+  // survived case-sensitivity and the Unicode boundary alike because the
+  // apostrophe IS a boundary: 18 of French's 24 remaining hits were that. The
+  // exclusion is confined to single-character terms, where elision is the only
+  // way the sequence arises; applying it to prose would silently drop an
+  // English possessive.
+  const trailing = term.length === 1 ? `[\\p{L}\\p{N}'\u2019]` : `[\\p{L}\\p{N}]`
+  const pattern = wordish
+    ? `(?<![\\p{L}\\p{N}])${escaped}(?!${trailing})`
+    : escaped
+  return new RegExp(pattern, caseInsensitive ? 'iu' : 'u')
 }
 
 function main(): void {

@@ -153,31 +153,53 @@ const FIXED: readonly { ns: string; key: string }[] = [
 ]
 
 /**
- * The one fixed string that names a unit ON PURPOSE, and why.
+ * The fixed strings that name a unit ON PURPOSE, and why.
  *
  * The gallon-flavour setting's subject IS the gallon, so naming it is correct
  * in the way `units.imperial` and `units.metric` are correct: those are the
- * choices on offer. What it used to get wrong was different, and is the same
- * D8 collapse ruling R1 addresses elsewhere: "Used when the unit system is
- * Imperial" told a `{volume:'gal_us', everything-else-metric}` account that
- * its unit system was Imperial, which is not a thing a resolved set has. It
- * now names the QUANTITIES the flavour reaches.
+ * choices on offer. What the DESCRIPTION used to get wrong was different, and
+ * is the same D8 collapse ruling R1 addresses elsewhere: "Used when the unit
+ * system is Imperial" told a `{volume:'gal_us', everything-else-metric}`
+ * account that its unit system was Imperial, which is not a thing a resolved
+ * set has. It now names the QUANTITIES the flavour reaches.
  *
- * Listed rather than omitted, and asserted to still name the gallon, so the
- * exemption is exercised instead of being a silent hole in `FIXED`.
+ * ★ The LABEL above it, `units.gallonStandard` ("Imperial gallon standard"),
+ * was un-triaged until fix round 1: it sat in neither list, so no decision
+ * about it was recorded anywhere, which is the state that lets a defect and a
+ * deliberate choice look identical. The ruling is that it is correct as it
+ * stands. "Imperial gallon" is that gallon's actual NAME, the same way "US
+ * gallon" is (both appear one line below in `units.gallonUs` /
+ * `units.gallonUk`); it is not the D8 claim its sibling made, because it says
+ * nothing about the reader's unit system. If it ever reads "when your units are
+ * Imperial", it moves to `FIXED`.
+ *
+ * Listed rather than omitted, and each asserted to still name a unit, so the
+ * exemptions are exercised instead of being silent holes in `FIXED`.
  */
-const NAMES_A_UNIT_DELIBERATELY = { ns: 'settings', key: 'units.gallonStandardDescription' }
+const NAMES_A_UNIT_DELIBERATELY: readonly { ns: string; key: string }[] = [
+  { ns: 'settings', key: 'units.gallonStandardDescription' },
+  { ns: 'settings', key: 'units.gallonStandard' },
+]
 
 /**
  * Unit NAMES in each supported language, as prose or symbol.
  *
- * English only for the spelled-out words, because the other six bundles are
- * translations and this file cannot guess their vocabulary; the SYMBOLS carry
- * across untranslated and are matched everywhere, which is what actually
- * survives a machine translation of "MPG is only calculated...".
+ * ★ CASE-INSENSITIVE, and the flag is the whole finding. The first version of
+ * this line had no `i`, and German capitalises every noun, so `meilen?` and
+ * `gallonen?` were dead alternatives: review round 1 put
+ * `events.card.milesBefore = "Meilen vorher"` and
+ * `events.card.milestonesDesc = "Benachrichtigen bei 100k Meilen"` back into
+ * `de/settings.json` and this file passed 10 of 10. A guard whose stated
+ * subject is cross-bundle coverage and which cannot fire on the language it
+ * names alternatives for is not a guard.
+ *
+ * No term here is a single letter, so `i` costs nothing: the `Löschen`-style
+ * false positive that forced case-SENSITIVE matching in
+ * `scripts/enumerate-unit-copy.ts` comes from its bare `L` and `m` adapter
+ * labels, which this vocabulary does not carry.
  */
 const UNIT_NAMES =
-  /\b(MPG|mpg|GPH|PSI|kWh\/100mi|miles?|milhas?|meilen?|milles?|gallons?|gallonen?|galões?|imperial|metric)\b/u
+  /\b(MPG|GPH|PSI|kWh\/100mi|miles?|milhas?|meilen?|milles?|gallons?|gallonen?|galões?|imperial|metric)\b/iu
 
 beforeEach(() => {
   langMock.code = 'en'
@@ -202,31 +224,47 @@ describe('the fixed copy, across every locale bundle on disk', () => {
 
   it('★ names no unit unconditionally, in any bundle that carries the key', () => {
     const offenders: string[] = []
-    let read = 0
+    const readsByBundle = new Map<string, number>()
     for (const { lang, dir } of bundles()) {
       for (const { ns, key } of FIXED) {
         const value = lookup(dir, ns, key)
         if (value === undefined) continue
-        read += 1
+        readsByBundle.set(lang, (readsByBundle.get(lang) ?? 0) + 1)
         if (UNIT_NAMES.test(value)) offenders.push(`${lang} ${ns}:${key} -> ${value}`)
       }
     }
-    // The receipt: a lookup that started returning undefined everywhere would
-    // make the emptiness below prove nothing at all.
-    expect(read).toBeGreaterThanOrEqual(FIXED.length)
+
+    // ★ THE RECEIPT NAMES WHICH BUNDLES CONTRIBUTED, not how many strings were
+    // read in total. The first version asserted `read >= FIXED.length`, which
+    // `en` satisfies on its own: the offending keys had been DELETED from the
+    // six translated bundles, the loop above `continue`s on a missing key, and
+    // the cross-bundle leg therefore passed without ever opening a translated
+    // file. An emptiness that no translated bundle contributed to is not
+    // evidence about translated bundles.
+    //
+    // `de` and `fr` carry keys again because fix round 1 restored the ones whose
+    // meaning never changed; `pl`, `pt-BR`, `ru` and `uk` never translated any
+    // of these and carry none, which is stated here rather than hidden behind a
+    // total. If a restoration is ever removed, this list shrinks and the test
+    // fails before the emptiness below can go vacuous.
+    expect([...readsByBundle.keys()].sort()).toStrictEqual(['de', 'en', 'fr'])
+    expect(readsByBundle.get('de')).toBeGreaterThan(0)
+    expect(readsByBundle.get('fr')).toBeGreaterThan(0)
+
     expect(offenders).toStrictEqual([])
   })
 
-  it('keeps the gallon-standard description naming a gallon, and no system', () => {
+  it('keeps the gallon-standard pair naming a gallon, and claiming no system', () => {
     const en = bundles().find((b) => b.lang === 'en')!
-    const { ns, key } = NAMES_A_UNIT_DELIBERATELY
-    const value = lookup(en.dir, ns, key)
-    expect(value).toBeDefined()
-    // Names the unit the setting is ABOUT...
-    expect(UNIT_NAMES.test(value!)) .toBe(true)
-    // ...and no longer claims the account has a single "unit system", which is
-    // what a resolved set replaced.
-    expect(value).not.toMatch(/unit system/i)
+    for (const { ns, key } of NAMES_A_UNIT_DELIBERATELY) {
+      const value = lookup(en.dir, ns, key)
+      expect(value, `${ns}:${key}`).toBeDefined()
+      // Names the unit the setting is ABOUT...
+      expect(UNIT_NAMES.test(value!), `${ns}:${key} names no unit`).toBe(true)
+      // ...and neither claims the account has a single "unit system", which is
+      // what a resolved set replaced.
+      expect(value, `${ns}:${key}`).not.toMatch(/unit system/i)
+    }
   })
 })
 

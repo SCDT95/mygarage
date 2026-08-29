@@ -383,7 +383,13 @@
     },
     "fuelEconomy": {
       "title": "Kraftstoffverbrauch",
-      "note": "Ein verschlechterter Kraftstoffverbrauch kann auf Wartungsbedarf hindeuten (Luftfilter, Zündkerzen, Reifendruck) oder auf Änderungen der Fahrgewohnheiten. Deutliche Einbrüche sollten untersucht werden."
+      "note": "Ein verschlechterter Kraftstoffverbrauch kann auf Wartungsbedarf hindeuten (Luftfilter, Zündkerzen, Reifendruck) oder auf Änderungen der Fahrgewohnheiten. Deutliche Einbrüche sollten untersucht werden.",
+      "economyCalcLabel": "Verbrauchsberechnung ({{unit}}):",
+      "economyCalcDesc": "Wird automatisch anhand aufeinanderfolgender Vollbetankungen berechnet. Teilbetankungen werden bei der Verbrauchsberechnung nicht berücksichtigt.",
+      "averageEconomyLabel": "Durchschnittlicher Verbrauch ({{unit}}):",
+      "averageEconomyDesc": "Mittelwert des Kraftstoffverbrauchs über alle Vollbetankungen hinweg.",
+      "recentEconomyLabel": "Aktueller Verbrauch ({{unit}}):",
+      "recentEconomyDesc": "Durchschnitt der letzten 5 Vollbetankungen."
     },
     "vendorSpending": {
       "title": "Ausgaben nach Dienstleister",
@@ -428,7 +434,8 @@
       "enterAllRecords": "Trage alle Service- und Kraftstoffeinträge ein, um vollständige Analysen zu erhalten",
       "addVendorNames": "Füge Dienstleisternamen hinzu, um Ausgabenmuster zu erkennen",
       "trackMonths": "Erfasse Daten über mindestens 3–6 Monate, um aussagekräftige Trends zu erhalten",
-      "reviewAnomalies": "Überprüfe Anomalien, um ungewöhnliche Ausgaben zu verstehen"
+      "reviewAnomalies": "Überprüfe Anomalien, um ungewöhnliche Ausgaben zu verstehen",
+      "markFullTank": "Markiere Betankungen als \"Vollbetankung\" für eine genaue Verbrauchserfassung ({{unit}})"
     }
   },
   "reports": {
