@@ -28,7 +28,7 @@ import * as ts from 'typescript'
  *
  * So the exemption carries a CONDITION, and this test is the condition. R1 asks
  * for exemptions that are structural rather than prose, because the gate's
- * `// units-exempt:` pragma accepts any reason-bearing comment
+ * `// units-exempt(<kind>):` pragma accepts any reason-bearing comment
  * (`EXEMPT_PRAGMA` in `validate-units.ts`). The pragmas on the survivors say why; this says
  * when they expire. When task 6 migrates the last `formatDistance(km, system)`
  * call site, this test fails and the method has to go.
@@ -171,12 +171,20 @@ function namesBinary(
  * bug shipped for one commit inside the gate itself and silenced two of three
  * exemptions while the third worked, which is the shape that reaches main.
  */
-const EXEMPT_PRAGMA = /(?:^|\s)\/\/\s*units-exempt:\s*\S/
+const EXEMPT_PRAGMA = /(?:^|\s)\/\/\s*units-exempt(?:\(([^)]*)\))?:\s*\S/
 
-function declarationExempt(node: ts.Node, source: ts.SourceFile): boolean {
+/** True when one line's pragma covers this finding kind, bare meaning all of them. */
+function lineExempts(line: string, kind: string): boolean {
+  const match = EXEMPT_PRAGMA.exec(line)
+  if (match === null) return false
+  if (match[1] === undefined) return true
+  return match[1].split(',').map((k) => k.trim()).includes(kind)
+}
+
+function declarationExempt(node: ts.Node, source: ts.SourceFile, kind: string): boolean {
   const lines = source.text.split('\n')
   const line = source.getLineAndCharacterOfPosition(node.getStart(source)).line + 1
-  return EXEMPT_PRAGMA.test(lines[line - 1] ?? '') || EXEMPT_PRAGMA.test(lines[line - 2] ?? '')
+  return lineExempts(lines[line - 1] ?? '', kind) || lineExempts(lines[line - 2] ?? '', kind)
 }
 
 /**
@@ -371,7 +379,7 @@ function binarySurface(): { formatters: string[]; helpers: string[]; exempt: str
           if (!(member.modifiers ?? []).some((m) => m.kind === ts.SyntaxKind.StaticKeyword)) continue
           if (!takesBinarySystem(member, source)) continue
           const name = member.name.getText(source)
-          ;(declarationExempt(member, source) ? exempt : formatters).add(name)
+          ;(declarationExempt(member, source, 'formatter-binary') ? exempt : formatters).add(name)
         }
       }
       if (
@@ -381,7 +389,7 @@ function binarySurface(): { formatters: string[]; helpers: string[]; exempt: str
         takesBinarySystem(node, source)
       ) {
         const name = node.name.getText(source)
-        ;(declarationExempt(node, source) ? exempt : helpers).add(name)
+        ;(declarationExempt(node, source, 'binary-conversion') ? exempt : helpers).add(name)
       }
       ts.forEachChild(node, walk)
     }

@@ -228,6 +228,7 @@ export class UnitConverter {
     if (liters === null || liters === undefined) {
       return null;
     }
+    // units-exempt(token-branch): volume dispatch inside a volume converter. The token read is the quantity being converted, not a proxy for a different one, which is the distinction the token-branch leg exists to draw and cannot draw for itself. Not deferred work.
     if (units.volume === 'L') {
       return liters;
     }
@@ -558,6 +559,7 @@ export class UnitFormatter {
     const litersNum = typeof liters === 'string' ? parseFloat(liters) : liters;
     if (isNaN(litersNum)) return 'N/A';
 
+    // units-exempt(token-branch): volume dispatch inside a volume formatter, same rule as `litersToVolumeUnit`. Not deferred work.
     if (units.volume === 'L') {
       const primary = `${litersNum.toFixed(2)} L`;
       if (showBoth) {
@@ -601,6 +603,7 @@ export class UnitFormatter {
    * @param units - The client's resolved unit set
    */
   static getVolumeUnit(units: UnitSet): string {
+    // units-exempt(token-branch): a volume LABEL chosen by the volume token. Not deferred work, though the label is D4b-incomplete: both gallons answer 'gal', which `units.manifest.json` records against SettingsSystemTab and phase 4 owns.
     return units.volume === 'L' ? 'L' : 'gal';
   }
 
@@ -618,6 +621,7 @@ export class UnitFormatter {
    * @param units - The client's resolved unit set
    */
   static getMassUnit(units: UnitSet): string {
+    // units-exempt(token-branch): a mass LABEL chosen by the mass token, and the docstring above says why reading `units.mass` rather than `system` is the whole point of it. Not deferred work.
     return units.mass === 'kg' ? 'kg' : 'lb';
   }
 
@@ -643,6 +647,7 @@ export class UnitFormatter {
    * word "breaks silently the moment this file is localized"; it did.
    */
   static formatVolumeShort(liters: number, units: UnitSet): string {
+    // units-exempt(token-branch): volume dispatch inside a volume formatter, same rule as `formatVolume`. Not deferred work.
     if (units.volume === 'L') {
       return `${liters.toFixed(1)} L`;
     }

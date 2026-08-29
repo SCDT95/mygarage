@@ -206,6 +206,6 @@ export function useUnitPreference(): UnitPreference {
  */
 function readStoredUnitSystem(): UnitSystem | null {
   const stored = localStorage.getItem('unit_preference');
-  // units-exempt: validating parse of a stored string, not a display conversion.
+  // units-exempt(compare): validating parse of a stored string, not a display conversion.
   return stored === 'imperial' || stored === 'metric' ? stored : null;
 }

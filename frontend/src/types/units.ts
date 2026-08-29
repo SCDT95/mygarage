@@ -22,6 +22,7 @@ export type VolumeUnit = UnitSet['volume']
  * supplies it. Any gallon is imperial; litres are metric.
  */
 export function binarySystemFor(volume: VolumeUnit): 'metric' | 'imperial' {
+  // units-exempt(token-branch): D8's single admitted collapse, and the token read IS the quantity being asked about rather than a proxy for another one. Not deferred work: while any binary consumer survives, one of them has to be given a defined answer, and concentrating the collapse in one exported function is what makes the population countable. Kind-scoped, so a comparison of a DIFFERENT quantity added to this line would still be reported.
   return volume === 'L' ? 'metric' : 'imperial'
 }
 

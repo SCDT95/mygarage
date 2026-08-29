@@ -475,19 +475,18 @@
   {
    "path": "src/components/FuelRecordForm.tsx",
    "disposition": "audited",
-   "digest": "a365ab58641dac460b80fed47163c72a15eca170badee51142b545db8a221c7e",
+   "digest": "cc34e9311ea440ce6a27eaaa4685d12067b8eb1b777ae38991e76f6dd02c5644",
    "reason": "gate-detectable unit decisions, recorded not asserted clean (plan 3b task 1 ordering). R7 CLOSED: the receipt preview rendered the draft's CANONICAL litres with a hardcoded \"L\" beside it, so a gallons account read one number and then watched the field it accepted into show another. It goes through u.volume.formatPrimary, the same adapter the field is seeded from. Task 6b interpolated the resolved consumption label into fuel.mpgTip, which told every reader \"MPG is only calculated for full tank fill-ups\" beside a figure they may read in L/100km, and dropped the kWh/100mi claim from fuel.electricTip: no code in this repo computes that figure in any unit. Task 7 closed ruling R4's entry-grid shift on this file: the volume and price fields are seeded WITH their canonical origins and read back through them, so a save that touched neither posts the stored values instead of a re-conversion of the two- and three-decimal displays they are shown at. The price origin is separate from the quantity ones because it carries the basis: `price_basis` is a <select> on this very form, so moving per_volume -> per_weight leaves the number alone and changes what it means. `acceptUnitField` grew `liters` and `propane_liters` and gained a price sibling, `acceptPriceField`, because the parsed-receipt path was landing both with a value and no fresh origin, which is the same unguarded seed beside a guarded one that the odometer had. The two volume/price placeholders moved off `units.volume === 'L'` onto a `Record` over the token: the branch named the right QUANTITY and still could not name the right UNIT, so a gal_uk account read a US-gallon example. Mutation also found this form's SECOND volume field, propane_liters, untested (PropaneRecordForm has a field of the same name and its own cases); FuelRecordForm.gallonUnits.test.tsx now drives it on a propane vehicle.",
    "tests": [
     "components/__tests__/FuelRecordForm.mixedUnits.test.tsx",
     "components/__tests__/FuelRecordForm.gallonUnits.test.tsx"
    ],
    "findings": [
-    "token-branch x1 (units gate baseline)",
+    "DISCHARGED BY TASK 8, structurally rather than by pragma: the odometer placeholder reads `units.distance` and ruling R5 exempts a placeholder, because it is a plausible EXAMPLE value with nothing canonical behind it to convert. The units gate had exempted that shape on its comparison leg from the start; this line sat in the baseline as phase 3b migration work for the whole phase only because the token-branch leg did not ask the same question. Pinned by corpus case S-N20 and mutations M74 / M7.",
     "USER-VISIBLE DISPLAY CHANGE, SHIPPED by task 6, for the changelog: the parsed-receipt preview shows the volume in the reader's own unit (\"12.50 gal\") rather than the canonical litres it had always printed (\"47.318 L\"), so it now agrees with the field that accepting it fills in.",
     "USER-VISIBLE DISPLAY CHANGE, task 7, for the changelog: a METRIC reader's volume entry fields now show two decimals (45.46 L, not 45.461). They were seeded with the raw stored litres and disagreed with every other rendering of a volume in the app, which reads the `L` adapter's two decimals; a gallon reader has had two all along. The third decimal survives in STORAGE through the seeded origin, which is what the change buys."
    ],
    "owners": [
-    "task 8",
     "task 9"
    ]
   },
@@ -1338,19 +1337,17 @@
   {
    "path": "src/components/tabs/SettingsSystemTab.tsx",
    "disposition": "audited",
-   "digest": "f790ef9265a1faaac6be7080a5236ee3847223ae5581e63ed340043002cd90fa",
+   "digest": "e7324b9ff75fb1db48bf6ece48aaad02a9036211bca09f59032efbd9368f5c18",
    "reason": "the unit description is COMPOSED from the resolved set in EVERY branch (plan 3b R1 plus spec D3: an override column beats the preset regardless of which preset is set), so the card no longer selects one of two fixed sentences and no longer reads unit_preference for the two preset values. The gallon panel is derived from the same expression. The three comparisons left are R1's structural exemptions, recorded not asserted clean until the task 8 gate flip. Task 6b did the same to the show-both toggle's description: it framed the feature as \"both imperial and metric\" with a fixed 25 MPG (9.4 L/100km) example, where counterparts resolve PER QUANTITY, so the example is now rendered through this account's own consumption formatter with show-both on.",
    "tests": [
     "components/tabs/__tests__/SettingsSystemTab.units.test.tsx"
    ],
    "findings": [
-    "compare x3 (units gate baseline)",
-    "R1's three structural exemptions: the two preset-selection controls (unitPreference === 'imperial' / 'metric') and the gallon-panel visibility (displaySystem === 'imperial'). Each is a choice BETWEEN units with no quantity to convert, so task 8 exempts them structurally or by exact match in the gate rather than with a reason-bearing pragma, which silences anything.",
+    "DISCHARGED BY TASK 8. The three R1 exemptions (the two preset-selection controls and the gallon-panel visibility) are hoisted out of their `className` template literals, where a line comment would have been part of the rendered string, and each carries `// units-exempt(compare): <reason>`. This row previously asked for them to be exempted \"structurally or by exact match in the gate rather than with a reason-bearing pragma, which silences anything\". The objection was right and is answered by the KIND LIST task 8 added rather than by the exact-match table: a scoped pragma silences one leg on one line and leaves every other kind reportable, while a table of (file, kind, text) inside the gate is a baseline under another name, sits away from the code it excuses, and can be regenerated by a flag. Pinned by corpus cases S-P42 / S-P43 and mutation M72.",
     "The composed description cannot distinguish US from UK gallons: gal_us and gal_uk both label \"gal\" and mpg_us and mpg_uk both label \"MPG\", so two accounts that convert at 3.785 L and 4.546 L read the same sentence. Incomplete rather than false. The gallon sub-panel below is only a partial mitigation because it renders the INSTANCE-wide imperial_gallon_standard setting, not this account's secondary_gallon. Deferred to phase 4, which owns the gallon key and the eleven Custom controls; a flavour suffix in UNIT_ADAPTERS.label would move every rendered volume in the app.",
     "The two preset buttons are visibly INERT for an account with override columns, which is the population migration 093 created: clicking Metric moves the highlight, fires the toast and stores the preference, and nothing the account renders changes, because eleven overrides beat the preset (D3). Correct and honest, and a direct consequence of composing from the resolved set, but the control demonstrably does nothing for those users. Phase 4 replaces this toggle with the eleven Custom controls, where it becomes addressable."
    ],
    "owners": [
-    "task 8",
     "phase 4"
    ]
   },
@@ -1922,7 +1919,7 @@
   {
    "path": "src/hooks/useUnitPreference.ts",
    "disposition": "audited",
-   "digest": "a770520a7bdf8b5c32fda70de08e57d58d819ca0c1001342f432412655a9c728",
+   "digest": "49b6e46a88d60c2c3c072f3181b01eb38cb1ac1956db002af9661ed60659287b",
    "reason": "resolves the unit set; `system` is the collapsed binary this phase is migrating away from, which is the hook working as documented rather than a defect in it. Fix round 1 corrected the rationale above the `subscribeToConverterGallon` subscription: it still said every consumption and fuel-rate reader takes the binary system and reads `UnitConverter`'s mutable statics, which task 6b made false for all of them. Task 8 then DELETED that subscription, with `hooks/useResolvedGallonSync.ts`, the three converter-gallon exports in `utils/units.ts` and the `App` provider call: a sync that wrote process-global factors no screen reads, published to one subscriber that discarded the value. `gallonStandard` here is resolved per rung and never came from the converter, so no behaviour moved. What still writes those factors is `gallonStandardStore`, and `utils/__tests__/unitsBinaryApiSurface.test.ts` now enumerates the eight methods that touch them and holds the caller count at one.",
    "tests": [
     "hooks/__tests__/useUnitPreference.custom.test.tsx",
@@ -2539,16 +2536,10 @@
   {
    "path": "src/types/units.ts",
    "disposition": "audited",
-   "digest": "a9c20385c6b3dce7161560e16cc17a12c3eaa226101d57bc7690bf2199388fec",
-   "reason": "gate-detectable unit decisions, recorded not asserted clean (plan 3b task 1 ordering)",
+   "digest": "2b5c02db05c4422b1c23004d57de9ab3fefdc30d892bea4aee80f2036d3f65d9",
+   "reason": "gate-detectable unit decisions, recorded not asserted clean (plan 3b task 1 ordering) Task 8: `binarySystemFor`'s token branch is D8's single admitted collapse and reads the quantity it is asked about, so it carries `// units-exempt(token-branch):` and left the units gate baseline with the other eleven.",
    "tests": [
     "types/__tests__/units.test.ts"
-   ],
-   "findings": [
-    "token-branch x1 (units gate baseline)"
-   ],
-   "owners": [
-    "task 8"
    ]
   },
   {
@@ -2676,16 +2667,10 @@
   {
    "path": "src/utils/publicUnitDefaults.ts",
    "disposition": "audited",
-   "digest": "a9966960fb4d244d60ff2c8b6b2dcda016aee07f9fecd426fadb530a3c282276",
-   "reason": "gate-detectable unit decisions, recorded not asserted clean (plan 3b task 1 ordering)",
+   "digest": "eaa56197592844aba243070d45aa11ce4f137af282d86a8706fb74f623d00314",
+   "reason": "gate-detectable unit decisions, recorded not asserted clean (plan 3b task 1 ordering) Task 8: `gallonStandardFor`'s two token branches are R1's structural exemption in its other spelling, a choice BETWEEN units with no quantity to convert, so both carry `// units-exempt(token-branch):` and left the units gate baseline.",
    "tests": [
     "utils/__tests__/publicUnitDefaults.test.ts"
-   ],
-   "findings": [
-    "token-branch x2 (units gate baseline)"
-   ],
-   "owners": [
-    "task 8"
    ]
   },
   {
@@ -2697,7 +2682,7 @@
   {
    "path": "src/utils/supplyUnits.ts",
    "disposition": "audited",
-   "digest": "90779c13c285a637357acb175078612480a51d8481cc896f9b87ad63e2d874bd",
+   "digest": "2488914a02bc2680b607add71c3e59aa058b0f6dbc364e9e9caba4c61d17a5e1",
    "reason": "R3 ruled per comparison, all three exempt, re-founded in fix round 1 after the original reason was proved false. These legs track `unit_preference`, NOT the resolved volume, because D8 gave supplies a qt/L vocabulary that `UnitSet` cannot express: there is no quart token for `units` to supply. Recorded structurally as three `units-exempt:` pragmas carrying an owner and a D8-amendment expiry, which is why this file no longer appears in the units gate baseline. See the file header for the account this knowingly leaves incoherent.",
    "tests": [
     "utils/__tests__/supplyUnits.test.ts"
@@ -2743,7 +2728,7 @@
   {
    "path": "src/utils/units.ts",
    "disposition": "audited",
-   "digest": "6dc0f3e7f2068dbdd09c57b0438a68701ba824bd28f0bb5261d2c83bd88042ec",
+   "digest": "c2ef2c010610016e31c7fde709e0b327550d4f6fc8feb474c1e3ff22fb024773",
    "reason": "gate-detectable unit decisions, recorded not asserted clean (plan 3b task 1 ordering) Fix round 1 closed the other half of that i18n bug, which was one card to the LEFT: `UnitFormatter.getCostPerVolumeLabel` returned the English words 'Avg Cost/' glued to the unit symbol and `formatVolumeTotal` appended the English word 'total', neither through `t()`, so a German reader read `Kosten/100 km` beside `Avg Cost/gal` and `45,5 L gesamt`. Both statics are DELETED: their prose halves are `avgCostPerVolume` / `volumeTotal` keys in all seven bundles and their symbol halves are `getVolumeUnit` and `formatVolumeShort`. Every method left on UnitFormatter returns a number, a currency string or a bare unit symbol; none returns prose, and unitsBinaryApiSurface.test.ts's statics receipt is the list that says so.",
    "tests": [
     "utils/__tests__/unitFactorParity.test.ts",
@@ -2751,7 +2736,7 @@
     "utils/__tests__/unitsSummaryHelpers.test.ts"
    ],
    "findings": [
-    "token-branch x5 (units gate baseline)",
+    "DISCHARGED BY TASK 8: the five token branches are volume and mass dispatch inside resolved-set methods, each reading the quantity it is about, and each now carries `// units-exempt(token-branch): ... Not deferred work.` The finding they replace claimed this file carried no `units-exempt:` pragma, which task 8 made false on purpose: the alternative was leaving five non-defects in a baseline that had to be empty for the gate to claim clean-room.",
     "R2 CLOSED AND DISCHARGED: every comparison decided per occurrence, and there is no `UnitSystem` method and no `// units-exempt:` pragma left on this file. Seven methods were deleted by task 2 (formatTemperature, formatPressure, formatWeight, formatTorque, getTemperatureUnit, getPressureUnit, getTorqueUnit) because no production file called them and a retained binary UnitSystem API is a trap. getWeightUnit followed in task 3 when PropaneRecordForm moved onto the mass adapter; formatDistance and getDistanceUnit followed in task 6 with their twenty-seven call sites, and the raw pair UnitConverter.kmToMiles / milesToKm went with them; the fuel-economy and fuel-rate family followed in task 6b with its thirty-one; and formatCostPerDistance / getCostPerDistanceLabel followed in task 7 with its five. Each retirement was announced by utils/__tests__/unitsBinaryApiSurface.test.ts failing first, which is what the exemptions rested on rather than the pragma prose.",
     "the five remaining token branches are volume and mass dispatch INSIDE resolved-set methods (litersToVolumeUnit, formatVolume, getVolumeUnit, getMassUnit, formatVolumeShort), each reading the quantity it is about. The ones that were NOT are gone from this file: task 6 moved formatVolumePerDistance and getVolumePerDistanceLabel (a DISTANCE derived from units.volume) and task 7 moved formatCostPerDistance and getCostPerDistanceLabel (the same collapse on a currency rate) to utils/unitFormat.ts, where adapterFor supplies both halves. formatCostPerVolume and getCostPerVolumeLabel stay, and the split is the rule rather than an accident: they need the litres-per-unit factor this class already holds and no adapter at all.",
     "ESLint: units.ts is no longer silenced whole-file. It left both the i18n-utility `off` block and UNITS_CONSTANT_EXEMPT; the factor table carries a twelve-line eslint-disable and nothing else does. Of the 12 findings that silence was hiding, 10 are the table and 2 are fixed.",

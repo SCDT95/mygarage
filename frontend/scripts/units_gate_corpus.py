@@ -785,6 +785,49 @@ SCRIPT_POSITIVE = [
         ext=".ts",
     ),
     Case(
+        "S-P42-scoped-pragma-wrong-kind",
+        "import type { UnitSet } from '@/types/units'\n"
+        "export function label(units: UnitSet, km: number): string {\n"
+        "  // units-exempt(compare): a reason, for a leg this line does not carry.\n"
+        "  return units.volume === 'L' ? `${km} km` : `${km} mi`\n"
+        "}\n",
+        1,
+        "token-branch",
+        "★ THE WHOLE VALUE OF THE KIND LIST, and the objection it answers is on "
+        "the record: `units.manifest.json` said a reason-bearing pragma "
+        "\"silences anything\". This one names the comparison leg and the line "
+        "carries a token branch, so the finding stands. Without the scope check "
+        "the same pragma silences a defect class its author never considered, "
+        "which matters most after the clean-room flip because the pragma is then "
+        "the only suppression left in the gate.",
+        "M72-scoped-pragma-silences-anything",
+        ext=".ts",
+    ),
+    Case(
+        "S-P43-scoped-declaration-wrong-kind",
+        "import type { UnitSystem } from '@/utils/units'\n"
+        + HOOK_IMPORT
+        + "// units-exempt(compare): a reason, for a leg a declaration cannot carry.\n"
+        "export function toCanonicalCubits(value: number, s: UnitSystem): number {\n"
+        "  return convert(value, s)\n"
+        "}\n"
+        "export function submit(entered: number): number {\n"
+        "  const { system } = useUnitPreference()\n"
+        "  return toCanonicalCubits(entered, system)\n"
+        "}\n",
+        1,
+        "binary-conversion",
+        "S-P42's rule where it matters most. The DECLARATION hatch is the only "
+        "suppression in this gate that reaches other files, so the kind it names "
+        "has to be the kind it removes: `(compare)` on an exported binary helper "
+        "silences nothing, and the sixteen call sites of `supplyUnits.ts`'s three "
+        "stay visible unless the pragma says `binary-conversion`. Without this "
+        "case the kind argument threaded into `declarationExempt` is a guard no "
+        "mutation could kill.",
+        "M72-scoped-pragma-silences-anything",
+        ext=".ts",
+    ),
+    Case(
         "S-P36-double-quoted-union",
         'type Sys = "imperial" | "metric"\n'
         "export function label(s: Sys): string {\n"
@@ -1042,6 +1085,37 @@ SCRIPT_NEGATIVE = [
         "from the pragma line, so the case measures the hatch and nothing else.",
         pinned_by="M70-declaration-exemption-ignored / M10b-drop-line-above-pragma",
         ext=".ts",
+    ),
+    Case(
+        "S-N19-scoped-pragma-own-kind",
+        "import type { UnitSet } from '@/types/units'\n"
+        "export function label(units: UnitSet, liters: number): string {\n"
+        "  // units-exempt(token-branch): volume dispatch inside a volume formatter.\n"
+        "  return units.volume === 'L' ? `${liters} L` : `${liters} gal`\n"
+        "}\n",
+        0,
+        why="the other side of S-P42: a scoped pragma has to silence the kind it "
+        "names, or the form is decoration. Nine of the sixteen exempt sites under "
+        "`src/` are this exact shape, resolved-set dispatch inside the unit layer, "
+        "so a regex that stopped recognising the bracket would put nine findings "
+        "back and read as a units regression.",
+        pinned_by="M73-scoped-pragma-not-recognised",
+        ext=".ts",
+    ),
+    Case(
+        "S-N20-placeholder-token-branch",
+        "import type { UnitSet } from '@/types/units'\n"
+        "export function OdometerField(props: Readonly<{ units: UnitSet }>): JSX.Element {\n"
+        "  return <input placeholder={props.units.distance === 'mi' ? '45000' : '72420'} />\n"
+        "}\n",
+        0,
+        why="★ ruling R5 on the OTHER leg, which is where it was missing. S-N1 "
+        "pins the same exemption for `system === 'imperial'`; this is the "
+        "spelling `FuelRecordForm.tsx:1029` actually uses, and it sat in the "
+        "units gate baseline as phase 3b migration work for the whole phase "
+        "because only the comparison leg asked whether it was a placeholder. A "
+        "placeholder is a plausible EXAMPLE with nothing canonical behind it.",
+        pinned_by="M74-placeholder-token-branch-flagged / M7-drop-placeholder-exemption",
     ),
     Case(
         "S-N18-binary-inside-a-generic-argument",

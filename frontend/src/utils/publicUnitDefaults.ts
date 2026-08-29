@@ -124,7 +124,9 @@ export function readPublicUnitDefaults(
  * @returns The gallon standard to convert and label with.
  */
 export function gallonStandardFor(units: UnitSet): GallonStandard {
+  // units-exempt(token-branch): R1's structural exemption in its other spelling. The gallon FLAVOUR is a choice BETWEEN units with no quantity to convert, which is why UNIT_QUANTITIES excludes `secondary_gallon` behind a compile-time completeness proof; this reads `units.volume` because a gallon primary states its own flavour and D4b says it wins. Not deferred work.
   if (units.volume === 'gal_uk') return 'uk'
+  // units-exempt(token-branch): the second half of the same rule, and it needs its own pragma because the hatch covers a line and the one above it, so a pair of comparisons on consecutive lines is a pair of sites.
   if (units.volume === 'gal_us') return 'us'
   return units.secondary_gallon
 }

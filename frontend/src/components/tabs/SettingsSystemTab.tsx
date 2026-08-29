@@ -122,6 +122,27 @@ export default function SettingsSystemTab() {
   // expression, not two answers to the same question.
   const { units: resolvedUnits } = useUnitPreference()
   const displaySystem = binarySystemFor(resolvedUnits.volume)
+  // ★ THE THREE R1 EXEMPTIONS ON THIS SCREEN, HOISTED SO THEY CAN CARRY ONE.
+  // Each was a units gate baseline entry until task 8, and none of the three is
+  // a display conversion: the first two compare the STORED PRESET with a
+  // button's own value to show which is chosen, and the third decides whether a
+  // panel about the gallon flavour is worth showing at all. There is no quantity
+  // in any of them and nothing canonical to convert; `resolvedUnitSummary` below
+  // is what actually names this account's units.
+  //
+  // They are hoisted out of the JSX because the pragma is a LINE comment and the
+  // comparisons sat inside `className` template literals, where a `//` would be
+  // part of the rendered string rather than a comment. The scope in brackets is
+  // task 8's: `units.manifest.json` objected that a bare pragma "silences
+  // anything", so each of these silences the comparison leg on its own line and
+  // leaves every other kind reportable.
+  //
+  // units-exempt(compare): preset SELECTION, not a conversion; this is the stored preference beside the button's own value.
+  const presetIsImperial = unitPreference === 'imperial'
+  // units-exempt(compare): the metric half of the same control.
+  const presetIsMetric = unitPreference === 'metric'
+  // units-exempt(compare): panel VISIBILITY. `imperial_gallon_standard` has nothing to say to a litre primary, so the panel appears only when the resolved volume collapses to imperial. R1: a choice BETWEEN units with no quantity to convert. Owner: phase 4, which owns the gallon key and the eleven Custom controls.
+  const showsGallonPanel = displaySystem === 'imperial'
   // ★ The show-both example is COMPOSED from the reader's own set, not written
   // into the copy. The sentence used to read 'Display values in both imperial
   // and metric (e.g., "25 MPG (9.4 L/100km)")', which is wrong twice over
@@ -746,7 +767,7 @@ export default function SettingsSystemTab() {
               onClick={() => handleUnitPreferenceChange('imperial')}
               disabled={unitPreferenceSaving}
               className={`flex-1 flex items-center justify-center gap-2 px-4 py-3 rounded-lg border-2 transition-all ${
-                unitPreference === 'imperial'
+                presetIsImperial
                   ? 'border-primary bg-primary/10 text-primary'
                   : 'border-garage-border bg-garage-bg text-garage-text hover:border-garage-border'
               } ${unitPreferenceSaving ? 'opacity-50 cursor-not-allowed' : ''}`}
@@ -758,7 +779,7 @@ export default function SettingsSystemTab() {
               onClick={() => handleUnitPreferenceChange('metric')}
               disabled={unitPreferenceSaving}
               className={`flex-1 flex items-center justify-center gap-2 px-4 py-3 rounded-lg border-2 transition-all ${
-                unitPreference === 'metric'
+                presetIsMetric
                   ? 'border-primary bg-primary/10 text-primary'
                   : 'border-garage-border bg-garage-bg text-garage-text hover:border-garage-border'
               } ${unitPreferenceSaving ? 'opacity-50 cursor-not-allowed' : ''}`}
@@ -784,7 +805,7 @@ export default function SettingsSystemTab() {
             </p>
           </div>
 
-          {displaySystem === 'imperial' && (
+          {showsGallonPanel && (
             <div className="mt-4">
               <label className="block text-sm font-medium text-garage-text mb-2">
                 {t('units.gallonStandard')}

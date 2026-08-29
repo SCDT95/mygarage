@@ -237,8 +237,8 @@ MUTATIONS = [
     Mutation(
         "M19-key-on-identifier-name",
         "gate",
-        "          if (!hasForeignProvenance(operand, index) && !isPlaceholderAttribute(node)) {",
-        "          if (operand.text === 'system' && !isPlaceholderAttribute(node)) {",
+        "          if (!hasForeignProvenance(operand, index) && !inPlaceholder) {",
+        "          if (operand.text === 'system' && !inPlaceholder) {",
         "script",
         [
             "S-P7-destructuring-rename",
@@ -504,6 +504,7 @@ MUTATIONS = [
             "S-P39-union-annotation",
             "S-P40-inline-props-annotation",
             "S-P41-named-props-interface",
+            "S-P43-scoped-declaration-wrong-kind",
         ],
         "R8's whole point: the function that WRITES the wrong number, invisible to "
         "both of the originally proposed legs. ★ ONE case until task 8 and FIVE "
@@ -540,8 +541,14 @@ MUTATIONS = [
         "        const quantity = quantityBranchOf(node, sf)",
         "        const quantity = null",
         "script",
-        ["S-P33-token-branch-property", "S-P34-token-branch-destructured"],
-        "scope category 4's second half, which carries no system literal at all",
+        [
+            "S-P33-token-branch-property",
+            "S-P34-token-branch-destructured",
+            "S-P42-scoped-pragma-wrong-kind",
+        ],
+        "scope category 4's second half, which carries no system literal at all. "
+        "S-P42 joins them because a pragma scoped to a DIFFERENT leg cannot save a "
+        "finding the leg no longer makes.",
     ),
     Mutation(
         "M48-token-branch-property-only",
@@ -712,7 +719,7 @@ MUTATIONS = [
     Mutation(
         "M70-declaration-exemption-ignored",
         "gate",
-        "  return exemptedAtLine(lines, line)",
+        "  return exemptedAtLine(lines, line, kind)",
         "  return false",
         "script",
         ["S-N17-exempt-binary-declaration"],
@@ -736,6 +743,47 @@ MUTATIONS = [
         "UnitSystem>` is not a binary API; widening one step further makes it one. "
         "The boundary is pinned from outside rather than left in prose, because a "
         "residual nothing can fail is a residual nobody will notice moving.",
+    ),
+    Mutation(
+        "M72-scoped-pragma-silences-anything",
+        "gate",
+        "  return scope.split(',').map((k) => k.trim()).includes(kind)",
+        "  return true",
+        "script",
+        [
+            "S-P42-scoped-pragma-wrong-kind",
+            "S-P43-scoped-declaration-wrong-kind",
+        ],
+        "★ the pragma as it behaved before task 8, run rather than described. "
+        "`units.manifest.json` objected that a reason-bearing pragma \"silences "
+        "anything\", and it was right: the bare form covers every kind on its line, "
+        "including one nobody had thought about when they wrote the reason. That "
+        "objection is what the bracket answers, and this is the mutation that makes "
+        "the answer falsifiable rather than a comment.",
+    ),
+    Mutation(
+        "M73-scoped-pragma-not-recognised",
+        "gate",
+        "const EXEMPT_PRAGMA = /(?:^|\\s)\\/\\/\\s*units-exempt(?:\\(([^)]*)\\))?:\\s*\\S/",
+        "const EXEMPT_PRAGMA = /(?:^|\\s)\\/\\/\\s*units-exempt:\\s*\\S/",
+        "script",
+        ["S-N19-scoped-pragma-own-kind"],
+        "the far side of M72: a form the regex does not recognise silences nothing, "
+        "and after task 8 nine of the sixteen exempt sites under `src/` carry the "
+        "bracket. Narrowing the regex back would put those nine findings into a "
+        "clean-room gate and read as a units regression that never happened.",
+    ),
+    Mutation(
+        "M74-placeholder-token-branch-flagged",
+        "gate",
+        "        if (quantity !== null && !inPlaceholder) {",
+        "        if (quantity !== null) {",
+        "script",
+        ["S-N20-placeholder-token-branch"],
+        "R5 wired to the comparison leg only, which is how it stood for the whole "
+        "phase. M7 removes the exemption from BOTH legs at once and cannot tell the "
+        "two apart; this one leaves S-N1 passing and flags the placeholder spelling "
+        "production actually uses.",
     ),
     Mutation(
         "M63-rename-the-binary-type-refuses",
@@ -770,6 +818,7 @@ MUTATIONS = [
             "S-P39-union-annotation",
             "S-P40-inline-props-annotation",
             "S-P41-named-props-interface",
+            "S-P43-scoped-declaration-wrong-kind",
         ],
         "★ and the SURVIVOR it prevents, built and run. Take away the direct check "
         "AND the accidental cover (which is what retiring the last binary formatter "
@@ -869,11 +918,14 @@ MUTATIONS = [
     Mutation(
         "M7-drop-placeholder-exemption",
         "gate",
-        " && !isPlaceholderAttribute(node)",
-        "",
+        "        const inPlaceholder = isPlaceholderAttribute(node)",
+        "        const inPlaceholder = false",
         "script",
-        ["S-N1-placeholder"],
-        "R5: a placeholder is an example value, and flagging it flags correct code",
+        ["S-N1-placeholder", "S-N20-placeholder-token-branch"],
+        "R5: a placeholder is an example value, and flagging it flags correct code. "
+        "★ TWO cases since task 8, which wired the exemption to the token-branch leg "
+        "as well; `FuelRecordForm.tsx:1029` had sat in the baseline as migration work "
+        "for the whole phase because only the comparison leg asked.",
     ),
     Mutation(
         "M31-any-jsx-attribute-exempts",
@@ -888,8 +940,8 @@ MUTATIONS = [
     Mutation(
         "M8-drop-annotation-exemption",
         "gate",
-        "          if (!hasForeignProvenance(operand, index) && !isPlaceholderAttribute(node)) {",
-        "          if (!isPlaceholderAttribute(node)) {",
+        "          if (!hasForeignProvenance(operand, index) && !inPlaceholder) {",
+        "          if (!inPlaceholder) {",
         "script",
         [
             "S-N13-doubly-parenthesised-foreign",
@@ -915,8 +967,8 @@ MUTATIONS = [
     Mutation(
         "M10a-drop-same-line-pragma",
         "gate",
-        "  return EXEMPT_PRAGMA.test(lines[line - 1] ?? '') || EXEMPT_PRAGMA.test(lines[line - 2] ?? '')",
-        "  return EXEMPT_PRAGMA.test(lines[line - 2] ?? '')",
+        "  return lineExempts(lines[line - 1] ?? '', kind) || lineExempts(lines[line - 2] ?? '', kind)",
+        "  return lineExempts(lines[line - 2] ?? '', kind)",
         "script",
         ["S-N4-pragma"],
         "R4 requires the escape hatch, so each of its two positions needs a test",
@@ -924,10 +976,14 @@ MUTATIONS = [
     Mutation(
         "M10b-drop-line-above-pragma",
         "gate",
-        "  return EXEMPT_PRAGMA.test(lines[line - 1] ?? '') || EXEMPT_PRAGMA.test(lines[line - 2] ?? '')",
-        "  return EXEMPT_PRAGMA.test(lines[line - 1] ?? '')",
+        "  return lineExempts(lines[line - 1] ?? '', kind) || lineExempts(lines[line - 2] ?? '', kind)",
+        "  return lineExempts(lines[line - 1] ?? '', kind)",
         "script",
-        ["S-N4-pragma", "S-N17-exempt-binary-declaration"],
+        [
+            "S-N4-pragma",
+            "S-N17-exempt-binary-declaration",
+            "S-N19-scoped-pragma-own-kind",
+        ],
         "the first version of this mutation disabled only the other position and "
         "flipped nothing, which is what a corpus covering one position looks like. "
         "★ Task 8 gave this position a second tenant: `declarationExempt` marks a "
@@ -941,10 +997,14 @@ MUTATIONS = [
     Mutation(
         "M32-pragma-without-reason",
         "gate",
-        "const EXEMPT_PRAGMA = /(?:^|\\s)\\/\\/\\s*units-exempt:\\s*\\S/",
+        "const EXEMPT_PRAGMA = /(?:^|\\s)\\/\\/\\s*units-exempt(?:\\(([^)]*)\\))?:\\s*\\S/",
         "const EXEMPT_PRAGMA = /units-exempt/",
         "script",
-        ["S-P22-bare-pragma"],
+        [
+            "S-P22-bare-pragma",
+            "S-P42-scoped-pragma-wrong-kind",
+            "S-P43-scoped-declaration-wrong-kind",
+        ],
         "the docstring and the failure message both promise a reason",
     ),
     Mutation(
@@ -985,6 +1045,7 @@ MUTATIONS = [
             "S-N10-foreign-token-property",
             "S-N11-wrong-quantity-vocabulary",
             "S-N12-secondary-gallon",
+            "S-N19-scoped-pragma-own-kind",
             "S-N3-near-miss-literal",
             "S-N5-positive-control",
             "S-P33-token-branch-property",
@@ -1523,7 +1584,7 @@ def crossfile_proof() -> list[str]:
         )
         return p.returncode, p.stdout + p.stderr
 
-    HATCH_OFF = ("  return exemptedAtLine(lines, line)", "  return false")
+    HATCH_OFF = ("  return exemptedAtLine(lines, line, kind)", "  return false")
     SINGLE_FILE = (
         "const BINARY_CONVERSION_HELPERS = BINARY_SURFACE.helpers",
         "const BINARY_CONVERSION_HELPERS = deriveBinaryConversionHelpers()",

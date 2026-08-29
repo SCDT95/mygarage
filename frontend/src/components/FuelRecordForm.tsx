@@ -1021,6 +1021,15 @@ export default function FuelRecordForm({ vin, record, onClose, onSuccess }: Fuel
             <Field id="date" label={t('common:date')} required error={errors.date}>
               <Input type="date" id="date" {...register('date')} invalid={!!errors.date} disabled={isSubmitting} />
             </Field>
+            {/* The placeholder below reads `units.distance` and is EXEMPT rather
+                than migrated: ruling R5, a placeholder is a plausible EXAMPLE
+                value with nothing canonical behind it to convert, and it reads
+                the quantity of the field it sits in. The units gate exempted
+                that shape on its comparison leg from the start; it sat in the
+                baseline as phase 3b work for the whole phase only because the
+                token-branch leg did not ask the same question. Task 8 wired the
+                exemption to both legs, so this is structural and carries no
+                pragma. */}
             {tracksDistance && (
               <Field id="odometer_km" label={t('common:mileage')} unit={u.distance.label} error={errors.odometer_km}>
                 <NumberInput
