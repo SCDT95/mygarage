@@ -307,6 +307,7 @@
     "period2Value": "Zeitraum 2: {{value}}",
     "costPerHourAxis": "Kosten/Stunde ({{currency}})",
     "costPerDistance": "Kosten/{{unit}}",
+    "avgCostPerVolume": "Ø Kosten/{{unit}}",
     "costPerHourLabel": "Kosten/Stunde",
     "costPerHourValue": "{{value}}/Std.",
     "engineHoursAxis": "Motorstunden",

@@ -45,7 +45,13 @@ vi.mock('../../hooks/useUnitPreference', async () => {
 // global mock (bare key, no unit) so the other 11 tests in this file stay green.
 vi.mock('react-i18next', () => ({
   useTranslation: () => ({
-    t: (key: string, options?: { unit?: string }) => (options?.unit ? `${key} (${options.unit})` : key),
+    // `value` as well as `unit`: fix round 1 routed the volume-total and
+    // avg-cost captions through `t()` with an interpolated NUMBER, and a mock
+    // that dropped it would render the same key for 10.4 gal and 47.3 L.
+    t: (key: string, options?: { unit?: string; value?: string }) =>
+      options?.unit !== undefined || options?.value !== undefined
+        ? `${key} (${options.unit ?? options.value})`
+        : key,
     i18n: { language: 'en', changeLanguage: () => Promise.resolve() },
   }),
   Trans: ({ children }: { children: React.ReactNode }) => children,
@@ -458,8 +464,8 @@ describe('FuelRecordList — one gallon per page, taken from the user', () => {
     // $0.925/L is $4.21/imperial gal, $3.50/US gal.
     expect(within(t).getByText('$4.21')).toBeInTheDocument()
     // Summary cards, OUTSIDE the table, on the same gallon.
-    expect(screen.getByText('10.4 gal total')).toBeInTheDocument()
-    expect(screen.getByText('Avg Cost/gal')).toBeInTheDocument()
+    expect(screen.getByText('fuelList.volumeTotal (10.4 gal)')).toBeInTheDocument()
+    expect(screen.getByText('fuelList.avgCostPerVolume (gal)')).toBeInTheDocument()
     expect(screen.getByText('$4.20')).toBeInTheDocument()
     expect(UnitConverter.getGallonStandard()).toBe('us')
   })
@@ -474,7 +480,7 @@ describe('FuelRecordList — one gallon per page, taken from the user', () => {
 
     expect(within(table()).getByRole('columnheader', { name: 'fuelList.volumeUnit (L)' })).toBeInTheDocument()
     expect(within(table()).getByText('47.32 L')).toBeInTheDocument()
-    expect(screen.getByText('47.3 L total')).toBeInTheDocument()
-    expect(screen.getByText('Avg Cost/L')).toBeInTheDocument()
+    expect(screen.getByText('fuelList.volumeTotal (47.3 L)')).toBeInTheDocument()
+    expect(screen.getByText('fuelList.avgCostPerVolume (L)')).toBeInTheDocument()
   })
 })

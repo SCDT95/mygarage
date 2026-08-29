@@ -39,7 +39,13 @@ vi.mock('../../hooks/useUnitPreference', async () => {
 // key, so the drawer-title / vendor / action assertions below are unaffected.
 vi.mock('react-i18next', () => ({
   useTranslation: () => ({
-    t: (key: string, options?: { unit?: string }) => (options?.unit ? `${key} (${options.unit})` : key),
+    // `value` as well as `unit`: fix round 1 routed the volume-total and
+    // avg-cost captions through `t()` with an interpolated NUMBER, and a mock
+    // that dropped it would render the same key for 10.4 gal and 47.3 L.
+    t: (key: string, options?: { unit?: string; value?: string }) =>
+      options?.unit !== undefined || options?.value !== undefined
+        ? `${key} (${options.unit ?? options.value})`
+        : key,
     i18n: { language: 'en', changeLanguage: () => Promise.resolve() },
   }),
   Trans: ({ children }: { children: React.ReactNode }) => children,
@@ -170,7 +176,7 @@ describe('PropaneRecordList — one gallon per page, taken from the user', () =>
     // The total tile and its label follow the same token.
     expect(screen.getByText('propaneList.totalVolume (gal)')).toBeInTheDocument()
     expect(screen.getByText('8.7 gal')).toBeInTheDocument()
-    expect(screen.getByText('Avg Cost/gal')).toBeInTheDocument()
+    expect(screen.getByText('propaneList.avgCostPerVolume (gal)')).toBeInTheDocument()
     expect(UnitConverter.getGallonStandard()).toBe('us')
   })
 
@@ -184,6 +190,6 @@ describe('PropaneRecordList — one gallon per page, taken from the user', () =>
     expect(within(table()).getByText('39.75 L')).toBeInTheDocument()
     expect(screen.getByText('propaneList.totalVolume (L)')).toBeInTheDocument()
     expect(screen.getByText('39.8 L')).toBeInTheDocument()
-    expect(screen.getByText('Avg Cost/L')).toBeInTheDocument()
+    expect(screen.getByText('propaneList.avgCostPerVolume (L)')).toBeInTheDocument()
   })
 })

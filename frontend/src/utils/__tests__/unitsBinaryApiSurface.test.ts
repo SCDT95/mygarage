@@ -283,12 +283,18 @@ describe('the binary UnitFormatter surface', () => {
     //
     // What survives on the class is the resolved-set surface, and pinning it is
     // what stops the assertion after this one going vacuous.
+    // ★ TWO NAMES LEFT THIS LIST IN FIX ROUND 1, and how they were found is the
+    // point. `formatVolumeTotal` and `getCostPerVolumeLabel` each glued an
+    // ENGLISH WORD to a unit symbol and rendered in summary cards with no
+    // `t()`, so task 7 translated the cost-per-distance caption one card to the
+    // right of an untranslated one. The receipt below is where a reader could
+    // have seen them: it enumerates this class's whole surviving surface by
+    // name, which is what a receipt is for. Every name left returns a number, a
+    // currency string or a bare unit symbol; none returns prose.
     expect(formatterMethods().statics).toEqual([
       'formatCostPerVolume',
       'formatVolume',
       'formatVolumeShort',
-      'formatVolumeTotal',
-      'getCostPerVolumeLabel',
       'getMassUnit',
       'getVolumeUnit',
     ])

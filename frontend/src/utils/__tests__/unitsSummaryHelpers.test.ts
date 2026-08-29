@@ -84,11 +84,13 @@ describe('UnitFormatter summary card helpers', () => {
       expect(UnitFormatter.formatVolumeShort(47.317625, UK)).toBe('10.4 gal')
     })
 
-    it('appends "total" without changing the number', () => {
-      expect(UnitFormatter.formatVolumeTotal(47.3, METRIC)).toBe('47.3 L total')
-      expect(UnitFormatter.formatVolumeTotal(47.317625, US)).toBe('12.5 gal total')
-      expect(UnitFormatter.formatVolumeTotal(47.317625, UK)).toBe('10.4 gal total')
-    })
+    // ★ `formatVolumeTotal` WAS COVERED HERE, with a case named 'appends
+    // "total" without changing the number'. That name states the defect: the
+    // word it appended was English, in a method with no `t()`, rendering in two
+    // summary cards. Fix round 1 retired it; the number half is
+    // `formatVolumeShort` above and the word is a translated `volumeTotal` key
+    // at each call site, asserted through the rendering tests in
+    // FuelRecordList.test.tsx and DEFRecordList.test.tsx.
   })
 
   describe('formatCostPerVolume', () => {
@@ -101,13 +103,11 @@ describe('UnitFormatter summary card helpers', () => {
     })
   })
 
-  describe('getCostPerVolumeLabel', () => {
-    it('names the resolved volume unit', () => {
-      expect(UnitFormatter.getCostPerVolumeLabel(US)).toBe('Avg Cost/gal')
-      expect(UnitFormatter.getCostPerVolumeLabel(UK)).toBe('Avg Cost/gal')
-      expect(UnitFormatter.getCostPerVolumeLabel(METRIC)).toBe('Avg Cost/L')
-    })
-  })
+  // ★ `getCostPerVolumeLabel` WAS COVERED HERE too, and went the same way and
+  // for the same reason: it glued the English words "Avg Cost/" to
+  // `getVolumeUnit`, with no `t()`, in four summary cards. The unit half it
+  // composed is `getVolumeUnit`, pinned above; the prose half is an
+  // `avgCostPerVolume` key in all seven bundles, asserted where it renders.
 
   // ★ `formatCostPerDistance` and `getCostPerDistanceLabel` WERE COVERED HERE,
   // with cases named "metric: shows $/100 km" and "imperial: Cost/1k Miles".

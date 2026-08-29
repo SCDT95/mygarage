@@ -388,14 +388,14 @@ export default function FuelRecordList({ vin, onAddClick, onEditClick }: FuelRec
                   <span>{t('fuelList.totalSpent')}</span>
                 </div>
                 <Mono size="2xl" weight="bold">{formatCurrency(totalCost, { currencyCode, locale })}</Mono>
-                <Mono size="sm" tone="muted" className="mt-1 block">{UnitFormatter.formatVolumeTotal(totalLiters, units)}</Mono>
+                <Mono size="sm" tone="muted" className="mt-1 block">{t('fuelList.volumeTotal', { value: UnitFormatter.formatVolumeShort(totalLiters, units) })}</Mono>
               </Card>
             )}
             {avgCostPerLiter !== null && (
               <Card padding="sm">
                 <div className="flex items-center gap-1 text-xs text-text-mute mb-1">
                   <Gauge aria-hidden="true" className="w-3 h-3" />
-                  <span>{UnitFormatter.getCostPerVolumeLabel(units)}</span>
+                  <span>{t('fuelList.avgCostPerVolume', { unit: UnitFormatter.getVolumeUnit(units) })}</span>
                 </div>
                 <Mono size="2xl" weight="bold">{UnitFormatter.formatCostPerVolume(avgCostPerLiter, units, currencyCode, locale)}</Mono>
               </Card>

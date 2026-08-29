@@ -199,7 +199,7 @@ export default function DEFRecordList({ vin, readOnly = false }: DEFRecordListPr
           {analytics.avg_cost_per_liter !== null && (
             <Card padding="sm">
               <div className="flex items-center gap-1 text-xs text-text-mute mb-1">
-                <span>{UnitFormatter.getCostPerVolumeLabel(units)}</span>
+                <span>{t('defList.avgCostPerVolume', { unit: UnitFormatter.getVolumeUnit(units) })}</span>
               </div>
               <Mono size="2xl" weight="bold">{UnitFormatter.formatCostPerVolume(parseNum(analytics.avg_cost_per_liter) ?? 0, units, currencyCode, locale)}</Mono>
             </Card>
@@ -211,7 +211,7 @@ export default function DEFRecordList({ vin, readOnly = false }: DEFRecordListPr
                 <span>{t('defList.totalSpent')}</span>
               </div>
               <Mono size="2xl" weight="bold">{formatCurrency(analytics.total_cost, { currencyCode, locale })}</Mono>
-              <Mono size="sm" tone="muted" className="mt-1 block">{UnitFormatter.formatVolumeTotal(parseNum(analytics.total_liters) ?? 0, units)}</Mono>
+              <Mono size="sm" tone="muted" className="mt-1 block">{t('defList.volumeTotal', { value: UnitFormatter.formatVolumeShort(parseNum(analytics.total_liters) ?? 0, units) })}</Mono>
             </Card>
           )}
 

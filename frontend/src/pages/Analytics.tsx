@@ -1658,7 +1658,7 @@ export default function Analytics() {
               </p>
             </div>
             <div className="text-center p-4 bg-garage-bg rounded-lg">
-              <p className="text-sm text-garage-text-muted mb-1">{UnitFormatter.getCostPerVolumeLabel(units)}</p>
+              <p className="text-sm text-garage-text-muted mb-1">{t('vehicle.avgCostPerVolume', { unit: UnitFormatter.getVolumeUnit(units) })}</p>
               <p className="text-2xl font-bold text-garage-text">
                 {defAnalysis.avg_cost_per_liter
                   ? UnitFormatter.formatCostPerVolume(parseFloat(defAnalysis.avg_cost_per_liter), units, currencyCode, locale)

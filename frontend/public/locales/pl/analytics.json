@@ -18,6 +18,7 @@
     "anomalyBelow": "Wydano {{spent}} — {{deviation}}% poniżej średniej {{avg}}.",
     "costPerHourAxis": "Koszt/godzinę ({{currency}})",
     "costPerDistance": "Koszt/{{unit}}",
+    "avgCostPerVolume": "Śr. koszt/{{unit}}",
     "costPerHourLabel": "Koszt/godzinę",
     "costPerHourValue": "{{value}}/godz.",
     "engineHoursAxis": "Motogodziny",

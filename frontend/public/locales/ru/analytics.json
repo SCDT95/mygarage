@@ -18,6 +18,7 @@
     "anomalyBelow": "Потрачено {{spent}} — на {{deviation}}% ниже среднего значения {{avg}}.",
     "costPerHourAxis": "Стоимость/час ({{currency}})",
     "costPerDistance": "Стоимость/{{unit}}",
+    "avgCostPerVolume": "Сред. стоимость/{{unit}}",
     "costPerHourLabel": "Стоимость/час",
     "costPerHourValue": "{{value}}/ч",
     "engineHoursAxis": "Моточасы",

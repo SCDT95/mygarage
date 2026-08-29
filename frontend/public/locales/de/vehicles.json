@@ -134,7 +134,9 @@
     "source": "Quelle",
     "title": "DEF-Einträge",
     "totalSpent": "Gesamtausgaben",
-    "type": "Typ"
+    "type": "Typ",
+    "avgCostPerVolume": "Ø Kosten/{{unit}}",
+    "volumeTotal": "{{value}} gesamt"
   },
   "detail": {
     "actions": "Aktionen",
@@ -407,6 +409,8 @@
     "avgFuelRate": "Ø {{unit}}",
     "costPerHour": "Kosten/Std.",
     "costPerDistance": "Kosten/{{unit}}",
+    "avgCostPerVolume": "Ø Kosten/{{unit}}",
+    "volumeTotal": "{{value}} gesamt",
     "fuelRate": "Verbrauchsrate"
   },
   "insuranceList": {
@@ -728,7 +732,8 @@
     "title": "Propan-Einträge",
     "totalVolume": "Gesamt ({{unit}})",
     "totalSpent": "Gesamtausgaben",
-    "vendor": "Händler"
+    "vendor": "Händler",
+    "avgCostPerVolume": "Ø Kosten/{{unit}}"
   },
   "quickEntry": {
     "fuelRecord": "Kraftstoffeintrag",

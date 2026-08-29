@@ -18,6 +18,7 @@
     "anomalyBelow": "Витрачено {{spent}} — на {{deviation}}% нижче середнього значення {{avg}}.",
     "costPerHourAxis": "Вартість/година ({{currency}})",
     "costPerDistance": "Вартість/{{unit}}",
+    "avgCostPerVolume": "Сер. вартість/{{unit}}",
     "costPerHourLabel": "Вартість/година",
     "costPerHourValue": "{{value}}/год",
     "engineHoursAxis": "Мотогодини",

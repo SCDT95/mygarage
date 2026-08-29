@@ -256,6 +256,7 @@
     "costPerHourLabel": "Cost/Hour",
     "costPerHourAxis": "Cost/Hour ({{currency}})",
     "costPerDistance": "Cost/{{unit}}",
+    "avgCostPerVolume": "Avg Cost/{{unit}}",
     "costPerHourValue": "{{value}}/hr",
     "hoursAccumulatedTitle": "Engine Hours Accumulated Over Time",
     "engineHoursAxis": "Engine Hours",

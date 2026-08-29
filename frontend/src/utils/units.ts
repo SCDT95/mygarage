@@ -641,15 +641,22 @@ export class UnitFormatter {
   // All accept metric-base values and convert at render time.
 
   /**
-   * Format a volume total for summary cards.
-   * Input: liters (canonical metric). Output: "47.3 L total" or "12.5 gal total".
-   */
-  /**
-   * Volume at total-precision (1 decimal) WITHOUT the trailing "total".
+   * Volume at total-precision (1 decimal), number and unit only.
    *
-   * Callers that want the number but not the word used to do
-   * `formatVolumeTotal(...).replace(' total', '')`. That substring hack breaks
-   * silently the moment this file is localized, so it has its own method.
+   * ★ IT IS THE WHOLE OF WHAT IS LEFT, and `formatVolumeTotal` is gone. That
+   * method appended the English word "total" and rendered in two summary cards;
+   * `getCostPerVolumeLabel` appended the English words "Avg Cost/" and rendered
+   * in four. Neither went through `t()`, so a German reader's fuel-stats row
+   * read `Kosten/100 km` beside `Avg Cost/gal` and `45,5 L total`: task 7
+   * translated the cost-per-distance caption one card to the RIGHT of an
+   * untranslated one, which is the same half-migrated pair, on the same row,
+   * that the caption's own migration existed to close.
+   *
+   * Both prose halves are now translated keys at the call site
+   * (`avgCostPerVolume`, `volumeTotal`) and this method supplies the half that
+   * is a symbol rather than prose, which is the split every other label on this
+   * surface uses. The comment this replaces already warned that the trailing
+   * word "breaks silently the moment this file is localized"; it did.
    */
   static formatVolumeShort(liters: number, units: UnitSet): string {
     if (units.volume === 'L') {
@@ -657,10 +664,6 @@ export class UnitFormatter {
     }
     const gallons = UnitConverter.litersToVolumeUnit(liters, units);
     return `${(gallons ?? 0).toFixed(1)} gal`;
-  }
-
-  static formatVolumeTotal(liters: number, units: UnitSet): string {
-    return `${UnitFormatter.formatVolumeShort(liters, units)} total`;
   }
 
   /**
@@ -687,14 +690,6 @@ export class UnitFormatter {
     }).format(value);
   }
 
-  /**
-   * Get the label for cost-per-volume cards.
-   * Returns "Avg Cost/L" or "Avg Cost/gal".
-   */
-  static getCostPerVolumeLabel(units: UnitSet): string {
-    return `Avg Cost/${UnitFormatter.getVolumeUnit(units)}`;
-  }
-
   // ★ `formatCostPerDistance` and `getCostPerDistanceLabel` USED TO BE HERE,
   // and they are the LAST pair to leave, which is why this class no longer
   // declares a single method taking a `UnitSystem`. Both decided on that binary
@@ -714,9 +709,13 @@ export class UnitFormatter {
   // is which of the two an account gets, and that the label is now translated
   // rather than two hardcoded English strings every language received.
   //
-  // ★ `formatCostPerVolume` and `getCostPerVolumeLabel` stay, and the split is
-  // the rule rather than an accident: they need the litres-per-unit factor this
-  // class already holds and no adapter at all.
+  // ★ `formatCostPerVolume` stays, and the split is the rule rather than an
+  // accident: it needs the litres-per-unit factor this class already holds and
+  // no adapter at all. `getCostPerVolumeLabel` did NOT stay, and for a
+  // different reason: it was two English words glued to a symbol, so its prose
+  // half is a translated key at the call site and its symbol half is
+  // `getVolumeUnit`. Every method left on this class returns a number, a
+  // currency string or a bare unit symbol; none returns prose.
 
   // ★ `formatVolumePerDistance` and `getVolumePerDistanceLabel` USED TO BE HERE,
   // and where they went is the point rather than a filing detail. Both derived

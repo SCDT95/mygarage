@@ -22,6 +22,15 @@
  * ★ THE CSV ROW IS READ OUT OF THE BLOB, not inferred. That row carried the
  * retired helper's hardcoded English into a downloaded file, and it is the one
  * of the three sites a rendering test cannot see.
+ *
+ * ★ IT ALSO CARRIES THE DEF-ANALYSIS AVG-COST CAPTION, which is a different
+ * quantity and lives here for a practical reason worth stating rather than
+ * hiding. Fix round 1 routed `getCostPerVolumeLabel` through `t()` at its four
+ * render sites; three are list components with their own tests, and the fourth
+ * is on this page, where the only mock that RETAINS an interpolated unit is the
+ * one below. A caption asserted through the global `t: (key) => key` cannot
+ * tell `gal` from `L`, which is the precise reason the caption this file was
+ * written for went unnoticed for so long.
  */
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
@@ -91,6 +100,7 @@ vi.mock('react-i18next', () => {
 
 import { IMPERIAL_UNITS, METRIC_UNITS } from '@/__tests__/factories'
 import { binarySystemFor, type UnitSet } from '@/types/units'
+import type { DEFAnalysis } from '../../types/analytics'
 
 const unitPreferenceMock = vi.fn()
 vi.mock('../../hooks/useUnitPreference', () => ({
@@ -266,6 +276,49 @@ describe('Analytics — the cost-per-distance card follows units.distance', () =
     renderAnalytics()
     expect(await screen.findByText('vehicle.costPerDistance (1,000 mi)')).toBeInTheDocument()
     expect(screen.getByText('$32.19')).toBeInTheDocument()
+  })
+})
+
+describe('Analytics — the DEF-analysis avg-cost caption names the reader\'s volume unit', () => {
+  // ★ The fourth `getCostPerVolumeLabel` site, and the only one not in a list
+  // component. It returned the English words "Avg Cost/" glued to the unit
+  // symbol, with no `t()`, so a German reader read `Avg Cost/gal` on a page
+  // whose neighbouring caption (`vehicle.totalVolume`) had been interpolated
+  // since task 6. Nothing rendered this card in any test: `def_analysis` is
+  // null in both existing Analytics fixtures.
+  // Declared as `DEFAnalysis` so every field is checked against the real
+  // interface, then asserted into the unstructured dict the generated schema
+  // types `def_analysis` as. That is the same assertion `Analytics.tsx:456`
+  // makes in the other direction (`as DEFAnalysis | null | undefined`); the
+  // backend really does return a dict there.
+  const defAnalysis: DEFAnalysis = {
+    total_spent: '120.00',
+    total_liters: '47.317625',
+    avg_cost_per_liter: '1.00',
+    liters_per_1000_km: null,
+    record_count: 3,
+  }
+  const asDict = { ...defAnalysis } as Record<string, unknown>
+
+  it('★ reads the resolved volume unit, in both vocabularies', async () => {
+    unitPreferenceMock.mockReturnValue({
+      system: 'imperial',
+      showBoth: false,
+      units: IMPERIAL_UNITS,
+    })
+    mockAnalyticsResponse(baseAnalytics({ def_analysis: asDict }))
+    const imperial = renderAnalytics()
+    expect(await screen.findByText('vehicle.avgCostPerVolume (gal)')).toBeInTheDocument()
+    // $1.00/L x 3.78541 = $3.79/gal, so the caption and the figure below it
+    // name the same unit.
+    expect(screen.getByText('$3.79')).toBeInTheDocument()
+    imperial.unmount()
+
+    unitPreferenceMock.mockReturnValue({ system: 'metric', showBoth: false, units: METRIC_UNITS })
+    mockAnalyticsResponse(baseAnalytics({ def_analysis: asDict }))
+    renderAnalytics()
+    expect(await screen.findByText('vehicle.avgCostPerVolume (L)')).toBeInTheDocument()
+    expect(screen.getByText('$1.00')).toBeInTheDocument()
   })
 })
 

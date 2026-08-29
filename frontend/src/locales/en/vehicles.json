@@ -180,7 +180,9 @@
     "totalSpent": "Total Spent",
     "type": "Type",
     "volumeUnit": "Volume ({{unit}})",
-    "loadAction": "load DEF records"
+    "loadAction": "load DEF records",
+    "avgCostPerVolume": "Avg Cost/{{unit}}",
+    "volumeTotal": "{{value}} total"
   },
   "detail": {
     "actions": "Actions",
@@ -470,6 +472,8 @@
     "confirmDelete": "Are you sure you want to delete this fuel record?",
     "costPerHour": "Cost/hr",
     "costPerDistance": "Cost/{{unit}}",
+    "avgCostPerVolume": "Avg Cost/{{unit}}",
+    "volumeTotal": "{{value}} total",
     "date": "Date",
     "deleteError": "Failed to delete record",
     "exportCSV": "Export CSV",
@@ -885,7 +889,8 @@
     "totalSpent": "Total Spent",
     "vendor": "Vendor",
     "volumeUnit": "Volume ({{unit}})",
-    "loadAction": "load propane records"
+    "loadAction": "load propane records",
+    "avgCostPerVolume": "Avg Cost/{{unit}}"
   },
   "quickEntry": {
     "fuelRecord": "Fuel record",

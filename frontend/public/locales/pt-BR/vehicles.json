@@ -102,7 +102,9 @@
     "source": "Fonte",
     "title": "Registros de DEF",
     "totalSpent": "Total gasto",
-    "type": "Tipo"
+    "type": "Tipo",
+    "avgCostPerVolume": "Custo méd./{{unit}}",
+    "volumeTotal": "{{value}} no total"
   },
   "detail": {
     "actions": "Ações",
@@ -259,6 +261,8 @@
     "confirmDelete": "Confirmar exclusão",
     "costPerHour": "Custo/h",
     "costPerDistance": "Custo/{{unit}}",
+    "avgCostPerVolume": "Custo méd./{{unit}}",
+    "volumeTotal": "{{value}} no total",
     "date": "Data",
     "deleteError": "Erro ao excluir",
     "exportCSV": "Exportar CSV",
@@ -460,7 +464,8 @@
     "title": "Registros de propano",
     "totalVolume": "Total ({{unit}})",
     "totalSpent": "Total gasto",
-    "vendor": "Fornecedor"
+    "vendor": "Fornecedor",
+    "avgCostPerVolume": "Custo méd./{{unit}}"
   },
   "quickEntry": {
     "fuelRecord": "Registro de combustível",
