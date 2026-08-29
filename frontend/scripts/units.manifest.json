@@ -43,7 +43,8 @@
    "digest": "7e6c20c879f9af88c0de09ba071ea6637fee10bece02b7b738a8428db757fc6d",
    "reason": "fuel.receiptTextPlaceholder is a plausible EXAMPLE receipt (ruling R5's exempt class): there is no canonical value behind it to convert.",
    "findings": [
-    "fuel.mpgTip and fuel.electricTip name MPG and kWh/100mi unconditionally, and reminder.milesRequired says 'Miles until due' for every user."
+    "fuel.mpgTip and fuel.electricTip name MPG and kWh/100mi unconditionally, and reminder.milesRequired says 'Miles until due' for every user.",
+    "reminder.milesUntilDue labels the interval field ReminderForm.tsx migrated onto units.distance in task 3 as 'Meilen bis zur Fälligkeit' unconditionally, same class as milesRequired above: a kilometres account still reads the German miles label. Task 3 fix round 1 MEDIUM-2."
    ],
    "owners": [
     "task 6"
@@ -107,7 +108,8 @@
    "digest": "d50f7804f58b01a83cebe59a4061b0002a28688e36ad97695f32ec302693b347",
    "reason": "fuel.receiptTextPlaceholder is a plausible EXAMPLE receipt (ruling R5's exempt class): there is no canonical value behind it to convert.",
    "findings": [
-    "fuel.mpgTip and fuel.electricTip name MPG and kWh/100mi unconditionally, and reminder.milesRequired says 'Miles until due' for every user."
+    "fuel.mpgTip and fuel.electricTip name MPG and kWh/100mi unconditionally, and reminder.milesRequired says 'Miles until due' for every user.",
+    "reminder.milesUntilDue labels the interval field ReminderForm.tsx migrated onto units.distance in task 3 as 'Miles avant échéance' unconditionally, same class as milesRequired above: a kilometres account still reads the French miles label. Task 3 fix round 1 MEDIUM-2."
    ],
    "owners": [
     "task 6"
@@ -207,9 +209,15 @@
   },
   {
    "path": "public/locales/pt-BR/forms.json",
-   "disposition": "no unit behaviour",
+   "disposition": "audited",
    "digest": "a7e845c0cab982967f5b23be0d1a023fe28fde4f4e9d71b706d6d45c5cd27aac",
-   "reason": "no unit behaviour: dispositioned under the CORRECTED scan: every unit stem, token, quantity name and canonical field suffix this codebase uses, matched case-insensitively with NO word boundary. The earlier word-boundary version was a floor (it called AnalyticsHelpModal.tsx clean while it renders \"Average MPG:\" to every user) and it was superseded before any disposition in this file was written. This file matched 12 of them; every hit was read in context and none is a unit decision or a unit-bearing quantity."
+   "reason": "re-dispositioned off 'no unit behaviour' (task 3 fix round 1 MEDIUM-2): that disposition was false. reminder.milesUntilDue ('Quilômetros até o vencimento', literally 'Kilometers until due') and reminder.milesRequired ('Quilometragem obrigatória') are both unconditional distance-unit copy, read beside units.distance's own label regardless of which unit the account actually uses; milesUntilDue additionally names the wrong unit outright.",
+   "findings": [
+    "reminder.milesUntilDue and reminder.milesRequired name a distance quantity unconditionally, independent of units.distance, and milesUntilDue's Portuguese text names kilometres specifically rather than a generic distance word."
+   ],
+   "owners": [
+    "task 6"
+   ]
   },
   {
    "path": "public/locales/pt-BR/nav.json",
@@ -259,9 +267,15 @@
   },
   {
    "path": "public/locales/ru/forms.json",
-   "disposition": "no unit behaviour",
+   "disposition": "audited",
    "digest": "21fa25904fabb1ea85e7e6ba22bbd3b26d63b69b0773c27cfdb9e6904177a31a",
-   "reason": "no unit behaviour: dispositioned under the CORRECTED scan: every unit stem, token, quantity name and canonical field suffix this codebase uses, matched case-insensitively with NO word boundary. The earlier word-boundary version was a floor (it called AnalyticsHelpModal.tsx clean while it renders \"Average MPG:\" to every user) and it was superseded before any disposition in this file was written. This file matched 10 of them; every hit was read in context and none is a unit decision or a unit-bearing quantity."
+   "reason": "re-dispositioned off 'no unit behaviour' (task 3 fix round 1 MEDIUM-2): that disposition was false. reminder.milesUntilDue ('Миль до исполнения') and reminder.milesRequired ('Требуется пробег') are both unconditional distance-unit copy, read beside units.distance's own label regardless of which unit the account actually uses.",
+   "findings": [
+    "reminder.milesUntilDue and reminder.milesRequired name a distance quantity unconditionally, independent of units.distance."
+   ],
+   "owners": [
+    "task 6"
+   ]
   },
   {
    "path": "public/locales/ru/nav.json",
@@ -305,9 +319,15 @@
   },
   {
    "path": "public/locales/uk/forms.json",
-   "disposition": "no unit behaviour",
+   "disposition": "audited",
    "digest": "07aae315cfbe729ecda4dce06fe5ceb3c1be6c8032aad36fbd0161f3ac769bb0",
-   "reason": "no unit behaviour: dispositioned under the CORRECTED scan: every unit stem, token, quantity name and canonical field suffix this codebase uses, matched case-insensitively with NO word boundary. The earlier word-boundary version was a floor (it called AnalyticsHelpModal.tsx clean while it renders \"Average MPG:\" to every user) and it was superseded before any disposition in this file was written. This file matched 10 of them; every hit was read in context and none is a unit decision or a unit-bearing quantity."
+   "reason": "re-dispositioned off 'no unit behaviour' (task 3 fix round 1 MEDIUM-2): that disposition was false. reminder.milesUntilDue ('Миль до виконання') and reminder.milesRequired ('Потрібен пробіг') are both unconditional distance-unit copy, read beside units.distance's own label regardless of which unit the account actually uses.",
+   "findings": [
+    "reminder.milesUntilDue and reminder.milesRequired name a distance quantity unconditionally, independent of units.distance."
+   ],
+   "owners": [
+    "task 6"
+   ]
   },
   {
    "path": "public/locales/uk/nav.json",
@@ -606,6 +626,12 @@
    "tests": [
     "components/__tests__/LineItemEditor.mixedUnits.test.tsx",
     "components/__tests__/ServiceVisitForm.mixedUnits.test.tsx"
+   ],
+   "findings": [
+    "USER-VISIBLE COPY CHANGE, SHIPPED: the due-odometer placeholder example moved from a system-branched 92000/148000 to a single t('lineItemEditor.misc.egValue', {value: '100000'}); every account now sees the same example reading. Task 3 fix round 1 LOW-4."
+   ],
+   "owners": [
+    "task 9"
    ]
   },
   {
@@ -640,6 +666,12 @@
    "tests": [
     "components/__tests__/OdometerRecordForm.mixedUnits.test.tsx",
     "components/__tests__/OdometerRecordForm.test.tsx"
+   ],
+   "findings": [
+    "USER-VISIBLE DISPLAY-PRECISION CHANGE, SHIPPED: a stored 72420.5 km now renders as '72421' (the km adapter carries zero decimals) instead of the verbatim '72420.5' shown before this task. Stored data and an untouched save are unaffected (OdometerRecordForm.mixedUnits.test.tsx pins the origin returning 72420.5), but the DISPLAYED precision changed for every metric user. Task 3 fix round 1 LOW-4."
+   ],
+   "owners": [
+    "task 9"
    ]
   },
   {
@@ -745,6 +777,14 @@
     "components/__tests__/ReminderForm.mixedUnits.test.tsx",
     "components/__tests__/ReminderForm.test.tsx",
     "components/__tests__/ReminderForm.hours.test.tsx"
+   ],
+   "findings": [
+    "the mileage field this task moved onto units.distance (ReminderForm.tsx:498-506) is labelled t('reminder.milesUntilDue'), an unconditional 'Miles Until Due' string beside unit={u.distance.label}: a kilometres account reads 'Miles Until Due (km)' and a Brazilian miles account reads 'Quilômetros até o vencimento (mi)'. Copy fix owned by task 6; task 3 fix round 1 MEDIUM-2.",
+    "USER-VISIBLE COPY CHANGE, SHIPPED: the mileage interval placeholder is now a single t('reminderForm.mileageExamplePlaceholder') ('e.g., 100000') for every account; an imperial account previously read 'e.g., 92000' (absolute) or 'e.g., 142965' (last-done). Task 3 fix round 1 LOW-4."
+   ],
+   "owners": [
+    "task 6",
+    "task 9"
    ]
   },
   {
@@ -792,10 +832,12 @@
     "components/__tests__/ServiceVisitForm.hours.test.tsx"
    ],
    "findings": [
-    "supply quantities still convert on the binary system (D8 exemption), owned by task 5"
+    "supply quantities still convert on the binary system (D8 exemption), owned by task 5",
+    "USER-VISIBLE DISPLAY-PRECISION CHANGE, SHIPPED: the odometer field has the same km-adapter zero-decimal display change as OdometerRecordForm (a stored 72420.5 km now renders '72421'); stored data and an untouched save are unaffected (ServiceVisitForm.mixedUnits.test.tsx pins the origin), but the displayed precision changed for every metric user. Task 3 fix round 1 LOW-4."
    ],
    "owners": [
-    "task 5"
+    "task 5",
+    "task 9"
    ]
   },
   {
@@ -2047,10 +2089,13 @@
    "digest": "e32982133d8ddd598b08c4eece59523320c381f181573dc7864fb075ed5e1160",
    "reason": "fuel.receiptTextPlaceholder is a plausible EXAMPLE receipt (ruling R5's exempt class): there is no canonical value behind it to convert.",
    "findings": [
-    "fuel.mpgTip and fuel.electricTip name MPG and kWh/100mi unconditionally, and reminder.milesRequired says 'Miles until due' for every user."
+    "fuel.mpgTip and fuel.electricTip name MPG and kWh/100mi unconditionally, and reminder.milesRequired says 'Miles until due' for every user.",
+    "reminder.milesUntilDue labels the interval field ReminderForm.tsx migrated onto units.distance in task 3 (t('reminder.milesUntilDue') beside unit={u.distance.label}) as 'Miles Until Due' unconditionally, same class as milesRequired above: a kilometres account reads 'Miles Until Due (km)'. Task 3 fix round 1 MEDIUM-2.",
+    "USER-VISIBLE COPY CHANGE, SHIPPED: task 3 deleted four placeholder keys (mileageAbsolutePlaceholderImperial/Metric, lastDoneMileagePlaceholderImperial/Metric) across all seven forms.json files and added reminderForm.mileageExamplePlaceholder in their place. No orphaned key and no dangling reference remain. Task 3 fix round 1 LOW-4."
    ],
    "owners": [
-    "task 6"
+    "task 6",
+    "task 9"
    ]
   },
   {
