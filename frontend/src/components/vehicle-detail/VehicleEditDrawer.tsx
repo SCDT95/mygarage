@@ -209,15 +209,22 @@ export default function VehicleEditDrawer({
       // Always included (propane on fifth wheels).
       fuel_type: source.fuel_type,
       def_tank_capacity_liters: (() => {
+        // ★ THE ORIGIN IS WRITTEN ON EVERY PATH, INCLUDING THE ABSENT ONES, and
+        // that is the whole reason this is not an early return. The two `return
+        // undefined` branches used to leave the PREVIOUS open's origin in place,
+        // which is exactly the state this ref's docstring says it exists to
+        // prevent: open a vehicle with 19 L (origin `{19, '4.18'}`), turn DEF
+        // tracking off, save, reopen on the fresh null, re-enable and type
+        // `4.18`, and the stale origin claims the field is untouched and posts
+        // 19 instead of the 19.003 that value converts to. `seedUnitField`
+        // answers `{canonical: null, display: ''}` for an absent value, so the
+        // reset is the same call rather than a second spelling of it.
         const cap = source.def_tank_capacity_liters
-        if (cap == null) return undefined
-        const num = typeof cap === 'string' ? parseFloat(cap) : Number(cap)
-        if (isNaN(num)) return undefined
-        // Seeded in `units.volume` WITH its origin, and onSubmit reads it back
-        // through the same one, so reopening the drawer to change a nickname
-        // cannot move a capacity nobody edited.
-        defCapacityOrigin.current = seedUnitField(num, u.volume)
-        return Number(defCapacityOrigin.current.display)
+        const raw = cap == null ? NaN : typeof cap === 'string' ? parseFloat(cap) : Number(cap)
+        defCapacityOrigin.current = seedUnitField(isNaN(raw) ? null : raw, u.volume)
+        return defCapacityOrigin.current.display === ''
+          ? undefined
+          : Number(defCapacityOrigin.current.display)
       })(),
     }
 
