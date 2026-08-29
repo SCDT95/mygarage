@@ -2306,7 +2306,7 @@
   {
    "path": "src/schemas/hours.ts",
    "disposition": "no unit behaviour",
-   "digest": "d869a43cc9dd79ef477a818264c60b1696e0c39e34feea051af5e044c3e22769",
+   "digest": "cbf972132af9819339640fed18c8aaa629ba1d7c6d80d1dc7248affd50b55698",
    "reason": "no unit behaviour: dispositioned under the CORRECTED scan: every unit stem, token, quantity name and canonical field suffix this codebase uses, matched case-insensitively with NO word boundary. The earlier word-boundary version was a floor (it called AnalyticsHelpModal.tsx clean while it renders \"Average MPG:\" to every user) and it was superseded before any disposition in this file was written. This file matched 3 of them; every hit was read in context and none is a unit decision or a unit-bearing quantity."
   },
   {
@@ -2333,7 +2333,7 @@
   {
    "path": "src/schemas/odometer.ts",
    "disposition": "audited",
-   "digest": "76475c51271f77642892607cb269b43a120895d57bbb3e06f22f9a0238f985b2",
+   "digest": "4f77cc809c1b4ed19e21695b5b97a456dc0f987eddf12396bb2b52b2f6dc837d",
    "reason": "as schemas/shared.ts",
    "tests": [
     "schemas/__tests__/odometer.test.ts"
@@ -2366,7 +2366,7 @@
   {
    "path": "src/schemas/shared.ts",
    "disposition": "audited",
-   "digest": "bcc0ce9fdc56011c95d3bdbba3e0dd7590208610b65b107d868ea6dc12f1562d",
+   "digest": "4de752516febc1877f88e25ac016017954b295feece5282c7ec0b0c72bf2fa2e",
    "reason": "numeric field factories; the bounds are dimensionless ranges applied to a DISPLAY value and no conversion happens in the schema layer",
    "tests": [
     "schemas/__tests__/shared.test.ts"
@@ -2741,17 +2741,10 @@
   {
    "path": "src/utils/decimalSafe.ts",
    "disposition": "audited",
-   "digest": "2aeff33426492da80d8547c766faaa1f4be9c227fd200caf9555c2ea9c2808e5",
-   "reason": "gate-detectable unit decisions, recorded not asserted clean (plan 3b task 1 ordering)",
+   "digest": "acade711e41afff95de8135209b26dc8c3c159e2df2c08234ec99a987645278f",
+   "reason": "R8 ruled and executed: the three binary helpers that wrote canonical values off a `UnitSystem` collapsed from volume (`toCanonicalKm`, `toCanonicalKg`, `toCanonicalMeters`) are DELETED, being every export in this file whose signature took a `UnitSystem`. `toCanonicalLiters`, `priceToDisplay` and `priceToCanonical` take the resolved `UnitSet` and stay. That they stay deleted is asserted structurally in utils/__tests__/unitsBinaryApiSurface.test.ts, which fails on the DECLARATION rather than on a call site.",
    "tests": [
     "utils/__tests__/decimalSafe.test.ts"
-   ],
-   "findings": [
-    "compare x3 (units gate baseline)",
-    "R8: toCanonicalKm / toCanonicalKg / toCanonicalMeters are binary APIs that WRITE canonical"
-   ],
-   "owners": [
-    "task 5"
    ]
   },
   {

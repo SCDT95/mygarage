@@ -18,9 +18,12 @@
  *                          inside the callee.
  *   binary-conversion      a call to an exported helper whose parameter is a
  *                          `UnitSystem` and whose result is WRITTEN as
- *                          canonical (`toCanonicalKm(500, system)` stores 500
+ *                          canonical (`toCanonicalKm(500, system)` stored 500
  *                          km for a `{volume:'L', distance:'mi'}` user, because
- *                          `system` collapses from volume).
+ *                          `system` collapses from volume). Task 5 deleted all
+ *                          three such helpers, so this leg's vocabulary is
+ *                          empty on `decimalSafe.ts` today and it fires only on
+ *                          a helper a scanned file declares for itself.
  *   token-branch           `units.volume === 'L' ? km : miles`, which collapses
  *                          DISTANCE out of VOLUME with no system literal
  *                          anywhere.
@@ -275,14 +278,24 @@ const LITERAL_KINDS = new Set([
  * parameters is a `UnitSystem`**, whatever it is called.
  *
  * The same reasoning applies one file over. `toCanonicalKm`, `toCanonicalKg`
- * and `toCanonicalMeters` are binary unit APIs that WRITE canonical values
- * (R8), and a `toCanonicalFathoms` added next month would be invisible to a
- * transcribed list on the day it lands.
+ * and `toCanonicalMeters` were binary unit APIs that WROTE canonical values
+ * (R8); task 5 deleted all three, and a `toCanonicalFathoms` added next month
+ * would be invisible to a transcribed list on the day it lands. Deriving is
+ * what makes the successor findable rather than the predecessors, which is
+ * exactly why the derivation outlives the names that motivated it.
  *
  * Each derivation is fail-loud when it comes back empty, for the same reason
  * `loadTypeScript` is: a detector whose vocabulary is empty reports zero
  * findings on a tree full of them, and a gate that cannot fire is worse than
  * no gate because it is believed.
+ *
+ * ★ ONE EXCEPTION, and it is stated here rather than only at its own function
+ * because the sentence above is the one a reader trusts. R8's conversion
+ * vocabulary may legitimately be EMPTY: task 5 deleted the last binary
+ * conversion helper, so zero findings is the truth and not a blindness. That
+ * derivation therefore fails loud on the walk coming back with no exported
+ * function AT ALL, which still separates a broken derivation from a finished
+ * migration. Read `deriveBinaryConversionHelpers` before changing it.
  */
 const UNITS_SOURCE = join(SRC_DIR, 'utils', 'units.ts')
 const CONVERSION_SOURCE = join(SRC_DIR, 'utils', 'decimalSafe.ts')
@@ -349,18 +362,52 @@ function deriveBinaryFormatterMethods(): Set<string> {
   return requireNonEmpty(found, 'binary formatter method', UNITS_SOURCE)
 }
 
-/** Every exported conversion helper that decides on a binary `UnitSystem` (R8). */
-function deriveBinaryConversionHelpers(): Set<string> {
-  const source = parseForDerivation(CONVERSION_SOURCE)
-  const found = new Set<string>()
+/**
+ * The exported function declarations of one source, split by shape.
+ *
+ * `binary` is the R8 vocabulary; `exported` is everything the walk visited,
+ * which is what lets an empty `binary` be told apart from a walk that ran over
+ * nothing.
+ */
+function conversionHelpersIn(source: TsSourceFile): {
+  binary: Set<string>
+  exported: Set<string>
+} {
+  const binary = new Set<string>()
+  const exported = new Set<string>()
   const walk = (node: TsNode): void => {
-    if (node.kind === ts.SyntaxKind.FunctionDeclaration && isExported(node)) {
-      if (takesBinarySystem(node, source) && node.name) found.add(node.name.getText(source))
+    if (node.kind === ts.SyntaxKind.FunctionDeclaration && isExported(node) && node.name) {
+      exported.add(node.name.getText(source))
+      if (takesBinarySystem(node, source)) binary.add(node.name.getText(source))
     }
     ts.forEachChild(node, walk)
   }
   walk(source)
-  return requireNonEmpty(found, 'binary conversion helper', CONVERSION_SOURCE)
+  return { binary, exported }
+}
+
+/**
+ * Every exported conversion helper `decimalSafe.ts` declares that decides on a
+ * binary `UnitSystem` (R8).
+ *
+ * ★ THIS SET IS EMPTY TODAY, AND EMPTY IS THE GOAL STATE RATHER THAN A BROKEN
+ * DERIVATION. Task 5 took R8's deletion branch: all three helpers are gone, so
+ * "no call site anywhere" is the truth rather than the silence of a detector
+ * that lost its vocabulary. `requireNonEmpty` therefore guards `exported`, not
+ * `binary`: the walk still has to come back holding the resolved-set converters
+ * R8 kept, which is what a gutted file or a changed AST shape would fail.
+ *
+ * The other way `binary` could empty is `BINARY_SYSTEM_TYPE` ceasing to match,
+ * and that is covered one function up: `deriveBinaryFormatterMethods` runs the
+ * SAME `takesBinarySystem` against `units.ts` and still calls `requireNonEmpty`
+ * on its result, so a renamed `UnitSystem` refuses the whole gate there. If
+ * task 6 empties the formatter set too, that cover goes with it and this file
+ * needs a direct check that the type still exists.
+ */
+function deriveBinaryConversionHelpers(): Set<string> {
+  const { binary, exported } = conversionHelpersIn(parseForDerivation(CONVERSION_SOURCE))
+  requireNonEmpty(exported, 'exported conversion helper', CONVERSION_SOURCE)
+  return binary
 }
 
 /**
@@ -809,6 +856,17 @@ export function scanSource(source: string, rel: string): Finding[] {
         'otherwise report as migration progress. Fix the file, or fix the gate.',
     )
   }
+  // ★ The vocabulary is `decimalSafe.ts`'s PLUS this file's own, because a
+  // binary conversion helper declared anywhere else was invisible: the
+  // derivation reads one file, so `toCanonicalFurlongs(v, system: UnitSystem)`
+  // written and called inside a component was a leg the gate did not have.
+  // Measured before it landed, this adds no finding to any file under `src/`:
+  // the only two files declaring such a helper are `decimalSafe.ts`, which no
+  // longer declares one, and `supplyUnits.ts`, which calls none of its own.
+  const binaryHelpersHere = new Set([
+    ...BINARY_CONVERSION_HELPERS,
+    ...conversionHelpersIn(sf).binary,
+  ])
   const lines = source.split('\n')
   const index = indexDeclarations(sf)
   const findings: Finding[] = []
@@ -866,7 +924,7 @@ export function scanSource(source: string, rel: string): Finding[] {
       // The conversion helpers are module functions, so the mirror of the rule
       // above applies: a bare call IS the shape, and a namespace import is not
       // an escape hatch either.
-      if (BINARY_CONVERSION_HELPERS.has(called)) {
+      if (binaryHelpersHere.has(called)) {
         record(node, 'binary-conversion', `${called}(...)`)
       }
     }

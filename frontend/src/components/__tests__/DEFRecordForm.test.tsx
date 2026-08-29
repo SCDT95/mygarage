@@ -82,7 +82,7 @@ describe('DEFRecordForm — submit wiring + canonical payload', () => {
     fireEvent.submit(defForm())
     await waitFor(() => expect(createMock).toHaveBeenCalled())
     // onSubmit canonicalizes odometer + fill_level (DEFRecordForm.tsx:135,139). Metric mode:
-    // toCanonicalKm is identity (decimalSafe.ts:13), so odometer_km stays 55000; fill_level /100.
+    // the distance round trip is identity, so odometer_km stays 55000; fill_level /100.
     expect(createMock).toHaveBeenCalledWith(expect.objectContaining({
       vin: 'TEST12345678901234',
       date: '2026-02-10',
@@ -99,7 +99,7 @@ describe('DEFRecordForm — submit wiring + canonical payload', () => {
     fireEvent.change(document.getElementById('fill_level') as HTMLInputElement, { target: { value: '75' } })
     fireEvent.submit(defForm())
     await waitFor(() => expect(updateMock).toHaveBeenCalled())
-    // Metric mode: toCanonicalKm/toCanonicalLiters are identity (decimalSafe.ts:13,18), so
+    // Metric mode: the distance and volume round trips are identity, so
     // odometer/liters pass through; the changed fill_level 75% → 0.75 (DEFRecordForm.tsx:139).
     expect(updateMock).toHaveBeenCalledWith(expect.objectContaining({
       id: 5,

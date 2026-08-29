@@ -1,5 +1,23 @@
+/**
+ * Canonical-write helpers for form submit paths.
+ *
+ * ★ EVERY EXPORT HERE TAKES THE RESOLVED `UnitSet`, NEVER A BINARY `UnitSystem`,
+ * and that is an invariant rather than a coincidence. Three helpers that broke
+ * it were deleted in phase 3b task 5 under ruling R8: `toCanonicalKm`,
+ * `toCanonicalKg` and `toCanonicalMeters` each took a `UnitSystem` collapsed
+ * from the user's VOLUME choice (`useUnitPreference.ts:systemFor`) and wrote a
+ * canonical value off it, so a `{volume:'L', distance:'mi'}` user's 500 miles
+ * stored as 500 km instead of 804.67. Nothing at such a call site named a unit,
+ * so neither of the units gate's original legs could see the function writing
+ * the wrong number, which is why R8 chose deletion over detection: the bad call
+ * is now inexpressible rather than merely reported.
+ *
+ * Writers use `seedUnitField` / `canonicalFromUnitField` from
+ * `utils/unitFormat.ts`, which preserve the unit the value was entered in.
+ * `utils/__tests__/unitsBinaryApiSurface.test.ts` fails on the DECLARATION if a
+ * binary helper is ever added back here.
+ */
 import { UnitConverter } from './units'
-import type { UnitSystem } from './units'
 import type { UnitSet } from '@/types/units'
 
 /**
@@ -69,18 +87,6 @@ export function readNumber(value: unknown): number | undefined {
 }
 
 /**
- * Convert a user-entered numeric value into its canonical metric form
- * suitable for submitting to the API. Returns the raw number for metric
- * users (no float drift), and converts once for imperial users.
- *
- * Use on form-submit ONLY. Display-time conversion uses UnitFormatter.
- */
-export function toCanonicalKm(value: number | null | undefined, system: UnitSystem): number | null {
-  if (value == null || isNaN(value)) return null
-  return system === 'metric' ? value : (UnitConverter.milesToKm(value) ?? value)
-}
-
-/**
  * Convert an entered volume into canonical litres for the API.
  *
  * ★ Takes the client's resolved `UnitSet`, not a binary `UnitSystem`, and that
@@ -101,16 +107,6 @@ export function toCanonicalLiters(value: number | null | undefined, units: UnitS
   if (value == null || isNaN(value)) return null
   const liters = value * UnitConverter.LITERS_PER_VOLUME_UNIT[units.volume]
   return parseFloat(toWirePrecision(liters).toFixed(LITERS_WIRE_DECIMALS))
-}
-
-export function toCanonicalKg(value: number | null | undefined, system: UnitSystem): number | null {
-  if (value == null || isNaN(value)) return null
-  return system === 'metric' ? value : (UnitConverter.lbsToKg(value) ?? value)
-}
-
-export function toCanonicalMeters(value: number | null | undefined, system: UnitSystem): number | null {
-  if (value == null || isNaN(value)) return null
-  return system === 'metric' ? value : (UnitConverter.feetToMeters(value) ?? value)
 }
 
 export type PriceBasis = 'per_volume' | 'per_weight' | 'per_kwh' | 'per_tank'

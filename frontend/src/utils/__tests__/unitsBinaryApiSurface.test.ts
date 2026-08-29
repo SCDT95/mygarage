@@ -45,12 +45,33 @@ import * as ts from 'typescript'
 const FRONTEND = resolve(__dirname, '../../..')
 const SRC = resolve(FRONTEND, 'src')
 const UNITS = resolve(SRC, 'utils/units.ts')
+const DECIMAL_SAFE = resolve(SRC, 'utils/decimalSafe.ts')
 
 /** The class whose binary surface this test polices. */
 const FORMATTER_CLASS = 'UnitFormatter'
 
 /** The parameter annotation that makes a method a binary unit decision. */
 const BINARY_SYSTEM_TYPE = 'UnitSystem'
+
+/**
+ * Whether one declaration decides on a binary `UnitSystem`.
+ *
+ * ★ Shared by the formatter walk and the conversion walk ON PURPOSE, and that
+ * sharing is what keeps the conversion assertion from going vacuous. The
+ * conversion surface is asserted EMPTY below, and an empty result has two
+ * causes: the helpers are gone (the intended one), or this predicate stopped
+ * matching anything at all because `UnitSystem` was renamed. The formatter
+ * block pins a set of eight through this same function, so a predicate that
+ * matched nothing would fail there first, loudly, with a name to look at.
+ */
+function takesBinarySystem(
+  node: { parameters?: ts.NodeArray<ts.ParameterDeclaration> },
+  source: ts.SourceFile
+): boolean {
+  return (node.parameters ?? []).some(
+    (p) => p.type?.getText(source).trim() === BINARY_SYSTEM_TYPE
+  )
+}
 
 /**
  * The runtime to re-run the gate under.
@@ -75,23 +96,26 @@ const BUN = /(?:^|[\\/])bun(?:\.exe)?$/.test(process.execPath) ? process.execPat
  *
  * @returns The method names the gate derives, sorted.
  */
-function gateDerivedMethods(): string[] {
+function gateDerivedSet(label: string): string[] {
   const out = execFileSync(BUN, ['run', 'scripts/validate-units.ts', '--derived'], {
     cwd: FRONTEND,
     encoding: 'utf-8',
   })
-  const line = /^BINARY_FORMATTER_METHODS \((\d+)\): (.*)$/m.exec(out)
+  const line = new RegExp(`^${label} \\((\\d+)\\): (.*)$`, 'm').exec(out)
   if (line === null) {
     // A silent zero here would make the parity assertion vacuously true, which
-    // is the failure this file exists one level down to prevent.
-    throw new Error(`could not read the gate's derived set from:\n${out}`)
+    // is the failure this file exists one level down to prevent. It also covers
+    // the empty conversion set: the gate prints `(0): ` and that line still has
+    // to BE THERE, so a gate that stopped deriving the set at all is not
+    // mistaken for one that derived it and found nothing.
+    throw new Error(`could not read the gate's ${label} from:\n${out}`)
   }
   const names = line[2]
     .split(',')
     .map((name) => name.trim())
     .filter((name) => name.length > 0)
   if (names.length !== Number(line[1])) {
-    throw new Error(`the gate said ${line[1]} methods and listed ${names.length}`)
+    throw new Error(`the gate said ${line[1]} ${label} and listed ${names.length}`)
   }
   return [...names].sort()
 }
@@ -134,16 +158,43 @@ function binaryFormatterMethods(): string[] {
         const isStatic = (member.modifiers ?? []).some(
           (m) => m.kind === ts.SyntaxKind.StaticKeyword
         )
-        const takesSystem = member.parameters.some(
-          (p) => p.type?.getText(source).trim() === BINARY_SYSTEM_TYPE
-        )
-        if (isStatic && takesSystem) found.add(member.name.getText(source))
+        if (isStatic && takesBinarySystem(member, source)) found.add(member.name.getText(source))
       }
     }
     ts.forEachChild(node, walk)
   }
   walk(source)
   return [...found].sort()
+}
+
+/**
+ * The exported function declarations of `decimalSafe.ts`, split by shape.
+ *
+ * ★ Both halves are returned because the interesting assertion is that `binary`
+ * is EMPTY, and "empty" is only evidence if the walk was looking. `exported`
+ * is the walk's own receipt: it holds the helpers that survived R8, so a walk
+ * that had silently stopped visiting the file returns two empty sets and the
+ * test that pins `exported` fails first.
+ *
+ * @returns The binary helpers, and every exported function declaration seen.
+ */
+function conversionHelpers(): { binary: string[]; exported: string[] } {
+  const source = parse(DECIMAL_SAFE)
+  const binary = new Set<string>()
+  const exported = new Set<string>()
+  const walk = (node: ts.Node): void => {
+    if (
+      ts.isFunctionDeclaration(node) &&
+      node.name !== undefined &&
+      (node.modifiers ?? []).some((m) => m.kind === ts.SyntaxKind.ExportKeyword)
+    ) {
+      exported.add(node.name.getText(source))
+      if (takesBinarySystem(node, source)) binary.add(node.name.getText(source))
+    }
+    ts.forEachChild(node, walk)
+  }
+  walk(source)
+  return { binary: [...binary].sort(), exported: [...exported].sort() }
 }
 
 /**
@@ -201,7 +252,7 @@ describe('the binary UnitFormatter surface', () => {
     // The gate's `formatter-binary` leg only reports call sites for methods in
     // ITS set. If the two derivations drift, one of them is reporting on a
     // surface the other cannot see, and neither would say so.
-    expect(binaryFormatterMethods()).toEqual(gateDerivedMethods())
+    expect(binaryFormatterMethods()).toEqual(gateDerivedSet('BINARY_FORMATTER_METHODS'))
   })
 
   it('derives the binary methods from units.ts rather than listing them', () => {
@@ -232,5 +283,52 @@ describe('the binary UnitFormatter surface', () => {
     // somebody to pass it a value collapsed from volume. Delete it, and reach
     // for `useUnitFormat()` / `makeUnitFormat()` instead.
     expect(dead).toEqual([])
+  })
+})
+
+describe('the binary conversion surface', () => {
+  it('derives the same set the units gate derives, in the other language', () => {
+    // Same parity argument as the formatter block: two AST walks of one rule in
+    // two languages, asserted to agree rather than one consuming the other.
+    // This is the leg that matters most while the set is empty, because an
+    // empty vocabulary is exactly the state in which a detector reports nothing
+    // and looks healthy doing it.
+    expect(conversionHelpers().binary).toEqual(gateDerivedSet('BINARY_CONVERSION_HELPERS'))
+  })
+
+  it('still reads the exported helpers, so the empty set below means something', () => {
+    // The receipt. `toCanonicalLiters`, `priceToDisplay` and `priceToCanonical`
+    // are the resolved-set converters R8 kept and `readNumber` is unitless, so
+    // this list is what a healthy walk over this file sees. If it ever comes
+    // back empty, the assertion after it proves nothing at all.
+    expect(conversionHelpers().exported).toEqual([
+      'priceToCanonical',
+      'priceToDisplay',
+      'readNumber',
+      'toCanonicalLiters',
+    ])
+  })
+
+  it('exports no conversion helper that writes canonical values off a collapsed system', () => {
+    // ★ Ruling R8, and the phase's signature defect in its final form.
+    // `toCanonicalKm(value, system)` had no numeric literal and no
+    // `UnitFormatter` call at its call site, so the units gate's original two
+    // legs were blind to the function WRITING the wrong number: a
+    // `{volume:'L', distance:'mi'}` user collapses to `system === 'metric'`,
+    // and 500 miles was stored as 500 km instead of 804.67.
+    //
+    // R8 offered detection or deletion. Task 5 took deletion, because deletion
+    // makes the bad call inexpressible rather than merely reported, and this is
+    // the assertion that keeps it deleted: re-adding `toCanonicalKm`,
+    // `toCanonicalKg`, `toCanonicalMeters` or a `toCanonicalFathoms` nobody has
+    // thought of yet fails here on the DECLARATION, one step before a call site
+    // can exist.
+    //
+    // The replacement is the origin-preserving pair in `utils/unitFormat.ts`:
+    // `seedUnitField(canonical, quantity)` and
+    // `canonicalFromUnitField(typed, origin, quantity)`. `toCanonicalLiters`
+    // survives in the same file and is not an oversight: it takes the resolved
+    // `UnitSet`, which is the correct shape.
+    expect(conversionHelpers().binary).toEqual([])
   })
 })

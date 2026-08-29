@@ -199,7 +199,12 @@ UNIT_MODULES = [
 ]
 IMPORT_RX = re.compile(r"""^\s*(?:import|export)\b[^\n]*?from\s+['"]([^'"]+)['"]""")
 SYMBOL_RX = re.compile(
-    r"\b(UnitFormatter|UnitConverter|useUnitPreference|convertTelemetryValue|priceToCanonical|priceToDisplay|toCanonicalKm|toCanonicalLiters|toCanonicalKg|toCanonicalMeters|canonicalToDisplay|displayToCanonical|supplyUnitLabel)\b"
+    # `toCanonicalKm`, `toCanonicalKg` and `toCanonicalMeters` were listed here
+    # until phase 3b task 5 deleted them under ruling R8. A name kept in this
+    # alternation after its symbol is gone cannot match anything, so it does not
+    # inflate a count, but it does make the list read as an inventory of what
+    # exists when it is really an inventory of what was once looked for.
+    r"\b(UnitFormatter|UnitConverter|useUnitPreference|convertTelemetryValue|priceToCanonical|priceToDisplay|toCanonicalLiters|seedUnitField|canonicalFromUnitField|canonicalToDisplay|displayToCanonical|supplyUnitLabel)\b"
 )
 
 

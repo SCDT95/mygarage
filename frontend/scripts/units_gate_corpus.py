@@ -536,9 +536,12 @@ SCRIPT_POSITIVE = [
     ),
     Case(
         "S-P32-binary-conversion-call",
-        "import { toCanonicalKm } from '@/utils/decimalSafe'\n"
+        "import type { UnitSystem } from '@/utils/units'\n"
         + HOOK_IMPORT
-        + "export function submit(entered: number): number | null {\n"
+        + "export function toCanonicalKm(value: number, system: UnitSystem): number {\n"
+        "  return convert(value, system)\n"
+        "}\n"
+        "export function submit(entered: number): number {\n"
         "  const { system } = useUnitPreference()\n"
         "  return toCanonicalKm(entered, system)\n"
         "}\n",
@@ -546,7 +549,12 @@ SCRIPT_POSITIVE = [
         "binary-conversion",
         "★ R8: this one WRITES. `system` collapses from volume, so a "
         "{volume:'L', distance:'mi'} user's 500 miles is stored as 500 km, and "
-        "neither proposed gate leg saw the function that wrote the wrong number",
+        "neither of the originally proposed gate legs saw the function that "
+        "wrote the wrong number. Task 5 DELETED the three real helpers, so the "
+        "fixture declares its own: the leg reads `decimalSafe.ts` plus the file "
+        "under scan, and this half is now the only half with a population. The "
+        "body delegates instead of comparing so the one finding is the CALL, "
+        "not a `system === 'metric'` inside the declaration",
         "M46-drop-conversion-leg",
         ext=".ts",
     ),

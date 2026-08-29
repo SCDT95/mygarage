@@ -25,8 +25,8 @@ vi.mock('../../hooks/useReminders', () => ({
   useUpdateReminder: () => ({ mutateAsync: updateMock }),
 }))
 // Metric throughout — the mileage-comparison tests below assert the raw
-// entered value passes straight through un-converted (toCanonicalKm is a
-// no-op under metric), keeping the numbers exact without deriving
+// entered value passes straight through un-converted (the distance round trip
+// is a no-op under metric), keeping the numbers exact without deriving
 // mi->km conversion constants.
 vi.mock('../../hooks/useUnitPreference', async () => {
   const { METRIC_UNITS } = await import('@/__tests__/factories')

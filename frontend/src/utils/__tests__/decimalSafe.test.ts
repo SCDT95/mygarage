@@ -18,14 +18,7 @@
 
 import { beforeEach, describe, expect, it } from 'vitest'
 import { makeUnitSet } from '@/__tests__/factories'
-import {
-  priceToCanonical,
-  priceToDisplay,
-  toCanonicalKg,
-  toCanonicalKm,
-  toCanonicalLiters,
-  toCanonicalMeters,
-} from '../decimalSafe'
+import { priceToCanonical, priceToDisplay, toCanonicalLiters } from '../decimalSafe'
 import { UnitConverter } from '../units'
 
 const METRIC = makeUnitSet()
@@ -66,18 +59,22 @@ describe('toCanonicalLiters', () => {
   })
 })
 
-describe('the boundary this task moved, and the ones it did not', () => {
-  it('moves volume onto the resolved set and leaves distance, mass and length binary', () => {
+describe('the boundary this task moved, and the ones 3b then deleted', () => {
+  it('moves volume onto the resolved set', () => {
     // Volume: resolved-set driven, and the instance standard is `us`.
     expect(toCanonicalLiters(10, UK)).toBe(45.461)
-    // Distance, mass and length carry no gallon, so they keep their binary
-    // signature and their existing rounding until 3b migrates them.
-    expect(toCanonicalKm(100, 'metric')).toBe(100)
-    expect(toCanonicalKm(60, 'imperial')).toBeCloseTo(96.56, 2)
-    expect(toCanonicalKg(20, 'metric')).toBe(20)
-    expect(toCanonicalMeters(5, 'metric')).toBe(5)
-    expect(toCanonicalKg(NaN, 'imperial')).toBeNull()
   })
+
+  // ★ Distance, mass and length used to be asserted here in their binary form,
+  // as `toCanonicalKm(100, 'metric')` and two siblings. Phase 3b task 5 DELETED
+  // all three under ruling R8: each took a `UnitSystem` collapsed from the
+  // user's VOLUME choice and wrote a canonical value off it, so a
+  // `{volume:'L', distance:'mi'}` user's 500 miles stored as 500 km. Those
+  // assertions are not moved or replaced here because there is nothing left in
+  // this file to assert them against; what replaced the helpers is
+  // `seedUnitField` / `canonicalFromUnitField` in `utils/unitFormat.ts`, tested
+  // beside it. That the three stay deleted is asserted structurally, in
+  // `utils/__tests__/unitsBinaryApiSurface.test.ts`.
 })
 
 describe('priceToDisplay / priceToCanonical — per_volume', () => {

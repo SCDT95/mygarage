@@ -484,8 +484,8 @@ MUTATIONS = [
     Mutation(
         "M46-drop-conversion-leg",
         "gate",
-        "      if (BINARY_CONVERSION_HELPERS.has(called)) {",
-        "      if (false && BINARY_CONVERSION_HELPERS.has(called)) {",
+        "      if (binaryHelpersHere.has(called)) {",
+        "      if (false && binaryHelpersHere.has(called)) {",
         "script",
         ["S-P32-binary-conversion-call"],
         "R8's whole point: the function that WRITES the wrong number, invisible to "
@@ -494,8 +494,8 @@ MUTATIONS = [
     Mutation(
         "M53-every-exported-helper-is-binary",
         "gate",
-        "      if (takesBinarySystem(node, source) && node.name) found.add(node.name.getText(source))",
-        "      if (node.name) found.add(node.name.getText(source))",
+        "      if (takesBinarySystem(node, source)) binary.add(node.name.getText(source))",
+        "      binary.add(node.name.getText(source))",
         "script",
         ["S-N9-set-conversion-helper"],
         "`toCanonicalLiters` sits in the same file and takes a resolved set: the "
