@@ -60,7 +60,7 @@ vi.mock('../../hooks/useCurrencyPreference', () => ({
 }))
 vi.mock('sonner', () => ({ toast: { success: vi.fn(), error: vi.fn() } }))
 
-import { UK_IMPERIAL_UNITS } from '../../__tests__/factories'
+import { IMPERIAL_UNITS, METRIC_UNITS, UK_IMPERIAL_UNITS } from '../../__tests__/factories'
 import { UnitConverter } from '../../utils/units'
 import FuelRecordList from '../FuelRecordList'
 
@@ -275,6 +275,42 @@ describe('FuelRecordList — hours usage tracking (Task 13)', () => {
     expect(within(table()).getByRole('columnheader', { name: 'fuelList.fuelRate' })).toBeInTheDocument()
     expect(screen.getByText('fuelList.avgFuelEconomy')).toBeInTheDocument()
     expect(screen.getByText('$2.75')).toBeInTheDocument()
+  })
+
+  it('★ the economy badge follows units.consumption, not a system collapsed from volume', async () => {
+    // `formatFuelEconomy(l, system)` read `system`, which spec D8 derives from
+    // VOLUME. This account keeps litres and chose MPG, so the badge and the
+    // tile both answered in L/100km however the preference was set.
+    unitPrefMock.units = { ...METRIC_UNITS, consumption: 'mpg_us' }
+    render(<FuelRecordList {...DEFAULT_PROPS} />)
+    await waitFor(() => expect(apiGetMock).toHaveBeenCalled())
+
+    // 235.214 / 7.2 = 32.7 in the row badge; / 8.5 = 27.7 on the tile.
+    expect(within(table()).getByText('32.7 MPG')).toBeInTheDocument()
+    expect(screen.getByText('27.7 MPG')).toBeInTheDocument()
+    expect(within(table()).queryByText('7.20 L/100km')).not.toBeInTheDocument()
+  })
+
+  it('★ the fuel-rate column and card name the account\'s own gallon', async () => {
+    // `formatFuelRate` divided by a MUTABLE static following the INSTANCE
+    // gallon setting, so this UK account read 4.50 L/hr as "1.19 GPH" beside a
+    // volume column that had already converted litres on the imperial gallon.
+    unitPrefMock.system = 'imperial'
+    unitPrefMock.units = { ...IMPERIAL_UNITS, volume: 'gal_uk', secondary_gallon: 'uk' }
+    apiGetMock.mockResolvedValue({ data: { fuel_type: 'gasoline', usage_unit: 'hours', secondary_usage_enabled: false } })
+    useFuelRecordsMock.mockReturnValue({ data: HOURS_DATA, isLoading: false, error: null })
+    render(<FuelRecordList {...DEFAULT_PROPS} />)
+
+    // 4.5 / 4.54609 = 0.99 on the card; 3.2 / 4.54609 = 0.70 in the row.
+    expect(await screen.findByText('0.99 gal/hr')).toBeInTheDocument()
+    expect(within(table()).getByText('0.70 gal/hr')).toBeInTheDocument()
+    // The card's LABEL too, through the local i18n mock's `{{unit}}`: a label
+    // that lost the `/hr` and read a bare `gal` would otherwise survive, since
+    // the value beside it is unchanged.
+    expect(screen.getByText('fuelList.avgFuelRate (gal/hr)')).toBeInTheDocument()
+    // What the instance-wide US gallon would have answered for the same rows.
+    expect(screen.queryByText('1.19 gal/hr')).not.toBeInTheDocument()
+    expect(screen.queryByText('1.19 GPH')).not.toBeInTheDocument()
   })
 
   it('hides the cost-per-distance stat for a pure-hours vehicle even when odometer data is present, but keeps it for a distance vehicle', async () => {

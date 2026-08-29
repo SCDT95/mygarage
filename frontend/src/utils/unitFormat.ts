@@ -330,6 +330,77 @@ export function volumePerDistanceLabel(units: UnitSet): string {
 }
 
 /**
+ * The dimensionless denominator a fuel rate is quoted over.
+ *
+ * Engine hours are outside the unit system entirely (backend ruling R6: they
+ * have no adapter), so the suffix is held FIXED while the volume half flips.
+ * It is a symbol rather than prose, like every other label in this module.
+ */
+const PER_HOUR = '/hr'
+
+/**
+ * Render an engine-hours fuel rate in the reader's own volume unit.
+ *
+ * ★ IT IS THE VOLUME QUANTITY, NOT A QUANTITY OF ITS OWN, and that is what
+ * makes it expressible at all. `UnitFormatter.formatFuelRate(lPerHr, system)`
+ * branched on the binary system, which is collapsed from VOLUME (spec D8), so
+ * it was accidentally right about which quantity decides and wrong about which
+ * unit that quantity names: it read the INSTANCE-wide mutable gallon static
+ * (`getGallonStandard()`), so a `gal_uk` account on a US-default instance saw
+ * a GPH figure computed on US gallons beside a volume column already showing
+ * imperial ones. Here both come from `units.volume`, so there is nothing left
+ * to disagree.
+ *
+ * ★ THE SUFFIX GOES ON EACH REPRESENTATION, NEVER ON THE COMPOSED STRING.
+ * `"3.20 L/hr (0.70 gal/hr)"` states two rates; `"3.20 L (0.70 gal)/hr"`
+ * states neither. This is `unit_formatting.format_rate`'s rule and the reason
+ * this is a function here rather than a `QuantityFormat` member: `format`
+ * composes the counterpart itself and has nowhere to put a per-side suffix.
+ *
+ * ★ ZERO IS A REAL RATE HERE, where the binary formatter answered `'N/A'`.
+ * Volume is a linear quantity, so no fuel burned over an interval is 0.00 L/hr
+ * and saying so is truthful; `'N/A'` claimed the figure was unknown. (Fuel
+ * ECONOMY is the opposite case and keeps its `'N/A'` at zero by construction:
+ * MPG is reciprocal, so a canonical zero has no finite value to print.)
+ *
+ * @param units The client's resolved unit set.
+ * @param lPerHr The canonical rate, litres per hour.
+ * @param showBoth Whether to append the counterpart representation.
+ * @returns e.g. `'3.20 L/hr'`, `'0.85 gal/hr'`, or `'N/A'`.
+ */
+export function formatFuelRate(
+  units: UnitSet,
+  lPerHr: number | null | undefined,
+  showBoth = false
+): string {
+  const adapter = adapterFor(units, 'volume')
+  // Null short-circuits BEFORE the counterpart, exactly as `format` does.
+  if (adapter.toDisplay(lPerHr) === null) return NOT_AVAILABLE
+  const primary = `${render(adapter, lPerHr)}${PER_HOUR}`
+  const counterpart = counterpartFor(units, 'volume')
+  if (!showBoth || counterpart === null) return primary
+  return `${primary} (${render(counterpart, lPerHr)}${PER_HOUR})`
+}
+
+/**
+ * The compound label an engine-hours fuel rate is read under.
+ *
+ * Composed from the volume adapter rather than selected from two fixed
+ * strings, for the reason `resolvedUnitSummary` gives at length.
+ * `getFuelRateUnit(system)` could answer only `'L/hr'` or `'GPH'`, and `'GPH'`
+ * names a gallon without saying which: the same three characters were shown to
+ * a US-gallon and a UK-gallon account for two different numbers. `'gal/hr'`
+ * matches the label the volume adapter puts on every other gallon in the app,
+ * and matches what `unit_derived.format_fuel_rate` renders in a PDF.
+ *
+ * @param units The client's resolved unit set.
+ * @returns e.g. `'L/hr'` or `'gal/hr'`.
+ */
+export function fuelRateLabel(units: UnitSet): string {
+  return `${adapterFor(units, 'volume').label}${PER_HOUR}`
+}
+
+/**
  * Populate a unit-bearing form field, remembering where its value came from.
  *
  * @param canonical The stored canonical value, or null for an empty field.

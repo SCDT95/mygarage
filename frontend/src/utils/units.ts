@@ -588,84 +588,23 @@ export class UnitFormatter {
     }
   }
 
-  /**
-   * Format fuel economy with appropriate unit label.
-   *
-   * @param lPer100km - Value in L/100km (canonical metric)
-   * @param system - Target unit system
-   * @param showBoth - Show both units
-   */
-  static formatFuelEconomy(lPer100km: Numeric, system: UnitSystem, showBoth: boolean = false): string {
-    if (lPer100km === null || lPer100km === undefined) {
-      return 'N/A';
-    }
-
-    const lNum = typeof lPer100km === 'string' ? parseFloat(lPer100km) : lPer100km;
-    if (isNaN(lNum) || lNum === 0) return 'N/A';
-
-    // units-exempt: binary display API; its 18 call sites are task 6b's (the fuel-economy and fuel-rate family), and unitsBinaryApiSurface.test.ts deletes this method when the last one goes
-    if (system === 'metric') {
-      const primary = `${lNum.toFixed(1)} L/100km`;
-      if (showBoth) {
-        const mpg = UnitConverter.l100kmToMpg(lNum);
-        return `${primary} (${mpg?.toFixed(1)} MPG)`;
-      }
-      return primary;
-    } else {
-      const mpg = UnitConverter.l100kmToMpg(lNum);
-      const primary = `${mpg?.toFixed(1)} MPG`;
-      if (showBoth) {
-        return `${primary} (${lNum.toFixed(1)} L/100km)`;
-      }
-      return primary;
-    }
-  }
-
-  /**
-   * Format engine-hour fuel rate (the hours analog of fuel economy) with
-   * appropriate unit label.
-   *
-   * Engine hours are dimensionless — only the volume side converts between
-   * systems. Mirrors formatFuelEconomy's N/A-guard and showBoth shape; uses
-   * the active gallon standard, which `useResolvedGallonSync` resolves from the
-   * client's own units rather than the instance setting.
-   *
-   * @param lPerHr - Value in L/hr (canonical metric)
-   * @param system - Target unit system
-   * @param showBoth - Show both units (e.g., "3.20 L/hr (0.85 GPH)")
-   */
-  static formatFuelRate(lPerHr: Numeric, system: UnitSystem, showBoth: boolean = false): string {
-    if (lPerHr === null || lPerHr === undefined) {
-      return 'N/A';
-    }
-
-    const lNum = typeof lPerHr === 'string' ? parseFloat(lPerHr) : lPerHr;
-    if (isNaN(lNum) || lNum === 0) return 'N/A';
-
-    // Was a fourth, separately-rounded spelling of the US gallon
-    // (`3.785411784`) beside a duplicate of the UK one. The dispatch is the
-    // same table every other gallon decision now uses, and the active standard
-    // is this CLIENT's, not the instance's (`useResolvedGallonSync`).
-    const LITERS_PER_GALLON =
-      UnitConverter.LITERS_PER_SECONDARY_GALLON[UnitConverter.getGallonStandard()];
-
-    // units-exempt: binary display API; its 4 call sites are task 6b's (the fuel-economy and fuel-rate family), and unitsBinaryApiSurface.test.ts deletes this method when the last one goes
-    if (system === 'metric') {
-      const primary = `${lNum.toFixed(2)} L/hr`;
-      if (showBoth) {
-        const galPerHr = lNum / LITERS_PER_GALLON;
-        return `${primary} (${galPerHr.toFixed(2)} GPH)`;
-      }
-      return primary;
-    } else {
-      const galPerHr = lNum / LITERS_PER_GALLON;
-      const primary = `${galPerHr.toFixed(2)} GPH`;
-      if (showBoth) {
-        return `${primary} (${lNum.toFixed(2)} L/hr)`;
-      }
-      return primary;
-    }
-  }
+  // ★ THE FUEL-ECONOMY AND FUEL-RATE FAMILY USED TO BE HERE, and the gap is
+  // deliberate rather than an oversight. `formatFuelEconomy`,
+  // `getFuelEconomyUnit`, `formatFuelRate` and `getFuelRateUnit` all decided on
+  // a binary `UnitSystem`, which is collapsed from VOLUME (spec D8), so a
+  // `{volume:'L', consumption:'mpg_us'}` account read L/100km and a
+  // `{volume:'gal_us', consumption:'l_100km'}` account read MPG: in both cases
+  // the app ignored the very quantity the user had chosen. Plan 3b task 6b
+  // migrated the last of their 31 call sites onto `units.consumption` and
+  // `units.volume`, `unitsBinaryApiSurface.test.ts` reported all four as dead,
+  // and they went.
+  //
+  // The replacements are `useUnitFormat().consumption` (a `QuantityFormat`,
+  // whose `format`/`formatPrimary` split keeps show-both a per-site choice) and
+  // `unitFormat.ts`'s `formatFuelRate(units, lPerHr, showBoth)` /
+  // `fuelRateLabel(units)`. The rate pair lives there rather than here for the
+  // reason `formatVolumePerDistance` gives at length: it composes two adapters,
+  // and this module cannot import `adapterFor` without forming a cycle.
 
   /**
    * Get volume unit label for input placeholders.
@@ -674,22 +613,6 @@ export class UnitFormatter {
    */
   static getVolumeUnit(units: UnitSet): string {
     return units.volume === 'L' ? 'L' : 'gal';
-  }
-
-  /**
-   * Get fuel economy unit label for input placeholders.
-   */
-  static getFuelEconomyUnit(system: UnitSystem): string {
-    // units-exempt: label for the same binary decision; 3 call sites, task 6b, expiry enforced by unitsBinaryApiSurface.test.ts
-    return system === 'imperial' ? 'MPG' : 'L/100km';
-  }
-
-  /**
-   * Get fuel-rate (engine-hours economy) unit label for input placeholders.
-   */
-  static getFuelRateUnit(system: UnitSystem): string {
-    // units-exempt: label for the same binary decision; 4 call sites, task 6b, expiry enforced by unitsBinaryApiSurface.test.ts
-    return system === 'imperial' ? 'GPH' : 'L/hr';
   }
 
   /**

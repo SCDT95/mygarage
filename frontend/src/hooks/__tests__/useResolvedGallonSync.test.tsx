@@ -36,7 +36,7 @@ vi.mock('../useUnitPreference', () => ({
 import { setGallonStandard as storeSet, getGallonStandard as storeGet } from '../../utils/gallonStandardStore'
 import { UK_IMPERIAL_UNITS } from '../../__tests__/factories'
 import { UnitConverter, UnitFormatter } from '../../utils/units'
-import { makeUnitFormat } from '../../utils/unitFormat'
+import { formatFuelRate, makeUnitFormat } from '../../utils/unitFormat'
 import { useResolvedGallonSync } from '../useResolvedGallonSync'
 
 /**
@@ -114,32 +114,52 @@ describe('useResolvedGallonSync', () => {
     expect(storeGet()).toBe('uk')
   })
 
-  it('★ the whole fuel row agrees once the hook has applied the client\'s gallon', () => {
-    // The reading a fuel row puts side by side must divide into each other.
+  it('★ the whole fuel row agrees, and no longer needs this hook to', () => {
+    // The readings a fuel row puts side by side must divide into each other.
     // 45.4609 L over 482.802 km is 10.00 imperial gallons over 300 miles, so
     // 30.0 MPG; on US gallons the SAME row is 12.01 gal and 24.98 MPG. Round 1
     // moved the volume column onto the account's gallon and left consumption on
     // the instance's, which put a 25.0 MPG badge beside a 10.00 gal cell.
+    //
+    // ★ THE ASSERTION IS THE INDEPENDENCE, not the agreement. Task 6b moved
+    // consumption and the fuel rate onto the account's own tokens, so every
+    // cell below is already right with the converter still holding 'us' and the
+    // hook not yet rendered. That is what makes the four expectations BEFORE
+    // `renderHook` the interesting ones: they fail the day a cell is routed
+    // back through `UnitConverter`'s mutable, instance-following statics, which
+    // is exactly how this defect was introduced the first time.
     seedStore('us')
     h.gallonStandard = 'uk'
-    expect(UnitFormatter.formatVolume(45.4609, UK_IMPERIAL_UNITS)).toBe('10.00 gal')
-    expect(UnitFormatter.formatFuelEconomy(9.4160546, 'imperial')).toBe('25.0 MPG')
-
-    renderHook(() => useResolvedGallonSync())
-
+    const u = makeUnitFormat(UK_IMPERIAL_UNITS)
+    expect(UnitConverter.getGallonStandard()).toBe('us')
     expect(UnitFormatter.formatVolume(45.4609, UK_IMPERIAL_UNITS)).toBe('10.00 gal')
     // Distance never had a gallon in it; through the resolved `mi` adapter
     // since task 6 deleted the binary formatter. 482.802 / 1.60934 = 300.
-    expect(makeUnitFormat(UK_IMPERIAL_UNITS).distance.format(482.802)).toBe('300 mi')
-    expect(UnitFormatter.formatFuelEconomy(9.4160546, 'imperial')).toBe('30.0 MPG')
-    expect(UnitFormatter.formatFuelRate(4.54609, 'imperial')).toBe('1.00 GPH')
-    // 300 / 10.00 = 30.0, and every cell now names the same gallon.
+    expect(u.distance.format(482.802)).toBe('300 mi')
+    expect(u.consumption.format(9.4160546)).toBe('30.0 MPG')
+    expect(formatFuelRate(UK_IMPERIAL_UNITS, 4.54609)).toBe('1.00 gal/hr')
+
+    renderHook(() => useResolvedGallonSync())
+
+    expect(UnitConverter.getGallonStandard()).toBe('uk')
+    expect(UnitFormatter.formatVolume(45.4609, UK_IMPERIAL_UNITS)).toBe('10.00 gal')
+    expect(u.distance.format(482.802)).toBe('300 mi')
+    expect(u.consumption.format(9.4160546)).toBe('30.0 MPG')
+    expect(formatFuelRate(UK_IMPERIAL_UNITS, 4.54609)).toBe('1.00 gal/hr')
+    // 300 / 10.00 = 30.0, and every cell names the same gallon either way.
   })
 
-  it('★ makes CONSUMPTION resolve on the client\'s gallon, which is the point', () => {
+  it('★ still moves the converter statics, which is all it is for now', () => {
     // 45.4609 L over 482.802 km is 10.00 imperial gallons over 300 miles, so
-    // 30.0 MPG. On US gallons the same row reads 24.98, understated by a sixth,
-    // beside a volume column this task already moved to imperial gallons.
+    // 30.0 MPG. On US gallons the same row reads 24.98, understated by a sixth.
+    //
+    // ★ These two converters are what the hook still reaches, and after task 6b
+    // no production file calls either: every user-visible consumption reading
+    // goes through the resolved token asserted in the test above. The hook, the
+    // `subscribeToConverterGallon` repaint machinery and `UnitConverter`'s
+    // mutable factors are now a closed loop with no consumer, which is a
+    // deletion for whoever owns the gallon-standard machinery, not for the
+    // consumption family. Until then this pins that the dispatch still works.
     seedStore('us')
     h.gallonStandard = 'uk'
     expect(UnitConverter.l100kmToMpg(9.4160546)).toBe(25)

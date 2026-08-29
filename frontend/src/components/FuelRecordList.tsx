@@ -11,6 +11,7 @@ import api from '../services/api'
 import { useUnitPreference } from '../hooks/useUnitPreference'
 import { useUnitFormat } from '../hooks/useUnitFormat'
 import { UnitFormatter } from '../utils/units'
+import { formatFuelRate, fuelRateLabel } from '../utils/unitFormat'
 import { priceToDisplay } from '../utils/decimalSafe'
 import { getUsageTracking } from '../utils/usageTracking'
 import { useFuelRecords, useDeleteFuelRecord, useImportFuelCSV } from '../hooks/queries/useFuelRecords'
@@ -233,14 +234,15 @@ export default function FuelRecordList({ vin, onAddClick, onEditClick }: FuelRec
     ...(tracksDistance ? [{
       id: 'economy', header: t('fuelList.fuelEconomy'),
       render: (r: FuelRecord) => r.l_per_100km
-        ? <Badge tone="success">{UnitFormatter.formatFuelEconomy(parseFloat(r.l_per_100km.toString()), system, showBoth)}</Badge>
+        ? <Badge tone="success">{u.consumption.format(parseFloat(r.l_per_100km.toString()))}</Badge>
         : <span className="text-sm text-text-mute">-</span>,
     }] : []),
-    // Task 13 — engine-hours economy (GPH imperial / L/hr metric display; canonical L/hr storage).
+    // Task 13 — engine-hours economy (canonical L/hr storage, read in the
+    // reader's own volume unit per hour).
     ...(tracksHours ? [{
       id: 'fuelRate', header: t('fuelList.fuelRate'),
       render: (r: FuelRecord) => r.l_per_hr
-        ? <Badge tone="success">{UnitFormatter.formatFuelRate(parseFloat(r.l_per_hr.toString()), system, showBoth)}</Badge>
+        ? <Badge tone="success">{formatFuelRate(units, parseFloat(r.l_per_hr.toString()), showBoth)}</Badge>
         : <span className="text-sm text-text-mute">-</span>,
     }] : []),
     { id: 'fullTank', header: t('fuelList.fullTank'),
@@ -360,7 +362,7 @@ export default function FuelRecordList({ vin, onAddClick, onEditClick }: FuelRec
                   <TrendingUp aria-hidden="true" className="w-3 h-3" />
                   <span>{t('fuelList.avgFuelEconomy')}</span>
                 </div>
-                <Mono size="2xl" weight="bold">{UnitFormatter.formatFuelEconomy(averageEconomy, system, showBoth)}</Mono>
+                <Mono size="2xl" weight="bold">{u.consumption.format(averageEconomy)}</Mono>
                 <div className="mt-1">
                   <Checkbox
                     id="fuel-incl-towing"
@@ -403,9 +405,9 @@ export default function FuelRecordList({ vin, onAddClick, onEditClick }: FuelRec
               <Card padding="sm">
                 <div className="flex items-center gap-1 text-xs text-text-mute mb-1">
                   <Gauge aria-hidden="true" className="w-3 h-3" />
-                  <span>{t('fuelList.avgFuelRate', { unit: UnitFormatter.getFuelRateUnit(system) })}</span>
+                  <span>{t('fuelList.avgFuelRate', { unit: fuelRateLabel(units) })}</span>
                 </div>
-                <Mono size="2xl" weight="bold">{UnitFormatter.formatFuelRate(averageFuelRate, system, showBoth)}</Mono>
+                <Mono size="2xl" weight="bold">{formatFuelRate(units, averageFuelRate, showBoth)}</Mono>
               </Card>
             )}
             {tracksHours && averageCostPerHr !== null && (

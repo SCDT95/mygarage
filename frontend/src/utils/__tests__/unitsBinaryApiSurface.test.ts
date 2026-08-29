@@ -263,16 +263,14 @@ describe('the binary UnitFormatter surface', () => {
     // and left eight; task 6 migrated the twenty-seven call sites of
     // `formatDistance` and `getDistanceUnit` onto the resolved `units.distance`
     // adapter, this test failed exactly as designed, and both methods followed.
-    // The six below are the fuel-economy, fuel-rate and cost-per-distance
-    // surface, each still with production callers, and each retirement lowers
-    // this list again.
+    // Task 6b did the same for the thirty-one sites of the fuel-economy and
+    // fuel-rate family, and `formatFuelEconomy`, `getFuelEconomyUnit`,
+    // `formatFuelRate` and `getFuelRateUnit` went with them. The two below are
+    // the cost-per-distance surface, still with production callers, and their
+    // retirement empties this list.
     expect(binaryFormatterMethods()).toEqual([
       'formatCostPerDistance',
-      'formatFuelEconomy',
-      'formatFuelRate',
       'getCostPerDistanceLabel',
-      'getFuelEconomyUnit',
-      'getFuelRateUnit',
     ])
   })
 

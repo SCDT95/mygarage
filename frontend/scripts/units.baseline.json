@@ -20,25 +20,7 @@
  {
   "file": "src/components/FuelRecordList.tsx",
   "kind": "formatter-binary",
-  "text": "UnitFormatter.formatFuelEconomy(...)",
-  "count": 2
- },
- {
-  "file": "src/components/FuelRecordList.tsx",
-  "kind": "formatter-binary",
-  "text": "UnitFormatter.formatFuelRate(...)",
-  "count": 2
- },
- {
-  "file": "src/components/FuelRecordList.tsx",
-  "kind": "formatter-binary",
   "text": "UnitFormatter.getCostPerDistanceLabel(...)",
-  "count": 1
- },
- {
-  "file": "src/components/FuelRecordList.tsx",
-  "kind": "formatter-binary",
-  "text": "UnitFormatter.getFuelRateUnit(...)",
   "count": 1
  },
  {
@@ -60,42 +42,6 @@
   "count": 1
  },
  {
-  "file": "src/components/vehicle-detail/VehicleOverviewTab.tsx",
-  "kind": "formatter-binary",
-  "text": "UnitFormatter.formatFuelEconomy(...)",
-  "count": 3
- },
- {
-  "file": "src/components/VehicleStatisticsCard.tsx",
-  "kind": "formatter-binary",
-  "text": "UnitFormatter.formatFuelEconomy(...)",
-  "count": 2
- },
- {
-  "file": "src/components/VehicleStatisticsCard.tsx",
-  "kind": "formatter-binary",
-  "text": "UnitFormatter.formatFuelRate(...)",
-  "count": 1
- },
- {
-  "file": "src/components/VehicleStatisticsCard.tsx",
-  "kind": "formatter-binary",
-  "text": "UnitFormatter.getFuelEconomyUnit(...)",
-  "count": 1
- },
- {
-  "file": "src/components/VehicleStatisticsCard.tsx",
-  "kind": "formatter-binary",
-  "text": "UnitFormatter.getFuelRateUnit(...)",
-  "count": 1
- },
- {
-  "file": "src/pages/Analytics.tsx",
-  "kind": "compare",
-  "text": "system === 'metric'",
-  "count": 2
- },
- {
   "file": "src/pages/Analytics.tsx",
   "kind": "formatter-binary",
   "text": "UnitFormatter.formatCostPerDistance(...)",
@@ -104,31 +50,7 @@
  {
   "file": "src/pages/Analytics.tsx",
   "kind": "formatter-binary",
-  "text": "UnitFormatter.formatFuelEconomy(...)",
-  "count": 11
- },
- {
-  "file": "src/pages/Analytics.tsx",
-  "kind": "formatter-binary",
-  "text": "UnitFormatter.formatFuelRate(...)",
-  "count": 1
- },
- {
-  "file": "src/pages/Analytics.tsx",
-  "kind": "formatter-binary",
   "text": "UnitFormatter.getCostPerDistanceLabel(...)",
-  "count": 2
- },
- {
-  "file": "src/pages/Analytics.tsx",
-  "kind": "formatter-binary",
-  "text": "UnitFormatter.getFuelEconomyUnit(...)",
-  "count": 2
- },
- {
-  "file": "src/pages/Analytics.tsx",
-  "kind": "formatter-binary",
-  "text": "UnitFormatter.getFuelRateUnit(...)",
   "count": 2
  },
  {

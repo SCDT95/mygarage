@@ -509,18 +509,20 @@ SCRIPT_POSITIVE = [
         "S-P30-formatter-binary-call",
         "import { UnitFormatter } from '@/utils/units'\n"
         + HOOK_IMPORT
-        + "export function economy(lPer100km: number): string {\n"
+        + "export function costRate(costPerKm: number): string {\n"
         "  const { system } = useUnitPreference()\n"
-        "  return UnitFormatter.formatFuelEconomy(lPer100km, system)\n"
+        "  return UnitFormatter.formatCostPerDistance(costPerKm, system, 'USD', 'en-US')\n"
         "}\n",
         1,
         "formatter-binary",
         "★ nothing at this call site names a system: the binary collapse happens "
         "inside the callee, so the comparison leg is blind to it by construction. "
-        "It spelled `formatDistance` until task 6 deleted that method, at which "
-        "point this case scored zero and the corpus said so: a positive naming a "
-        "method the DERIVATION can no longer find is a case that passes for the "
-        "wrong reason. Any surviving binary formatter exercises the same leg.",
+        "It spelled `formatDistance` until task 6 deleted that method, then "
+        "`formatFuelEconomy` until task 6b deleted that one; each time the case "
+        "scored zero and the corpus said so, because a positive naming a method "
+        "the DERIVATION can no longer find is a case that passes for the wrong "
+        "reason. Any surviving binary formatter exercises the same leg, so it "
+        "now spells the last one standing.",
         "M44-drop-formatter-leg",
     ),
     Case(
@@ -529,15 +531,16 @@ SCRIPT_POSITIVE = [
         + HOOK_IMPORT
         + "export function unit(): string {\n"
         "  const { system } = useUnitPreference()\n"
-        "  return UnitFormatter.getFuelRateUnit(system)\n"
+        "  return UnitFormatter.getCostPerDistanceLabel(system)\n"
         "}\n",
         1,
         "formatter-binary",
         "★ THE case that makes the set DERIVED rather than transcribed: round 1 "
         "hand-listed the `format*` methods and missed every label selector, which "
         "takes the same binary system and is just as wrong for a mixed user. It "
-        "spelled `getDistanceUnit` until task 6 retired that one; a label "
-        "selector is a label selector whichever quantity it names.",
+        "spelled `getDistanceUnit` until task 6 retired that one and "
+        "`getFuelRateUnit` until task 6b retired the next; a label selector is a "
+        "label selector whichever quantity it names.",
         "M45-formatter-format-prefix-only",
     ),
     Case(
@@ -597,7 +600,7 @@ SCRIPT_POSITIVE = [
         + HOOK_IMPORT
         + "export function unit(): string {\n"
         "  const { system } = useUnitPreference()\n"
-        "  return UF.getFuelEconomyUnit(system)\n"
+        "  return UF.getCostPerDistanceLabel(system)\n"
         "}\n",
         1,
         "formatter-binary",
