@@ -208,7 +208,7 @@ describe('ReminderForm — from last service mileage baseline', () => {
     await user.type(screen.getByLabelText('common:title *'), 'Oil change')
     typeMileage()
     expect(screen.getByRole('button', { name: 'reminderForm.modeFromNow' })).toBeInTheDocument()
-    fireEvent.change(screen.getByLabelText('reminder.milesUntilDue * (mi)'), { target: { value: '5000' } })
+    fireEvent.change(screen.getByLabelText('reminder.distanceUntilDue * (mi)'), { target: { value: '5000' } })
     fireEvent.click(screen.getByRole('button', { name: 'common:create' }))
 
     await waitFor(() => expect(createMock).toHaveBeenCalledTimes(1))

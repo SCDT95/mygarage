@@ -371,6 +371,8 @@
   "reminder": {
     "createTitle": "Criar lembrete",
     "created": "Criado",
+    "distanceRequired": "Distância até o vencimento é obrigatória",
+    "distanceUntilDue": "Distância até o vencimento",
     "dueDate": "Prazo (data)",
     "dueDateRequired": "Data de vencimento obrigatória",
     "dueHours": "Vencimento (horas do motor)",
@@ -388,8 +390,6 @@
     "lastDoneMileageRequired": "A quilometragem da última execução é obrigatória",
     "mileageBaseline": "Base de quilometragem",
     "mileageInterval": "Intervalo de serviço",
-    "milesRequired": "Quilometragem obrigatória",
-    "milesUntilDue": "Quilômetros até o vencimento",
     "noHoursData": "Sem dados de horas do motor — informe as horas-alvo absolutas",
     "noOdometerData": "Sem dados do odômetro",
     "optionalNotes": "Notas opcionais",

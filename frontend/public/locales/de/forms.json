@@ -572,6 +572,8 @@
   "reminder": {
     "createTitle": "Erinnerung erstellen",
     "created": "Erinnerung erstellt",
+    "distanceRequired": "Die Strecke bis zur Fälligkeit ist für diesen Erinnerungstyp erforderlich",
+    "distanceUntilDue": "Strecke bis zur Fälligkeit",
     "dueDate": "Fälligkeitsdatum",
     "dueDateRequired": "Das Fälligkeitsdatum ist für diesen Erinnerungstyp erforderlich",
     "dueHours": "Fälligkeit (Motorstunden)",
@@ -589,8 +591,6 @@
     "lastDoneMileageRequired": "Letzter Kilometerstand ist erforderlich",
     "mileageBaseline": "Kilometer-Basis",
     "mileageInterval": "Serviceintervall",
-    "milesRequired": "Verbleibende Meilen bis zur Fälligkeit sind für diesen Erinnerungstyp erforderlich",
-    "milesUntilDue": "Meilen bis zur Fälligkeit",
     "noHoursData": "Keine Motorstunden-Daten — absolute Zielstunden eingeben",
     "noOdometerData": "Keine Kilometerstandsdaten — absoluten Zielkilometerstand eingeben",
     "optionalNotes": "Optionale Notizen...",

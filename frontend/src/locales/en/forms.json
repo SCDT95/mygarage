@@ -624,6 +624,8 @@
   "reminder": {
     "createTitle": "Create Reminder",
     "created": "Reminder created",
+    "distanceRequired": "Distance until due is required for this reminder type",
+    "distanceUntilDue": "Distance Until Due",
     "dueDate": "Due Date",
     "dueDateRequired": "Due date is required for this reminder type",
     "dueHours": "Due Hours (engine hours)",
@@ -641,8 +643,6 @@
     "lastDoneMileageRequired": "Last done mileage is required",
     "mileageBaseline": "Mileage baseline",
     "mileageInterval": "Service interval",
-    "milesRequired": "Miles until due is required for this reminder type",
-    "milesUntilDue": "Miles Until Due",
     "noHoursData": "No engine-hours data — enter absolute target hours",
     "noOdometerData": "No odometer data — enter absolute target mileage",
     "optionalNotes": "Optional notes...",

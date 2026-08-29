@@ -40,14 +40,16 @@
   {
    "path": "public/locales/de/forms.json",
    "disposition": "audited",
-   "digest": "7e6c20c879f9af88c0de09ba071ea6637fee10bece02b7b738a8428db757fc6d",
-   "reason": "fuel.receiptTextPlaceholder is a plausible EXAMPLE receipt (ruling R5's exempt class): there is no canonical value behind it to convert.",
+   "digest": "67d0864bbeae7ce4d4bf748b1abcb27e8d2be51397739ff6c5e72d2a4af7b6bd",
+   "reason": "fuel.receiptTextPlaceholder is a plausible EXAMPLE receipt (ruling R5's exempt class): there is no canonical value behind it to convert. Task 6 fixed the reminder distance copy: reminder.milesUntilDue / reminder.milesRequired are renamed to reminder.distanceUntilDue / reminder.distanceRequired and their prose no longer names a unit, so the unit comes only from u.distance.label. Covered by components/__tests__/ReminderForm.distanceCopy.test.tsx, which resolves this bundle and asserts the RENDERED prose rather than a key.",
    "findings": [
-    "fuel.mpgTip and fuel.electricTip name MPG and kWh/100mi unconditionally, and reminder.milesRequired says 'Miles until due' for every user.",
-    "reminder.milesUntilDue labels the interval field ReminderForm.tsx migrated onto units.distance in task 3 as 'Meilen bis zur Fälligkeit' unconditionally, same class as milesRequired above: a kilometres account still reads the German miles label. Task 3 fix round 1 MEDIUM-2."
+    "fuel.mpgTip and fuel.electricTip name MPG and kWh/100mi unconditionally."
    ],
    "owners": [
     "task 6"
+   ],
+   "tests": [
+    "components/__tests__/ReminderForm.distanceCopy.test.tsx"
    ]
   },
   {
@@ -105,14 +107,16 @@
   {
    "path": "public/locales/fr/forms.json",
    "disposition": "audited",
-   "digest": "d50f7804f58b01a83cebe59a4061b0002a28688e36ad97695f32ec302693b347",
-   "reason": "fuel.receiptTextPlaceholder is a plausible EXAMPLE receipt (ruling R5's exempt class): there is no canonical value behind it to convert.",
+   "digest": "d601254ee11c2d9466673a4011ef181ce1ff85a7494f7df1ac6c08e5fe648010",
+   "reason": "fuel.receiptTextPlaceholder is a plausible EXAMPLE receipt (ruling R5's exempt class): there is no canonical value behind it to convert. Task 6 fixed the reminder distance copy: reminder.milesUntilDue / reminder.milesRequired are renamed to reminder.distanceUntilDue / reminder.distanceRequired and their prose no longer names a unit, so the unit comes only from u.distance.label. Covered by components/__tests__/ReminderForm.distanceCopy.test.tsx, which resolves this bundle and asserts the RENDERED prose rather than a key.",
    "findings": [
-    "fuel.mpgTip and fuel.electricTip name MPG and kWh/100mi unconditionally, and reminder.milesRequired says 'Miles until due' for every user.",
-    "reminder.milesUntilDue labels the interval field ReminderForm.tsx migrated onto units.distance in task 3 as 'Miles avant échéance' unconditionally, same class as milesRequired above: a kilometres account still reads the French miles label. Task 3 fix round 1 MEDIUM-2."
+    "fuel.mpgTip and fuel.electricTip name MPG and kWh/100mi unconditionally."
    ],
    "owners": [
     "task 6"
+   ],
+   "tests": [
+    "components/__tests__/ReminderForm.distanceCopy.test.tsx"
    ]
   },
   {
@@ -164,8 +168,8 @@
   {
    "path": "public/locales/pl/forms.json",
    "disposition": "no unit behaviour",
-   "digest": "ca6ace4408d76507347abf132073f9922fa4fd1e8f65313dca190c71ec5eca91",
-   "reason": "no unit behaviour: dispositioned under the CORRECTED scan: every unit stem, token, quantity name and canonical field suffix this codebase uses, matched case-insensitively with NO word boundary. The earlier word-boundary version was a floor (it called AnalyticsHelpModal.tsx clean while it renders \"Average MPG:\" to every user) and it was superseded before any disposition in this file was written. This file matched 12 of them; every hit was read in context and none is a unit decision or a unit-bearing quantity."
+   "digest": "028f6f76c76e1f00fad14581f53b29fe5e59a263534334bc6b816b355d773f93",
+   "reason": "no unit behaviour: dispositioned under the CORRECTED scan: every unit stem, token, quantity name and canonical field suffix this codebase uses, matched case-insensitively with NO word boundary. The earlier word-boundary version was a floor (it called AnalyticsHelpModal.tsx clean while it renders \"Average MPG:\" to every user) and it was superseded before any disposition in this file was written. This file matched 12 of them; every hit was read in context and none is a unit decision or a unit-bearing quantity. Re-read for task 6: the two reminder distance keys were renamed off miles* to distance*; both Polish values were already unit-neutral ('Przebieg do terminu', 'Wymagany przebieg') and are unchanged."
   },
   {
    "path": "public/locales/pl/nav.json",
@@ -210,13 +214,10 @@
   {
    "path": "public/locales/pt-BR/forms.json",
    "disposition": "audited",
-   "digest": "a7e845c0cab982967f5b23be0d1a023fe28fde4f4e9d71b706d6d45c5cd27aac",
-   "reason": "re-dispositioned off 'no unit behaviour' (task 3 fix round 1 MEDIUM-2): that disposition was false. reminder.milesUntilDue ('Quilômetros até o vencimento', literally 'Kilometers until due') and reminder.milesRequired ('Quilometragem obrigatória') are both unconditional distance-unit copy, read beside units.distance's own label regardless of which unit the account actually uses; milesUntilDue additionally names the wrong unit outright.",
-   "findings": [
-    "reminder.milesUntilDue and reminder.milesRequired name a distance quantity unconditionally, independent of units.distance, and milesUntilDue's Portuguese text names kilometres specifically rather than a generic distance word."
-   ],
-   "owners": [
-    "task 6"
+   "digest": "7028289bfe07f964ef4b26103f225de8c06b5ed7d3f165c39b2644835fd039ea",
+   "reason": "re-dispositioned off 'no unit behaviour' (task 3 fix round 1 MEDIUM-2): that disposition was false. reminder.milesUntilDue ('Quilômetros até o vencimento', literally 'Kilometers until due') and reminder.milesRequired ('Quilometragem obrigatória') are both unconditional distance-unit copy, read beside units.distance's own label regardless of which unit the account actually uses; milesUntilDue additionally names the wrong unit outright. Task 6 fixed the reminder distance copy: reminder.milesUntilDue / reminder.milesRequired are renamed to reminder.distanceUntilDue / reminder.distanceRequired and their prose no longer names a unit, so the unit comes only from u.distance.label. Covered by components/__tests__/ReminderForm.distanceCopy.test.tsx, which resolves this bundle and asserts the RENDERED prose rather than a key.",
+   "tests": [
+    "components/__tests__/ReminderForm.distanceCopy.test.tsx"
    ]
   },
   {
@@ -268,13 +269,10 @@
   {
    "path": "public/locales/ru/forms.json",
    "disposition": "audited",
-   "digest": "21fa25904fabb1ea85e7e6ba22bbd3b26d63b69b0773c27cfdb9e6904177a31a",
-   "reason": "re-dispositioned off 'no unit behaviour' (task 3 fix round 1 MEDIUM-2): that disposition was false. reminder.milesUntilDue ('Миль до исполнения') and reminder.milesRequired ('Требуется пробег') are both unconditional distance-unit copy, read beside units.distance's own label regardless of which unit the account actually uses.",
-   "findings": [
-    "reminder.milesUntilDue and reminder.milesRequired name a distance quantity unconditionally, independent of units.distance."
-   ],
-   "owners": [
-    "task 6"
+   "digest": "f4b9e01cb3d22293ef05b751b26dc7f7a2b5e345c1d70bbdcf49deb6aff9de74",
+   "reason": "re-dispositioned off 'no unit behaviour' (task 3 fix round 1 MEDIUM-2): that disposition was false. reminder.milesUntilDue ('Миль до исполнения') and reminder.milesRequired ('Требуется пробег') are both unconditional distance-unit copy, read beside units.distance's own label regardless of which unit the account actually uses. Task 6 fixed the reminder distance copy: reminder.milesUntilDue / reminder.milesRequired are renamed to reminder.distanceUntilDue / reminder.distanceRequired and their prose no longer names a unit, so the unit comes only from u.distance.label. Covered by components/__tests__/ReminderForm.distanceCopy.test.tsx, which resolves this bundle and asserts the RENDERED prose rather than a key.",
+   "tests": [
+    "components/__tests__/ReminderForm.distanceCopy.test.tsx"
    ]
   },
   {
@@ -320,13 +318,10 @@
   {
    "path": "public/locales/uk/forms.json",
    "disposition": "audited",
-   "digest": "07aae315cfbe729ecda4dce06fe5ceb3c1be6c8032aad36fbd0161f3ac769bb0",
-   "reason": "re-dispositioned off 'no unit behaviour' (task 3 fix round 1 MEDIUM-2): that disposition was false. reminder.milesUntilDue ('Миль до виконання') and reminder.milesRequired ('Потрібен пробіг') are both unconditional distance-unit copy, read beside units.distance's own label regardless of which unit the account actually uses.",
-   "findings": [
-    "reminder.milesUntilDue and reminder.milesRequired name a distance quantity unconditionally, independent of units.distance."
-   ],
-   "owners": [
-    "task 6"
+   "digest": "0b54b7bf7fc6961a3f8573d082ed10bd5eba3ca77cc7a035958eca33a112ac33",
+   "reason": "re-dispositioned off 'no unit behaviour' (task 3 fix round 1 MEDIUM-2): that disposition was false. reminder.milesUntilDue ('Миль до виконання') and reminder.milesRequired ('Потрібен пробіг') are both unconditional distance-unit copy, read beside units.distance's own label regardless of which unit the account actually uses. Task 6 fixed the reminder distance copy: reminder.milesUntilDue / reminder.milesRequired are renamed to reminder.distanceUntilDue / reminder.distanceRequired and their prose no longer names a unit, so the unit comes only from u.distance.label. Covered by components/__tests__/ReminderForm.distanceCopy.test.tsx, which resolves this bundle and asserts the RENDERED prose rather than a key.",
+   "tests": [
+    "components/__tests__/ReminderForm.distanceCopy.test.tsx"
    ]
   },
   {
@@ -770,19 +765,18 @@
   {
    "path": "src/components/ReminderForm.tsx",
    "disposition": "audited",
-   "digest": "80c530a5285a1edd5bd91b77efd04ba438aa8057ba87b5c8694f258ed9ac9bca",
-   "reason": "the interval, the baseline and every target hint through useUnitFormat, with a seeded origin on the edit interval",
+   "digest": "fb21188fdca08b373d30c9ea8ecbeae121008c78de128752906e30b51f30a1ff",
+   "reason": "the interval, the baseline and every target hint through useUnitFormat, with a seeded origin on the edit interval. Task 6 renamed the label and validation keys to reminder.distanceUntilDue / reminder.distanceRequired, so the field names a distance and the unit comes only from u.distance.label.",
    "tests": [
+    "components/__tests__/ReminderForm.distanceCopy.test.tsx",
+    "components/__tests__/ReminderForm.hours.test.tsx",
     "components/__tests__/ReminderForm.mixedUnits.test.tsx",
-    "components/__tests__/ReminderForm.test.tsx",
-    "components/__tests__/ReminderForm.hours.test.tsx"
+    "components/__tests__/ReminderForm.test.tsx"
    ],
    "findings": [
-    "the mileage field this task moved onto units.distance (ReminderForm.tsx:498-506) is labelled t('reminder.milesUntilDue'), an unconditional 'Miles Until Due' string beside unit={u.distance.label}: a kilometres account reads 'Miles Until Due (km)' and a Brazilian miles account reads 'Quilômetros até o vencimento (mi)'. Copy fix owned by task 6; task 3 fix round 1 MEDIUM-2.",
     "USER-VISIBLE COPY CHANGE, SHIPPED: the mileage interval placeholder is now a single t('reminderForm.mileageExamplePlaceholder') ('e.g., 100000') for every account; an imperial account previously read 'e.g., 92000' (absolute) or 'e.g., 142965' (last-done). Task 3 fix round 1 LOW-4."
    ],
    "owners": [
-    "task 6",
     "task 9"
    ]
   },
@@ -2085,16 +2079,18 @@
   {
    "path": "src/locales/en/forms.json",
    "disposition": "audited",
-   "digest": "e32982133d8ddd598b08c4eece59523320c381f181573dc7864fb075ed5e1160",
-   "reason": "fuel.receiptTextPlaceholder is a plausible EXAMPLE receipt (ruling R5's exempt class): there is no canonical value behind it to convert.",
+   "digest": "c17d599f7d1804251e9b593d660cd4d5bbdb17ef0e3b1d782a672039d23cd6fb",
+   "reason": "fuel.receiptTextPlaceholder is a plausible EXAMPLE receipt (ruling R5's exempt class): there is no canonical value behind it to convert. Task 6 fixed the reminder distance copy: reminder.milesUntilDue / reminder.milesRequired are renamed to reminder.distanceUntilDue / reminder.distanceRequired and their prose no longer names a unit, so the unit comes only from u.distance.label. Covered by components/__tests__/ReminderForm.distanceCopy.test.tsx, which resolves this bundle and asserts the RENDERED prose rather than a key.",
    "findings": [
-    "fuel.mpgTip and fuel.electricTip name MPG and kWh/100mi unconditionally, and reminder.milesRequired says 'Miles until due' for every user.",
-    "reminder.milesUntilDue labels the interval field ReminderForm.tsx migrated onto units.distance in task 3 (t('reminder.milesUntilDue') beside unit={u.distance.label}) as 'Miles Until Due' unconditionally, same class as milesRequired above: a kilometres account reads 'Miles Until Due (km)'. Task 3 fix round 1 MEDIUM-2.",
+    "fuel.mpgTip and fuel.electricTip name MPG and kWh/100mi unconditionally.",
     "USER-VISIBLE COPY CHANGE, SHIPPED: task 3 deleted four placeholder keys (mileageAbsolutePlaceholderImperial/Metric, lastDoneMileagePlaceholderImperial/Metric) across all seven forms.json files and added reminderForm.mileageExamplePlaceholder in their place. No orphaned key and no dangling reference remain. Task 3 fix round 1 LOW-4."
    ],
    "owners": [
     "task 6",
     "task 9"
+   ],
+   "tests": [
+    "components/__tests__/ReminderForm.distanceCopy.test.tsx"
    ]
   },
   {

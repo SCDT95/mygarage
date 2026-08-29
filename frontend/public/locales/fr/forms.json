@@ -575,6 +575,8 @@
   "reminder": {
     "createTitle": "Créer un rappel",
     "created": "Rappel créé",
+    "distanceRequired": "La distance avant échéance est requise pour ce type de rappel",
+    "distanceUntilDue": "Distance avant échéance",
     "dueDate": "Date d'échéance",
     "dueDateRequired": "La date d'échéance est requise pour ce type de rappel",
     "dueHours": "Échéance (heures moteur)",
@@ -592,8 +594,6 @@
     "lastDoneMileageRequired": "Le kilométrage de la dernière intervention est requis",
     "mileageBaseline": "Référence kilométrage",
     "mileageInterval": "Intervalle d'entretien",
-    "milesRequired": "Le nombre de miles avant échéance est requis pour ce type de rappel",
-    "milesUntilDue": "Miles avant échéance",
     "noHoursData": "Aucune donnée d'heures moteur — saisissez un objectif absolu",
     "noOdometerData": "Aucune donnée d'odomètre — saisissez un kilométrage cible absolu",
     "optionalNotes": "Notes optionnelles...",

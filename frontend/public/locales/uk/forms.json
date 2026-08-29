@@ -371,6 +371,8 @@
   "reminder": {
     "createTitle": "Створити нагадування",
     "created": "Створено",
+    "distanceRequired": "Потрібен пробіг",
+    "distanceUntilDue": "Пробіг до виконання",
     "dueDate": "Дата виконання",
     "dueDateRequired": "Потрібна дата виконання",
     "dueHours": "Термін (мотогодини)",
@@ -388,8 +390,6 @@
     "lastDoneMileageRequired": "Потрібен пробіг останнього виконання",
     "mileageBaseline": "База пробігу",
     "mileageInterval": "Інтервал обслуговування",
-    "milesRequired": "Потрібен пробіг",
-    "milesUntilDue": "Миль до виконання",
     "noHoursData": "Немає даних про мотогодини — вкажіть абсолютне цільове значення",
     "noOdometerData": "Немає даних одометра",
     "optionalNotes": "Додаткові нотатки",

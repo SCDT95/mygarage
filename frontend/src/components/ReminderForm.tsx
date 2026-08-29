@@ -244,7 +244,7 @@ export default function ReminderForm({ vin, reminder, currentMileage, currentHou
     }
 
     if (needsMileageField && !mileageInterval) {
-      setError(t('reminder.milesRequired'))
+      setError(t('reminder.distanceRequired'))
       return
     }
 
@@ -503,7 +503,7 @@ export default function ReminderForm({ vin, reminder, currentMileage, currentHou
                   ? t('reminder.dueMileage')
                   : mileageFromLast
                     ? t('reminder.mileageInterval')
-                    : t('reminder.milesUntilDue')
+                    : t('reminder.distanceUntilDue')
               }
               unit={u.distance.label}
               required

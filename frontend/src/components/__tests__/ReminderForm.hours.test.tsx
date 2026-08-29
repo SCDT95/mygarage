@@ -202,7 +202,7 @@ describe('ReminderForm — smart reminders target the vehicle PRIMARY dimension 
     fireEvent.click(typeButton('reminderForm.typeSmart'))
     fireEvent.change(screen.getByLabelText('reminder.dueDate *'), { target: { value: '2026-12-01' } })
     expect(screen.getByLabelText('reminder.dueHours * (hr)')).toBeInTheDocument()
-    expect(screen.queryByLabelText(/reminder\.dueMileage|reminder\.milesUntilDue/)).not.toBeInTheDocument()
+    expect(screen.queryByLabelText(/reminder\.dueMileage|reminder\.distanceUntilDue/)).not.toBeInTheDocument()
     fireEvent.change(screen.getByLabelText('reminder.dueHours * (hr)'), { target: { value: '900' } })
     fireEvent.click(screen.getByRole('button', { name: 'common:create' }))
 

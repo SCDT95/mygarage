@@ -100,7 +100,7 @@ describe('ReminderForm — mileage follows units.distance', () => {
     fireEvent.change(field('reminder-mileage'), { target: { value: '5000' } })
 
     // The label and the hint the user reads while typing it.
-    expect(labelText('reminder-mileage')).toBe('reminder.milesUntilDue * (mi)')
+    expect(labelText('reminder-mileage')).toBe('reminder.distanceUntilDue * (mi)')
     expect(screen.getByText(/mileageTargetHint/).textContent).toBe(
       'reminderForm.mileageTargetHint current=50,000 interval=5,000 target=55,000 unit=mi'
     )
@@ -155,7 +155,7 @@ describe('ReminderForm — mileage follows units.distance', () => {
 
     await waitFor(() => expect(field('reminder-mileage')).not.toBeNull())
     expect(field('reminder-mileage').value).toBe('50001')
-    expect(labelText('reminder-mileage')).toBe('reminder.milesUntilDue * (mi)')
+    expect(labelText('reminder-mileage')).toBe('reminder.distanceUntilDue * (mi)')
 
     fireEvent.submit(reminderForm())
     await waitFor(() => expect(updateMutateAsync).toHaveBeenCalledTimes(1))
@@ -180,7 +180,7 @@ describe('ReminderForm — mileage follows units.distance', () => {
 
     await waitFor(() => expect(field('reminder-mileage')).not.toBeNull())
     expect(field('reminder-mileage').value).toBe('80468')
-    expect(labelText('reminder-mileage')).toBe('reminder.milesUntilDue * (km)')
+    expect(labelText('reminder-mileage')).toBe('reminder.distanceUntilDue * (km)')
     expect(binarySystemFor(unitPrefMock.units.volume)).toBe('imperial')
 
     fireEvent.submit(reminderForm())

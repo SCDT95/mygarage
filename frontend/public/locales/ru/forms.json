@@ -371,6 +371,8 @@
   "reminder": {
     "createTitle": "Создать напоминание",
     "created": "Создано",
+    "distanceRequired": "Требуется пробег",
+    "distanceUntilDue": "Пробег до исполнения",
     "dueDate": "Дата исполнения",
     "dueDateRequired": "Требуется дата исполнения",
     "dueHours": "Срок (моточасы)",
@@ -388,8 +390,6 @@
     "lastDoneMileageRequired": "Требуется пробег последнего выполнения",
     "mileageBaseline": "База пробега",
     "mileageInterval": "Интервал обслуживания",
-    "milesRequired": "Требуется пробег",
-    "milesUntilDue": "Миль до исполнения",
     "noHoursData": "Нет данных о моточасах — укажите абсолютное целевое значение",
     "noOdometerData": "Нет данных одометра",
     "optionalNotes": "Дополнительные заметки",

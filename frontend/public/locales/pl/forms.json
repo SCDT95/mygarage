@@ -371,6 +371,8 @@
   "reminder": {
     "createTitle": "Utwórz przypomnienie",
     "created": "Utworzono",
+    "distanceRequired": "Wymagany przebieg",
+    "distanceUntilDue": "Przebieg do terminu",
     "dueDate": "Termin (data)",
     "dueDateRequired": "Wymagany termin",
     "dueHours": "Termin (motogodziny)",
@@ -388,8 +390,6 @@
     "lastDoneMileageRequired": "Wymagany jest przebieg ostatniego wykonania",
     "mileageBaseline": "Baza przebiegu",
     "mileageInterval": "Interwał serwisowy",
-    "milesRequired": "Wymagany przebieg",
-    "milesUntilDue": "Przebieg do terminu",
     "noHoursData": "Brak danych o motogodzinach — podaj docelową wartość bezwzględną",
     "noOdometerData": "Brak danych drogomierza",
     "optionalNotes": "Opcjonalne notatki",
