@@ -13,6 +13,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - CSV import reads schema v6 per-column unit headers (`Odometer (mi)`, `Volume (gal_uk)`, `Price Per Unit (gal_us)`), taking each column's unit from the file rather than from any account preference (#152).
 - CSV export writes schema v6 per-column unit headers in the reader's own units, so a file exported by a user with custom units round-trips back to the same values (#152). One CSV is not covered: the LiveLink session export still writes `distance_km` and raw km/h speeds for everyone.
 - All-records report CSV gains a `Volume (<unit>)` column, so a fill-up's quantity is a number a spreadsheet can sum (#152).
+- Settings → System has a control for the instance-wide default unit set. It applies to signed-out visitors, to every client when authentication is disabled, and to each new account at creation. Admins see it, and so does the single user on an instance with authentication disabled.
 
 ### Changed
 - Instances set to UK gallons store their imperial users as a custom unit set. The migration itself changed no displayed value; the unit changes listed below are separate.
@@ -37,7 +38,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Vehicle Analytics PDF fuel economy now shows two decimal places for metric readers instead of one.
 - Reminder notifications now show due-mileage and due-hours with consistent decimal precision instead of echoing the stored value's raw decimals.
 - Widget `odometer` (v1 and v2) rounds the mile figure once instead of twice, which moves about one reading in 200 by a single mile. The field is still miles for every user.
-- The US/UK gallon setting now follows the instance-wide default unit set rather than the standalone gallon setting. On an instance that has run the unit-preferences migration, changing it in Settings → System applies until the next reload, which then resets the stored value to the instance default; on an instance that has not, it still works as before.
+- The standalone US/UK gallon control in Settings → System is gone. The instance-wide default unit set replaces it, and an account picks its own gallon under Custom units.
+- The `imperial_gallon_standard` setting row is kept, deliberately, as the seed and fallback the default unit set is rebuilt from if its own row is ever deleted. Nothing in the browser reads it any more.
 - Distances read to whole miles for imperial accounts everywhere the web app shows one, so an odometer that read `99,419.27 mi` now reads `99,419 mi`. It matches the entry fields, which already took whole miles. Stored values do not move, and neither does the metric reading itself; a metric account that shows both units reads its parenthesised mile figure in whole miles too.
 - Metric accounts read whole kilometres in the odometer field on the odometer and service-visit forms, so a stored `72420.5` reads `72421`. Only the reading changed: saving without touching the field posts `72420.5` back.
 - Metric fuel economy reads to two decimals, so `7.2` now reads `7.20 L/100km`, and a fuel economy of exactly zero reads `0.00 L/100km` instead of `N/A`. MPG is unchanged at one decimal, and both MPG and km/L still read `N/A` at zero, because a reciprocal unit has no finite value there.
@@ -53,6 +55,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Translation coverage regressed on purpose in six languages: 8 strings in German, 12 in French and 3 each in Polish, Brazilian Portuguese, Russian and Ukrainian now fall back to English. Each was a translation of a sentence whose meaning changed with this unit work, mostly by naming a unit the reader does not use, and a confidently wrong translation is worse than an English fallback. They are up for retranslation.
 
 ### Fixed
+- A default unit set written through the settings API is refused with HTTP 422 unless it is a complete, in-vocabulary set. It used to be accepted, and an unreadable value silently reverted every signed-out client to US imperial with nothing in the response to say so.
 - Screens, forms and lists take each quantity from its own unit, instead of from one imperial-or-metric flag collapsed out of your volume choice. An account that used litres with miles read kilometre distances, cost per 100 km, and DEF and propane consumption per 1,000 km, on the same cards whose odometer column was in miles.
 - UK-gallon accounts stored fuel, DEF and propane prices about 20% too high, and read them back with the same wrong factor so the form looked correct. Volume and price now use your own gallon (#152).
 - Anonymous visitors were shown imperial units regardless of the instance default, because the fallback was hardcoded rather than read from the configured default.

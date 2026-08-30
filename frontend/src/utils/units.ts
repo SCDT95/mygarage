@@ -57,11 +57,20 @@ export type GallonStandard = 'us' | 'uk';
  *
  * ★ That mutable gallon IS defect L1's mechanism, the instance-driven factor
  * that made a `gal_uk` user store 10 gal as 37.85 L. What survives here is the
- * INSTANCE setting's write path (`gallonStandardStore` calls
- * `setGallonStandard`) and the six methods that read the factors, all six of
- * which have zero production callers. `utils/__tests__/unitsBinaryApiSurface.test.ts`
- * enumerates them and holds the loop deleted; retiring the setting itself is
- * phase 4's, and it is the change that can take the statics with it.
+ * INSTANCE setting's write path and the six methods that read the factors, all
+ * six of which have zero production callers.
+ * `utils/__tests__/unitsBinaryApiSurface.test.ts` enumerates them and holds the
+ * loop deleted.
+ *
+ * ★ AND SINCE PHASE 4 TASK 5 THE WRITE PATH HAS NO CALLER EITHER.
+ * `utils/gallonStandardStore.ts` was the one production module that called
+ * `setGallonStandard`, and task 5 deleted it with the `imperial_gallon_standard`
+ * control it served; the instance default is the whole `default_unit_prefs` set
+ * now. So the two mutable fields below are frozen at their US initialisers for
+ * the life of the process, and the only writer left is a test arranging a
+ * flavour. That enumeration is `[]` now, and taking the statics and the six
+ * methods out with it is the follow-up, held open because doing it rewrites nine
+ * test files whose flavour lines are deliberate defect-L1 guards.
  */
 type Numeric = number | null | undefined;
 
@@ -161,9 +170,9 @@ export class UnitConverter {
    * It used to notify a `subscribeToConverterGallon` listener set so a mounted
    * component could repaint. Nothing renders off these statics since plan 3b
    * task 6b, so there is nothing to repaint and task 8 deleted the whole loop;
-   * see the note above `type Numeric`. `gallonStandardStore` is the only
-   * caller, and what it writes is read by the six methods below, none of which
-   * a production module calls.
+   * see the note above `type Numeric`. Phase 4 task 5 then deleted
+   * `gallonStandardStore`, the last production caller, so no production module
+   * calls this or the six methods below.
    */
   static setGallonStandard(standard: GallonStandard): void {
     if (standard === 'uk') {

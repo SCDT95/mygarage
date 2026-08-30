@@ -330,18 +330,28 @@ describe('the mutable gallon statics (plan 3b task 8)', () => {
     expect(exportedFunctions(UNITS)).toEqual(['detectUnitSystemFromTimezone'])
   })
 
-  it('★ leaves exactly one production caller on the factor surface, and it is the writer', () => {
+  it('★ leaves NO production caller on the factor surface at all', () => {
     // ★ DEFECT L1's MECHANISM, enumerated rather than asserted about. These are
     // the statics whose answer moves with the INSTANCE gallon setting, which is
-    // what made a `gal_uk` account store 10 gal as 37.85 L. Every one of them is
-    // dead to production except the setter, which `gallonStandardStore` calls:
-    // the instance value is still written and still read by nobody.
+    // what made a `gal_uk` account store 10 gal as 37.85 L.
     //
-    // A second name on the `live` line is a module that has started rendering
-    // off process-global state again, which is the defect rather than a style
-    // point, and it is also the day the deleted repaint loop would be needed
-    // again. Retiring `imperial_gallon_standard` is phase 4's, and it is the
-    // change that can take the factors and these methods with it.
+    // ★ THE LIST WAS `['setGallonStandard']` UNTIL PHASE 4 TASK 5, and the one
+    // caller was `utils/gallonStandardStore.ts`, which wrote these factors from
+    // the instance setting while nothing read them. Task 5 deleted that store
+    // and `hooks/useGallonStandardSync.ts` with it, so the mutable fields below
+    // now have no writer in production and the six methods that read them no
+    // caller: the whole apparatus is dead to the app and live only to the tests
+    // that still set a flavour before asserting a conversion.
+    //
+    // ★ WHICH LEAVES A STATED RESIDUAL rather than a silent one. Deleting the
+    // mutable statics and their six methods outright rewrites nine unrelated
+    // test files whose `UnitConverter.setGallonStandard('us')` lines are
+    // deliberate defect-L1 guards, so task 5 stopped at the store and recorded
+    // the emptiness here instead. `[]` is not a weaker assertion than the old
+    // one: a name reappearing on this line is a module that has started
+    // rendering off process-global state again, which is the defect rather than
+    // a style point, and it is also the day the deleted repaint loop would be
+    // needed again.
     const touchers = factorTouchers()
     expect(touchers).toEqual([
       'gallonsToLiters',
@@ -356,7 +366,7 @@ describe('the mutable gallon statics (plan 3b task 8)', () => {
     const live = [...callersByMethod(touchers, CONVERTER_CLASS)]
       .filter(([, files]) => files.length > 0)
       .map(([name]) => name)
-    expect(live).toEqual(['setGallonStandard'])
+    expect(live).toEqual([])
   })
 })
 
@@ -463,14 +473,21 @@ describe('what the units gate is silent about (plan 3b task 8, fix round 1)', ()
       // ★ Phase 4 task 4 moved the settings screen's unit block out of
       // `SettingsSystemTab.tsx` into these two files, and the count went DOWN
       // by one rather than across unchanged. Three comparisons left that file:
-      // the gallon panel's visibility, which is here on the card, and the two
+      // the gallon panel's visibility, which landed on the card, and the two
       // preset-selection comparisons, which are gone as findings entirely. The
       // tri-state control derives its highlight from `preference === candidate`,
       // an identifier against a loop variable, so there is no unit literal for
       // the gate to see and nothing left to suppress. What is on the editor is
       // the R4 warning's own `pendingPreset === 'imperial'`, which is a
       // question about which button was pressed.
-      'src/components/settings/UnitPreferencesCard.tsx::compare x1',
+      //
+      // ★ AND `UnitPreferencesCard.tsx` HAS NOW LEFT THIS LIST ENTIRELY, in
+      // task 5. Its one remaining pragma excused the gallon panel's visibility,
+      // and the panel it excused is deleted with the instance setting it wrote:
+      // `InstanceUnitDefaultsCard.tsx` writes the whole `default_unit_prefs` set
+      // instead, through the same eleven controls, and needs no comparison of a
+      // unit token to decide what to show. The count went DOWN by one again,
+      // which is the direction this list is supposed to move.
       'src/components/settings/UnitSetEditor.tsx::compare x1',
       'src/types/units.ts::token-branch x1',
       // Phase 4 task 3 MOVED this pair out of `useUnitPreference.ts`, which no

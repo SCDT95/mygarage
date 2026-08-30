@@ -108,10 +108,12 @@ describe('unitPrefsStore migration off the legacy keys', () => {
   })
 
   it('runs the migration once, so a legacy key written again cannot overwrite a later choice', async () => {
-    // ★ `useGallonStandardSync` writes `imperial_gallon_standard` from the
-    // server on every boot, for every client, so a migration guarded on a
-    // legacy key being PRESENT re-runs forever. The guard is on the new key
-    // being ABSENT.
+    // ★ `useGallonStandardSync` wrote `imperial_gallon_standard` from the
+    // server on every boot, for every client, until task 5 retired it, so a
+    // migration guarded on a legacy key being PRESENT re-ran forever. The guard
+    // is on the new key being ABSENT, which is the correct rule with or without
+    // that writer, and this case arranges the rewrite explicitly rather than
+    // relying on a hook to perform it.
     localStorage.setItem(LEGACY_SYSTEM_KEY, 'metric')
     const first = await loadStore()
     const migrated = first.getUnitPrefs()
@@ -137,10 +139,11 @@ describe('unitPrefsStore migration off the legacy keys', () => {
 
   it('does not freeze a gallon flavour the browser never chose', async () => {
     // ★ THE MIGRATION MUST NOT PERSIST. It reads `imperial_gallon_standard` at
-    // MODULE LOAD, before `useGallonStandardSync`'s /settings/public fetch has
-    // resolved, and an absent key falls back to `us`. Persisting that guess
-    // freezes it: every later path is guarded on `unit_prefs` being ABSENT, so
-    // nothing can heal the record afterwards.
+    // MODULE LOAD and an absent key falls back to `us`. Until task 5 that read
+    // raced `useGallonStandardSync`'s /settings/public fetch; since task 5
+    // nothing writes the key, so an absent one stays absent. Persisting that
+    // guess freezes it either way: every later path is guarded on `unit_prefs`
+    // being ABSENT, so nothing can heal the record afterwards.
     //
     // Reachable on a UK instance whose first post-upgrade settings fetch fails,
     // and on any instance whose admin later switches the published flavour.
@@ -238,10 +241,10 @@ describe('unitPrefsStore migration off the legacy keys', () => {
   })
 
   it('does not invent a units rung from the gallon key alone', async () => {
-    // ★ `useGallonStandardSync` writes this key for EVERY client, chosen or
-    // not, so materialising a set from it would pin every such browser to
-    // whatever it happened to say and outrank the instance default. Only
-    // `unit_preference` records an actual choice.
+    // ★ `useGallonStandardSync` wrote this key for EVERY client, chosen or not,
+    // so a browser carrying it today did not choose it, and materialising a set
+    // from it would pin that browser to whatever it happened to say and outrank
+    // the instance default. Only `unit_preference` records an actual choice.
     localStorage.setItem(LEGACY_GALLON_KEY, 'uk')
     localStorage.setItem(LEGACY_SYSTEM_KEY, 'imperial')
     const chose = await loadStore()

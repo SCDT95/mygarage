@@ -51,13 +51,8 @@
 import { useSyncExternalStore } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import type { components } from '../types/api.generated';
-import { binarySystemFor, presetUnitsFor, type UnitSet } from '../types/units';
+import { basePresetFor, binarySystemFor, presetUnitsFor, type UnitSet } from '../types/units';
 import { type GallonStandard, type UnitSystem } from '../utils/units';
-import {
-  getGallonStandard,
-  getGallonStandardServerSnapshot,
-  subscribeToGallonStandard,
-} from '../utils/gallonStandardStore';
 import {
   getUnitPrefs,
   getUnitPrefsServerSnapshot,
@@ -140,24 +135,38 @@ function systemFor(user: UnitPreferenceFields): UnitSystem {
  */
 export function useUnitPreference(): UnitPreference {
   const { user, isAuthenticated, defaultUnitPrefs } = useAuth();
-  // Subscribed, not read-and-mutated during render: changing the standard has
-  // to re-render everything that displays a volume, and a hook body must not
-  // write global state (StrictMode runs it twice).
-  const cachedGallonStandard = useSyncExternalStore(
-    subscribeToGallonStandard,
-    getGallonStandard,
-    getGallonStandardServerSnapshot,
-  );
-  // Subscribed for the same reason, and it is what makes the Settings card's
-  // own controls repaint the screen behind them: the store parses once at
+  // Subscribed rather than read during render, which is what makes the Settings
+  // card's own controls repaint the screen behind them: the store parses once at
   // module load, so a component that read localStorage during render would go
-  // on showing the value it read at mount.
+  // on showing the value it read at mount. A hook body must not write global
+  // state either, because StrictMode runs it twice.
   const storedPrefs = useSyncExternalStore(
     subscribeToUnitPrefs,
     getUnitPrefs,
     getUnitPrefsServerSnapshot,
   );
-  // ★ A SECOND SUBSCRIPTION USED TO SIT HERE AND IS GONE. It watched
+  // ★ THE CACHED INSTANCE GALLON IS GONE TOO, with `utils/gallonStandardStore.ts`
+  // and `hooks/useGallonStandardSync.ts` (phase 4 task 5). It was one BIT of
+  // instance-wide preference, persisted in `localStorage` under
+  // `imperial_gallon_standard` and reconciled from `/settings/public` on every
+  // boot, and it fed exactly the two positions below where a rung has no set of
+  // its own. `default_unit_prefs` publishes the whole set on the same payload
+  // and an admin can now write it (`components/settings/InstanceUnitDefaultsCard.tsx`),
+  // so the bit had nothing left to say that the set does not say better.
+  //
+  // ★ AND ONE THING IS LOST WITH IT, stated rather than discovered later. The
+  // cached key SURVIVED A FAILED `/settings/public`, so a UK instance whose boot
+  // fetch failed still rendered UK gallons from the previous session. Nothing
+  // caches the published set, so that client now falls to the imperial preset
+  // for the session and heals on the next successful load. That is the same
+  // degradation `parse_default_unit_prefs` applies on the server for an
+  // unreadable row, it is transient rather than the PERMANENT freeze commits
+  // a704a5b and f3b86e5 removed, and it costs nothing on rung 1, which is every
+  // authenticated client.
+  const fallbackUnits = defaultUnitPrefs ?? basePresetFor('imperial');
+  const fallbackGallon = gallonStandardFor(fallbackUnits);
+
+  // ★ ANOTHER SUBSCRIPTION USED TO SIT HERE AND IS GONE. It watched
   // `UnitConverter`'s mutable gallon statics so a mounted component repainted
   // when they moved, because every consumption and fuel-rate reader took the
   // binary `system` and read them. Plan 3b task 6b moved all thirty-one onto the
@@ -175,11 +184,11 @@ export function useUnitPreference(): UnitPreference {
       showBoth: user.show_both_units || false,
       // `resolved_units` is required by the schema, but a browser holding a
       // cached bundle against an older backend can still be handed a response
-      // without it; that client keeps the instance-wide cached value.
+      // without it; that client takes the instance-wide published default.
       gallonStandard: user.resolved_units
         ? gallonStandardFor(user.resolved_units)
-        : cachedGallonStandard,
-      units: user.resolved_units ?? presetUnitsFor(systemFor(user), cachedGallonStandard),
+        : fallbackGallon,
+      units: user.resolved_units ?? presetUnitsFor(systemFor(user), fallbackGallon),
     };
   }
 
@@ -215,7 +224,7 @@ export function useUnitPreference(): UnitPreference {
   return {
     system: 'imperial',
     showBoth: storedShowBoth,
-    gallonStandard: cachedGallonStandard,
-    units: presetUnitsFor('imperial', cachedGallonStandard),
+    gallonStandard: fallbackGallon,
+    units: fallbackUnits,
   };
 }

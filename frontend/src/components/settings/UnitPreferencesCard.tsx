@@ -26,6 +26,16 @@
  * renders makes the highlighted button the lever that repairs it. Which is why
  * nothing on the write path takes a same-value early return.
  *
+ * ★ THE INSTANCE-WIDE GALLON PANEL IS GONE (phase 4 task 5), and it is the one
+ * control that never belonged here. Every other control on this card writes THIS
+ * CLIENT's units; that panel wrote `imperial_gallon_standard`, an instance-wide
+ * settings row, from a card any user can open, so it was the only control here a
+ * non-admin could press and not save. `components/settings/InstanceUnitDefaultsCard.tsx`
+ * writes the whole `default_unit_prefs` set instead, through these same eleven
+ * controls, gated on `isAdmin || authMode === 'none'`. An account that wants a UK
+ * gallon of its own sets `secondary_gallon` (or a `gal_uk` volume) under Custom,
+ * which is where a per-account choice always belonged.
+ *
  * ★ AND WHY A SHOW-BOTH TOGGLE CAN CHANGE `unit_preference`. `PUT
  * /auth/me/units` writes eleven explicit nulls for ANY preset, so echoing a
  * stale preset tag while the account resolves to something else would destroy
@@ -43,18 +53,11 @@ import { useUnitPreference } from '@/hooks/useUnitPreference'
 import api from '@/services/api'
 import {
   basePresetFor,
-  binarySystemFor,
   presetTagFor,
   presetUnitsFor,
   type UnitPreference,
   type UnitSet,
 } from '@/types/units'
-import {
-  getGallonStandard,
-  getGallonStandardServerSnapshot,
-  setGallonStandard as applyGallonStandard,
-  subscribeToGallonStandard,
-} from '@/utils/gallonStandardStore'
 import {
   getUnitPrefs,
   getUnitPrefsServerSnapshot,
@@ -63,7 +66,6 @@ import {
   subscribeToUnitPrefs,
 } from '@/utils/unitPrefsStore'
 import { makeUnitFormat, resolvedUnitSummary } from '@/utils/unitFormat'
-import type { GallonStandard } from '@/utils/units'
 import { Toggle } from '../ui'
 import UnitSetEditor, { type UnitSetSelection } from './UnitSetEditor'
 
@@ -117,15 +119,6 @@ export default function UnitPreferencesCard(): React.ReactElement {
     getUnitPrefs,
     getUnitPrefsServerSnapshot
   )
-  // The instance-wide gallon setting, which `useGallonStandardSync` reconciles
-  // from `/settings/public` on every boot. Read from the store rather than
-  // re-fetched here: a second `/settings` request would be admin-only, which is
-  // how every non-admin used to miss this value entirely.
-  const gallonStandard = useSyncExternalStore(
-    subscribeToGallonStandard,
-    getGallonStandard,
-    getGallonStandardServerSnapshot
-  )
 
   // Optimistic overlays, so a control responds before the round trip lands.
   // Each is null while the stored value is authoritative.
@@ -133,7 +126,6 @@ export default function UnitPreferencesCard(): React.ReactElement {
   const [pendingUnits, setPendingUnits] = useState<UnitSet | null>(null)
   const [pendingShowBoth, setPendingShowBoth] = useState<boolean | null>(null)
   const [saving, setSaving] = useState(false)
-  const [gallonStandardSaving, setGallonStandardSaving] = useState(false)
 
   // The preference this client has RECORDED. An account always has one; a
   // browser has one only once it has chosen, and the store derives that one
@@ -145,10 +137,6 @@ export default function UnitPreferencesCard(): React.ReactElement {
   const preference = pendingPreference ?? storedPreference ?? presetTagFor(resolvedUnits)
   const editorUnits = pendingUnits ?? resolvedUnits
   const showBothUnits = pendingShowBoth ?? showBoth
-
-  const displaySystem = binarySystemFor(editorUnits.volume)
-  // units-exempt(compare): panel VISIBILITY. `imperial_gallon_standard` has nothing to say to a litre primary, so the panel appears only when the resolved volume collapses to imperial. R1: a choice BETWEEN units with no quantity to convert. Still needed after phase 4: the panel writes the INSTANCE-wide setting, which is not the per-account `secondary_gallon` the Custom grid above edits, and retiring it belongs to the task that owns the instance-default settings row.
-  const showsGallonPanel = displaySystem === 'imperial'
 
   // ★ The show-both example is COMPOSED from the reader's own set, not written
   // into the copy. The sentence used to read 'Display values in both imperial
@@ -230,26 +218,13 @@ export default function UnitPreferencesCard(): React.ReactElement {
     }
   }
 
-  const handleGallonStandardChange = async (standard: GallonStandard): Promise<void> => {
-    // The store owns persistence, the UnitConverter write and the re-render.
-    const previous = getGallonStandard()
-    setGallonStandardSaving(true)
-    applyGallonStandard(standard)
-    try {
-      await api.post('/settings/batch', {
-        settings: { imperial_gallon_standard: standard },
-      })
-      toast.success(t('units.gallonSaved'))
-    } catch {
-      toast.error(t('units.gallonError'))
-      applyGallonStandard(previous)
-    } finally {
-      setGallonStandardSaving(false)
-    }
-  }
-
   return (
-    <div>
+    // Labelled as a region because the settings screen now carries TWO unit
+    // editors: this one writes the CLIENT's units and
+    // `InstanceUnitDefaultsCard` writes the instance default, and their controls
+    // are deliberately identical. A reader (and a test) needs to be able to say
+    // which set of Imperial / Metric / Custom buttons it means.
+    <section aria-label={t('units.label')}>
       <UnitSetEditor
         preference={preference}
         units={editorUnits}
@@ -273,43 +248,6 @@ export default function UnitPreferencesCard(): React.ReactElement {
           {t('units.showBothDescription', { example: showBothExample })}
         </p>
       </div>
-
-      {showsGallonPanel && (
-        <div className="mt-4">
-          <label className="block text-sm font-medium text-garage-text mb-2">
-            {t('units.gallonStandard')}
-          </label>
-          <div className="flex gap-3">
-            <button
-              type="button"
-              onClick={() => void handleGallonStandardChange('us')}
-              disabled={gallonStandardSaving}
-              className={`flex-1 px-4 py-3 rounded-lg border-2 transition-all ${
-                gallonStandard === 'us'
-                  ? 'border-primary bg-primary/10 text-primary'
-                  : 'border-garage-border bg-garage-bg text-garage-text hover:border-garage-border'
-              }`}
-            >
-              {t('units.gallonUs')}
-            </button>
-            <button
-              type="button"
-              onClick={() => void handleGallonStandardChange('uk')}
-              disabled={gallonStandardSaving}
-              className={`flex-1 px-4 py-3 rounded-lg border-2 transition-all ${
-                gallonStandard === 'uk'
-                  ? 'border-primary bg-primary/10 text-primary'
-                  : 'border-garage-border bg-garage-bg text-garage-text hover:border-garage-border'
-              }`}
-            >
-              {t('units.gallonUk')}
-            </button>
-          </div>
-          <p className="mt-2 text-sm text-garage-text-muted">
-            {t('units.gallonStandardDescription')}
-          </p>
-        </div>
-      )}
-    </div>
+    </section>
   )
 }

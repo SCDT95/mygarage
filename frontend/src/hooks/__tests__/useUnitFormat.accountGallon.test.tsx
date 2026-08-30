@@ -30,25 +30,32 @@
 
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { act, render, screen } from '@testing-library/react'
-import { makeUser, UK_IMPERIAL_UNITS, type User } from '../../__tests__/factories'
+import {
+  IMPERIAL_UNITS,
+  makeUser,
+  UK_IMPERIAL_UNITS,
+  type User,
+} from '../../__tests__/factories'
+import type { UnitSet } from '../../types/units'
 
-const auth = vi.hoisted(() => ({ user: null as User | null }))
+const auth = vi.hoisted(() => ({
+  user: null as User | null,
+  defaultUnitPrefs: null as UnitSet | null,
+}))
 
 vi.mock('../../contexts/AuthContext', () => ({
   useAuth: () => ({
     user: auth.user,
     isAuthenticated: auth.user !== null,
-    defaultUnitPrefs: null,
+    defaultUnitPrefs: auth.defaultUnitPrefs,
   }),
 }))
 
-import { setGallonStandard as storeSet, getGallonStandard as storeGet } from '../../utils/gallonStandardStore'
 import { useUnitFormat } from '../useUnitFormat'
 
-/** Flip away first: the store's setter no-ops on an unchanged value. */
-function seedStore(value: 'us' | 'uk'): void {
-  storeSet(value === 'us' ? 'uk' : 'us')
-  storeSet(value)
+/** Publish an instance-wide default, the way `/settings/public` does. */
+function seedInstance(units: UnitSet): void {
+  auth.defaultUnitPrefs = units
 }
 
 /** A consumption consumer, shaped like VehicleStatisticsCard.tsx's strip. */
@@ -61,12 +68,12 @@ function EconomyBadge(): React.ReactElement {
 beforeEach(() => {
   auth.user = null
   localStorage.clear()
-  seedStore('us')
+  seedInstance(IMPERIAL_UNITS)
 })
 
 describe('a mounted consumption badge paints the account\'s own gallon', () => {
-  it('★ a mounted badge shows the ACCOUNT\'s MPG, without the browser store moving', () => {
-    seedStore('us')
+  it('★ a mounted badge shows the ACCOUNT\'s MPG, against a US-default instance', () => {
+    seedInstance(IMPERIAL_UNITS)
     auth.user = makeUser({ unit_preference: 'custom', resolved_units: UK_IMPERIAL_UNITS })
 
     render(<EconomyBadge />)
@@ -76,41 +83,41 @@ describe('a mounted consumption badge paints the account\'s own gallon', () => {
     // deleted subscription in `useUnitPreference` had to arrange.
     expect(screen.getByTestId('mpg').textContent).toBe('30.0 MPG')
 
-    // ...and the browser-owned value is untouched, which is the constraint that
-    // made a plain store write the wrong mechanism.
-    expect(storeGet()).toBe('us')
-    expect(localStorage.getItem('imperial_gallon_standard')).toBe('us')
+    // ...and the instance default is untouched by the account reading it, which
+    // is the constraint that made a plain store write the wrong mechanism.
+    expect(auth.defaultUnitPrefs).toStrictEqual(IMPERIAL_UNITS)
   })
 
-  it('a client with no account is left on the browser value, and still renders it', () => {
-    seedStore('uk')
+  it('a client with no account is left on the instance value, and still renders it', () => {
+    seedInstance(UK_IMPERIAL_UNITS)
     auth.user = null
 
     render(<EconomyBadge />)
 
     expect(screen.getByTestId('mpg').textContent).toBe('30.0 MPG')
-    expect(storeGet()).toBe('uk')
   })
 
   it('★ holds the account\'s answer when the instance value moves mid-session', () => {
-    // The admin's gallon toggle writes the store, which writes the same static;
-    // the account's answer has to win and the badge has to keep saying so. This
-    // is the leg that fails if rung 1 ever expands a preset from the cached
-    // browser gallon instead of reading `resolved_units`.
-    seedStore('uk')
+    // The admin's instance-default card rewrites `default_unit_prefs` and
+    // `refreshUser` republishes it to every mounted consumer; the account's
+    // answer has to win and the badge has to keep saying so. This is the leg
+    // that fails if rung 1 ever expands a preset from the instance fallback
+    // instead of reading `resolved_units`.
+    seedInstance(UK_IMPERIAL_UNITS)
     auth.user = makeUser({ unit_preference: 'custom', resolved_units: UK_IMPERIAL_UNITS })
 
-    render(<EconomyBadge />)
+    const { rerender } = render(<EconomyBadge />)
     expect(screen.getByTestId('mpg').textContent).toBe('30.0 MPG')
 
-    // `act` so the store's notification and the resulting render flush before
-    // the assertions; without it this asserts against a frame React has not
+    // `act` so the new context value and the resulting render flush before the
+    // assertions; without it this asserts against a frame React has not
     // produced yet.
     act(() => {
-      storeSet('us')
+      seedInstance(IMPERIAL_UNITS)
+      rerender(<EconomyBadge />)
     })
 
-    expect(storeGet()).toBe('us')
+    expect(auth.defaultUnitPrefs).toStrictEqual(IMPERIAL_UNITS)
     expect(screen.getByTestId('mpg').textContent).toBe('30.0 MPG')
   })
 })

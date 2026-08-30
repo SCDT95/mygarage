@@ -202,7 +202,11 @@ UNIT_MODULES = [
     "utils/supplyUnits",
     "utils/decimalSafe",
     "utils/unitFormat",
-    "utils/gallonStandardStore",
+    # `utils/gallonStandardStore` sat here until phase 4 task 5 deleted the
+    # module. Removed rather than kept: a name left in this list after its
+    # module is gone cannot match anything, so it does not inflate a count, but
+    # it does make the list read as an inventory of what exists when it is
+    # really an inventory of what was once looked for.
     "hooks/useUnitPreference",
     "utils/formatUtils",
 ]

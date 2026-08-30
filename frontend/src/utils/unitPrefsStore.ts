@@ -8,10 +8,10 @@
  * account holds eleven columns. The Custom controls phase 4 adds would have had
  * nowhere to persist for them.
  *
- * Modelled on `gallonStandardStore.ts`, the store idiom this codebase already
- * uses: a module-level `current`, a `Set` of listeners, and a synchronous read
- * at module load so the very first render already agrees with what is
- * persisted. Four things it does that the gallon store does not.
+ * Modelled on the retired `gallonStandardStore.ts`, the store idiom this
+ * codebase already uses: a module-level `current`, a `Set` of listeners, and a
+ * synchronous read at module load so the very first render already agrees with
+ * what is persisted. Four things it does that the gallon store did not.
  *
  * 1. PARSE ONCE AND HOLD. `useSyncExternalStore` calls `getSnapshot` on every
  *    render and throws "The result of getSnapshot should be cached" if it is
@@ -22,20 +22,25 @@
  *    (`coerceUnitSet`), mirroring `parse_default_unit_prefs` on the backend.
  *    Half a set puts the client on a silently different unit from the server.
  * 3. MIGRATE THE THREE LEGACY KEYS ONCE, guarded on THIS key being absent and
- *    never on a legacy key being present. `useGallonStandardSync` rewrites
- *    `imperial_gallon_standard` from the server on every boot for every client,
- *    so a presence-guarded migration re-runs forever and overwrites whatever
- *    the user chose after it first ran.
+ *    never on a legacy key being present. Until phase 4 task 5,
+ *    `useGallonStandardSync` rewrote `imperial_gallon_standard` from the server
+ *    on every boot for every client, so a presence-guarded migration re-ran
+ *    forever and overwrote whatever the user chose after it first ran. That
+ *    writer is gone and all three keys are write-once history now, which makes
+ *    a presence guard merely wrong rather than catastrophic; the absence guard
+ *    is the correct rule either way and does not move.
  * 4. LISTEN FOR `storage`, in the keyless-tolerant form `onStorage` explains.
  *
  * ★ WHY MIGRATION LOOKS AT `unit_preference` AND NOT AT THE OTHER TWO.
  * `unit_preference` is the only one of the three legacy keys that records a
  * user's actual choice of units; the other two are modifiers on it.
- * `imperial_gallon_standard` in particular is written for EVERY client on every
- * boot, chosen or not, so materialising a full set because that key exists
- * would invent an explicit browser preference that outranks the instance
- * default (`useUnitPreference` rung 2 over rung 3) and pin every such browser
- * to whatever the gallon key happened to say.
+ * `imperial_gallon_standard` in particular was written for EVERY client on
+ * every boot, chosen or not (until task 5 retired the writer), so materialising
+ * a full set because that key exists would invent an explicit browser
+ * preference that outranks the instance default (`useUnitPreference` rung 2
+ * over rung 3) and pin every such browser to whatever the gallon key happened
+ * to say. Every browser that carries the key today acquired it that way, so the
+ * rule survives its writer.
  *
  * ★ BUT A MODIFIER IS STILL A CHOICE. `show_both_units` is separately settable
  * today by a client with no account, and a browser that set only that has made
@@ -45,9 +50,11 @@
  * independently; one key won because both halves are then written atomically,
  * arrive together across tabs, and give phase 4's card a single thing to write.
  *
- * ★ THE LEGACY KEYS ARE NOT DELETED after migrating. `useGallonStandardSync`
- * still writes one of them until task 5, and a delete here would race that
- * write rather than tidy up after it.
+ * ★ THE LEGACY KEYS ARE NOT DELETED after migrating. Nothing writes any of them
+ * since task 5 retired `useGallonStandardSync`, so there is no write left to
+ * race; what remains is that a delete buys nothing this store's own absence
+ * guard does not already give it, and it would destroy the only record of a
+ * pre-upgrade browser's choice if this store's key were ever cleared.
  */
 
 import {
@@ -260,12 +267,12 @@ function coerceStored(value: unknown): StoredUnitPrefs | null {
  * Fold the three legacy keys into one record for this session.
  *
  * ★ DELIBERATELY DOES NOT PERSIST, and that is the whole point of this
- * function's shape. It reads `imperial_gallon_standard` at MODULE LOAD, which
- * happens before `useGallonStandardSync`'s `/settings/public` fetch resolves,
- * and an absent key falls back to `us`. Persisting that guess would freeze it:
- * every later path is guarded on `unit_prefs` being ABSENT, and
- * `setGallonStandard` notifies only its own listeners, so nothing could ever
- * heal the record.
+ * function's shape. It reads `imperial_gallon_standard` at MODULE LOAD and an
+ * absent key falls back to `us`. Until phase 4 task 5 that read raced
+ * `useGallonStandardSync`'s `/settings/public` fetch; since task 5 nothing
+ * writes the key at all, so an absent one stays absent. Persisting that guess
+ * would freeze it either way: every later path is guarded on `unit_prefs` being
+ * ABSENT, so nothing could ever heal the record.
  *
  * Two reachable paths, both silent and both permanent. A UK instance whose
  * first post-upgrade settings fetch fails (the key is never written on US

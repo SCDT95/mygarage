@@ -22,7 +22,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen, waitFor } from '@testing-library/react'
 import { makeUser } from '@/__tests__/factories'
-import { setGallonStandard } from '@/utils/gallonStandardStore'
 import { AuthProvider, useAuth } from '../AuthContext'
 import { useUnitPreference } from '@/hooks/useUnitPreference'
 
@@ -107,9 +106,11 @@ function mountWithPublicSettings(settings: Array<{ key: string; value?: string |
 describe('AuthContext default_unit_prefs', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    // The gallon store is a module singleton that carries across tests. Pin it
-    // to 'us' so a 'uk' answer below can only have come from the payload.
-    setGallonStandard('us')
+    // ★ A pin on the gallon store used to sit here, so a 'uk' answer below could
+    // only have come from the payload. Phase 4 task 5 retired that store; the
+    // `localStorage.clear()` below now covers the same ground, because the only
+    // surviving reader of `imperial_gallon_standard` is the browser store's
+    // one-shot legacy migration.
     localStorage.clear()
     sessionStorage.clear()
     reloadBrowserPrefs()

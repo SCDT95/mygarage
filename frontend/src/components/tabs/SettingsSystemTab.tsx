@@ -12,6 +12,7 @@ import { SUPPORTED_LANGUAGES, SUPPORTED_CURRENCIES, languageToLocale } from '@/c
 import OIDCModal from '@/components/modals/OIDCModal'
 import FamilyManagementModal from '@/components/modals/FamilyManagementModal'
 import ArchivedVehiclesList from '@/components/ArchivedVehiclesList'
+import InstanceUnitDefaultsCard from '@/components/settings/InstanceUnitDefaultsCard'
 import UnitPreferencesCard from '@/components/settings/UnitPreferencesCard'
 import { Select, Toggle } from '../ui'
 
@@ -554,8 +555,11 @@ export default function SettingsSystemTab() {
           </div>
         </div>
 
-        {/* Unit System Setting */}
+        {/* Unit System Setting: this client's own units, then the instance
+            default an admin sets for everyone who has not chosen. */}
         <UnitPreferencesCard />
+
+        <InstanceUnitDefaultsCard />
 
         <div>
           <label className="block text-sm font-medium text-garage-text mb-2">

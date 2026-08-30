@@ -32,23 +32,34 @@
  * would assert a sentence no user can get. Every other key echoes, matching the
  * global mock.
  *
- * ★ EVERY CASE ASSERTS THE SENTENCE AND THE PANEL TOGETHER, in one
- * `toStrictEqual`. Two reasons. `expect(await findByText(x)).toBeInTheDocument()`
- * cannot fail: `findByText` already threw if it was absent, so the `expect` is
- * decoration. And the card's own claim is that the panel and the sentence are
- * derived from ONE expression, so a case that reads only one of them leaves
- * that claim undefended.
+ * ★ THE GALLON PANEL HALF OF EVERY CASE IS GONE, and it did not lapse quietly.
+ * Each case used to assert the sentence and the panel's visibility together in
+ * one `toStrictEqual`, because the card derived both from ONE expression and a
+ * case reading only one of them left that claim undefended. Phase 4 task 5
+ * deleted the panel with the `imperial_gallon_standard` control it wrote:
+ * `components/settings/InstanceUnitDefaultsCard.tsx` writes the whole
+ * `default_unit_prefs` set instead, through the same eleven controls, so there
+ * is no second expression left to agree with. What survives is the sentence,
+ * read through `readCard` so a case still cannot pass on a `findByText` that
+ * already threw.
+ *
+ * ★ AND THE TAB NOW CARRIES TWO UNIT EDITORS, which is why every query below is
+ * scoped to a region. `UnitPreferencesCard` writes THIS CLIENT's units and
+ * `InstanceUnitDefaultsCard` writes the instance default; their controls are
+ * deliberately identical, so an unscoped `getByText('units.metric')` matches
+ * both and throws. The mock below reports `isAdmin: true`, so the second card
+ * is on screen for every case here.
  *
  * The tri-state control and the eleven Custom selects moved out to
  * `components/settings/UnitPreferencesCard.tsx` in phase 4 task 4, along with
- * the show-both toggle and the gallon panel. This file still mounts the whole
- * tab, so every case below exercises the card exactly as a user reaches it; the
- * card's own write paths are covered in
+ * the show-both toggle. This file still mounts the whole tab, so every case
+ * below exercises the card exactly as a user reaches it; the card's own write
+ * paths are covered in
  * `components/settings/__tests__/UnitPreferencesCard.test.tsx`.
  */
 import { useEffect } from 'react'
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { render, screen, waitFor } from '@testing-library/react'
+import { render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { SettingsProvider, useSettings } from '@/contexts/SettingsContext'
 import {
@@ -148,19 +159,20 @@ function renderTab(): void {
   )
 }
 
-/** What the Units card says, and whether the gallon sub-panel is on screen. */
+/** What the Units card says about the units this client renders. */
 interface UnitsCard {
   description: string
-  gallonPanel: boolean
+}
+
+/** The account card's own region, never the instance-default card's. */
+function accountCard(): HTMLElement {
+  return screen.getByRole('region', { name: 'units.label' })
 }
 
 /** Read the card back once it has settled. */
 async function readCard(): Promise<UnitsCard> {
   const paragraph = await screen.findByText(/^Using these units: /)
-  return {
-    description: paragraph.textContent ?? '',
-    gallonPanel: screen.queryByText('units.gallonStandard') !== null,
-  }
+  return { description: paragraph.textContent ?? '' }
 }
 
 /** Mount as `user` and read the Units card back. */
@@ -194,28 +206,28 @@ describe('SettingsSystemTab — the Units card reads the resolved set', () => {
     const card = await cardFor(
       makeUser({ unit_preference: 'custom', resolved_units: UK_IMPERIAL_UNITS }),
     )
-    expect(card).toStrictEqual({ description: IMPERIAL_TEXT, gallonPanel: true })
+    expect(card).toStrictEqual({ description: IMPERIAL_TEXT })
   })
 
   it('hides the gallon panel for a custom user resolving to litres', async () => {
     const card = await cardFor(
       makeUser({ unit_preference: 'custom', resolved_units: METRIC_UNITS }),
     )
-    expect(card).toStrictEqual({ description: METRIC_TEXT, gallonPanel: false })
+    expect(card).toStrictEqual({ description: METRIC_TEXT })
   })
 
   it('describes a preset imperial account in the units it renders', async () => {
     const card = await cardFor(
       makeUser({ unit_preference: 'imperial', resolved_units: IMPERIAL_UNITS }),
     )
-    expect(card).toStrictEqual({ description: IMPERIAL_TEXT, gallonPanel: true })
+    expect(card).toStrictEqual({ description: IMPERIAL_TEXT })
   })
 
   it('describes a preset metric account with kPa, which the retired copy called bar', async () => {
     const card = await cardFor(
       makeUser({ unit_preference: 'metric', resolved_units: METRIC_UNITS }),
     )
-    expect(card).toStrictEqual({ description: METRIC_TEXT, gallonPanel: false })
+    expect(card).toStrictEqual({ description: METRIC_TEXT })
   })
 
   it('names miles and PSI for the litres-and-miles account R1 describes', async () => {
@@ -223,19 +235,13 @@ describe('SettingsSystemTab — the Units card reads the resolved set', () => {
     // retired copy told this reader "kilometers ... bar".
     const units: UnitSet = { ...METRIC_UNITS, distance: 'mi', pressure: 'psi' }
     const card = await cardFor(makeUser({ unit_preference: 'custom', resolved_units: units }))
-    expect(card).toStrictEqual({
-      description: 'Using these units: mi, km/h, m, L, L/100km, PSI, °C, kg, Nm, mm',
-      gallonPanel: false,
-    })
+    expect(card).toStrictEqual({ description: 'Using these units: mi, km/h, m, L, L/100km, PSI, °C, kg, Nm, mm' })
   })
 
   it('names Celsius, Nm and mm for an otherwise imperial account', async () => {
     const units: UnitSet = { ...IMPERIAL_UNITS, temperature: 'c', torque: 'nm', tread: 'mm' }
     const card = await cardFor(makeUser({ unit_preference: 'custom', resolved_units: units }))
-    expect(card).toStrictEqual({
-      description: 'Using these units: mi, mph, ft, gal, MPG, PSI, °C, lb, Nm, mm',
-      gallonPanel: true,
-    })
+    expect(card).toStrictEqual({ description: 'Using these units: mi, mph, ft, gal, MPG, PSI, °C, lb, Nm, mm' })
   })
 
   it('names km/L and bar, which neither retired sentence could say', async () => {
@@ -250,10 +256,7 @@ describe('SettingsSystemTab — the Units card reads the resolved set', () => {
       mass: 'lb',
     }
     const card = await cardFor(makeUser({ unit_preference: 'custom', resolved_units: units }))
-    expect(card).toStrictEqual({
-      description: 'Using these units: km, mph, m, L, km/L, bar, °C, lb, Nm, mm',
-      gallonPanel: false,
-    })
+    expect(card).toStrictEqual({ description: 'Using these units: km, mph, m, L, km/L, bar, °C, lb, Nm, mm' })
   })
 })
 
@@ -284,7 +287,7 @@ describe('SettingsSystemTab — D3: an override column beats the preset', () => 
     const card = await cardFor(
       makeUser({ unit_preference: 'metric', resolved_units: UK_IMPERIAL_UNITS }),
     )
-    expect(card).toStrictEqual({ description: IMPERIAL_TEXT, gallonPanel: true })
+    expect(card).toStrictEqual({ description: IMPERIAL_TEXT })
   })
 
   it('renders litres for an IMPERIAL-preset account whose overrides are metric', async () => {
@@ -293,7 +296,7 @@ describe('SettingsSystemTab — D3: an override column beats the preset', () => 
     const card = await cardFor(
       makeUser({ unit_preference: 'imperial', resolved_units: METRIC_UNITS }),
     )
-    expect(card).toStrictEqual({ description: METRIC_TEXT, gallonPanel: false })
+    expect(card).toStrictEqual({ description: METRIC_TEXT })
   })
 
   it('does not repaint the card for a preset click the account still overrides', async () => {
@@ -314,7 +317,7 @@ describe('SettingsSystemTab — D3: an override column beats the preset', () => 
     renderTab()
     await screen.findByText(/^Using these units: /)
 
-    await userEvent.click(screen.getByText('units.metric'))
+    await userEvent.click(within(accountCard()).getByText('units.metric'))
     // The confirmation precedes the write. Asserted here, not assumed: without
     // it this test would pass against a card that writes on the first click.
     expect(mockedApi.put).not.toHaveBeenCalled()
@@ -324,10 +327,7 @@ describe('SettingsSystemTab — D3: an override column beats the preset', () => 
       expect(mockedApi.put).toHaveBeenCalledWith('/auth/me/units', { unit_preference: 'metric' }),
     )
 
-    expect(await readCard()).toStrictEqual({
-      description: IMPERIAL_TEXT,
-      gallonPanel: true,
-    })
+    expect(await readCard()).toStrictEqual({ description: IMPERIAL_TEXT })
   })
 })
 

@@ -9,8 +9,9 @@
  * through the same wrong factor so nothing on screen disagreed.
  *
  * Substituting the dynamic `UnitConverter.gallonsToLiters` would NOT have been
- * the fix: its flavour comes from the instance-wide gallon setting
- * (`useGallonStandardSync`), while phase 1 gave each account its own
+ * the fix: its flavour came from the instance-wide gallon setting (which phase
+ * 4 task 5 retired, leaving these statics writable only from a test), while
+ * phase 1 gave each account its own
  * `resolved_units`. Every test below that names a gallon therefore pins the
  * INSTANCE standard to `us` first, so a helper still reading the global cannot
  * pass a `gal_uk` case.
@@ -75,8 +76,8 @@ const enteredPrice = (
   canonicalFromPriceField(String(typed ?? ''), unseededPrice(basis ?? null), units, basis)
 
 beforeEach(() => {
-  // The instance-wide flavour, as `useGallonStandardSync` would leave it on a
-  // US-default install. Nothing here may consult it.
+  // The instance-wide flavour, as the retired `useGallonStandardSync` would
+  // have left it on a US-default install. Nothing here may consult it.
   UnitConverter.setGallonStandard('us')
 })
 
