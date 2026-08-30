@@ -16,6 +16,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - All-records report CSV gains a `Volume (<unit>)` column, so a fill-up's quantity is a number a spreadsheet can sum (#152).
 - Settings → System has a control for the instance-wide default unit set. It applies to signed-out visitors, to every client when authentication is disabled, and to each new account at creation. Admins see it, and so does the single user on an instance with authentication disabled.
 - The unit settings are translated into German, French, Polish, Brazilian Portuguese, Russian and Ukrainian (47 strings each). Unit symbols stay as they are in every language; only the names around them are translated. Machine-drafted and not yet read by a speaker, so corrections are welcome.
+- Tyre readings accept a pressure on its own. Tread depth was required while the odometer was optional, so anyone tracking a slow leak without a tread gauge could not log a reading at all (#152). A reading still needs at least one of tread or pressure, and one that carries no tread now leaves the tyre's recorded tread alone instead of erasing it.
 
 ### Changed
 - **BREAKING (API):** `unit_preference` is no longer accepted by `PUT /auth/me` or `PUT /auth/users/{id}`. A self-update carrying it is rejected with HTTP 422 and an admin update carrying it is ignored; units are written through `PUT /auth/me/units`, which sets or clears all eleven per-quantity units in one request, so a script or integration that set units through a profile update needs changing.
@@ -58,6 +59,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Translation coverage regressed on purpose in six languages: 8 strings in German, 12 in French and 3 each in Polish, Brazilian Portuguese, Russian and Ukrainian now fall back to English. Each was a translation of a sentence whose meaning changed with this unit work, mostly by naming a unit the reader does not use, and a confidently wrong translation is worse than an English fallback. They are up for retranslation.
 
 ### Fixed
+
+- Clearing a tyre's tread depth no longer marks a pending "Tire tread low" reminder as done. The check read a missing tread as a healthy one, so blanking the field in the tyre editor dismissed a live warning that the tyre was worn out. An unknown tread now leaves the reminder pending, and only a measured tread above the threshold completes it.
 - A default unit set written through the settings API is refused with HTTP 422 unless it is a complete, in-vocabulary set. It used to be accepted, and an unreadable value silently reverted every signed-out client to US imperial with nothing in the response to say so.
 - Screens, forms and lists take each quantity from its own unit, instead of from one imperial-or-metric flag collapsed out of your volume choice. An account that used litres with miles read kilometre distances, cost per 100 km, and DEF and propane consumption per 1,000 km, on the same cards whose odometer column was in miles.
 - UK-gallon accounts stored fuel, DEF and propane prices about 20% too high, and read them back with the same wrong factor so the form looked correct. Volume and price now use your own gallon (#152).
