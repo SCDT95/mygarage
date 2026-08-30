@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [3.2.0] - 2026-08-30
+
 ### Added
 - Settings → System has a Custom unit system, with its own control for distance, speed, length, volume, fuel economy, pressure, temperature, mass, torque, tyre tread depth and the gallon your MPG is measured in, so an account can read litres with miles and tyre pressure in PSI (migration 093, #152, #153). The gallon control is offered whatever your volume unit is, because MPG names a gallon even when you fill up in litres.
 - The unit controls write to your account when you have one, and to this browser when you do not, so a signed-out visitor and an instance with authentication disabled can hold a full custom set rather than only Imperial or Metric.
