@@ -11,6 +11,7 @@ from sqlalchemy import delete, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import settings
+from app.constants.units import UNIT_COLUMN_NAMES, field_to_column
 from app.database import get_db
 from app.models.csrf_token import CSRFToken
 from app.models.settings import Setting
@@ -21,6 +22,7 @@ from app.schemas.user import (
     AdminUserUpdate,
     LoginRequest,
     Token,
+    UnitPreferenceUpdate,
     UserCreate,
     UserPasswordUpdate,
     UserResponse,
@@ -358,6 +360,49 @@ async def update_current_user(
     await db.refresh(current_user)
 
     logger.info("User updated their profile: %s", sanitize_for_log(current_user.username))
+
+    return current_user
+
+
+@router.put("/me/units", response_model=UserResponse)
+async def update_current_user_units(
+    payload: UnitPreferenceUpdate,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Set the current user's units, clearing or materialising every override.
+
+    Spec D3: a preset clears all eleven override columns, because
+    `resolve_units` is "preset base, overrides on top" and a surviving override
+    would mask the preset the user just chose. Custom materialises all eleven,
+    so nothing resolves from the base.
+
+    The column set is derived from `UNIT_COLUMN_NAMES`, never hand-written: a
+    twelfth quantity added to `UnitSet` must not silently escape the clear.
+    """
+    if payload.units is not None:
+        columns = {
+            field_to_column(field): value for field, value in payload.units.model_dump().items()
+        }
+    else:
+        columns = dict.fromkeys(UNIT_COLUMN_NAMES, None)
+
+    for column, value in columns.items():
+        setattr(current_user, column, value)
+    current_user.unit_preference = payload.unit_preference
+
+    if payload.show_both_units is not None:
+        current_user.show_both_units = payload.show_both_units
+
+    current_user.updated_at = utc_now()
+    await db.commit()
+    await db.refresh(current_user)
+
+    logger.info(
+        "User set unit preference to %s: %s",
+        sanitize_for_log(payload.unit_preference),
+        sanitize_for_log(current_user.username),
+    )
 
     return current_user
 

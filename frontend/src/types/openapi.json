@@ -17915,6 +17915,47 @@
         "title": "TripSummary",
         "type": "object"
       },
+      "UnitPreferenceUpdate": {
+        "additionalProperties": false,
+        "description": "Schema for the dedicated unit-preference mutation (spec D9b).\n\n`PUT /auth/me` guards every field with `if ... is not None`, so it cannot\nexpress \"clear this column\". D3 requires that selecting a preset writes\neleven explicit nulls, which is why unit preferences do not ride the\ngeneric profile route.\n\nThe `units` field is required for `custom` and forbidden otherwise. A\npartial custom would leave some columns resolving from the base preset,\nwhich is the masking this phase exists to remove; a preset carrying a set\nwould make the request's intent unknowable.",
+        "properties": {
+          "show_both_units": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Show Both Units"
+          },
+          "unit_preference": {
+            "enum": [
+              "imperial",
+              "metric",
+              "custom"
+            ],
+            "title": "Unit Preference",
+            "type": "string"
+          },
+          "units": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/UnitSet"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "unit_preference"
+        ],
+        "title": "UnitPreferenceUpdate",
+        "type": "object"
+      },
       "UnitSet": {
         "additionalProperties": false,
         "description": "A fully resolved set of unit choices. Every field is required.\n\nFrozen: a module-level preset that could be mutated in place would be\nprocess-global state, which is what phase 0 removed from the converter.\n\nextra=\"forbid\": a stored default unit set carrying an unknown key means the\nwriter and the reader disagree about the shape, and Pydantic's default of\nsilently ignoring extras would hide that until something formatted a number\nwrongly. `default_unit_prefs` parsing depends on this.\n\nOBLIGATION: adding or removing a field must ship alongside a migration that\nrewrites every stored `default_unit_prefs` row, which holds a full dump of\nthis model and stops validating the moment the arity changes. See\n`app.utils.default_unit_prefs.parse_default_unit_prefs` for what that\nsilently costs a UK instance, and\n`test_unit_set_shape_matches_what_stored_default_unit_prefs_rows_carry`,\nwhich fails until the migration lands.",
@@ -25833,6 +25874,53 @@
           }
         ],
         "summary": "Update Password",
+        "tags": [
+          "Authentication"
+        ]
+      }
+    },
+    "/api/auth/me/units": {
+      "put": {
+        "description": "Set the current user's units, clearing or materialising every override.\n\nSpec D3: a preset clears all eleven override columns, because\n`resolve_units` is \"preset base, overrides on top\" and a surviving override\nwould mask the preset the user just chose. Custom materialises all eleven,\nso nothing resolves from the base.\n\nThe column set is derived from `UNIT_COLUMN_NAMES`, never hand-written: a\ntwelfth quantity added to `UnitSet` must not silently escape the clear.",
+        "operationId": "update_current_user_units_api_auth_me_units_put",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UnitPreferenceUpdate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UserResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Update Current User Units",
         "tags": [
           "Authentication"
         ]

@@ -203,6 +203,37 @@ class UserSelfUpdate(BaseModel):
         return v
 
 
+class UnitPreferenceUpdate(BaseModel):
+    """Schema for the dedicated unit-preference mutation (spec D9b).
+
+    `PUT /auth/me` guards every field with `if ... is not None`, so it cannot
+    express "clear this column". D3 requires that selecting a preset writes
+    eleven explicit nulls, which is why unit preferences do not ride the
+    generic profile route.
+
+    The `units` field is required for `custom` and forbidden otherwise. A
+    partial custom would leave some columns resolving from the base preset,
+    which is the masking this phase exists to remove; a preset carrying a set
+    would make the request's intent unknowable.
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    unit_preference: UnitPreference
+    units: UnitSet | None = None
+    show_both_units: bool | None = None
+
+    @model_validator(mode="after")
+    def units_present_exactly_when_custom(self) -> UnitPreferenceUpdate:
+        """Enforce D3's all-eleven-or-none rule."""
+        is_custom = self.unit_preference == "custom"
+        if is_custom and self.units is None:
+            raise ValueError("unit_preference 'custom' requires a full units set")
+        if not is_custom and self.units is not None:
+            raise ValueError("units may only accompany unit_preference 'custom'")
+        return self
+
+
 class AdminUserUpdate(BaseModel):
     """Schema for admin updating any user. Includes privileged fields."""
 

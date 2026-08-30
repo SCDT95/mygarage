@@ -380,6 +380,34 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/auth/me/units": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * Update Current User Units
+         * @description Set the current user's units, clearing or materialising every override.
+         *
+         *     Spec D3: a preset clears all eleven override columns, because
+         *     `resolve_units` is "preset base, overrides on top" and a surviving override
+         *     would mask the preset the user just chose. Custom materialises all eleven,
+         *     so nothing resolves from the base.
+         *
+         *     The column set is derived from `UNIT_COLUMN_NAMES`, never hand-written: a
+         *     twelfth quantity added to `UnitSet` must not silently escape the clear.
+         */
+        put: operations["update_current_user_units_api_auth_me_units_put"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/auth/me/widget-keys": {
         parameters: {
             query?: never;
@@ -14086,6 +14114,30 @@ export interface components {
             started_at: string;
         };
         /**
+         * UnitPreferenceUpdate
+         * @description Schema for the dedicated unit-preference mutation (spec D9b).
+         *
+         *     `PUT /auth/me` guards every field with `if ... is not None`, so it cannot
+         *     express "clear this column". D3 requires that selecting a preset writes
+         *     eleven explicit nulls, which is why unit preferences do not ride the
+         *     generic profile route.
+         *
+         *     The `units` field is required for `custom` and forbidden otherwise. A
+         *     partial custom would leave some columns resolving from the base preset,
+         *     which is the masking this phase exists to remove; a preset carrying a set
+         *     would make the request's intent unknowable.
+         */
+        UnitPreferenceUpdate: {
+            /** Show Both Units */
+            show_both_units?: boolean | null;
+            /**
+             * Unit Preference
+             * @enum {string}
+             */
+            unit_preference: "imperial" | "metric" | "custom";
+            units?: components["schemas"]["UnitSet"] | null;
+        };
+        /**
          * UnitSet
          * @description A fully resolved set of unit choices. Every field is required.
          *
@@ -17242,6 +17294,39 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    update_current_user_units_api_auth_me_units_put: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UnitPreferenceUpdate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UserResponse"];
+                };
             };
             /** @description Validation Error */
             422: {
