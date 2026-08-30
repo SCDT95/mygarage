@@ -10,7 +10,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [3.2.0] - 2026-08-30
 
 ### Added
-- Settings → System has a Custom unit system, with its own control for distance, speed, length, volume, fuel economy, pressure, temperature, mass, torque, tyre tread depth and the gallon your MPG is measured in, so an account can read litres with miles and tyre pressure in PSI (migration 093, #152, #153). The gallon control is offered whatever your volume unit is, because MPG names a gallon even when you fill up in litres.
+- Settings → System has a Custom unit system, with its own control for distance, speed, length, volume, fuel economy, pressure, temperature, mass, torque, tire tread depth and the gallon your MPG is measured in, so an account can read litres with miles and tire pressure in PSI (migration 093, #152, #153). The gallon control is offered whatever your volume unit is, because MPG names a gallon even when you fill up in litres.
 - The unit controls write to your account when you have one, and to this browser when you do not, so a signed-out visitor and an instance with authentication disabled can hold a full custom set rather than only Imperial or Metric.
 - Instance-wide default unit set for anonymous clients and new accounts.
 - CSV import reads schema v6 per-column unit headers (`Odometer (mi)`, `Volume (gal_uk)`, `Price Per Unit (gal_us)`), taking each column's unit from the file rather than from any account preference (#152).
@@ -18,17 +18,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - All-records report CSV gains a `Volume (<unit>)` column, so a fill-up's quantity is a number a spreadsheet can sum (#152).
 - Settings → System has a control for the instance-wide default unit set. It applies to signed-out visitors, to every client when authentication is disabled, and to each new account at creation. Admins see it, and so does the single user on an instance with authentication disabled.
 - The unit settings are translated into German, French, Polish, Brazilian Portuguese, Russian and Ukrainian (47 strings each). Unit symbols stay as they are in every language; only the names around them are translated. Machine-drafted and not yet read by a speaker, so corrections are welcome.
-- Tyre readings accept a pressure on its own. Tread depth was required while the odometer was optional, so anyone tracking a slow leak without a tread gauge could not log a reading at all (#152). A reading still needs at least one of tread or pressure, and one that carries no tread now leaves the tyre's recorded tread alone instead of erasing it.
-- Clicking a tyre card shows its logged readings: tread, pressure and odometer for every reading, in your own units (#152). They were recorded and sent to the browser already, and nothing displayed them.
+- Tire readings accept a pressure on its own. Tread depth was required while the odometer was optional, so anyone tracking a slow leak without a tread gauge could not log a reading at all (#152). A reading still needs at least one of tread or pressure, and one that carries no tread now leaves the tire's recorded tread alone instead of erasing it.
+- Clicking a tire card shows its logged readings: tread, pressure and odometer for every reading, in your own units (#152). They were recorded and sent to the browser already, and nothing displayed them.
 
 ### Changed
 - **BREAKING (API):** `unit_preference` is no longer accepted by `PUT /auth/me` or `PUT /auth/users/{id}`. A self-update carrying it is rejected with HTTP 422 and an admin update carrying it is ignored; units are written through `PUT /auth/me/units`, which sets or clears all eleven per-quantity units in one request, so a script or integration that set units through a profile update needs changing.
 - Instances set to UK gallons store their imperial users as a custom unit set. The migration itself changed no displayed value; the unit changes listed below are separate.
-- Tyre tread now displays and is entered in the unit you use: thirty-seconds of an inch for imperial accounts, millimetres for metric. It was millimetres for everyone, and no conversion existed.
-- Metric tyre pressure now reads in kPa on the tyre card, matching the form beside it, which already used kPa.
+- Tire tread now displays and is entered in the unit you use: thirty-seconds of an inch for imperial accounts, millimetres for metric. It was millimetres for everyone, and no conversion existed.
+- Metric tire pressure now reads in kPa on the tire card, matching the form beside it, which already used kPa.
 - The odometer field on the fuel and DEF forms now reads and is entered in whole miles or kilometres. No stored reading moves: opening a record and saving it without touching that field posts the value back exactly as it was stored.
 - UK-gallon accounts will see existing fuel prices read back about 20% higher than before: a price entered as 6.000/gal now reads 7.206/gal. Only accounts on instances set to UK gallons are affected. If a record was entered while this instance was already set to UK gallons, its stored price is about 20% too high and re-entering the price you actually paid corrects it. If it was entered while the instance used US gallons, the stored price is right and the new reading is right; leave it alone.
-- The tyre wear projection reads in whole units. Metric readers see no change.
+- The tire wear projection reads in whole units. Metric readers see no change.
 - Engine RPM now reads `3,200` everywhere, instead of `3200` on the widget and `3,200` on the session tile.
 - LiveLink session distance is shown as a plain number marked `(unknown unit)`. The device reports it without saying whether it is miles or kilometres, so the previous label was a guess. Nothing about the stored data changed.
 - Fuel and DEF CSV column headers change spelling for everyone, metric readers included: `Liters` is now `Volume (L)`, `Price Per Liter` is `Price Per Unit (L)`, `Outside Temp (C)` is `Outside Temp (c)`, `OBC L/100km` is `OBC Economy (l_100km)`, and `OBC Avg Speed (km/h)` is `OBC Avg Speed (kmh)`. A spreadsheet or script that reads these files by column name needs updating. Every older file still imports unchanged.
@@ -63,7 +63,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
-- Clearing a tyre's tread depth no longer marks a pending "Tire tread low" reminder as done. The check read a missing tread as a healthy one, so blanking the field in the tyre editor dismissed a live warning that the tyre was worn out. An unknown tread now leaves the reminder pending, and only a measured tread above the threshold completes it.
+- Clearing a tire's tread depth no longer marks a pending "Tire tread low" reminder as done. The check read a missing tread as a healthy one, so blanking the field in the tire editor dismissed a live warning that the tire was worn out. An unknown tread now leaves the reminder pending, and only a measured tread above the threshold completes it.
 - A default unit set written through the settings API is refused with HTTP 422 unless it is a complete, in-vocabulary set. It used to be accepted, and an unreadable value silently reverted every signed-out client to US imperial with nothing in the response to say so.
 - Screens, forms and lists take each quantity from its own unit, instead of from one imperial-or-metric flag collapsed out of your volume choice. An account that used litres with miles read kilometre distances, cost per 100 km, and DEF and propane consumption per 1,000 km, on the same cards whose odometer column was in miles.
 - UK-gallon accounts stored fuel, DEF and propane prices about 20% too high, and read them back with the same wrong factor so the form looked correct. Volume and price now use your own gallon (#152).

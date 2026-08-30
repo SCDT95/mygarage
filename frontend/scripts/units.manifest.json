@@ -1975,7 +1975,7 @@
   {
    "path": "src/locales/en/analytics.json",
    "disposition": "audited",
-   "digest": "568878517626f60ecf660886979272dc7bb81e76cdb1f5fae54d50d71e169639",
+   "digest": "b55d075f5d60075b70e862a6546b7f1c7a51453cd6866e900005e93b15cb1c96",
    "reason": "reviewed at this snapshot. Task 6 replaced the raw `units.volume === 'L'` prose selection with the same `{{unit}}` interpolation the volume COLUMN already used, so the two cannot disagree: totalLiters / totalGallons are gone and totalVolume takes getVolumeUnit(units). Task 6b then fixed the imperial-only help copy: the four fuel-economy keys interpolate {{unit}} and were renamed off \"Mpg\", and the cost-per-mile pair was renamed to costPerDistance* and reworded to name the quantity. Task 7 added the cost-per-distance card's label as `{{unit}}` interpolation (`fuelList.costPerDistance` / `vehicle.costPerDistance`): it used to be two hardcoded English strings inside `UnitFormatter.getCostPerDistanceLabel`, which bypassed i18n entirely, so every reader of every language was shown 'Cost/1k Miles' or 'Cost/100 km'. The unit half is composed from the resolved distance adapter, so the bundle names no unit of its own. Fix round 1 added `avgCostPerVolume` (and, where the list shows a total, `volumeTotal`) for the same reason and in the same shape: they replace two hardcoded English strings inside UnitFormatter that rendered in six summary cards. Both interpolate the unit or the already-composed value, so the bundle still names no unit of its own.",
    "tests": [
     "__tests__/volumeTotalLabelLocales.test.ts",
