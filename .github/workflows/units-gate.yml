@@ -24,8 +24,9 @@ name: Unit Gate Selftest
 #
 #   * it re-runs a whole corpus leg per mutation, so its cost is
 #     cases x mutations and it moves whenever either grows. MEASURED at
-#     1229.8 s, 1231.3 s and 1232.9 s on three runs at 84 cases, 79 scan
-#     mutations and 3 walk mutations, up from a measured 1071.6 s at 79 and 74
+#     1266.0 s and 1266.7 s on two runs at 85 cases, 80 scan mutations and 3
+#     walk mutations, and at 1229.8 to 1232.9 s on three runs at 84 cases and
+#     79 scan mutations, up from a measured 1071.6 s at 79 and 74
 #     scan mutations, 10 min 34 s at 66 and 60, and 3 min 38 s at 49 and 41.
 #     Plan 3b task 8 and its fix round added the cases and the mutations that
 #     moved it. Every figure here is from a timed run on the same host,
@@ -52,7 +53,7 @@ name: Unit Gate Selftest
 #     45-minute timeout there is no case for sampling anyway.
 #
 # ★ AND IF IT EVER DOES NEED TO BE FASTER, the lever is PROCESS SPAWNS, not
-# coverage. The run is about 6,600 `bun` and `bunx` invocations (84 cases x 79
+# coverage. The run is about 6,800 `bun` and `bunx` invocations (85 cases x 80
 # mutations, plus the reference pass, the validity probes and the scope, walk,
 # baseline, cross-file, clean-room and re-export proofs), each paying full
 # interpreter startup for a scan that

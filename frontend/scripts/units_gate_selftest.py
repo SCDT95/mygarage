@@ -713,6 +713,7 @@ MUTATIONS = [
             "S-P39-union-annotation",
             "S-P40-inline-props-annotation",
             "S-P41-named-props-interface",
+            "S-P49-binary-props-component-render",
         ],
         "★ THE PREDICATE AS TASK 5 LEFT IT, run rather than described. It compares "
         "the annotation's TEXT to one literal, so an `as Sys` import, a "
@@ -771,7 +772,10 @@ MUTATIONS = [
         "    if (decl.exported) exportedBinary.add(decl.name)\n    else localBinary.add(decl.name)",
         "    if (decl.exported) exportedBinary.add(decl.name)",
         "script",
-        ["S-P45-module-local-helper"],
+        [
+            "S-P45-module-local-helper",
+            "S-P49-binary-props-component-render",
+        ],
         "★ THE FLOOR THE FLIP SHIPPED ON, and it held up a completeness claim. "
         "The vocabulary took only EXPORTED declarations, so three module-local "
         "helpers in `SupplyHistoryModal.tsx`, one in `SuppliesUsedTab.tsx` and "
@@ -818,12 +822,30 @@ MUTATIONS = [
         "not, in either the call form or the value form.",
     ),
     Mutation(
+        "M83-jsx-render-labelled-as-a-value",
+        "gate",
+        "        jsx ? `<${node.text ?? ''} ...>` : `${node.text ?? ''} (as a value)`,",
+        "        `${node.text ?? ''} (as a value)`,",
+        "script",
+        ["S-P49-binary-props-component-render"],
+        "★ THE BRANCH FIX ROUND 1 ADDED AND NOTHING COULD KILL. Deleting the "
+        "ternary left all 84 corpus cases and all 9 API-surface tests green, "
+        "because no case rendered a binary-props component: the branch was "
+        "defended in a comment and in a report, and by nothing that runs. It is a "
+        "labelling branch rather than a detection one, so the consequence is small "
+        "and the pattern is exactly the one this phase keeps recording, in code "
+        "written to close an instance of it.",
+    ),
+    Mutation(
         "M75-drop-value-reference-leg",
         "gate",
         "      binaryHelpersHere.has(resolveAlias(node.text ?? '')) &&\n      isValueReference(node)\n    ) {",
         "      false &&\n      isValueReference(node)\n    ) {",
         "script",
-        ["S-P44-binary-helper-as-a-value"],
+        [
+            "S-P44-binary-helper-as-a-value",
+            "S-P49-binary-props-component-render",
+        ],
         "the leg task 8 added last, and it was added because a NUMBER in this "
         "task's own report did not survive being checked against the enumerator. "
         "Two production sites in `ServiceVisitForm.tsx` pass a binary helper as a "
@@ -893,9 +915,14 @@ MUTATIONS = [
         "script",
         ["S-N19-scoped-pragma-own-kind"],
         "the far side of M72: a form the regex does not recognise silences nothing, "
-        "and after task 8 nine of the sixteen exempt sites under `src/` carry the "
-        "bracket. Narrowing the regex back would put those nine findings into a "
-        "clean-room gate and read as a units regression that never happened.",
+        "and after task 8 EVERY pragma under `src/` that suppresses anything carries "
+        "the bracket. MEASURED by applying this mutation to the real gate and "
+        "running `--report`: 45 findings under 32 keys across 11 files land in a "
+        "clean-room gate, from 15 line pragmas covering 16 findings and 12 "
+        "declaration pragmas hiding 29 more. ★ This description said \"nine\" twice "
+        "until fix round 2, derived from a count that had already been corrected "
+        "one file over and not re-derived here: wrong by 5x, in the sentence whose "
+        "job is to say what the guard protects.",
     ),
     Mutation(
         "M74-placeholder-token-branch-flagged",
@@ -948,6 +975,7 @@ MUTATIONS = [
             "S-P46-exported-arrow-helper",
             "S-P47-instance-method",
             "S-P48-renaming-import-alias",
+            "S-P49-binary-props-component-render",
         ],
         "★ and the SURVIVOR it prevents, built and run. Take away the direct check "
         "AND the accidental cover (which is what retiring the last binary formatter "

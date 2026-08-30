@@ -625,6 +625,13 @@ function binaryTypeContext(source: TsSourceFile): BinaryTypeContext {
  * supplies path already use, and a React component taking `{ system }` decides
  * on it exactly as a positional parameter would. A props type IMPORTED from
  * another module is not resolved, and is the second residual.
+ *
+ * ★ AND THE OTHER TWO IN THE SAME LIST, because a residual list split across
+ * two functions is half an inventory. `helperDeclarationsIn` does not collect a
+ * class property arrow (`class C { convert = (v, s: UnitSystem) => ... }`) or an
+ * object-literal method (`{ conv(v, s: UnitSystem) {...} }`); see its docstring
+ * for why they are stated rather than closed. Four residuals, then, and none of
+ * them has an instance under `src/`.
  */
 function typeIsBinarySystem(
   type: TsNode | undefined,
@@ -988,7 +995,29 @@ interface HelperDeclaration {
 }
 
 /**
- * Every named function-like value declaration in one source.
+ * The function declarations and function-valued consts one source declares.
+ *
+ * ★ THAT SENTENCE IS THE POPULATION, AND IT USED TO READ "every named
+ * function-like value declaration", which this is not. The walk takes a
+ * `FunctionDeclaration` and a `VariableDeclaration` whose initialiser is an
+ * arrow or a function expression, and TWO NAMED FUNCTION-LIKE VALUE
+ * DECLARATIONS FALL OUTSIDE IT, neither of which `formatterMethodsIn` catches
+ * either, because that requires a `MethodDeclaration` inside a
+ * `ClassDeclaration`:
+ *
+ *   class C { convert = (v: number, s: UnitSystem) => ... }   a PropertyDeclaration
+ *   const helpers = { conv(v: number, s: UnitSystem) {...} }  a method outside a class
+ *
+ * Both are measured, not reasoned: the gate exits 0 on each. They are STATED
+ * here rather than closed, and the reasoning is the same one that keeps generic
+ * type arguments out of `typeIsBinarySystem`: neither spelling exists anywhere
+ * under `src/` today, so widening buys no live coverage, and a widening carries
+ * a corpus case and a mutation with it. Read this residual list with
+ * `typeIsBinarySystem`'s two; together they are the honest population.
+ *
+ * ★ A docstring naming a population that is a floor, in the function whose
+ * whole subject is that defect, is why the first line above states a RULE
+ * narrow enough to be true instead of a claim wide enough to be wrong.
  *
  * ★ THE FLOOR THIS REPLACES, AND IT WAS THE PHASE'S SIGNATURE DEFECT AGAIN.
  * Until fix round 1 this walked `FunctionDeclaration` gated on `isExported`, so

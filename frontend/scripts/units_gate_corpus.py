@@ -876,6 +876,32 @@ SCRIPT_POSITIVE = [
         ext=".ts",
     ),
     Case(
+        "S-P49-binary-props-component-render",
+        "import type { UnitSystem } from '@/utils/units'\n"
+        + HOOK_IMPORT
+        + "function ProbeRow({ km, system }: { km: number; system: UnitSystem }): JSX.Element {\n"
+        "  return <span>{String(km) + system}</span>\n"
+        "}\n"
+        "export function Panel(): JSX.Element {\n"
+        "  const { system } = useUnitPreference()\n"
+        "  return <ProbeRow km={12} system={system} />\n"
+        "}\n",
+        1,
+        "binary-conversion",
+        "★ THE RENDER LEG, AND THE TEXT IT REPORTS. A component whose props carry "
+        "the binary system IS a binary API by the rule the precondition set, and "
+        "its JSX element is where the collapsed system crosses that boundary: an "
+        "element is an invocation, not a value. `expect_text` pins the label, "
+        "because fix round 1 added the branch that produces it and NOTHING could "
+        "kill it: deleting the ternary so every render read `X (as a value)` left "
+        "all 84 corpus cases and all 9 API-surface tests green. A guard no test "
+        "can kill is this phase's own recorded pattern, and it was in code written "
+        "to close an instance of it. Four such components are live on the supplies "
+        "path, exempted at their declarations.",
+        "M83-jsx-render-labelled-as-a-value",
+        expect_text="<ProbeRow ...>",
+    ),
+    Case(
         "S-P44-binary-helper-as-a-value",
         "import type { UnitSystem } from '@/utils/units'\n"
         "export function toCanonicalSpans(value: number, s: UnitSystem): number {\n"
@@ -1261,10 +1287,16 @@ SCRIPT_NEGATIVE = [
         "}\n",
         0,
         why="the other side of S-P42: a scoped pragma has to silence the kind it "
-        "names, or the form is decoration. Five of the sixteen exempt sites under "
-        "`src/` are this exact shape, resolved-set dispatch inside the unit layer, "
-        "so a regex that stopped recognising the bracket would put nine findings "
-        "back and read as a units regression.",
+        "names, or the form is decoration. Five of the sixteen line-suppressed "
+        "findings under `src/` are this exact shape, resolved-set dispatch inside "
+        "the unit layer. ★ THE CONSEQUENT USED TO SAY \"nine findings\", derived "
+        "from the wrong count beside it and left behind when that count was "
+        "corrected, which is the A3 defect reproduced inside the A3 fix. MEASURED "
+        "by applying M73 to the real gate: 45 findings under 32 keys across 11 "
+        "files, because EVERY pragma under `src/` that suppresses anything carries "
+        "the bracket. 27 bracketed lines, of which 15 are line pragmas covering 16 "
+        "findings and 12 are declaration pragmas hiding 29 more; the only two bare "
+        "ones are inert prose in `units.ts`.",
         pinned_by="M73-scoped-pragma-not-recognised",
         ext=".ts",
     ),
