@@ -233,6 +233,29 @@ class UnitPreferenceUpdate(BaseModel):
             raise ValueError("units may only accompany unit_preference 'custom'")
         return self
 
+    def column_values(self) -> dict[str, str | None]:
+        """Return the eleven ``users`` unit columns this request implies.
+
+        Lives here, beside the validator that guarantees the invariant, rather
+        than in the route. The clear case and the materialise case are two
+        readings of one rule (D3), and a caller deciding between them has to
+        re-derive which of ``unit_preference`` and ``units`` is authoritative.
+        Reading it off ``units`` alone is correct only while
+        ``units_present_exactly_when_custom`` holds; if that validator were ever
+        relaxed to let ``custom`` mean "keep what I have", such a caller would
+        silently take the CLEAR path, write eleven nulls, and resolve through
+        ``base_preset_for("custom")`` to the imperial preset. A UK-gallon user
+        pressing Custom would land on US gallons: this phase's own defect class,
+        inverted. Keeping the mapping next to the invariant means the two cannot
+        drift apart in separate files.
+
+        Derived from ``UNIT_COLUMN_NAMES`` and ``UnitSet``, never hand-written,
+        so a twelfth quantity extends both branches automatically.
+        """
+        if self.units is None:
+            return dict.fromkeys(UNIT_COLUMN_NAMES, None)
+        return {field_to_column(field): value for field, value in self.units.model_dump().items()}
+
 
 class AdminUserUpdate(BaseModel):
     """Schema for admin updating any user. Includes privileged fields."""

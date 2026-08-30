@@ -11,7 +11,6 @@ from sqlalchemy import delete, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import settings
-from app.constants.units import UNIT_COLUMN_NAMES, field_to_column
 from app.database import get_db
 from app.models.csrf_token import CSRFToken
 from app.models.settings import Setting
@@ -377,17 +376,13 @@ async def update_current_user_units(
     would mask the preset the user just chose. Custom materialises all eleven,
     so nothing resolves from the base.
 
-    The column set is derived from `UNIT_COLUMN_NAMES`, never hand-written: a
-    twelfth quantity added to `UnitSet` must not silently escape the clear.
+    Which columns to write is `UnitPreferenceUpdate.column_values`'s decision,
+    not this route's. It sits beside the validator that guarantees the
+    clear-versus-materialise invariant, so the two cannot drift apart across
+    two files, and it derives the column set from `UNIT_COLUMN_NAMES` so a
+    twelfth quantity cannot silently escape either branch.
     """
-    if payload.units is not None:
-        columns = {
-            field_to_column(field): value for field, value in payload.units.model_dump().items()
-        }
-    else:
-        columns = dict.fromkeys(UNIT_COLUMN_NAMES, None)
-
-    for column, value in columns.items():
+    for column, value in payload.column_values().items():
         setattr(current_user, column, value)
     current_user.unit_preference = payload.unit_preference
 

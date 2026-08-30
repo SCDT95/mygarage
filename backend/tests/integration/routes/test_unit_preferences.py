@@ -155,6 +155,25 @@ class TestUnitPreferenceMutation:
 
         assert response.status_code == 422
 
+    async def test_an_unknown_top_level_field_is_rejected(
+        self, client: AsyncClient, auth_headers: dict[str, str]
+    ) -> None:
+        """`extra="forbid"` is the only thing between a typo and a silent no-op.
+
+        Without this case, deleting `model_config` from `UnitPreferenceUpdate`
+        leaves every other test in this file green: none of them sends an
+        unknown key. A guard no test can kill is a guard that will be removed
+        by someone tidying up, and the failure mode is silent, a request that
+        returns 200 having ignored the half the client cared about.
+        """
+        response = await client.put(
+            "/api/auth/me/units",
+            json={"unit_preference": "metric", "unit_prefrence": "imperial"},
+            headers=auth_headers,
+        )
+
+        assert response.status_code == 422
+
     async def test_show_both_units_rides_the_same_write(
         self, client: AsyncClient, auth_headers: dict[str, str]
     ) -> None:
