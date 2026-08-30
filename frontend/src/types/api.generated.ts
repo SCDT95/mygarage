@@ -397,8 +397,11 @@ export interface paths {
          *     would mask the preset the user just chose. Custom materialises all eleven,
          *     so nothing resolves from the base.
          *
-         *     The column set is derived from `UNIT_COLUMN_NAMES`, never hand-written: a
-         *     twelfth quantity added to `UnitSet` must not silently escape the clear.
+         *     Which columns to write is `UnitPreferenceUpdate.column_values`'s decision,
+         *     not this route's. It sits beside the validator that guarantees the
+         *     clear-versus-materialise invariant, so the two cannot drift apart across
+         *     two files, and it derives the column set from `UNIT_COLUMN_NAMES` so a
+         *     twelfth quantity cannot silently escape either branch.
          */
         put: operations["update_current_user_units_api_auth_me_units_put"];
         post?: never;
@@ -6834,6 +6837,11 @@ export interface components {
         /**
          * AdminUserUpdate
          * @description Schema for admin updating any user. Includes privileged fields.
+         *
+         *     Carries no `unit_preference`, for the reason `UserSelfUpdate` gives. Unlike
+         *     that schema this one does not set `extra="forbid"`, so a stale client's key
+         *     is ignored rather than rejected: forbidding extras here would change the
+         *     rejection behaviour of every other admin field at the same time.
          */
         AdminUserUpdate: {
             /** Accent Color */
@@ -6869,8 +6877,6 @@ export interface components {
             theme?: string | null;
             /** Time Format */
             time_format?: string | null;
-            /** Unit Preference */
-            unit_preference?: string | null;
         };
         /**
          * AnomalyAlert
@@ -14381,6 +14387,13 @@ export interface components {
         /**
          * UserSelfUpdate
          * @description Schema for users updating their own profile. Rejects privileged fields.
+         *
+         *     Carries no `unit_preference` (D9b). Its route guards every field with
+         *     `if ... is not None`, so it cannot express "clear this column", and a
+         *     preset written here would leave the eleven override columns masking it.
+         *     Units are set through `PUT /auth/me/units` and `UnitPreferenceUpdate`,
+         *     which writes all eleven or clears all eleven. `show_both_units` stays: it
+         *     is a display toggle, not a choice of unit.
          */
         UserSelfUpdate: {
             /** Accent Color */
@@ -14405,8 +14418,6 @@ export interface components {
             theme?: string | null;
             /** Time Format */
             time_format?: string | null;
-            /** Unit Preference */
-            unit_preference?: string | null;
         };
         /**
          * VINDecodeRequest

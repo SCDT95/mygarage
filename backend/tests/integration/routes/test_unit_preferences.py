@@ -38,34 +38,44 @@ UK_CUSTOM = {
 
 @pytest_asyncio.fixture(autouse=True)
 async def restore_unit_state(
-    db_session: AsyncSession, test_user: dict[str, object]
+    db_session: AsyncSession,
+    test_user: dict[str, object],
+    non_admin_user: dict[str, object],
 ) -> AsyncGenerator[None]:
-    """Put the shared test user's unit state back after every test in this file.
+    """Put both shared users' unit state back after every test in this file.
 
     The suite shares one database and has no per-test rollback, and `test_user`
     resets only `accent_color` and `theme`. Every test here writes the eleven
-    override columns, `unit_preference` and (in one case) `show_both_units`, so
-    without this fixture a UK-custom row leaks into every later test file.
+    override columns, `unit_preference` and (in some cases) `show_both_units`,
+    so without this fixture a UK-custom row leaks into every later test file.
+
+    `non_admin_user` is covered too, and it resets even less: only `is_active`
+    and `is_admin` (`conftest.py:353-384`). The admin back-door test writes its
+    `unit_preference` and `show_both_units`, and the TDD red run for that test
+    leaves it on `metric` for good, which would then make the fixed behaviour
+    look like a failure on stale state rather than on behaviour.
 
     The column list is derived from `UNIT_COLUMN_NAMES` rather than
     hand-written, so a twelfth quantity is restored without touching this file.
     """
     tracked = ("unit_preference", "show_both_units", *UNIT_COLUMN_NAMES)
+    user_ids = (test_user["id"], non_admin_user["id"])
 
-    async def _load() -> User:
-        return (
-            await db_session.execute(select(User).where(User.id == test_user["id"]))
-        ).scalar_one()
+    async def _load(user_id: object) -> User:
+        return (await db_session.execute(select(User).where(User.id == user_id))).scalar_one()
 
-    user = await _load()
-    snapshot = {column: getattr(user, column) for column in tracked}
+    snapshots = {
+        user_id: {column: getattr(await _load(user_id), column) for column in tracked}
+        for user_id in user_ids
+    }
 
     try:
         yield
     finally:
-        user = await _load()
-        for column, value in snapshot.items():
-            setattr(user, column, value)
+        for user_id, snapshot in snapshots.items():
+            user = await _load(user_id)
+            for column, value in snapshot.items():
+                setattr(user, column, value)
         await db_session.commit()
 
 
@@ -230,3 +240,95 @@ class TestUnitPreferenceMutation:
         )
         assert clear.status_code == 200
         assert await columns() == dict.fromkeys(UNIT_COLUMN_NAMES, None)
+
+
+@pytest.mark.integration
+@pytest.mark.auth
+@pytest.mark.asyncio
+class TestGenericRoutesCannotSetUnits:
+    """D9b: neither `PUT /auth/me` nor `PUT /auth/users/{id}` sets a preset."""
+
+    async def test_the_profile_route_can_no_longer_set_units(
+        self, client: AsyncClient, auth_headers: dict[str, str]
+    ) -> None:
+        """D9b: `UserSelfUpdate` forbids extras, so the old payload is now a 422.
+
+        This is a deliberate break for any client still sending the old shape.
+        Before this change the request succeeded and set the preset without
+        clearing the overrides masking it, which is the release-blocking defect,
+        so the read-back is asserted too and not just the status code. At t=0
+        that read-back returned `metric` sitting over eleven UK-custom columns:
+        the account was told it was metric and still rendered `gal_uk`.
+
+        The setup write is asserted rather than merely issued, so a 404 or a
+        validation failure there cannot leave this passing for the wrong reason.
+        """
+        setup = await client.put(
+            "/api/auth/me/units",
+            json={"unit_preference": "custom", "units": UK_CUSTOM},
+            headers=auth_headers,
+        )
+        assert setup.status_code == 200
+        assert setup.json()["unit_preference"] == "custom"
+
+        response = await client.put(
+            "/api/auth/me",
+            json={"unit_preference": "metric"},
+            headers=auth_headers,
+        )
+
+        assert response.status_code == 422
+
+        after = await client.get("/api/auth/me", headers=auth_headers)
+        assert after.status_code == 200
+        assert after.json()["unit_preference"] == "custom"
+        assert after.json()["resolved_units"] == UK_CUSTOM
+
+    async def test_the_admin_route_ignores_a_unit_preference_key(
+        self,
+        client: AsyncClient,
+        auth_headers: dict[str, str],
+        db_session: AsyncSession,
+        non_admin_user: dict[str, object],
+    ) -> None:
+        """R3: `AdminUserUpdate` has no `extra="forbid"`, so the key is ignored.
+
+        Pinned rather than left accidental. Adding `extra="forbid"` here would
+        change the rejection behaviour of every other admin field in the same
+        commit, a larger blast radius than the hole being closed.
+
+        The target is seeded rather than assumed. `non_admin_user` resets only
+        `is_active` and `is_admin`, so "it is not metric" would otherwise be an
+        assertion about whatever the last run left behind. The seed is expired
+        before it is read back, so that check is a database round trip and not
+        a look at the object it was just set on. `show_both_units`
+        is the positive control: it rides the same request, it is still an
+        admin-settable field (R2), and it is false before the request, so its
+        flip proves the request reached the handler and was applied rather than
+        rejected, dropped or ignored wholesale.
+        """
+
+        async def target() -> User:
+            return (
+                await db_session.execute(select(User).where(User.id == non_admin_user["id"]))
+            ).scalar_one()
+
+        seed = await target()
+        seed.unit_preference = "imperial"
+        seed.show_both_units = False
+        await db_session.commit()
+        db_session.expire(seed)
+        assert (await target()).unit_preference == "imperial"
+        assert (await target()).show_both_units is False
+
+        response = await client.put(
+            f"/api/auth/users/{non_admin_user['id']}",
+            json={"unit_preference": "metric", "show_both_units": True},
+            headers=auth_headers,
+        )
+
+        assert response.status_code == 200
+        body = response.json()
+        assert body["show_both_units"] is True
+        assert body["unit_preference"] == "imperial"
+        assert (await target()).unit_preference == "imperial"

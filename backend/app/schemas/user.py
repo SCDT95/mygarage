@@ -129,13 +129,20 @@ class UserCreate(UserBase):
 
 
 class UserSelfUpdate(BaseModel):
-    """Schema for users updating their own profile. Rejects privileged fields."""
+    """Schema for users updating their own profile. Rejects privileged fields.
+
+    Carries no `unit_preference` (D9b). Its route guards every field with
+    `if ... is not None`, so it cannot express "clear this column", and a
+    preset written here would leave the eleven override columns masking it.
+    Units are set through `PUT /auth/me/units` and `UnitPreferenceUpdate`,
+    which writes all eleven or clears all eleven. `show_both_units` stays: it
+    is a display toggle, not a choice of unit.
+    """
 
     model_config = ConfigDict(extra="forbid")
 
     email: EmailStr | None = Field(None, max_length=255)
     full_name: str | None = Field(None, max_length=255)
-    unit_preference: str | None = Field(None, pattern="^(imperial|metric)$")
     show_both_units: bool | None = None
     time_format: str | None = Field(None, pattern="^(12h|24h)$")
     mobile_quick_entry_enabled: bool | None = None
@@ -258,13 +265,18 @@ class UnitPreferenceUpdate(BaseModel):
 
 
 class AdminUserUpdate(BaseModel):
-    """Schema for admin updating any user. Includes privileged fields."""
+    """Schema for admin updating any user. Includes privileged fields.
+
+    Carries no `unit_preference`, for the reason `UserSelfUpdate` gives. Unlike
+    that schema this one does not set `extra="forbid"`, so a stale client's key
+    is ignored rather than rejected: forbidding extras here would change the
+    rejection behaviour of every other admin field at the same time.
+    """
 
     email: EmailStr | None = Field(None, max_length=255)
     full_name: str | None = Field(None, max_length=255)
     is_active: bool | None = None
     is_admin: bool | None = None
-    unit_preference: str | None = Field(None, pattern="^(imperial|metric)$")
     show_both_units: bool | None = None
     time_format: str | None = Field(None, pattern="^(12h|24h)$")
     mobile_quick_entry_enabled: bool | None = None

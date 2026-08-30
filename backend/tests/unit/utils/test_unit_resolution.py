@@ -425,18 +425,32 @@ class TestUserResponseSerialisation:
         assert response.unit_pressure == "psi"
         assert response.resolved_units.pressure == "psi"
 
-    def test_write_schemas_still_reject_custom(self) -> None:
-        """Ruling P1: the dedicated unit mutation arrives in phase 4, and until it
-        does, a generic setter that can write 'custom' without materialising the
-        eleven columns is the back door D9b exists to close."""
-        import pytest as _pytest
+    def test_write_schemas_carry_no_unit_preference_at_all(self) -> None:
+        """Ruling P1, finished: phase 4 removed the field instead of widening it.
+
+        This test used to assert only that the generic setters rejected
+        `custom`, which was the strongest guard available while they still
+        carried a `^(imperial|metric)$` field. It is too weak now: writing
+        `metric` through them is the release-blocking defect on its own,
+        because the eleven override columns survive the write and mask it.
+
+        Both halves are needed. `UserSelfUpdate` sets `extra="forbid"`, so the
+        stale key is a 422 and the raise below catches a re-added field. The
+        admin schema does not, so its key is silently ignored and no raise can
+        ever fire there; the field-list assertion is the only thing that would
+        notice the field coming back.
+        """
         from pydantic import ValidationError
 
         from app.schemas.user import AdminUserUpdate, UserSelfUpdate
 
         for schema in (UserSelfUpdate, AdminUserUpdate):
-            with _pytest.raises(ValidationError):
-                schema(unit_preference="custom")
+            assert "unit_preference" not in schema.model_fields
+
+        with pytest.raises(ValidationError):
+            UserSelfUpdate(unit_preference="metric")
+
+        assert "unit_preference" not in AdminUserUpdate(unit_preference="metric").model_dump()
 
     def test_out_of_vocabulary_unit_preference_reads_as_imperial(self) -> None:
         """The twelfth field needs the same defence-in-depth as the eleven raw

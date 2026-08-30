@@ -836,7 +836,7 @@
         "type": "object"
       },
       "AdminUserUpdate": {
-        "description": "Schema for admin updating any user. Includes privileged fields.",
+        "description": "Schema for admin updating any user. Includes privileged fields.\n\nCarries no `unit_preference`, for the reason `UserSelfUpdate` gives. Unlike\nthat schema this one does not set `extra=\"forbid\"`, so a stale client's key\nis ignored rather than rejected: forbidding extras here would change the\nrejection behaviour of every other admin field at the same time.",
         "properties": {
           "accent_color": {
             "anyOf": [
@@ -1016,18 +1016,6 @@
               }
             ],
             "title": "Time Format"
-          },
-          "unit_preference": {
-            "anyOf": [
-              {
-                "pattern": "^(imperial|metric)$",
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Unit Preference"
           }
         },
         "title": "AdminUserUpdate",
@@ -18538,7 +18526,7 @@
       },
       "UserSelfUpdate": {
         "additionalProperties": false,
-        "description": "Schema for users updating their own profile. Rejects privileged fields.",
+        "description": "Schema for users updating their own profile. Rejects privileged fields.\n\nCarries no `unit_preference` (D9b). Its route guards every field with\n`if ... is not None`, so it cannot express \"clear this column\", and a\npreset written here would leave the eleven override columns masking it.\nUnits are set through `PUT /auth/me/units` and `UnitPreferenceUpdate`,\nwhich writes all eleven or clears all eleven. `show_both_units` stays: it\nis a display toggle, not a choice of unit.",
         "properties": {
           "accent_color": {
             "anyOf": [
@@ -18670,18 +18658,6 @@
               }
             ],
             "title": "Time Format"
-          },
-          "unit_preference": {
-            "anyOf": [
-              {
-                "pattern": "^(imperial|metric)$",
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Unit Preference"
           }
         },
         "title": "UserSelfUpdate",
@@ -25881,7 +25857,7 @@
     },
     "/api/auth/me/units": {
       "put": {
-        "description": "Set the current user's units, clearing or materialising every override.\n\nSpec D3: a preset clears all eleven override columns, because\n`resolve_units` is \"preset base, overrides on top\" and a surviving override\nwould mask the preset the user just chose. Custom materialises all eleven,\nso nothing resolves from the base.\n\nThe column set is derived from `UNIT_COLUMN_NAMES`, never hand-written: a\ntwelfth quantity added to `UnitSet` must not silently escape the clear.",
+        "description": "Set the current user's units, clearing or materialising every override.\n\nSpec D3: a preset clears all eleven override columns, because\n`resolve_units` is \"preset base, overrides on top\" and a surviving override\nwould mask the preset the user just chose. Custom materialises all eleven,\nso nothing resolves from the base.\n\nWhich columns to write is `UnitPreferenceUpdate.column_values`'s decision,\nnot this route's. It sits beside the validator that guarantees the\nclear-versus-materialise invariant, so the two cannot drift apart across\ntwo files, and it derives the column set from `UNIT_COLUMN_NAMES` so a\ntwelfth quantity cannot silently escape either branch.",
         "operationId": "update_current_user_units_api_auth_me_units_put",
         "requestBody": {
           "content": {

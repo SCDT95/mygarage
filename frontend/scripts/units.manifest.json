@@ -2393,7 +2393,7 @@
   {
    "path": "src/types/api.generated.ts",
    "disposition": "no unit behaviour",
-   "digest": "b65819f5842e703b803a9ab90a7d5b2bd196126a60d3807304a02f0bfd481fd0",
+   "digest": "f54359c245649fffeaa8ce71ad9c3a3ca265488fa8e0a4dfb79382da0c754fce",
    "reason": "no unit behaviour: a GENERATED type module. It declares the `UnitSet` vocabulary itself (`distance: \"km\" | \"mi\"` and nine more), so it is dense with unit vocabulary in a unit context, but it declares types rather than deciding or rendering anything. Its digest is load-bearing rather than incidental: this is the file the token-branch leg derives its vocabularies from, so a new unit token arriving from the backend is a review event, and an unrelated schema change costs one cheap re-acknowledgement."
   },
   {

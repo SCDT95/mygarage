@@ -319,9 +319,6 @@ async def update_current_user(
     if user_update.full_name is not None:
         current_user.full_name = user_update.full_name
 
-    if user_update.unit_preference is not None:
-        current_user.unit_preference = user_update.unit_preference
-
     if user_update.time_format is not None:
         current_user.time_format = user_update.time_format
 
@@ -615,9 +612,6 @@ async def update_user(
         user.family_dashboard_order = user_update.family_dashboard_order
 
     # Preference fields (also settable by admin)
-    if user_update.unit_preference is not None:
-        user.unit_preference = user_update.unit_preference
-
     if user_update.time_format is not None:
         user.time_format = user_update.time_format
 
