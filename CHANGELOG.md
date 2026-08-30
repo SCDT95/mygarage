@@ -14,6 +14,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - CSV export writes schema v6 per-column unit headers in the reader's own units, so a file exported by a user with custom units round-trips back to the same values (#152). One CSV is not covered: the LiveLink session export still writes `distance_km` and raw km/h speeds for everyone.
 - All-records report CSV gains a `Volume (<unit>)` column, so a fill-up's quantity is a number a spreadsheet can sum (#152).
 - Settings → System has a control for the instance-wide default unit set. It applies to signed-out visitors, to every client when authentication is disabled, and to each new account at creation. Admins see it, and so does the single user on an instance with authentication disabled.
+- The unit settings are translated into German, French, Polish, Brazilian Portuguese, Russian and Ukrainian (47 strings each). Unit symbols stay as they are in every language; only the names around them are translated. Machine-drafted and not yet read by a speaker, so corrections are welcome.
 
 ### Changed
 - Instances set to UK gallons store their imperial users as a custom unit set. The migration itself changed no displayed value; the unit changes listed below are separate.

@@ -27,7 +27,80 @@
     "imperial": "Imperial",
     "metric": "Metrisch",
     "resolvedDescription": "Verwendete Einheiten: {{units}}",
-    "showBoth": "Beide Einheiten anzeigen"
+    "instanceDefault": "Standardeinheiten für diese Instanz",
+    "instanceDefaultDescription": "Werden von abgemeldeten Besuchern verwendet, von allen Clients, wenn die Anmeldung deaktiviert ist, und als Ausgangswert für jedes neue Konto. Ein Konto, das bereits eigene Einheiten hat, wird dadurch nicht geändert.",
+    "instanceDefaultSaved": "Standardeinheiten der Instanz gespeichert",
+    "instanceDefaultError": "Standardeinheiten der Instanz konnten nicht gespeichert werden",
+    "showBoth": "Beide Einheiten anzeigen",
+    "custom": "Benutzerdefiniert",
+    "customDescription": "Wähle für jede Größe eine Einheit. Diese überschreiben die Voreinstellung in der gesamten Anwendung.",
+    "presetConfirmTitle": "Auf {{preset}} umstellen?",
+    "presetConfirmMessage": "Dies löscht alle einzeln gewählten Einheiten und verwendet überall die Voreinstellung.",
+    "presetConfirmGallon": "Imperial verwendet die US-Gallone (3,785 L). Deine Einstellung für die UK-Gallone wird ersetzt.",
+    "presetConfirmAction": "Einheiten wechseln",
+    "quantities": {
+      "distance": "Strecke",
+      "speed": "Geschwindigkeit",
+      "length": "Länge",
+      "volume": "Volumen",
+      "consumption": "Kraftstoffverbrauch",
+      "pressure": "Druck",
+      "temperature": "Temperatur",
+      "mass": "Masse",
+      "torque": "Drehmoment",
+      "tread": "Reifenprofiltiefe",
+      "secondaryGallon": "Für MPG verwendete Gallone"
+    },
+    "options": {
+      "distance": {
+        "km": "Kilometer (km)",
+        "mi": "Meilen (mi)"
+      },
+      "speed": {
+        "kmh": "Kilometer pro Stunde (km/h)",
+        "mph": "Meilen pro Stunde (mph)"
+      },
+      "length": {
+        "m": "Meter (m)",
+        "ft": "Fuß (ft)"
+      },
+      "volume": {
+        "L": "Liter (L)",
+        "gal_us": "US-Gallonen (gal)",
+        "gal_uk": "UK-Gallonen (gal)"
+      },
+      "consumption": {
+        "l_100km": "Liter pro 100 km (L/100km)",
+        "km_l": "Kilometer pro Liter (km/L)",
+        "mpg_us": "Meilen pro US-Gallone (MPG)",
+        "mpg_uk": "Meilen pro UK-Gallone (MPG)"
+      },
+      "pressure": {
+        "kpa": "Kilopascal (kPa)",
+        "bar": "Bar (bar)",
+        "psi": "Pfund pro Quadratzoll (PSI)"
+      },
+      "temperature": {
+        "c": "Celsius (°C)",
+        "f": "Fahrenheit (°F)"
+      },
+      "mass": {
+        "kg": "Kilogramm (kg)",
+        "lb": "Pfund (lb)"
+      },
+      "torque": {
+        "nm": "Newtonmeter (Nm)",
+        "lbft": "Pfund-Fuß (lb-ft)"
+      },
+      "tread": {
+        "mm": "Millimeter (mm)",
+        "in32": "Zweiunddreißigstel Zoll (/32 in)"
+      },
+      "secondary_gallon": {
+        "us": "US-Gallone (3,785 L)",
+        "uk": "UK-Gallone (4,546 L)"
+      }
+    }
   },
   "language": {
     "label": "Sprache",
