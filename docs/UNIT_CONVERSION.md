@@ -50,6 +50,31 @@ gallon takes when the primary unit does not state one.
   NULL means "no override", never "derive from the preset".
 - Instance-wide default for clients with no account: the `default_unit_prefs`
   setting, parsed by `backend/app/utils/default_unit_prefs.py`.
+- A client with no account keeps its own set in one `unit_prefs` localStorage
+  key (`frontend/src/utils/unitPrefsStore.ts`), which replaced three legacy
+  keys. It holds THREE states, not two: no units, units derived for this
+  session by migrating the legacy keys, and units the client actually chose.
+  Only a chosen set is persisted. Persisting a derived one freezes the gallon
+  flavour guessed at module load, before `/settings/public` resolves, and
+  every later path is guarded on the key being absent, so nothing heals it.
+
+One route writes a preference: `PUT /auth/me/units`, schema
+`UnitPreferenceUpdate` in `app/schemas/user.py`. A preset writes eleven
+explicit NULLs and `custom` writes all eleven values, in one transaction;
+there is no partial custom. `unit_preference` is deliberately absent from
+`UserSelfUpdate` and `AdminUserUpdate`, because those routes guard every field
+with `if ... is not None` and so cannot express "clear this column": a preset
+written through one of them would leave the override columns masking it.
+`PUT /auth/me` rejects the key with 422 (`extra="forbid"`) and
+`PUT /auth/users/{id}` ignores it, because forbidding extras there would
+change the rejection behaviour of every other admin field at the same time.
+
+The controls are `frontend/src/components/settings/UnitSetEditor.tsx`: the
+Imperial / Metric / Custom buttons plus the eleven selects, holding no state and
+performing no request. `UnitPreferencesCard.tsx` writes this client's units with
+it and `InstanceUnitDefaultsCard.tsx` writes `default_unit_prefs` with the same
+controls. Choosing a preset CLEARS overrides, so the editor confirms first, and
+the confirmation is in the editor rather than in either writer.
 
 So litres with miles is a real, supported account, and **any code that collapses
 the set into one binary `imperial | metric` answer is a defect**. The frontend's
@@ -169,11 +194,14 @@ US and UK gallons differ by 20%, so `gal` alone is not a unit. The account's own
 `secondary_gallon` decides which one a litre-primary reader is paired with (D4b);
 `gal_us` and `gal_uk` state their own flavour and win outright.
 
-A legacy instance-wide `imperial_gallon_standard` setting still exists. It is
-read only when the `default_unit_prefs` row is created or recreated at boot
+A legacy instance-wide `imperial_gallon_standard` setting still exists, with no
+control of its own and nothing in the browser reading it. It is read only when
+the `default_unit_prefs` row is created or recreated at boot
 (`default_unit_prefs_for_instance`), so changing it afterwards does not
-retroactively move anything, and it is on its way out. Do not reach for it in
-new code; resolve the account's `secondary_gallon`.
+retroactively move anything. It is kept deliberately, as the seed and fallback
+that row is rebuilt from if it is ever deleted, and for nothing else. Do not
+reach for it in new code; resolve the account's `secondary_gallon`, which the
+Custom controls set per account.
 
 | Flavour | Litres | MPG factor |
 |---|---|---|

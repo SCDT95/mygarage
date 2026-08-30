@@ -8,7 +8,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
-- Groundwork for per-quantity unit preferences: per-user unit columns and a resolved unit set on the user API, with no settings UI yet (migration 093, #152).
+- Settings → System has a Custom unit system, with its own control for distance, speed, length, volume, fuel economy, pressure, temperature, mass, torque, tyre tread depth and the gallon your MPG is measured in, so an account can read litres with miles and tyre pressure in PSI (migration 093, #152, #153). The gallon control is offered whatever your volume unit is, because MPG names a gallon even when you fill up in litres.
+- The unit controls write to your account when you have one, and to this browser when you do not, so a signed-out visitor and an instance with authentication disabled can hold a full custom set rather than only Imperial or Metric.
 - Instance-wide default unit set for anonymous clients and new accounts.
 - CSV import reads schema v6 per-column unit headers (`Odometer (mi)`, `Volume (gal_uk)`, `Price Per Unit (gal_us)`), taking each column's unit from the file rather than from any account preference (#152).
 - CSV export writes schema v6 per-column unit headers in the reader's own units, so a file exported by a user with custom units round-trips back to the same values (#152). One CSV is not covered: the LiveLink session export still writes `distance_km` and raw km/h speeds for everyone.
@@ -17,6 +18,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - The unit settings are translated into German, French, Polish, Brazilian Portuguese, Russian and Ukrainian (47 strings each). Unit symbols stay as they are in every language; only the names around them are translated. Machine-drafted and not yet read by a speaker, so corrections are welcome.
 
 ### Changed
+- **BREAKING (API):** `unit_preference` is no longer accepted by `PUT /auth/me` or `PUT /auth/users/{id}`. A self-update carrying it is rejected with HTTP 422 and an admin update carrying it is ignored; units are written through `PUT /auth/me/units`, which sets or clears all eleven per-quantity units in one request, so a script or integration that set units through a profile update needs changing.
 - Instances set to UK gallons store their imperial users as a custom unit set. The migration itself changed no displayed value; the unit changes listed below are separate.
 - Tyre tread now displays and is entered in the unit you use: thirty-seconds of an inch for imperial accounts, millimetres for metric. It was millimetres for everyone, and no conversion existed.
 - Metric tyre pressure now reads in kPa on the tyre card, matching the form beside it, which already used kPa.
@@ -50,8 +52,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - The DEF and propane consumption caption names both of your units, so an account using litres with miles reads `L/1,000 mi`, and the cost-per-distance caption reads `Cost/1,000 mi` rather than `Cost/1k Miles`. Both denominators are grouped for your language, so a German reader gets `L/1.000 km`.
 - The mileage examples in the reminder and service line-item forms are one figure for every account (`e.g., 100000`) instead of a preset imperial or metric one, and the fuel and propane volume and price examples name your own gallon. A UK-gallon account was shown a US-gallon example, for a unit 20% larger.
 - The receipt-parse preview shows the volume in your own unit (`12.50 gal`) instead of the canonical litres it always printed (`47.318 L`), so it agrees with the field that accepting it fills in.
-- The US/UK gallon panel in Settings → System appears whenever your resolved volume unit is a gallon, rather than whenever the preference button reads Imperial. An account whose preference says Metric while its volume resolves to gallons now sees a panel that used to be hidden from it.
-- On an instance set to UK gallons, where the migration stored each imperial user's units as a custom set, the Imperial and Metric buttons in Settings → System no longer change what you read: the stored per-quantity units win over the preset. The buttons still save the preference, and the per-quantity controls that can change those units arrive with the settings UI.
+- Choosing Imperial or Metric clears the per-quantity units you have set and applies the preset everywhere, after a confirmation that says so before anything is saved. On an instance set to UK gallons, where the migration stored each imperial account as a custom set, this is what makes those two buttons change what you read.
+- An account whose gallon is the UK one lands on the US gallon when it chooses Imperial, because there is one imperial preset and it is US. The confirmation names it before you commit; to keep the UK gallon, choose Custom and set the gallon there.
 - The Analytics CSV export's cost-per-distance row label follows the same change as the card: it was a hardcoded English `Cost/1k Miles` or `Cost/100 km` and now reads in your language, named for your distance unit. It is a summary export rather than a backup, so nothing that re-imports is affected.
 - Translation coverage regressed on purpose in six languages: 8 strings in German, 12 in French and 3 each in Polish, Brazilian Portuguese, Russian and Ukrainian now fall back to English. Each was a translation of a sentence whose meaning changed with this unit work, mostly by naming a unit the reader does not use, and a confidently wrong translation is worse than an English fallback. They are up for retranslation.
 
@@ -65,6 +67,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - The shop and POI map drew its search-radius circle at imperial scale for everyone, whatever the account's units.
 - DEF tank capacity entered in gallons was stored using the US gallon on instances set to UK gallons.
 - Logged-out visitors who have never picked a unit system now see the units the instance is configured for, instead of always imperial. A visitor who has picked one keeps that choice.
+- A browser upgrading from the older unit settings no longer freezes a gallon flavour it never chose, and neither does toggling show-both units afterwards. It was reachable on a UK-gallon instance whose first settings fetch after the upgrade failed, and on any instance whose admin later switched the flavour, and it left every volume and fuel economy about 20% wrong with nothing that could correct it afterwards.
 - PSI-to-canonical conversion returned bar instead of kPa.
 - Exporting an imperial CSV backup and importing it again silently changed the data. Miles and gallons were written with two decimals, so 500.00 km came back as 500.01 and 40.000 L came back as 40.012, drifting further on every round trip. v6 writes enough decimals to be exact.
 - Fuel CSV import reads back the outside temperature, on-board economy and average speed columns the exporter has always written; they were silently dropped, so those three values were lost on every export-and-reimport.
@@ -77,7 +80,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - The reminder mileage field read `Miles Until Due (km)` to a kilometre account, and `Quilômetros até o vencimento (mi)` to a Brazilian account using miles. It reads `Distance Until Due` now, and the unit comes from the field beside it.
 - Fuel and DEF summary captions were hardcoded English in every language: a German fuel row read `Kosten/100 km` beside `Avg Cost/gal` and `45,5 L total`. The average-cost, total-volume and cost-per-distance captions are translated now, and `Total Liters` and `Total Gallons` are one caption that names your unit.
 - The Analytics help modal and the fuel form's tip named MPG whatever units you use. Both name your own fuel-economy unit now, `Cost Per Mile` is `Cost Per Distance`, and the electric tip no longer promises a `kWh/100mi` figure the app does not calculate.
-- The Settings units summary read `Using metric units: liters, kilometers, L/100km, °C, bar, kg, Nm` to an account using litres with miles and PSI. It lists the units you actually resolve to now, the show-both example demonstrates your own pair instead of a fixed `25 MPG (9.4 L/100km)`, and the gallon setting says where your gallon applies rather than "when the unit system is Imperial".
+- The Settings units summary read `Using metric units: liters, kilometers, L/100km, °C, bar, kg, Nm` to an account using litres with miles and PSI. It lists the units you actually resolve to now, and the show-both example demonstrates your own pair instead of a fixed `25 MPG (9.4 L/100km)`.
 - The notification settings read `miles before` to a kilometre account, and the odometer-milestone description promised milestones `(e.g., 100k miles)` where the check actually runs on 10,000 km boundaries. The lead field names your unit now, and the description no longer names a figure.
 
 ## [3.1.0] - 2026-08-24
