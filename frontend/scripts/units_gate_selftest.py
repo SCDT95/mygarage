@@ -237,8 +237,8 @@ MUTATIONS = [
     Mutation(
         "M19-key-on-identifier-name",
         "gate",
-        "          if (!hasForeignProvenance(operand, index) && !inPlaceholder) {",
-        "          if (operand.text === 'system' && !inPlaceholder) {",
+        "          if (!hasForeignProvenance(operand, index)) {",
+        "          if (operand.text === 'system') {",
         "script",
         [
             "S-P7-destructuring-rename",
@@ -431,6 +431,7 @@ MUTATIONS = [
             "S-P31-formatter-label-selector",
             "S-P35-aliased-formatter-receiver",
             "S-P37-binary-formatter-on-a-foreign-class",
+            "S-P47-instance-method",
         ],
         "the whole formatter leg. 73 production calls carry no system literal, so "
         "without it the comparison leg certifies every one of them as clean.",
@@ -464,6 +465,7 @@ MUTATIONS = [
         [
             "S-P35-aliased-formatter-receiver",
             "S-P37-binary-formatter-on-a-foreign-class",
+            "S-P47-instance-method",
         ],
         "keying on the receiver's spelling makes `import { UnitFormatter as UF }` "
         "a one-line bypass, and since task 7 it also loses a binary formatter "
@@ -505,6 +507,9 @@ MUTATIONS = [
             "S-P40-inline-props-annotation",
             "S-P41-named-props-interface",
             "S-P43-scoped-declaration-wrong-kind",
+            "S-P45-module-local-helper",
+            "S-P46-exported-arrow-helper",
+            "S-P48-renaming-import-alias",
         ],
         "R8's whole point: the function that WRITES the wrong number, invisible to "
         "both of the originally proposed legs. ★ ONE case until task 8 and FIVE "
@@ -516,10 +521,15 @@ MUTATIONS = [
     Mutation(
         "M53-every-exported-helper-is-binary",
         "gate",
-        "      if (takesBinarySystem(node, source, ctx)) {",
-        "      if ((node.parameters ?? []).length > 0) {",
+        "    if (!takesBinarySystem(decl.signature, source, ctx)) continue",
+        "    if ((decl.signature.parameters ?? []).length === 0) continue",
         "script",
-        ["S-N9-set-conversion-helper", "S-N18-binary-inside-a-generic-argument"],
+        [
+            "S-N18-binary-inside-a-generic-argument",
+            "S-N8-local-format-distance",
+            "S-N9-set-conversion-helper",
+            "S-P44-binary-helper-as-a-value",
+        ],
         "a resolved-set helper sits in the same file as the binary ones did: the "
         "leg cannot key on the module or on a name prefix. The case spelled "
         "`toCanonicalLiters` until task 7 deleted it and now spells "
@@ -533,7 +543,11 @@ MUTATIONS = [
         "the annotation. Requiring one parameter keeps the subject exactly where "
         "it was. ★ S-N18 flips with it, measured rather than reasoned: `tally` "
         "takes a `Record<string, UnitSystem>` and IS called, so any predicate "
-        "that stops reading the annotation admits it too.",
+        "that stops reading the annotation admits it too. ★ FOUR cases since fix "
+        "round 1, and the two that joined say what the widening did: S-N8's "
+        "module-local `formatDistance` and S-P44's `apply` are both local "
+        "declarations, which the vocabulary could not see at all before and which "
+        "a predicate that stops reading the annotation now admits.",
     ),
     Mutation(
         "M47-drop-token-branch-leg",
@@ -542,6 +556,7 @@ MUTATIONS = [
         "        const quantity = null",
         "script",
         [
+            "S-N22-pragma-mentioned-in-a-docstring",
             "S-P33-token-branch-property",
             "S-P34-token-branch-destructured",
             "S-P42-scoped-pragma-wrong-kind",
@@ -630,6 +645,7 @@ MUTATIONS = [
             "S-P31-formatter-label-selector",
             "S-P35-aliased-formatter-receiver",
             "S-P37-binary-formatter-on-a-foreign-class",
+            "S-P47-instance-method",
         ],
         "★ and the SURVIVOR the guard prevents, built and run: with "
         "requireNonEmpty gone, the same empty walk is SILENT. Three "
@@ -657,6 +673,7 @@ MUTATIONS = [
             "S-P31-formatter-label-selector",
             "S-P35-aliased-formatter-receiver",
             "S-P37-binary-formatter-on-a-foreign-class",
+            "S-P47-instance-method",
         ],
         "★ THE LINE TASK 7 ADDED, mutated on its own rather than through the walk "
         "it shares with the derivation. `UnitFormatter`'s binary surface is empty, "
@@ -673,7 +690,10 @@ MUTATIONS = [
         "    ...formatterMethodsIn(sf, null).binary,",
         "    ...formatterMethodsIn(sf, FORMATTER_CLASS).binary,",
         "script",
-        ["S-P37-binary-formatter-on-a-foreign-class"],
+        [
+            "S-P37-binary-formatter-on-a-foreign-class",
+            "S-P47-instance-method",
+        ],
         "★ THE NARROWING THREE POSITIVES COULD NOT SEE. S-P30, S-P31 and S-P35 "
         "declare a class called `UnitFormatter` on purpose, so restricting the "
         "per-file augmentation to that name leaves all three green while the leg "
@@ -744,11 +764,64 @@ MUTATIONS = [
         "The boundary is pinned from outside rather than left in prose, because a "
         "residual nothing can fail is a residual nobody will notice moving.",
     ),
+    # ------------- fix round 1: the floor under the whole leg -----------------
+    Mutation(
+        "M78-only-exported-declarations",
+        "gate",
+        "    if (decl.exported) exportedBinary.add(decl.name)\n    else localBinary.add(decl.name)",
+        "    if (decl.exported) exportedBinary.add(decl.name)",
+        "script",
+        ["S-P45-module-local-helper"],
+        "★ THE FLOOR THE FLIP SHIPPED ON, and it held up a completeness claim. "
+        "The vocabulary took only EXPORTED declarations, so three module-local "
+        "helpers in `SupplyHistoryModal.tsx`, one in `SuppliesUsedTab.tsx` and "
+        "one in `ServiceVisitForm.tsx` were invisible to both binary forms, with "
+        "ten call sites between them. Two of those are the exact lines task 8's "
+        "report celebrated catching through the value-reference leg: the gate "
+        "saw the fourth ARGUMENT of `convertSupplyUsages` and not "
+        "`convertSupplyUsages`.",
+    ),
+    Mutation(
+        "M79-only-function-declarations",
+        "gate",
+        "      node.kind === ts.SyntaxKind.VariableDeclaration &&\n"
+        "      node.name?.kind === ts.SyntaxKind.Identifier &&",
+        "      false &&\n"
+        "      node.name?.kind === ts.SyntaxKind.Identifier &&",
+        "script",
+        ["S-P46-exported-arrow-helper"],
+        "the other half of the same floor. An arrow const carries its `export` on "
+        "the VariableStatement two levels up and is not a FunctionDeclaration at "
+        "all, and 52 of them already exist under `src/`, so this was the spelling "
+        "most likely to arrive next.",
+    ),
+    Mutation(
+        "M80-only-static-methods",
+        "gate",
+        "        if (member.kind !== ts.SyntaxKind.MethodDeclaration) continue",
+        "        if (member.kind !== ts.SyntaxKind.MethodDeclaration || !isStatic(member)) continue",
+        "script",
+        ["S-P47-instance-method"],
+        "the formatter leg's half. `this.format(km, system)` is the same "
+        "D8-collapsed decision as `C.format(km, system)`, and the leg's receiver "
+        "requirement already matched it; only the derivation refused to see it.",
+    ),
+    Mutation(
+        "M81-drop-import-alias-resolution",
+        "gate",
+        "  const resolveAlias = (name: string): string => importAliases.get(name) ?? name",
+        "  const resolveAlias = (name: string): string => name",
+        "script",
+        ["S-P48-renaming-import-alias"],
+        "the escape hatch `calleeName`'s own docstring says must not exist. The "
+        "receiver was defended (`import { UnitFormatter as UF }`); the CALLEE was "
+        "not, in either the call form or the value form.",
+    ),
     Mutation(
         "M75-drop-value-reference-leg",
         "gate",
-        "      binaryHelpersHere.has(node.text ?? '') &&",
-        "      false &&",
+        "      binaryHelpersHere.has(resolveAlias(node.text ?? '')) &&\n      isValueReference(node)\n    ) {",
+        "      false &&\n      isValueReference(node)\n    ) {",
         "script",
         ["S-P44-binary-helper-as-a-value"],
         "the leg task 8 added last, and it was added because a NUMBER in this "
@@ -762,10 +835,13 @@ MUTATIONS = [
         "  if (parent.kind === K.ImportSpecifier || parent.kind === K.ExportSpecifier) return false",
         "  if (false) return false",
         "script",
-        ["S-N21-binary-helper-binding-sites"],
+        [
+            "S-N21-binary-helper-binding-sites",
+            "S-P48-renaming-import-alias",
+        ],
         "an import or an export names the symbol without deciding anything with "
         "it. Counting them makes every module that merely re-exports a binary "
-        "helper a finding, which is how a leg earns a blanket pragma.",
+        "helper a finding, which is how a leg earns a blanket pragma. ★ S-P48 joins it since fix round 1: that fixture aliases the import, so counting specifiers turns the import LINE into a finding on top of the call it exists to measure.",
     ),
     Mutation(
         "M77-declaration-names-are-uses",
@@ -773,10 +849,24 @@ MUTATIONS = [
         "  if (parent.name === node) {",
         "  if (false) {",
         "script",
-        ["S-N21-binary-helper-binding-sites"],
+        [
+            "S-N21-binary-helper-binding-sites",
+            "S-P46-exported-arrow-helper",
+        ],
         "the other half of the same rule: the name half of a declaration, a "
         "binding or an object key is not a use. Without it a `{ toCanonicalKm: 1 }` "
-        "registry reads as a call site.",
+        "registry reads as a call site. ★ S-P46 joins it since fix round 1: an arrow const's own VariableDeclaration name is a binding, and the widening that made arrow consts visible is what put it in reach of this rule.",
+    ),
+    Mutation(
+        "M82-docstring-mention-is-a-pragma",
+        "gate",
+        "  if (/^\\s*\\*/.test(line)) return false",
+        "  if (false) return false",
+        "script",
+        ["S-N22-pragma-mentioned-in-a-docstring"],
+        "prose about a guard must not be the guard. Two lines in `utils/units.ts` "
+        "describe this pragma inside a docstring and were inert only because a "
+        "backtick precedes the `//` in both.",
     ),
     Mutation(
         "M72-scoped-pragma-silences-anything",
@@ -810,8 +900,8 @@ MUTATIONS = [
     Mutation(
         "M74-placeholder-token-branch-flagged",
         "gate",
-        "        if (quantity !== null && !inPlaceholder) {",
-        "        if (quantity !== null) {",
+        "          if (inPlaceholder) structurallyExempt += 1\n          else record(node, 'token-branch', `${quantity}: ${normalize(node.getText(sf))}`)",
+        "          record(node, 'token-branch', `${quantity}: ${normalize(node.getText(sf))}`)",
         "script",
         ["S-N20-placeholder-token-branch"],
         "R5 wired to the comparison leg only, which is how it stood for the whole "
@@ -854,6 +944,10 @@ MUTATIONS = [
             "S-P41-named-props-interface",
             "S-P43-scoped-declaration-wrong-kind",
             "S-P44-binary-helper-as-a-value",
+            "S-P45-module-local-helper",
+            "S-P46-exported-arrow-helper",
+            "S-P47-instance-method",
+            "S-P48-renaming-import-alias",
         ],
         "★ and the SURVIVOR it prevents, built and run. Take away the direct check "
         "AND the accidental cover (which is what retiring the last binary formatter "
@@ -975,8 +1069,8 @@ MUTATIONS = [
     Mutation(
         "M8-drop-annotation-exemption",
         "gate",
-        "          if (!hasForeignProvenance(operand, index) && !inPlaceholder) {",
-        "          if (!inPlaceholder) {",
+        "          if (!hasForeignProvenance(operand, index)) {",
+        "          if (true) {",
         "script",
         [
             "S-N13-doubly-parenthesised-foreign",
@@ -1081,6 +1175,7 @@ MUTATIONS = [
             "S-N11-wrong-quantity-vocabulary",
             "S-N12-secondary-gallon",
             "S-N19-scoped-pragma-own-kind",
+            "S-N22-pragma-mentioned-in-a-docstring",
             "S-N3-near-miss-literal",
             "S-N5-positive-control",
             "S-P33-token-branch-property",
@@ -1717,6 +1812,59 @@ def cleanroom_proof(tmpdir: Path) -> list[str]:
     return failures
 
 
+def reexport_refusal_proof(tmpdir: Path) -> list[str]:
+    """A module that renames the binary type must make the gate REFUSE.
+
+    ★ The prefilter that makes this gate affordable (3 ms against 221 ms, times
+    53 scans per mutation) is sound only while every module using the binary
+    type spells its name. One module re-exporting it under another name breaks
+    that for every module downstream, silently, so the gate refuses rather than
+    hoping. `--scan` runs the same refusal, which is what lets this be proved
+    against a fixture in a temp directory instead of one written into `src/`,
+    where the corpus already learned not to put fixtures.
+
+    Both spellings are probed. The gate covered only the first until fix round 1,
+    and the second is the one anybody would actually write.
+    """
+    failures: list[str] = []
+    probes = [
+        (
+            "specifier",
+            "import type { UnitSystem } from '@/utils/units'\n"
+            "export type { UnitSystem as Sys }\n",
+        ),
+        (
+            "type alias",
+            "import type { UnitSystem } from '@/utils/units'\nexport type Sys = UnitSystem\n",
+        ),
+    ]
+    control = "import type { UnitSystem } from '@/utils/units'\nexport type Sys2 = { a: UnitSystem }\n"
+    for label, body in [*probes, ("control (not an alias)", control)]:
+        probe = tmpdir / "reexport_probe.ts"
+        probe.write_text(body)
+        p = subprocess.run(
+            ["bun", "run", str(GATE_SRC.relative_to(FRONTEND)), "--scan", str(probe)],
+            cwd=FRONTEND,
+            capture_output=True,
+            text=True,
+        )
+        probe.unlink(missing_ok=True)
+        wanted_refusal = label != "control (not an alias)"
+        refused = p.returncode != 0 and "would never spell" in (p.stderr + p.stdout)
+        ok = refused == wanted_refusal
+        if not ok:
+            failures.append(
+                f"reexport {label}: expected {'a refusal' if wanted_refusal else 'no refusal'}, "
+                f"rc={p.returncode} {(p.stderr or p.stdout).strip()[-160:]}"
+            )
+        print(
+            f"  reexport {label:<24} "
+            + ("refuses" if refused else "runs")
+            + ("" if ok else "   *** WRONG ***")
+        )
+    return failures
+
+
 def crossfile_proof() -> list[str]:
     """Task 8's precondition, proved against the REAL tree rather than a fixture.
 
@@ -1730,15 +1878,15 @@ def crossfile_proof() -> list[str]:
     that matters:
 
       BASE          as committed: green.
-      HATCH OFF     `declarationExempt` always false, so `supplyUnits.ts`'s
-                    three exported binary helpers re-enter the vocabulary. The
-                    gate must FAIL and must name a call site in a file OTHER
-                    than the one that declares them, which is the cross-file
-                    reach itself.
-      HATCH OFF +   and the same run with the vocabulary reverted to
-      SINGLE FILE   `decimalSafe.ts` alone, which is what task 5 left. It must
-                    go GREEN, because those helpers were never in the
-                    vocabulary at all. That silence IS the defect task 8's
+      HATCH OFF     `declarationExempt` always false, so every exempted binary
+                    declaration re-enters the vocabulary. The gate must FAIL and
+                    must name a site in a file OTHER than the one that declares
+                    them, which is the cross-file reach itself.
+      HATCH OFF +   and the same run with the pre-task-8 vocabulary restored:
+      PRE-TASK 8    `decimalSafe.ts` alone, which is what task 5 left, AND no
+                    module-local declarations, which is what fix round 1 added.
+                    It must go GREEN, because none of those helpers was in the
+                    vocabulary at all. That silence IS the defect the
                     precondition names, reproduced on demand.
     """
     failures: list[str] = []
@@ -1756,6 +1904,18 @@ def crossfile_proof() -> list[str]:
     SINGLE_FILE = (
         "const BINARY_CONVERSION_HELPERS = BINARY_SURFACE.helpers",
         "const BINARY_CONVERSION_HELPERS = deriveBinaryConversionHelpers()",
+    )
+    # ★ THE PRE-TASK-8 GATE HAD TWO FLOORS, NOT ONE, and fix round 1 is what
+    # taught this probe that. Reverting the vocabulary to `decimalSafe.ts` alone
+    # stopped reproducing the silence once module-local declarations became
+    # visible per file, because the supplies components declare their own
+    # helpers and the scanned file's augmentation still found them. So the
+    # reproduction reverts BOTH: the tree-wide vocabulary and the local half.
+    # A reproduction that no longer reproduces is worse than none, since it
+    # reads as the defect being gone.
+    NO_LOCALS = (
+        "    if (decl.exported) exportedBinary.add(decl.name)\n    else localBinary.add(decl.name)",
+        "    if (decl.exported) exportedBinary.add(decl.name)",
     )
     try:
         rc, out = run(GATE_SRC)
@@ -1796,16 +1956,16 @@ def crossfile_proof() -> list[str]:
             )
         GATE_MUTANT.unlink(missing_ok=True)
 
-        dst, n = write_mutant("gate", *HATCH_OFF, also=[SINGLE_FILE])
+        dst, n = write_mutant("gate", *HATCH_OFF, also=[SINGLE_FILE, NO_LOCALS])
         if n != 1:
-            failures.append(f"crossfile: SINGLE FILE matched {n} times, expected 1")
+            failures.append(f"crossfile: PRE-TASK8 matched {n} times, expected 1")
         else:
             rc, out = run(dst)
             ok = rc == 0
             if not ok:
                 failures.append(
-                    "crossfile: a decimalSafe-only vocabulary was expected to be BLIND "
-                    f"to them: rc={rc} {out[-300:]}"
+                    "crossfile: the pre-task-8 vocabulary was expected to be BLIND to "
+                    f"them: rc={rc} {out[-300:]}"
                 )
             print(
                 f"  crossfile PRE-TASK8 {'silent, which is the hole' if ok else '*** it saw them ***'}"
@@ -1978,6 +2138,10 @@ def main() -> int:
         print("-" * 78)
         failures += crossfile_proof()
 
+        print("\nThe prefilter's one hole, refused in both of its spellings")
+        print("-" * 78)
+        failures += reexport_refusal_proof(tmpdir)
+
         print("\nR5: clean-room, proved PER LEG rather than by an empty baseline")
         print("-" * 78)
         failures += cleanroom_proof(tmpdir)
@@ -2002,7 +2166,9 @@ def main() -> int:
         "mutations ran and flipped exactly their own cases; the scope is proved four "
         "ways and names only real files; the baseline counts; the cross-file "
         "vocabulary reaches call sites in other modules and a single-file one does "
-        "not; every detector kind the gate emits fails a freshly introduced "
+        "not; both spellings of a renaming re-export are refused and an ordinary "
+        "type alias is not; every detector kind the gate emits fails a freshly "
+        "introduced "
         "violation of its own shape and goes green when it is removed; --update "
         "leaves the retired baseline byte-identical; and both positive controls "
         "stayed silent on correct code"

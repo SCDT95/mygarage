@@ -39,6 +39,7 @@ import { useCurrencyPreference } from '../hooks/useCurrencyPreference'
 // scope. Either way, dropping silently is the least-bad option available
 // without turning a units-conversion helper into a place that also owns
 // user-facing warnings.
+// units-exempt(binary-conversion): R3 supplies deferral, at the DECLARATION. ★ THE ONE TASK 8's REPORT CELEBRATED HALF OF: the gate saw the fourth ARGUMENT of this function (`canonicalToDisplay` / `displayToCanonical` passed as values) and could not see this function, which is the local binary helper that consumes it. It threads the collapsed `system` down to `canonicalToDisplay` / `supplyUnitLabel`, which carry the same ruling at their own declarations in `utils/supplyUnits.ts`: D8 gave supplies a qt/L vocabulary `UnitSet` cannot express, so there is nothing resolved for this to read instead. Owner: deferred, pending the D8 amendment. Expires with the three legs in supplyUnits.ts, never alone.
 function convertSupplyUsages(
   usages: { supply_id: number; quantity: number | string }[],
   suppliesById: Map<number, Supply>,

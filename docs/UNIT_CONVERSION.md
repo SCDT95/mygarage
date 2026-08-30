@@ -130,21 +130,38 @@ Both are in `frontend/src/utils/unitFormat.ts`.
 
 ## The gate
 
-`frontend/scripts/validate-units.ts` fails a build that ADDS a unit-system
-branch. It reports three kinds, each with its own remedy in the failure
-message, and it is a baseline gate: known findings are recorded in
-`units.baseline.json` and the baseline may only shrink. Never run `--update` to
-silence a new finding.
+`frontend/scripts/validate-units.ts` fails a build on ANY unit-system branch it
+can see. It reports five kinds, each with its own remedy in the failure message.
+
+It used to be a baseline gate, where known findings were recorded in
+`units.baseline.json` and the baseline could only shrink. Plan 3b task 8 retired
+that: the baseline file is `[]`, the gate is CLEAN-ROOM, and `--update` refuses
+to rewrite it and exits 2. There is nowhere to record a new finding, which is
+the point. Fix it, or mark the line:
 
 ```
-bun run validate:units              # the gate
-bun run validate:units -- --report  # the remaining work list, by file
-bun run validate:units -- --derived # the API surface it derives
+// units-exempt(<kind>): <reason>
 ```
 
-A finding it cannot see mechanically is recorded in
-`frontend/scripts/units.manifest.json`, a reviewed per-file snapshot with its
-own checker.
+The kind is required. It silences that leg on that line and leaves every other
+kind reportable, which the bare form did not. On a binary DECLARATION the kind
+is `binary-conversion` or `formatter-binary`, and that one line removes the
+declaration from the gate's vocabulary, and with it every reference to it in
+every module; the gate counts what each mechanism hides on every run.
+
+```
+bun run validate:units                   # the gate
+bun run validate:units -- --report       # every finding, by file
+bun run validate:units -- --derived      # the binary API surface it derives
+bun run validate:units -- --suppressions # everything it is deliberately silent about
+```
+
+What the gate prints is "no unsuppressed expression matches these detectors",
+which is smaller than "no unit defect exists" and deliberately so. Two shapes
+have no lexical form for any detector to match: a resolved-set helper that
+collapses INTERNALLY, and a forced-unit template. Those, and anything else it
+cannot see mechanically, are recorded in `frontend/scripts/units.manifest.json`,
+a reviewed per-file snapshot with its own checker.
 
 ## Gallon flavour
 

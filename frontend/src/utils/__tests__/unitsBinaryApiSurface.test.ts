@@ -50,142 +50,29 @@ const DECIMAL_SAFE = resolve(SRC, 'utils/decimalSafe.ts')
 /** The class whose binary surface this test polices. */
 const FORMATTER_CLASS = 'UnitFormatter'
 
-/** The parameter annotation that makes a method a binary unit decision. */
-const BINARY_SYSTEM_TYPE = 'UnitSystem'
 
 /**
- * Whether one declaration decides on a binary `UnitSystem`.
+ * ★ THE REIMPLEMENTED PREDICATE THAT USED TO SIT HERE IS DELETED, and why is
+ * fix round 1's main lesson. This file carried a second copy of the gate's
+ * `takesBinarySystem` plus its alias resolution, its props-type walk and its
+ * pragma reader, and asserted PARITY between the two. That reads like
+ * independence and was not: both copies gated on `ExportKeyword` +
+ * `isFunctionDeclaration`, so both were blind to module-local helpers, exported
+ * arrow consts and instance methods, and they agreed because they shared one
+ * floor. Five such declarations were live on the supplies path with ten call
+ * sites while the parity assertion printed a tick.
  *
- * ★ Shared by the formatter walk and the conversion walk ON PURPOSE, and that
- * sharing is what keeps the conversion assertion from going vacuous. The
- * conversion surface is asserted EMPTY below, and an empty result has two
- * causes: the helpers are gone (the intended one), or this predicate stopped
- * matching anything at all because `UnitSystem` was renamed. The formatter
- * block pins a set of eight through this same function, so a predicate that
- * matched nothing would fail there first, loudly, with a name to look at.
- */
-function takesBinarySystem(
-  node: { parameters?: ts.NodeArray<ts.ParameterDeclaration> },
-  source: ts.SourceFile
-): boolean {
-  const names = binarySpellings(source)
-  const local = localTypes(source)
-  return (node.parameters ?? []).some((p) => namesBinary(p.type, source, names, local))
-}
-
-/**
- * Every local spelling of the binary type in one module.
+ * Two derivations agreeing because they share one floor is a parity check that
+ * cannot fail. What replaced it is a COMMITTED FIXTURE SET (see
+ * `what the units gate is silent about` below): the gate's own enumeration,
+ * pinned to exact lists written by hand, plus a cross-check against the
+ * manifest, which a different program maintains and validates.
  *
- * ★ Deliberately a SECOND implementation of `validate-units.ts`'s
- * `binaryTypeContext`, in a different style, for the reason the parity
- * assertions below give at length: two walks of one rule asserted to agree
- * catch drift in either direction, where one consuming the other would narrow
- * both in the same edit and say nothing.
+ * What survives here are the two RECEIPTS, and they need no predicate: the
+ * exact list of static methods `UnitFormatter` declares and the exact list of
+ * functions `decimalSafe.ts` exports. Those are what make the gate's empty
+ * vocabulary mean something rather than mean nothing.
  */
-function binarySpellings(source: ts.SourceFile): Set<string> {
-  const names = new Set<string>([BINARY_SYSTEM_TYPE])
-  const aliases = new Map<string, ts.TypeNode>()
-  const walk = (node: ts.Node): void => {
-    if (ts.isImportSpecifier(node)) {
-      const original = (node.propertyName ?? node.name).text
-      if (original === BINARY_SYSTEM_TYPE) names.add(node.name.text)
-    }
-    if (ts.isTypeAliasDeclaration(node)) aliases.set(node.name.text, node.type)
-    ts.forEachChild(node, walk)
-  }
-  walk(source)
-  for (let pass = 0; pass < 8; pass += 1) {
-    let grew = false
-    for (const [name, body] of aliases) {
-      if (names.has(name)) continue
-      if (ts.isTypeReferenceNode(body) && names.has(lastSegment(body, source))) {
-        names.add(name)
-        grew = true
-      }
-    }
-    if (!grew) break
-  }
-  return names
-}
-
-/** The `type` and `interface` bodies a module declares, so a props type resolves. */
-function localTypes(source: ts.SourceFile): Map<string, ts.Node> {
-  const local = new Map<string, ts.Node>()
-  const walk = (node: ts.Node): void => {
-    if (ts.isTypeAliasDeclaration(node)) local.set(node.name.text, node.type)
-    if (ts.isInterfaceDeclaration(node)) local.set(node.name.text, node)
-    ts.forEachChild(node, walk)
-  }
-  walk(source)
-  return local
-}
-
-function lastSegment(node: ts.TypeReferenceNode, source: ts.SourceFile): string {
-  return node.typeName.getText(source).trim().split('.').pop() ?? ''
-}
-
-/**
- * Whether an annotation names the binary type anywhere a PARAMETER decides on it.
- *
- * Unions, intersections, parentheses, inline props objects and named
- * `type`/`interface` declarations count. A generic type ARGUMENT does not: it
- * holds the type rather than deciding on one, which is the boundary the gate
- * states and corpus case S-N18 pins from the far side.
- */
-function namesBinary(
-  type: ts.Node | undefined,
-  source: ts.SourceFile,
-  names: Set<string>,
-  local: Map<string, ts.Node>,
-  depth = 0,
-  seen: Set<string> = new Set()
-): boolean {
-  if (type === undefined || depth > 8) return false
-  const recurse = (n: ts.Node | undefined): boolean =>
-    namesBinary(n, source, names, local, depth + 1, seen)
-  if (ts.isUnionTypeNode(type) || ts.isIntersectionTypeNode(type)) {
-    return type.types.some(recurse)
-  }
-  if (ts.isParenthesizedTypeNode(type)) return recurse(type.type)
-  if (ts.isTypeLiteralNode(type) || ts.isInterfaceDeclaration(type)) {
-    return type.members.some((m) => recurse(ts.isPropertySignature(m) ? m.type : undefined))
-  }
-  if (ts.isTypeReferenceNode(type)) {
-    const name = lastSegment(type, source)
-    if (names.has(name)) return true
-    if (seen.has(name)) return false
-    const body = local.get(name)
-    if (body === undefined) return false
-    seen.add(name)
-    return recurse(body)
-  }
-  return names.has(type.getText(source).trim())
-}
-
-/**
- * True when a declaration carries a reason-bearing exemption where it is declared.
- *
- * ★ `sourceFile.text`, never `getText()`. `getText()` starts AFTER the file's
- * leading trivia, so on a module opening with a docstring it returns fewer
- * lines than the file has and every lookup is off by the header's height. That
- * bug shipped for one commit inside the gate itself and silenced two of three
- * exemptions while the third worked, which is the shape that reaches main.
- */
-const EXEMPT_PRAGMA = /(?:^|\s)\/\/\s*units-exempt(?:\(([^)]*)\))?:\s*\S/
-
-/** True when one line's pragma covers this finding kind, bare meaning all of them. */
-function lineExempts(line: string, kind: string): boolean {
-  const match = EXEMPT_PRAGMA.exec(line)
-  if (match === null) return false
-  if (match[1] === undefined) return true
-  return match[1].split(',').map((k) => k.trim()).includes(kind)
-}
-
-function declarationExempt(node: ts.Node, source: ts.SourceFile, kind: string): boolean {
-  const lines = source.text.split('\n')
-  const line = source.getLineAndCharacterOfPosition(node.getStart(source)).line + 1
-  return lineExempts(lines[line - 1] ?? '', kind) || lineExempts(lines[line - 2] ?? '', kind)
-}
 
 /**
  * The runtime to re-run the gate under.
@@ -262,67 +149,37 @@ function parse(path: string): ts.SourceFile {
 }
 
 /**
- * `UnitFormatter`'s static methods, split by shape.
+ * The static method names `UnitFormatter` declares.
  *
- * ★ Both halves are returned because the interesting assertion is now that
- * `binary` is EMPTY, and "empty" is only evidence if the walk was looking.
- * `statics` is the walk's own receipt, exactly as `exported` is for the
- * conversion surface below: a walk that had silently stopped visiting the class
- * returns two empty sets, and the test that pins `statics` fails first with a
- * name to look at. Until task 7 the pinned list of two binary methods played
- * that role; retiring them took the receipt with it, so the replacement lands
- * in the same change rather than on the day somebody notices.
+ * ★ A RECEIPT, NOT A PREDICATE. It enumerates the class's whole static surface
+ * by name and asks nothing about types, so it cannot share a floor with the
+ * gate: a walk that had silently stopped visiting the class returns an empty
+ * list and the assertion below fails first, with a name to look at.
  */
-function formatterMethods(): { binary: string[]; statics: string[] } {
+function formatterStatics(): string[] {
   const source = parse(UNITS)
-  const binary = new Set<string>()
   const statics = new Set<string>()
   const walk = (node: ts.Node): void => {
     if (ts.isClassDeclaration(node) && node.name?.text === FORMATTER_CLASS) {
       for (const member of node.members) {
         if (!ts.isMethodDeclaration(member)) continue
-        const isStatic = (member.modifiers ?? []).some(
-          (m) => m.kind === ts.SyntaxKind.StaticKeyword
-        )
-        if (!isStatic) continue
-        statics.add(member.name.getText(source))
-        if (takesBinarySystem(member, source)) binary.add(member.name.getText(source))
+        if ((member.modifiers ?? []).some((m) => m.kind === ts.SyntaxKind.StaticKeyword)) {
+          statics.add(member.name.getText(source))
+        }
       }
     }
     ts.forEachChild(node, walk)
   }
   walk(source)
-  return { binary: [...binary].sort(), statics: [...statics].sort() }
+  return [...statics].sort()
 }
 
 /**
- * The exported function declarations of `decimalSafe.ts`, split by shape.
- *
- * ★ Both halves are returned because the interesting assertion is that `binary`
- * is EMPTY, and "empty" is only evidence if the walk was looking. `exported`
- * is the walk's own receipt: it holds the helpers that survived R8, so a walk
- * that had silently stopped visiting the file returns two empty sets and the
- * test that pins `exported` fails first.
- *
- * @returns The binary helpers, and every exported function declaration seen.
+ * The names `decimalSafe.ts` exports as functions. The conversion leg's receipt,
+ * for the same reason and with the same independence.
  */
-function conversionHelpers(): { binary: string[]; exported: string[] } {
-  const source = parse(DECIMAL_SAFE)
-  const binary = new Set<string>()
-  const exported = new Set<string>()
-  const walk = (node: ts.Node): void => {
-    if (
-      ts.isFunctionDeclaration(node) &&
-      node.name !== undefined &&
-      (node.modifiers ?? []).some((m) => m.kind === ts.SyntaxKind.ExportKeyword)
-    ) {
-      exported.add(node.name.getText(source))
-      if (takesBinarySystem(node, source)) binary.add(node.name.getText(source))
-    }
-    ts.forEachChild(node, walk)
-  }
-  walk(source)
-  return { binary: [...binary].sort(), exported: [...exported].sort() }
+function decimalSafeExports(): string[] {
+  return exportedFunctions(DECIMAL_SAFE)
 }
 
 /**
@@ -349,57 +206,6 @@ function productionSources(): string[] {
   }
   walk(SRC)
   return out
-}
-
-/**
- * The binary surface declared ANYWHERE under `src/`, walked independently.
- *
- * ★ WHY THE SCOPE MOVED. Task 8 made the gate's two binary vocabularies
- * tree-wide, because a helper declared in one module and called from another
- * produced no finding in either and that was the whole remaining population of
- * the R8 leg. The parity assertions below are worth having only while the two
- * derivations cover the SAME universe: a test still reading two files would
- * agree with a gate reading the tree right up until somebody declares a binary
- * API in a third one, which is the case the widening exists for.
- *
- * The prefilter matches the gate's and is sound for the same reason: the type
- * has one declaration site, so a module using it must spell it to import it.
- */
-function binarySurface(): { formatters: string[]; helpers: string[]; exempt: string[] } {
-  const formatters = new Set<string>()
-  const helpers = new Set<string>()
-  const exempt = new Set<string>()
-  for (const path of [UNITS, ...productionSources()]) {
-    if (!readFileSync(path, 'utf-8').includes(BINARY_SYSTEM_TYPE)) continue
-    const source = parse(path)
-    const walk = (node: ts.Node): void => {
-      if (ts.isClassDeclaration(node)) {
-        for (const member of node.members) {
-          if (!ts.isMethodDeclaration(member)) continue
-          if (!(member.modifiers ?? []).some((m) => m.kind === ts.SyntaxKind.StaticKeyword)) continue
-          if (!takesBinarySystem(member, source)) continue
-          const name = member.name.getText(source)
-          ;(declarationExempt(member, source, 'formatter-binary') ? exempt : formatters).add(name)
-        }
-      }
-      if (
-        ts.isFunctionDeclaration(node) &&
-        node.name !== undefined &&
-        (node.modifiers ?? []).some((m) => m.kind === ts.SyntaxKind.ExportKeyword) &&
-        takesBinarySystem(node, source)
-      ) {
-        const name = node.name.getText(source)
-        ;(declarationExempt(node, source, 'binary-conversion') ? exempt : helpers).add(name)
-      }
-      ts.forEachChild(node, walk)
-    }
-    walk(source)
-  }
-  return {
-    formatters: [...formatters].sort(),
-    helpers: [...helpers].sort(),
-    exempt: [...exempt].sort(),
-  }
 }
 
 /** Files where `<className>.<method>` is actually accessed, by method. */
@@ -555,44 +361,127 @@ describe('the mutable gallon statics (plan 3b task 8)', () => {
 })
 
 
-describe('the tree-wide binary surface (plan 3b task 8)', () => {
-  it('derives the same three sets the units gate derives, in the other language', () => {
-    // The gate's two binary legs report call sites only for names in these
-    // sets, so a drift in either direction is a leg reporting on a surface the
-    // other cannot see. Both walks now cover the same universe: every module
-    // under `src/` that mentions the type, rather than the two files that used
-    // to hold the whole population.
-    const surface = binarySurface()
-    expect(surface.formatters).toEqual(gateDerivedSet('BINARY_FORMATTER_METHODS'))
-    expect(surface.helpers).toEqual(gateDerivedSet('BINARY_CONVERSION_HELPERS'))
-    expect(surface.exempt).toEqual(gateDerivedSet('EXEMPT_BINARY_DECLARATIONS'))
+/**
+ * The gate's own enumeration of everything it is deliberately silent about.
+ *
+ * @param label The section heading in `--suppressions` output.
+ * @returns The indented lines under it, trimmed.
+ */
+function gateSuppressions(label: string): string[] {
+  const out = execFileSync(BUN, ['run', 'scripts/validate-units.ts', '--suppressions'], {
+    cwd: FRONTEND,
+    encoding: 'utf-8',
   })
+  const lines = out.split('\n')
+  const head = lines.findIndex((l) => l.startsWith(`${label} (`))
+  if (head === -1) {
+    // A silent empty list here would make every assertion below vacuously
+    // true, which is the failure this whole file exists one level down to
+    // prevent.
+    throw new Error(`--suppressions printed no ${label} section:\n${out}`)
+  }
+  const body: string[] = []
+  for (let i = head + 1; i < lines.length && lines[i].startsWith('   '); i += 1) {
+    body.push(lines[i].trim())
+  }
+  return body
+}
 
-  it('★ pins the exempt declarations to an exact list, because one silences many files', () => {
-    // ★ THE RECEIPT FOR THE ONLY SUPPRESSION IN THIS GATE THAT CROSSES A FILE
-    // BOUNDARY. A `// units-exempt:` on a binary DECLARATION removes it from
-    // the vocabulary, and with it every call site of it in every module:
-    // sixteen, across six files, for the three below. That is the right shape
-    // for one deferred ruling (R3, pending the D8 amendment that would give
-    // supplies a resolved token) and the wrong shape to let grow unnoticed, so
-    // the list is exact here rather than merely counted on the gate's tick.
+/** Files the units manifest has reviewed and dispositioned as `audited`. */
+function auditedPaths(): Set<string> {
+  const manifest = JSON.parse(
+    readFileSync(resolve(FRONTEND, 'scripts/units.manifest.json'), 'utf-8')
+  ) as { rows: { path: string; disposition: string }[] }
+  const audited = new Set(
+    manifest.rows.filter((r) => r.disposition === 'audited').map((r) => r.path)
+  )
+  if (audited.size === 0) throw new Error('the manifest lists no audited row; refusing to conclude')
+  return audited
+}
+
+describe('what the units gate is silent about (plan 3b task 8, fix round 1)', () => {
+  /**
+   * ★ WHY THIS BLOCK NO LONGER WALKS THE TREE ITSELF, and it is fix round 1's
+   * main lesson. It used to run its own AST walk and assert PARITY with the
+   * gate's, which reads like independence and was not: both walks gated on
+   * `ExportKeyword` + `isFunctionDeclaration`, so both missed module-local
+   * helpers, exported arrow consts and instance methods, and they agreed
+   * because they shared one floor. Five such declarations were live on the
+   * supplies path with ten call sites while this block printed a tick.
+   *
+   * Two derivations agreeing because they share one floor is a parity check
+   * that cannot fail. A second walk written by the same hand from the same
+   * mental model is not a second opinion, and a broader walk is not obviously
+   * available either: a text scan of parameter annotations misses `PurchaseRow`,
+   * whose props type is a named interface one line up.
+   *
+   * So the shape changed rather than being patched. What is asserted here is a
+   * COMMITTED FIXTURE SET: the gate's own enumeration of every suppression it
+   * applies, pinned to an exact list. It cannot pass by sharing a floor because
+   * there is only one derivation and a hand-written expectation beside it. What
+   * it cannot do is see a declaration the GATE never sees, and nothing short of
+   * a genuinely independent implementation could; that residual is stated here
+   * rather than papered over with a second copy of the same predicate.
+   *
+   * The independent half is `a reviewed row stands behind every one`: the
+   * manifest is maintained by hand and checked by a different program, so a
+   * suppression with no reviewed row behind it fails without this file having
+   * an opinion about the AST at all.
+   */
+  it('★ suppresses exactly these binary declarations, and one line silences many files', () => {
+    // A `// units-exempt(binary-conversion):` on a DECLARATION removes it from
+    // the vocabulary, and with it every reference to it in every module: 29
+    // sites for the twelve below, which `--suppressions` prints as
+    // HIDDEN_BY_DECLARATION. That is the right shape for one deferred ruling
+    // (R3, pending the D8 amendment that would give supplies a resolved token)
+    // and the wrong shape to let grow unnoticed.
     //
-    // A fourth name appearing on this line is a fourth binary API somebody
-    // exempted. Read the pragma's reason before widening it.
-    expect(binarySurface().exempt).toEqual([
-      'canonicalToDisplay',
-      'displayToCanonical',
-      'supplyUnitLabel',
+    // A thirteenth entry is a thirteenth binary API somebody exempted. Read the
+    // pragma's reason before widening this list.
+    expect(gateSuppressions('EXEMPT_BINARY_DECLARATIONS')).toEqual([
+      'src/components/ServiceVisitForm.tsx::convertSupplyUsages',
+      'src/components/SuppliesUsedTab.tsx::formatQuantity',
+      'src/components/SupplyHistoryModal.tsx::AdjustmentForm',
+      'src/components/SupplyHistoryModal.tsx::PurchaseForm',
+      'src/components/SupplyHistoryModal.tsx::PurchaseRow',
+      'src/components/SupplyHistoryModal.tsx::UsageRow',
+      'src/components/SupplyHistoryModal.tsx::formatMagnitude',
+      'src/components/SupplyHistoryModal.tsx::formatQuantity',
+      'src/components/SupplyHistoryModal.tsx::formatSignedQuantity',
+      'src/utils/supplyUnits.ts::canonicalToDisplay',
+      'src/utils/supplyUnits.ts::displayToCanonical',
+      'src/utils/supplyUnits.ts::supplyUnitLabel',
     ])
   })
 
-  it('★ finds no binary declaration that is not exempted', () => {
-    // The tree-wide statement of what the formatter and conversion blocks below
-    // each assert for one file. Empty is the goal state and it is reached: every
-    // remaining binary declaration in the tree carries a ruling at its own
-    // declaration, and anything added without one lands here first.
-    const surface = binarySurface()
-    expect([...surface.formatters, ...surface.helpers]).toEqual([])
+  it('★ suppresses exactly these lines, which had only a printed integer before', () => {
+    // The review's judgement on the flip's own concern 5: printing a count is
+    // necessary and not sufficient. The declarations above were held by an
+    // exact list; the line-level pragmas were held by an integer nothing
+    // asserted on. Same pin, same reason.
+    expect(gateSuppressions('PRAGMA_SUPPRESSED')).toEqual([
+      'src/components/tabs/SettingsSystemTab.tsx::compare x3',
+      'src/hooks/useUnitPreference.ts::compare x2',
+      'src/types/units.ts::token-branch x1',
+      'src/utils/publicUnitDefaults.ts::token-branch x2',
+      'src/utils/supplyUnits.ts::compare x3',
+      'src/utils/units.ts::token-branch x5',
+    ])
+  })
+
+  it('★ a reviewed manifest row stands behind every suppression', () => {
+    // ★ THE INDEPENDENT HALF, and the replacement for the mechanism the flip
+    // retired. Emptying the baseline removed the units gate's cross-check on
+    // manifest findings; this restores a two-mechanism hold in the direction
+    // the flip actually opened, which is a suppression added in code with no
+    // reviewed row behind it. The manifest is maintained by hand and validated
+    // by a different program, so this fails without any opinion about the AST.
+    const audited = auditedPaths()
+    const suppressed = [
+      ...gateSuppressions('EXEMPT_BINARY_DECLARATIONS'),
+      ...gateSuppressions('PRAGMA_SUPPRESSED'),
+    ].map((entry) => entry.split('::')[0])
+    expect([...new Set(suppressed)].filter((path) => !audited.has(path)).sort()).toEqual([])
   })
 })
 
@@ -626,7 +515,7 @@ describe('the binary UnitFormatter surface', () => {
     // have seen them: it enumerates this class's whole surviving surface by
     // name, which is what a receipt is for. Every name left returns a number, a
     // currency string or a bare unit symbol; none returns prose.
-    expect(formatterMethods().statics).toEqual([
+    expect(formatterStatics()).toEqual([
       'formatCostPerVolume',
       'formatVolume',
       'formatVolumeShort',
@@ -635,13 +524,18 @@ describe('the binary UnitFormatter surface', () => {
     ])
   })
 
-  it('★ declares no binary method at all, and keeps none a production file cannot call', () => {
-    const { binary } = formatterMethods()
+  it('★ contributes no binary method to the gate\'s vocabulary, and keeps no dead one', () => {
     // ★ EMPTY IS THE GOAL STATE, reached by task 7. Every method on this class
     // now takes the resolved `UnitSet`. A `UnitSystem` parameter added back
-    // here fails this line one step before a call site can exist, and the units
-    // gate picks its call sites up on the next run without anybody widening a
-    // list.
+    // here puts the method into the gate's derived vocabulary and fails this
+    // line one step before a call site can exist.
+    //
+    // ★ THE ANSWER COMES FROM THE GATE, not from a second walk written here.
+    // Fix round 1 deleted this file's copy of the predicate: it agreed with the
+    // gate because it shared the gate's floor, which is a parity check that
+    // cannot fail. The receipt above is what makes this emptiness mean
+    // something, and it needs no predicate to compute.
+    const binary = gateDerivedSet('BINARY_FORMATTER_METHODS')
     expect(binary).toEqual([])
 
     // And the rule that emptied it, kept live for whatever is added next: a
@@ -671,7 +565,14 @@ describe('the binary conversion surface', () => {
     // which rounds and does not convert; price goes through `seedPriceField` /
     // `canonicalFromPriceField`, the price mirror of that protocol, behind
     // which the old converter is module-private.
-    expect(conversionHelpers().exported).toEqual([
+    //
+    // ★ THIS RECEIPT IS NOW A FLOOR'S WIDTH NARROWER THAN THE GATE, and saying
+    // so is the point. It lists exported FUNCTION declarations, because that is
+    // what this file exports; the gate's vocabulary since fix round 1 also
+    // covers exported arrow consts and module-local declarations. If
+    // `decimalSafe.ts` ever grows one of those, this list will not see it and
+    // the committed suppression set above is what would.
+    expect(decimalSafeExports()).toEqual([
       'canonicalFromPriceField',
       'priceToDisplay',
       'readNumber',
@@ -680,7 +581,7 @@ describe('the binary conversion surface', () => {
     ])
   })
 
-  it('exports no conversion helper that writes canonical values off a collapsed system', () => {
+  it('contributes no conversion helper that writes canonical off a collapsed system', () => {
     // ★ Ruling R8, and the phase's signature defect in its final form.
     // `toCanonicalKm(value, system)` had no numeric literal and no
     // `UnitFormatter` call at its call site, so the units gate's original two
@@ -700,6 +601,6 @@ describe('the binary conversion surface', () => {
     // `canonicalFromUnitField(typed, origin, quantity)`. `toCanonicalLiters`
     // survives in the same file and is not an oversight: it takes the resolved
     // `UnitSet`, which is the correct shape.
-    expect(conversionHelpers().binary).toEqual([])
+    expect(gateDerivedSet('BINARY_CONVERSION_HELPERS')).toEqual([])
   })
 })

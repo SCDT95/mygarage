@@ -784,19 +784,114 @@ SCRIPT_POSITIVE = [
         "M69-props-types-unresolved",
         ext=".ts",
     ),
+    # ---- fix round 1: the three declaration spellings the leg could not see --
+    #
+    # ★ ALL THREE WERE LIVE IN PRODUCTION when the flip shipped, five
+    # declarations carrying ten call sites on the supplies path, and the review
+    # found them by adding `export` and nothing else. The walk behind the
+    # vocabulary required an EXPORTED top-level `function`, which is one
+    # visibility modifier and one syntax kind away from the shape the whole
+    # precondition was about.
     Case(
-        "S-P44-binary-helper-as-a-value",
+        "S-P45-module-local-helper",
         "import type { UnitSystem } from '@/utils/units'\n"
         + HOOK_IMPORT
-        + "export function toCanonicalSpans(value: number, s: UnitSystem): number {\n"
+        + "function toCanonicalYards(value: number, s: UnitSystem): number {\n"
         "  return convert(value, s)\n"
-        "}\n"
-        "function apply(v: number, s: UnitSystem, f: (v: number, s: UnitSystem) => number): number {\n"
-        "  return f(v, s)\n"
         "}\n"
         "export function submit(entered: number): number {\n"
         "  const { system } = useUnitPreference()\n"
-        "  return apply(entered, system, toCanonicalSpans)\n"
+        "  return toCanonicalYards(entered, system)\n"
+        "}\n",
+        1,
+        "binary-conversion",
+        "a module-local helper, which is `export function canonicalToDisplay` "
+        "minus one keyword. It can only be called where it is declared, and the "
+        "scanner already parses that file, so there was never a reason to "
+        "require the keyword. `SupplyHistoryModal.tsx` had three of these.",
+        "M78-only-exported-declarations",
+        ext=".ts",
+    ),
+    Case(
+        "S-P46-exported-arrow-helper",
+        "import type { UnitSystem } from '@/utils/units'\n"
+        + HOOK_IMPORT
+        + "export const toCanonicalLinks = (value: number, s: UnitSystem): number =>\n"
+        "  convert(value, s)\n"
+        "export function submit(entered: number): number {\n"
+        "  const { system } = useUnitPreference()\n"
+        "  return toCanonicalLinks(entered, system)\n"
+        "}\n",
+        1,
+        "binary-conversion",
+        "an arrow const, which is 52 declarations' worth of daily spelling under "
+        "`src/` and carried its `export` on the VariableStatement two levels up, "
+        "so asking the declaration itself always answered no.",
+        "M79-only-function-declarations",
+        ext=".ts",
+    ),
+    Case(
+        "S-P47-instance-method",
+        "import type { UnitSystem } from '@/utils/units'\n"
+        + HOOK_IMPORT
+        + "class TripFormatter {\n"
+        "  formatLeg(km: number, system: UnitSystem): string {\n"
+        "    return String(km) + system\n"
+        "  }\n"
+        "}\n"
+        "export function leg(km: number): string {\n"
+        "  const { system } = useUnitPreference()\n"
+        "  return new TripFormatter().formatLeg(km, system)\n"
+        "}\n",
+        1,
+        "formatter-binary",
+        "the formatter leg's half of the same floor: it required `StaticKeyword`, "
+        "though `this.format(km, system)` is the identical decision and the leg's "
+        "receiver requirement already matches an instance call.",
+        "M80-only-static-methods",
+        ext=".ts",
+    ),
+    Case(
+        "S-P48-renaming-import-alias",
+        "import type { UnitSystem } from '@/utils/units'\n"
+        "import { toCanonicalPoles as tcp } from './elsewhere'\n"
+        + HOOK_IMPORT
+        + "export function toCanonicalPoles(value: number, s: UnitSystem): number {\n"
+        "  return convert(value, s)\n"
+        "}\n"
+        "export function submit(entered: number): number {\n"
+        "  const { system } = useUnitPreference()\n"
+        "  return tcp(entered, system)\n"
+        "}\n",
+        1,
+        "binary-conversion",
+        "★ `calleeName`'s docstring has said \"an import alias must not be an "
+        "escape hatch\" since task 5, and the formatter leg defends against "
+        "`import { UnitFormatter as UF }`, but that closed it on the RECEIVER "
+        "only: a renaming import of the CALLEE was invisible in both the call "
+        "form and the value form, while the namespace form was caught all along, "
+        "which is what made the gap easy to miss. The fixture declares the name "
+        "so it is in this file's own vocabulary, and calls it through the alias.",
+        "M81-drop-import-alias-resolution",
+        ext=".ts",
+    ),
+    Case(
+        "S-P44-binary-helper-as-a-value",
+        "import type { UnitSystem } from '@/utils/units'\n"
+        "export function toCanonicalSpans(value: number, s: UnitSystem): number {\n"
+        "  return convert(value, s)\n"
+        "}\n"
+        # ★ `apply` deliberately does NOT name the binary type, and there is no
+        # comparison anywhere. Fix round 1 put module-local declarations into the
+        # vocabulary, so the first spelling of this fixture scored a second
+        # finding on `apply(...)` and stopped measuring one thing; writing the
+        # union out keeps `apply` from being a binary API itself. Same reason the
+        # formatter cases pick their method names the way they do.
+        "function apply(v: number, f: (v: number, s: 'metric' | 'imperial') => number): number {\n"
+        "  return f(v, 'metric')\n"
+        "}\n"
+        "export function submit(entered: number): number {\n"
+        "  return apply(entered, toCanonicalSpans)\n"
         "}\n",
         1,
         "binary-conversion",
@@ -848,7 +943,7 @@ SCRIPT_POSITIVE = [
         "S-P42's rule where it matters most. The DECLARATION hatch is the only "
         "suppression in this gate that reaches other files, so the kind it names "
         "has to be the kind it removes: `(compare)` on an exported binary helper "
-        "silences nothing, and the sixteen call sites of `supplyUnits.ts`'s three "
+        "silences nothing, and the fifteen sites of `supplyUnits.ts`'s three "
         "stay visible unless the pragma says `binary-conversion`. Without this "
         "case the kind argument threaded into `declarationExempt` is a guard no "
         "mutation could kill.",
@@ -1108,7 +1203,7 @@ SCRIPT_NEGATIVE = [
         why="★ task 8's declaration-level hatch, and the ONLY pragma in this "
         "gate that silences findings in OTHER files. It exists because making "
         "the vocabulary tree-wide turned `supplyUnits.ts`'s three exported "
-        "binary helpers into sixteen call-site findings across six files, all "
+        "binary helpers into fifteen findings under eleven keys across five files, all "
         "of them one deferred ruling (R3). Character-identical to S-P32 apart "
         "from the pragma line, so the case measures the hatch and nothing else.",
         pinned_by="M70-declaration-exemption-ignored / M10b-drop-line-above-pragma",
@@ -1133,6 +1228,31 @@ SCRIPT_NEGATIVE = [
         ext=".ts",
     ),
     Case(
+        "S-N22-pragma-mentioned-in-a-docstring",
+        "import type { UnitSet } from '@/types/units'\n"
+        "export function label(units: UnitSet, km: number): string {\n"
+        # ★ The mention has to sit on a line the hatch actually READS, which is
+        # the finding's own line or the one above it. The first spelling of this
+        # case put it three lines up inside a leading docstring, where it could
+        # never have mattered, and M82 flipped nothing: an assertion true at
+        # t=0, in the case whose whole subject is a guard that fires when it
+        # should not.
+        "  /* the sibling one file over carries a\n"
+        "   * // units-exempt(token-branch): reason */\n"
+        "  return units.volume === 'L' ? `${km} km` : `${km} mi`\n"
+        "}\n",
+        1,
+        "token-branch",
+        "★ the hatch reads a LINE, and `EXEMPT_PRAGMA` allows any whitespace "
+        "before the `//`, so a docstring continuation describing the pragma "
+        "exempted whatever followed it. `utils/units.ts` has two such lines and "
+        "they were inert only because a backtick happens to precede the `//` in "
+        "both, which is luck rather than a rule. Prose about a guard must not be "
+        "the guard.",
+        "M82-docstring-mention-is-a-pragma",
+        ext=".ts",
+    ),
+    Case(
         "S-N19-scoped-pragma-own-kind",
         "import type { UnitSet } from '@/types/units'\n"
         "export function label(units: UnitSet, liters: number): string {\n"
@@ -1141,7 +1261,7 @@ SCRIPT_NEGATIVE = [
         "}\n",
         0,
         why="the other side of S-P42: a scoped pragma has to silence the kind it "
-        "names, or the form is decoration. Nine of the sixteen exempt sites under "
+        "names, or the form is decoration. Five of the sixteen exempt sites under "
         "`src/` are this exact shape, resolved-set dispatch inside the unit layer, "
         "so a regex that stopped recognising the bracket would put nine findings "
         "back and read as a units regression.",

@@ -89,7 +89,7 @@ const L_PER_QUART = 0.946352946
  * be a second guess at the same missing token, and it would silently change
  * which unit the incoherent account named in the header sees.
  */
-// units-exempt(binary-conversion): R3 read leg, at the DECLARATION. Task 8 made the binary-conversion vocabulary tree-wide, so this export and its call sites became visible together; the ruling below is one ruling and it belongs here rather than copied onto each of the sixteen call sites in six files. Owner: deferred, pending the D8 amendment. Expires with the read leg's own pragma.
+// units-exempt(binary-conversion): R3 read leg, at the DECLARATION. Task 8 made the binary-conversion vocabulary tree-wide, so this export and its call sites became visible together; the ruling below is one ruling and it belongs here rather than copied onto each of the fifteen sites in five files. Owner: deferred, pending the D8 amendment. Expires with the read leg's own pragma.
 export function canonicalToDisplay(
   value: number,
   unitType: SupplyUnitType,
@@ -148,7 +148,7 @@ export function displayToCanonical(
  * on a UK instance, and no column records which quart a row was written in.
  * That is a spec amendment and a data decision, not a refactor.
  */
-// units-exempt(binary-conversion): R3 label leg, at the DECLARATION. Ten of the sixteen call sites are this one, and every one of them is a label beside a value the two legs above already conditioned on the same signal. Owner: deferred, pending the D8 amendment, which also owns the 20.1 percent UK-quart defect in the docstring above.
+// units-exempt(binary-conversion): R3 label leg, at the DECLARATION. Seven of the fifteen sites are this one, measured with the three pragmas off rather than counted by hand, and every one of them is a label beside a value the two legs above already conditioned on the same signal. Owner: deferred, pending the D8 amendment, which also owns the 20.1 percent UK-quart defect in the docstring above.
 export function supplyUnitLabel(unitType: SupplyUnitType, system: UnitSystem): string {
   if (unitType === 'count') return ''
   // units-exempt(compare): R3 label leg; the qt/L choice is not in UnitSet, so migrating this comparison changes nothing. Owner: deferred, pending the D8 amendment, which also owns the 20.1 percent UK-quart defect in the docstring above. Expires when D8 says which quart it meant.

@@ -24,9 +24,11 @@ name: Unit Gate Selftest
 #
 #   * it re-runs a whole corpus leg per mutation, so its cost is
 #     cases x mutations and it moves whenever either grows. MEASURED at
-#     10 min 34 s and 10 min 59 s on two runs (66 cases, 60 scan mutations,
-#     3 walk mutations), up from a measured 3 min 38 s at 49 cases and 41
-#     mutations. Every figure here is from a timed run on the same host,
+#     1229.8 s, 1231.3 s and 1232.9 s on three runs at 84 cases, 79 scan
+#     mutations and 3 walk mutations, up from a measured 1071.6 s at 79 and 74
+#     scan mutations, 10 min 34 s at 66 and 60, and 3 min 38 s at 49 and 41.
+#     Plan 3b task 8 and its fix round added the cases and the mutations that
+#     moved it. Every figure here is from a timed run on the same host,
 #     because the one before them was INFERRED from spaced polling, said ~18
 #     minutes, and was wrong by 5x in the direction that would have justified
 #     weakening the check. Re-measure after any change to either table rather
@@ -50,9 +52,10 @@ name: Unit Gate Selftest
 #     45-minute timeout there is no case for sampling anyway.
 #
 # ★ AND IF IT EVER DOES NEED TO BE FASTER, the lever is PROCESS SPAWNS, not
-# coverage. The run is about 4,100 `bun` and `bunx` invocations (66 cases x 60
-# mutations, plus the reference pass, the validity probes and the scope, walk
-# and baseline proofs), each paying full interpreter startup for a scan that
+# coverage. The run is about 6,600 `bun` and `bunx` invocations (84 cases x 79
+# mutations, plus the reference pass, the validity probes and the scope, walk,
+# baseline, cross-file, clean-room and re-export proofs), each paying full
+# interpreter startup for a scan that
 # takes milliseconds. Batching several cases per invocation, or scanning
 # in-process, would take most of it off the clock without dropping a single
 # mutant. Cutting mutants to buy time is the one optimisation that trades away

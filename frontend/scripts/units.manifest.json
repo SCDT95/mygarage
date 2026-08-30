@@ -739,7 +739,7 @@
   {
    "path": "src/components/ServiceVisitForm.tsx",
    "disposition": "audited",
-   "digest": "a1f0e6d9bc415d710495ba89c8b376fa96eade1e4c5e75d39e2591fabfaffdf0",
+   "digest": "c697dffd32570383909a8dea9cdc9aa2165db2172cb2d32c46ef6729f56579b8",
    "reason": "the odometer through useUnitFormat with a seeded origin. `system` survives for the SUPPLY quantities only (D8 exempts supplies). Ruling R3 gave canonicalToDisplay/displayToCanonical to task 5, which RULED them exempt: see src/utils/supplyUnits.ts, whose exemption is now owned by a D8 amendment rather than by a task.",
    "tests": [
     "components/__tests__/ServiceVisitForm.mixedUnits.test.tsx",
@@ -749,7 +749,8 @@
    ],
    "findings": [
     "supply quantities still convert on the binary system (D8 exemption). Task 5 ruled this exempt and is DISCHARGED; the exemption now waits on the D8 amendment that would give supplies a resolved token, recorded on src/utils/supplyUnits.ts.",
-    "USER-VISIBLE DISPLAY-PRECISION CHANGE, SHIPPED: the odometer field has the same km-adapter zero-decimal display change as OdometerRecordForm (a stored 72420.5 km now renders '72421'); stored data and an untouched save are unaffected (ServiceVisitForm.mixedUnits.test.tsx pins the origin), but the displayed precision changed for every metric user. Task 3 fix round 1 LOW-4."
+    "USER-VISIBLE DISPLAY-PRECISION CHANGE, SHIPPED: the odometer field has the same km-adapter zero-decimal display change as OdometerRecordForm (a stored 72420.5 km now renders '72421'); stored data and an untouched save are unaffected (ServiceVisitForm.mixedUnits.test.tsx pins the origin), but the displayed precision changed for every metric user. Task 3 fix round 1 LOW-4.",
+    "FIX ROUND 1, and this file is where the flip's critical finding lived. The units gate's binary-conversion vocabulary took only EXPORTED top-level `function` declarations, so `convertSupplyUsages` here, which is the function whose fourth ARGUMENT task 8's value-reference leg already reported at lines 249 and 344 while the function consuming it stayed invisible were invisible to both the call form and the value-reference form of that leg. Widening the walk to module-local declarations, arrow consts and instance methods surfaced them; they are the same R3/D8 supplies deferral this row already inherits, threading the collapsed `system` down to `canonicalToDisplay` / `supplyUnitLabel`, so each carries `// units-exempt(binary-conversion):` at its own declaration and is pinned by name in utils/__tests__/unitsBinaryApiSurface.test.ts. Owner: deferred, with the three legs in utils/supplyUnits.ts."
    ],
    "owners": [
     "task 9",
@@ -787,21 +788,33 @@
   {
    "path": "src/components/SuppliesUsedTab.tsx",
    "disposition": "audited",
-   "digest": "733f40f0f63d988e4941cc832744f70786a64a30eef57e73004fe00356076719",
+   "digest": "0e6955b7335234091d658a580268fe89040ffc27c96c2fc4fc99f1fc3f120159",
    "reason": "as SupplyHistoryModal",
    "tests": [
     "components/__tests__/SuppliesUsedTab.test.tsx",
     "utils/__tests__/supplyUnits.test.ts"
+   ],
+   "findings": [
+    "FIX ROUND 1, and this file is where the flip's critical finding lived. The units gate's binary-conversion vocabulary took only EXPORTED top-level `function` declarations, so the local `formatQuantity` here were invisible to both the call form and the value-reference form of that leg. Widening the walk to module-local declarations, arrow consts and instance methods surfaced them; they are the same R3/D8 supplies deferral this row already inherits, threading the collapsed `system` down to `canonicalToDisplay` / `supplyUnitLabel`, so each carries `// units-exempt(binary-conversion):` at its own declaration and is pinned by name in utils/__tests__/unitsBinaryApiSurface.test.ts. Owner: deferred, with the three legs in utils/supplyUnits.ts."
+   ],
+   "owners": [
+    "deferred"
    ]
   },
   {
    "path": "src/components/SupplyHistoryModal.tsx",
    "disposition": "audited",
-   "digest": "23c3a95e0f4ec9d2f678aca3a2140a5d61f514a3d789c6be4939da0b28b59182",
+   "digest": "e8539f3d02965fbef8958c03a1fdae741d8a9f298a8e4caa648e8211fa5b7238",
    "reason": "supply quantities through supplyUnits; inherits the D8 quarts decision recorded on utils/supplyUnits.ts",
    "tests": [
     "components/__tests__/SupplyHistoryModal.test.tsx",
     "utils/__tests__/supplyUnits.test.ts"
+   ],
+   "findings": [
+    "FIX ROUND 1, and this file is where the flip's critical finding lived. The units gate's binary-conversion vocabulary took only EXPORTED top-level `function` declarations, so seven declarations here (formatMagnitude, formatQuantity, formatSignedQuantity, and the four components PurchaseRow, UsageRow, PurchaseForm and AdjustmentForm, whose props carry the binary system) were invisible to both the call form and the value-reference form of that leg. Widening the walk to module-local declarations, arrow consts and instance methods surfaced them; they are the same R3/D8 supplies deferral this row already inherits, threading the collapsed `system` down to `canonicalToDisplay` / `supplyUnitLabel`, so each carries `// units-exempt(binary-conversion):` at its own declaration and is pinned by name in utils/__tests__/unitsBinaryApiSurface.test.ts. Owner: deferred, with the three legs in utils/supplyUnits.ts."
+   ],
+   "owners": [
+    "deferred"
    ]
   },
   {
@@ -2682,7 +2695,7 @@
   {
    "path": "src/utils/supplyUnits.ts",
    "disposition": "audited",
-   "digest": "4782a147e5feaba72b0c02e529fd4c043614fa73f1657d305418aa20241034ac",
+   "digest": "b50b1a109fe96acdda7b4c65abb48134f65d2da5eaf6e098775a3d9ee6ce100c",
    "reason": "R3 ruled per comparison, all three exempt, re-founded in fix round 1 after the original reason was proved false. These legs track `unit_preference`, NOT the resolved volume, because D8 gave supplies a qt/L vocabulary that `UnitSet` cannot express: there is no quart token for `units` to supply. Recorded structurally as three `units-exempt:` pragmas carrying an owner and a D8-amendment expiry, which is why this file no longer appears in the units gate baseline. See the file header for the account this knowingly leaves incoherent.",
    "tests": [
     "utils/__tests__/supplyUnits.test.ts"
