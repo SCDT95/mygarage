@@ -188,10 +188,29 @@ function coerceStored(value: unknown): StoredUnitPrefs | null {
 }
 
 /**
- * Fold the three legacy keys into one record, once.
+ * Fold the three legacy keys into one record for this session.
  *
- * @returns The migrated record, persisted so this never runs again, or null
- *   when the browser held no choice of any kind to migrate.
+ * ★ DELIBERATELY DOES NOT PERSIST, and that is the whole point of this
+ * function's shape. It reads `imperial_gallon_standard` at MODULE LOAD, which
+ * happens before `useGallonStandardSync`'s `/settings/public` fetch resolves,
+ * and an absent key falls back to `us`. Persisting that guess would freeze it:
+ * every later path is guarded on `unit_prefs` being ABSENT, and
+ * `setGallonStandard` notifies only its own listeners, so nothing could ever
+ * heal the record.
+ *
+ * Two reachable paths, both silent and both permanent. A UK instance whose
+ * first post-upgrade settings fetch fails (the key is never written on US
+ * instances, so its absence is indistinguishable from normal), and any instance
+ * whose admin later switches the published flavour. Either one leaves every
+ * volume and MPG about twenty percent wrong, forever.
+ *
+ * Before the store existed, rung 2 read the cached gallon standard live and
+ * followed the server. Not persisting keeps that: the legacy keys stay
+ * authoritative until the client makes a real choice through `setUnitPrefs`,
+ * which does persist.
+ *
+ * @returns The migrated record for this session, or null when the browser held
+ *   no choice of any kind to migrate.
  */
 function migrateLegacy(): StoredUnitPrefs | null {
   const system = readLegacySystem()
@@ -202,9 +221,7 @@ function migrateLegacy(): StoredUnitPrefs | null {
     localStorage.getItem(LEGACY_GALLON_KEY) === 'uk' ? 'uk' : 'us'
   const units = system === null ? null : presetUnitsFor(system, gallonStandard)
 
-  const migrated = makePrefs(units, showBoth)
-  persist(migrated)
-  return migrated
+  return makePrefs(units, showBoth)
 }
 
 /**

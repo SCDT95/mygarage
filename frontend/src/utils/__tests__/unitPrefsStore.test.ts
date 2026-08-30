@@ -135,6 +135,33 @@ describe('unitPrefsStore migration off the legacy keys', () => {
     expect(prefs!.unit_preference).toBe('imperial')
   })
 
+  it('does not freeze a gallon flavour the browser never chose', async () => {
+    // ★ THE MIGRATION MUST NOT PERSIST. It reads `imperial_gallon_standard` at
+    // MODULE LOAD, before `useGallonStandardSync`'s /settings/public fetch has
+    // resolved, and an absent key falls back to `us`. Persisting that guess
+    // freezes it: every later path is guarded on `unit_prefs` being ABSENT, so
+    // nothing can heal the record afterwards.
+    //
+    // Reachable on a UK instance whose first post-upgrade settings fetch fails,
+    // and on any instance whose admin later switches the published flavour.
+    // Either leaves every volume and MPG about twenty percent wrong, forever.
+    localStorage.setItem(LEGACY_SYSTEM_KEY, 'imperial')
+
+    const firstBoot = await loadStore()
+    expect(firstBoot.getUnitPrefs()!.units).toEqual(IMPERIAL_UNITS)
+    // The guess must not have been written down.
+    expect(localStorage.getItem(UNIT_PREFS_KEY)).toBeNull()
+
+    // The server answers UK on the next boot, the way the sync hook would.
+    localStorage.setItem(LEGACY_GALLON_KEY, 'uk')
+    const secondBoot = await loadStore()
+
+    const prefs = secondBoot.getUnitPrefs()
+    expect(prefs).not.toBeNull()
+    expect(prefs!.units!.volume).toBe('gal_uk')
+    expect(prefs!.unit_preference).toBe('custom')
+  })
+
   it('holds a record when the browser chose, and nothing when it never did', async () => {
     localStorage.setItem(LEGACY_SYSTEM_KEY, 'imperial')
     const chose = await loadStore()
