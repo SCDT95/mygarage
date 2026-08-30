@@ -85,6 +85,18 @@ export interface StoredUnitPrefs {
   show_both_units: boolean
 }
 
+/**
+ * Whether `current`'s units came from the legacy keys rather than from a choice
+ * this browser made through `setUnitPrefs`.
+ *
+ * The store holds three states, not two: no units at all, units held FOR THIS
+ * SESSION because `migrateLegacy` derived them, and units CHOSEN and written
+ * down. Only the third may be persisted. Collapsing the middle one into the
+ * third is how a modifier-only write freezes the module-load gallon guess that
+ * `migrateLegacy` exists to avoid persisting.
+ */
+let unitsAreMigrated = false
+
 let current: StoredUnitPrefs | null = readPersisted()
 
 const listeners = new Set<() => void>()
@@ -125,7 +137,34 @@ export function getUnitPrefsServerSnapshot(): StoredUnitPrefs | null {
  */
 export function setUnitPrefs(prefs: StoredUnitPrefs): void {
   current = makePrefs(prefs.units, prefs.show_both_units)
+  // An explicit units choice, so the set is the browser's own from here on and
+  // the legacy keys stop being authoritative for it.
+  unitsAreMigrated = prefs.units !== null
+    ? false
+    : unitsAreMigrated
   persist(current)
+  for (const listener of listeners) listener()
+}
+
+/**
+ * Set the show-both modifier alone, without promoting unchosen units to a choice.
+ *
+ * ★ Why this is not `setUnitPrefs({ ...current, show_both_units })`. For a
+ * browser whose units came from `migrateLegacy`, that set is the one
+ * `migrateLegacy` deliberately refused to write down: it was built from the
+ * module-load gallon guess, before `/settings/public` resolved. Persisting it
+ * as a side effect of a DISPLAY DENSITY toggle freezes that guess forever,
+ * which is the same twenty percent error, reached through a different door.
+ *
+ * So a migration-derived set is persisted as `units: null` and re-derived on
+ * the next boot, when the gallon key may finally be right, while the modifier
+ * the user actually set is written down.
+ *
+ * @param showBoth Whether to render both systems.
+ */
+export function setShowBothUnits(showBoth: boolean): void {
+  current = makePrefs(current?.units ?? null, showBoth)
+  persist(makePrefs(unitsAreMigrated ? null : (current.units ?? null), showBoth))
   for (const listener of listeners) listener()
 }
 
@@ -153,12 +192,42 @@ function readPersisted(): StoredUnitPrefs | null {
   try {
     const raw = localStorage.getItem(STORAGE_KEY)
     // ★ The guard is the ABSENCE of this key, and nothing else. See the header.
-    if (raw === null) return migrateLegacy()
-    return coerceStored(tryParseJson(raw))
+    if (raw === null) return sessionRecord(migrateLegacy(), null)
+
+    const stored = coerceStored(tryParseJson(raw))
+    if (stored === null) return null
+    if (stored.units !== null) {
+      unitsAreMigrated = false
+      return stored
+    }
+
+    // A persisted record holding modifiers but no units. Two browsers reach
+    // this: one that genuinely never chose units, and one whose modifier write
+    // deliberately withheld a migration-derived set (`setShowBothUnits`).
+    // Re-deriving costs the first nothing, because `migrateLegacy` returns null
+    // when there is no legacy choice to find, and gives the second back a set
+    // that follows the server instead of a frozen guess.
+    return sessionRecord(migrateLegacy(), stored.show_both_units)
   } catch {
     // Private mode, or storage disabled entirely.
     return null
   }
+}
+
+/**
+ * Hold a migration-derived record for this session, flagging it as unchosen.
+ *
+ * @param migrated What `migrateLegacy` found, or null.
+ * @param showBoth The persisted modifier to keep, or null to take the migrated one.
+ * @returns The record to hold, or null when there is nothing to hold.
+ */
+function sessionRecord(
+  migrated: StoredUnitPrefs | null,
+  showBoth: boolean | null
+): StoredUnitPrefs | null {
+  unitsAreMigrated = migrated?.units != null
+  if (showBoth === null) return migrated
+  return makePrefs(migrated?.units ?? null, showBoth)
 }
 
 /**

@@ -162,6 +162,71 @@ describe('unitPrefsStore migration off the legacy keys', () => {
     expect(prefs!.unit_preference).toBe('custom')
   })
 
+  it('a modifier-only write does not promote an unchosen set to a choice', async () => {
+    // ★ THE SECOND DOOR ONTO THE SAME DEFECT. Not persisting inside
+    // `migrateLegacy` is not enough: if a show-both write then persists the
+    // session set, the module-load gallon guess is frozen anyway, as a side
+    // effect of a DISPLAY DENSITY toggle. Same twenty percent error, different
+    // door. `setShowBothUnits` withholds a migration-derived set; only
+    // `setUnitPrefs` may write one down.
+    localStorage.setItem(LEGACY_SYSTEM_KEY, 'imperial')
+
+    const firstBoot = await loadStore()
+    expect(firstBoot.getUnitPrefs()!.units).toEqual(IMPERIAL_UNITS)
+
+    firstBoot.setShowBothUnits(true)
+
+    // The modifier is written down; the unchosen set is not.
+    const persisted = JSON.parse(localStorage.getItem(UNIT_PREFS_KEY)!)
+    expect(persisted.show_both_units).toBe(true)
+    expect(persisted.units).toBeNull()
+    // ...and this session still renders the set it derived.
+    expect(firstBoot.getUnitPrefs()!.units).toEqual(IMPERIAL_UNITS)
+
+    // The server answers UK on the next boot. The record must heal, and keep
+    // the modifier the user actually chose.
+    localStorage.setItem(LEGACY_GALLON_KEY, 'uk')
+    const secondBoot = await loadStore()
+
+    const prefs = secondBoot.getUnitPrefs()
+    expect(prefs!.units!.volume).toBe('gal_uk')
+    expect(prefs!.show_both_units).toBe(true)
+  })
+
+  it('a modifier-only write DOES keep a set the browser actually chose', async () => {
+    // The other direction, so the fix above cannot be over-applied: once the
+    // client has made a real units choice, a show-both toggle must not drop it.
+    const store = await loadStore()
+    store.setUnitPrefs({
+      units: UK_IMPERIAL_UNITS,
+      unit_preference: 'custom',
+      show_both_units: false,
+    })
+
+    store.setShowBothUnits(true)
+
+    const persisted = JSON.parse(localStorage.getItem(UNIT_PREFS_KEY)!)
+    expect(persisted.units).toEqual(UK_IMPERIAL_UNITS)
+    expect(persisted.show_both_units).toBe(true)
+  })
+
+  it('toggles the show-both modifier in BOTH directions', async () => {
+    // The pre-phase-4 anonymous path was a one-way latch: OFF never took.
+    const store = await loadStore()
+    store.setUnitPrefs({
+      units: METRIC_UNITS,
+      unit_preference: 'metric',
+      show_both_units: false,
+    })
+
+    store.setShowBothUnits(true)
+    expect(store.getUnitPrefs()!.show_both_units).toBe(true)
+
+    store.setShowBothUnits(false)
+    expect(store.getUnitPrefs()!.show_both_units).toBe(false)
+    expect(JSON.parse(localStorage.getItem(UNIT_PREFS_KEY)!).show_both_units).toBe(false)
+  })
+
   it('holds a record when the browser chose, and nothing when it never did', async () => {
     localStorage.setItem(LEGACY_SYSTEM_KEY, 'imperial')
     const chose = await loadStore()

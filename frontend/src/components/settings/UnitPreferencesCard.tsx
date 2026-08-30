@@ -12,7 +12,9 @@
  * 2. For a client with no account the tab wrote the legacy `unit_preference`
  *    and `show_both_units` localStorage keys directly. `utils/unitPrefsStore.ts`
  *    ignores those the moment its own key exists, so the anonymous toggle
- *    changed nothing at all. Writes go through `setUnitPrefs`.
+ *    changed nothing at all. A units choice goes through `setUnitPrefs`; the
+ *    show-both modifier goes through `setShowBothUnits`, which is the only one
+ *    that may withhold an unchosen set from storage.
  *
  * ★ THE HIGHLIGHT COMES FROM THE STORED TAG, THE SENTENCE FROM THE RESOLVED
  * SET, AND THAT DISAGREEMENT IS THE POINT. An account can hold
@@ -56,6 +58,7 @@ import {
 import {
   getUnitPrefs,
   getUnitPrefsServerSnapshot,
+  setShowBothUnits,
   setUnitPrefs,
   subscribeToUnitPrefs,
 } from '@/utils/unitPrefsStore'
@@ -208,15 +211,15 @@ export default function UnitPreferencesCard(): React.ReactElement {
         await api.put('/auth/me/units', unitsBodyFor(preference, editorUnits, next))
         await refreshUser()
       } else {
-        // ★ `units` stays whatever the browser already held, INCLUDING null. A
-        // client that has never chosen holds modifiers only, and writing the
-        // resolved set here would invent an explicit browser preference that
-        // outranks `default_unit_prefs` forever.
-        setUnitPrefs({
-          units: storedPrefs?.units ?? null,
-          unit_preference: storedPrefs?.unit_preference ?? null,
-          show_both_units: next,
-        })
+        // ★ The store owns what happens to `units` here, and the card must
+        // not pass a set through. A client that has never chosen holds
+        // modifiers only, and writing the resolved set would invent an
+        // explicit browser preference outranking `default_unit_prefs` forever.
+        // A client whose units came from `migrateLegacy` holds a set built
+        // from the module-load gallon guess, and persisting THAT as a side
+        // effect of a display toggle freezes the guess just as permanently.
+        // `setShowBothUnits` distinguishes the two; the card cannot.
+        setShowBothUnits(next)
       }
       toast.success(t('preferences.displaySaved'))
     } catch {
