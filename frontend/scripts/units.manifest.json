@@ -1932,12 +1932,13 @@
   {
    "path": "src/hooks/useUnitPreference.ts",
    "disposition": "audited",
-   "digest": "3a507238d93611647b4c0bf6aa37b91593d723ff727041e9ca0ed7fd926f1ad0",
-   "reason": "resolves the unit set; `system` is the collapsed binary this phase is migrating away from, which is the hook working as documented rather than a defect in it. Fix round 1 corrected the rationale above the `subscribeToConverterGallon` subscription: it still said every consumption and fuel-rate reader takes the binary system and reads `UnitConverter`'s mutable statics, which task 6b made false for all of them. Task 8 then DELETED that subscription, with `hooks/useResolvedGallonSync.ts`, the three converter-gallon exports in `utils/units.ts` and the `App` provider call: a sync that wrote process-global factors no screen reads, published to one subscriber that discarded the value. `gallonStandard` here is resolved per rung and never came from the converter, so no behaviour moved. What still writes those factors is `gallonStandardStore`, and `utils/__tests__/unitsBinaryApiSurface.test.ts` now enumerates the eight methods that touch them and holds the caller count at one.",
+   "digest": "9db714dda338a9a5224551b979ff33abcfb67f3cb927185f51df31c7095488a7",
+   "reason": "resolves the unit set; `system` is the collapsed binary this phase is migrating away from, which is the hook working as documented rather than a defect in it. Fix round 1 corrected the rationale above the `subscribeToConverterGallon` subscription: it still said every consumption and fuel-rate reader takes the binary system and reads `UnitConverter`'s mutable statics, which task 6b made false for all of them. Task 8 then DELETED that subscription, with `hooks/useResolvedGallonSync.ts`, the three converter-gallon exports in `utils/units.ts` and the `App` provider call: a sync that wrote process-global factors no screen reads, published to one subscriber that discarded the value. `gallonStandard` here is resolved per rung and never came from the converter, so no behaviour moved. What still writes those factors is `gallonStandardStore`, and `utils/__tests__/unitsBinaryApiSurface.test.ts` now enumerates the eight methods that touch them and holds the caller count at one. Phase 4 task 3 replaced rung 2: the hook no longer parses the legacy `unit_preference` key during render and no longer reads `show_both_units` from localStorage. Both come from `utils/unitPrefsStore.ts`, subscribed through `useSyncExternalStore`, so a client with no account can hold a full per-quantity set instead of one bit, and rung 2 collapses `system` and `gallonStandard` FROM that set the way rungs 1 and 3 already did rather than expanding a preset. `readStoredUnitSystem` is deleted and its `units-exempt(compare)` pragma moved to the store with the read it excuses. The file header's four-rung comment was rewritten rather than appended to, because rung 2 is no longer 'the key being PRESENT'.",
    "tests": [
     "hooks/__tests__/useUnitPreference.custom.test.tsx",
     "hooks/__tests__/useUnitPreference.precedence.test.tsx",
-    "hooks/__tests__/useUnitFormat.accountGallon.test.tsx"
+    "hooks/__tests__/useUnitFormat.accountGallon.test.tsx",
+    "contexts/__tests__/AuthContext.unitDefaults.test.tsx"
    ]
   },
   {
@@ -2549,8 +2550,8 @@
   {
    "path": "src/types/units.ts",
    "disposition": "audited",
-   "digest": "2b5c02db05c4422b1c23004d57de9ab3fefdc30d892bea4aee80f2036d3f65d9",
-   "reason": "gate-detectable unit decisions, recorded not asserted clean (plan 3b task 1 ordering) Task 8: `binarySystemFor`'s token branch is D8's single admitted collapse and reads the quantity it is asked about, so it carries `// units-exempt(token-branch):` and left the units gate baseline with the other eleven.",
+   "digest": "c756d22a9f2d5ef63bdad20fe975a53bfba06f4fa032bfd3577105621a1a50ec",
+   "reason": "gate-detectable unit decisions, recorded not asserted clean (plan 3b task 1 ordering) Task 8: `binarySystemFor`'s token branch is D8's single admitted collapse and reads the quantity it is asked about, so it carries `// units-exempt(token-branch):` and left the units gate baseline with the other eleven. Phase 4 task 3 MOVED the per-quantity vocabulary here from `utils/publicUnitDefaults.ts`, where it was private, as the exported `UNIT_OPTIONS` plus `UNIT_OPTIONS_ARE_COMPLETE` (the same two-sided proof, so a token the generated `UnitSet` admits and the table omits still stops the build) and the whole-set validator `coerceUnitSet`. The move exists because the vocabulary gained a second reader, the browser preference store, and a second COPY of it is how this workstream started. No token changed in the move; `utils/__tests__/publicUnitDefaults.test.ts` exercises the validator through `parseUnitSet` against the wire strings the backend actually serves.",
    "tests": [
     "types/__tests__/units.test.ts"
    ]
@@ -2680,8 +2681,8 @@
   {
    "path": "src/utils/publicUnitDefaults.ts",
    "disposition": "audited",
-   "digest": "eaa56197592844aba243070d45aa11ce4f137af282d86a8706fb74f623d00314",
-   "reason": "gate-detectable unit decisions, recorded not asserted clean (plan 3b task 1 ordering) Task 8: `gallonStandardFor`'s two token branches are R1's structural exemption in its other spelling, a choice BETWEEN units with no quantity to convert, so both carry `// units-exempt(token-branch):` and left the units gate baseline.",
+   "digest": "52297ee6d7aa320a226b8029fb68cf63e2381a6bbcb703eedb2c3c35c6e241c3",
+   "reason": "gate-detectable unit decisions, recorded not asserted clean (plan 3b task 1 ordering) Task 8: `gallonStandardFor`'s two token branches are R1's structural exemption in its other spelling, a choice BETWEEN units with no quantity to convert, so both carry `// units-exempt(token-branch):` and left the units gate baseline. Phase 4 task 3 moved the vocabulary table, its completeness proof and the whole-set validation to `types/units.ts` as `UNIT_OPTIONS` and `coerceUnitSet`; `parseUnitSet` is now the JSON half calling that, and `gallonStandardFor` and the settings-row read are untouched. This module's subject is the settings row, not the vocabulary, and the store phase 4 adds needed the same validation without importing a settings reader.",
    "tests": [
     "utils/__tests__/publicUnitDefaults.test.ts"
    ]
@@ -2736,6 +2737,17 @@
     "utils/__tests__/unitFormatFuelRate.test.ts",
     "utils/__tests__/entryGridRoundTrip.test.ts",
     "components/__tests__/FuelRecordList.test.tsx"
+   ]
+  },
+  {
+   "path": "src/utils/unitPrefsStore.ts",
+   "disposition": "audited",
+   "digest": "0c1e2d280610adbf896c47b6c056d77e3d56d4bd2e9d7e4c61511a31cc41a279",
+   "reason": "holds this browser's own unit preferences: the resolved set, the show-both modifier, and a DERIVED `unit_preference` tag. Three unit decisions live here and each is deliberate. (1) The one-shot migration expands the legacy `unit_preference` key through `presetUnitsFor` with the legacy `imperial_gallon_standard` flavour, which is the same expansion `useUnitPreference` rung 2 did inline before this task, so no browser's rendered units move. (2) `tagFor` names a set `custom` unless it is exactly the preset for its binary system, which is migration 093's `_materialise_uk_imperial_users` rule stated generally: the imperial and metric presets are both written with `secondary_gallon='us'`, so a UK-gallon browser is custom whichever preset it started from. Deriving the tag rather than storing it means the settings card cannot highlight a preset over a set that is not it. (3) `readLegacySystem` carries the `units-exempt(compare)` pragma that used to sit in `hooks/useUnitPreference.ts::readStoredUnitSystem`; it moved with the read it excuses and the suppression count is unchanged, which `utils/__tests__/unitsBinaryApiSurface.test.ts` pins by exact list. Token validation is `coerceUnitSet` from `types/units.ts`, so the store degrades WHOLE like the backend rather than patching a partial set from a preset.",
+   "tests": [
+    "utils/__tests__/unitPrefsStore.test.ts",
+    "hooks/__tests__/useUnitPreference.precedence.test.tsx",
+    "utils/__tests__/unitsBinaryApiSurface.test.ts"
    ]
   },
   {

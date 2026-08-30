@@ -461,10 +461,14 @@ describe('what the units gate is silent about (plan 3b task 8, fix round 1)', ()
     // asserted on. Same pin, same reason.
     expect(gateSuppressions('PRAGMA_SUPPRESSED')).toEqual([
       'src/components/tabs/SettingsSystemTab.tsx::compare x3',
-      'src/hooks/useUnitPreference.ts::compare x2',
       'src/types/units.ts::token-branch x1',
+      // Phase 4 task 3 MOVED this pair out of `useUnitPreference.ts`, which no
+      // longer parses the legacy `unit_preference` key: the browser store owns
+      // that read now, and the pragma travelled with the two comparisons it
+      // excuses. Same reason, same count, different file.
       'src/utils/publicUnitDefaults.ts::token-branch x2',
       'src/utils/supplyUnits.ts::compare x3',
+      'src/utils/unitPrefsStore.ts::compare x2',
       'src/utils/units.ts::token-branch x5',
     ])
   })

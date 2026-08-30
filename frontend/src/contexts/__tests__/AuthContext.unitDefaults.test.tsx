@@ -26,6 +26,18 @@ import { setGallonStandard } from '@/utils/gallonStandardStore'
 import { AuthProvider, useAuth } from '../AuthContext'
 import { useUnitPreference } from '@/hooks/useUnitPreference'
 
+/**
+ * Let the browser preference store re-read `localStorage`.
+ *
+ * Rung 2 is the `unit_prefs` store since phase 4 task 3, and it parses once at
+ * module load, so a `setItem` in a test body is invisible to it without the
+ * `storage` event production uses. The legacy `unit_preference` key each test
+ * below writes still reaches the hook, through the store's one-shot migration.
+ */
+function reloadBrowserPrefs(): void {
+  window.dispatchEvent(new Event('storage'))
+}
+
 vi.mock('../../services/api', () => {
   const mockApi = {
     get: vi.fn(),
@@ -100,6 +112,7 @@ describe('AuthContext default_unit_prefs', () => {
     setGallonStandard('us')
     localStorage.clear()
     sessionStorage.clear()
+    reloadBrowserPrefs()
   })
 
   it('parses the default before the auth_mode=none early return', async () => {
@@ -141,6 +154,7 @@ describe('AuthContext default_unit_prefs', () => {
     // The other half, and the one that makes the fix safe: a default is what
     // you get before you choose, not something that overrides a choice.
     localStorage.setItem('unit_preference', 'imperial')
+    reloadBrowserPrefs()
 
     mountWithPublicSettings([
       { key: 'auth_mode', value: 'none' },
@@ -160,6 +174,7 @@ describe('AuthContext default_unit_prefs', () => {
     // other units control, and 093 can only ever seed imperial or UK-imperial,
     // so a default that outranked this key would make metric unreachable.
     localStorage.setItem('unit_preference', 'metric')
+    reloadBrowserPrefs()
 
     mountWithPublicSettings([
       { key: 'auth_mode', value: 'none' },
@@ -191,6 +206,7 @@ describe('AuthContext default_unit_prefs', () => {
 
   it('an authenticated account outranks the instance default', async () => {
     localStorage.setItem('unit_preference', 'metric')
+    reloadBrowserPrefs()
     mockedApi.get.mockImplementation((url: string) => {
       if (url === '/settings/public') {
         return Promise.resolve({
@@ -223,6 +239,7 @@ describe('AuthContext default_unit_prefs', () => {
 
   it('retains no default when the published row is malformed', async () => {
     localStorage.setItem('unit_preference', 'metric')
+    reloadBrowserPrefs()
 
     mountWithPublicSettings([
       { key: 'auth_mode', value: 'none' },
@@ -238,6 +255,7 @@ describe('AuthContext default_unit_prefs', () => {
 
   it('retains no default when the instance publishes none', async () => {
     localStorage.setItem('unit_preference', 'metric')
+    reloadBrowserPrefs()
 
     mountWithPublicSettings([{ key: 'auth_mode', value: 'none' }])
 
@@ -260,6 +278,7 @@ describe('AuthContext default_unit_prefs', () => {
     // `system` reading metric depends on the browser's own choice still being
     // consulted when the server answered with nothing at all.
     localStorage.setItem('unit_preference', 'metric')
+    reloadBrowserPrefs()
     mockedApi.get.mockImplementation(() => Promise.reject(new Error('offline')))
 
     render(

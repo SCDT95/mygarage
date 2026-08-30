@@ -4,32 +4,48 @@
  * Four rungs, highest wins:
  *
  *   1. an authenticated account's own preference and `resolved_units`;
- *   2. an explicit anonymous choice: the `unit_preference` localStorage key
- *      being PRESENT and holding a value the app recognises;
+ *   2. an explicit anonymous choice: the browser's own `unit_prefs` store
+ *      holding a resolved set (`utils/unitPrefsStore.ts`);
  *   3. `default_unit_prefs`, the instance-wide set `/settings/public` publishes
  *      for clients with no user (spec D5);
  *   4. imperial, which nothing post-093 should reach.
  *
- * Rung 3 is new. Before it, an anonymous visitor and every client on an
- * `auth_mode=none` instance went straight from "no user" to
- * `localStorage.getItem('unit_preference') || 'imperial'`, so a metric-default
- * instance rendered IMPERIAL to logged-out visitors however the admin had
- * configured it.
+ * Rung 3 arrived with phase 1 of this workstream. Before it, an anonymous
+ * visitor and every client on an `auth_mode=none` instance went straight from
+ * "no user" to `localStorage.getItem('unit_preference') || 'imperial'`, so a
+ * metric-default instance rendered IMPERIAL to logged-out visitors however the
+ * admin had configured it.
  *
- * ★ Why the instance default sits BELOW the browser key rather than above it.
- * `default_unit_prefs` is a DEFAULT: what you get before you choose, not
- * something that overrides a choice already made. For an authenticated user
+ * ★ Rung 2 used to be the `unit_preference` localStorage key being PRESENT and
+ * holding `imperial` or `metric`, expanded to a full set through a preset. That
+ * gave a client with no account ONE BIT of preference where an account holds
+ * eleven columns, which is the whole population that cannot use the account
+ * path: anonymous visitors and every client on an `auth_mode=none` instance.
+ * The store now holds a resolved set for them, migrated once off the three
+ * legacy keys, so rung 2 hands its set through exactly as rung 3 does rather
+ * than rebuilding it from a binary system. `system` and `gallonStandard` are
+ * collapsed FROM that set on this rung too, so the card and the form below it
+ * cannot disagree.
+ *
+ * ★ Why the instance default sits BELOW the browser's own choice rather than
+ * above it. `default_unit_prefs` is a DEFAULT: what you get before you choose,
+ * not something that overrides a choice already made. For an authenticated user
  * `resolved_units` IS the recorded choice, seeded from that default at account
- * creation; for an anonymous client the localStorage key is. Ranking the
- * default above the key looks harmless until you notice that on an
- * `auth_mode=none` instance `SettingsSystemTab` writes that key for a client
- * with no account, `ProtectedRoute` lets `auth_mode=none` reach `/settings`, and
- * migration 093 seeds `default_unit_prefs` to the imperial or UK-imperial preset
- * and NEVER to metric. A metric household upgrading would have been flipped to
- * imperial with no way back, while the toggle went on highlighting the choice it
- * could no longer honour. There is no way to tell "the user chose imperial" from
- * "a legacy key was left behind", and no need to: a leftover key is a prior
- * choice.
+ * creation; for a client with no account the browser store is. Ranking the
+ * default above it looks harmless until you notice that on an `auth_mode=none`
+ * instance `SettingsSystemTab` is where such a client sets its units,
+ * `ProtectedRoute` lets `auth_mode=none` reach `/settings`, and migration 093
+ * seeds `default_unit_prefs` to the imperial or UK-imperial preset and NEVER to
+ * metric. A metric household upgrading would have been flipped to imperial with
+ * no way back, while the toggle went on highlighting the choice it could no
+ * longer honour. There is no way to tell "the user chose imperial" from "a
+ * legacy key was left behind", and no need to: a leftover key is a prior choice,
+ * which is why the store migrates it rather than discarding it.
+ *
+ * ★ `show_both_units` rides on the same store. It has no counterpart in a
+ * `UnitSet`, and a browser may hold it with no units choice at all, so the
+ * store's record carries a null `units` in that case and this hook still reads
+ * the modifier while falling through to rung 3 for the set.
  */
 
 import { useSyncExternalStore } from 'react';
@@ -42,6 +58,11 @@ import {
   getGallonStandardServerSnapshot,
   subscribeToGallonStandard,
 } from '../utils/gallonStandardStore';
+import {
+  getUnitPrefs,
+  getUnitPrefsServerSnapshot,
+  subscribeToUnitPrefs,
+} from '../utils/unitPrefsStore';
 import { gallonStandardFor } from '../utils/publicUnitDefaults';
 
 interface UnitPreference {
@@ -127,6 +148,15 @@ export function useUnitPreference(): UnitPreference {
     getGallonStandard,
     getGallonStandardServerSnapshot,
   );
+  // Subscribed for the same reason, and it is what makes the Settings card's
+  // own controls repaint the screen behind them: the store parses once at
+  // module load, so a component that read localStorage during render would go
+  // on showing the value it read at mount.
+  const storedPrefs = useSyncExternalStore(
+    subscribeToUnitPrefs,
+    getUnitPrefs,
+    getUnitPrefsServerSnapshot,
+  );
   // ★ A SECOND SUBSCRIPTION USED TO SIT HERE AND IS GONE. It watched
   // `UnitConverter`'s mutable gallon statics so a mounted component repainted
   // when they moved, because every consumption and fuel-rate reader took the
@@ -153,21 +183,20 @@ export function useUnitPreference(): UnitPreference {
     };
   }
 
-  // `show_both_units` has no counterpart in a UnitSet, so it stays a browser
-  // key for every client without an account. Rung 3 publishes units, not
-  // display density.
-  const storedShowBoth = localStorage.getItem('show_both_units') === 'true';
+  // `show_both_units` has no counterpart in a UnitSet, so it is a modifier the
+  // browser store carries beside the set, and a client may hold it with no set
+  // at all. Rung 3 publishes units, not display density.
+  const storedShowBoth = storedPrefs?.show_both_units ?? false;
 
-  // Rung 2: an explicit anonymous choice. The same browser that authored this
-  // key authored the cached gallon standard, through the same Settings panel,
-  // so both browser-held values apply together.
-  const storedSystem = readStoredUnitSystem();
-  if (storedSystem !== null) {
+  // Rung 2: this browser's own choice, as a resolved set. `units` is null when
+  // the client holds modifiers only, which is not a units choice and must not
+  // outrank the instance default.
+  if (storedPrefs?.units) {
     return {
-      system: storedSystem,
+      system: binarySystemFor(storedPrefs.units.volume),
       showBoth: storedShowBoth,
-      gallonStandard: cachedGallonStandard,
-      units: presetUnitsFor(storedSystem, cachedGallonStandard),
+      gallonStandard: gallonStandardFor(storedPrefs.units),
+      units: storedPrefs.units,
     };
   }
 
@@ -189,26 +218,4 @@ export function useUnitPreference(): UnitPreference {
     gallonStandard: cachedGallonStandard,
     units: presetUnitsFor('imperial', cachedGallonStandard),
   };
-}
-
-/**
- * Read the browser's own unit choice, if it holds one the app recognises.
- *
- * `localStorage.getItem('unit_preference') as UnitSystem` used to hand any
- * stored text straight back as a `UnitSystem`, a value the type says cannot
- * exist. A key the app cannot read is noise rather than a recorded choice, so
- * it returns null and the caller falls through to the instance default.
- *
- * The `units-exempt` marker below is deliberate and is not deferred work: there
- * is no quantity here and nothing to convert, so `validate-units.ts` flags it
- * only because it is fail-closed on an operand whose provenance it cannot see.
- * The marker has to sit on the line directly above the comparison, which is why
- * the reasoning lives up here and the one-line reason lives down there.
- *
- * @returns The stored system, or null when the browser holds no usable choice.
- */
-function readStoredUnitSystem(): UnitSystem | null {
-  const stored = localStorage.getItem('unit_preference');
-  // units-exempt(compare): validating parse of a stored string, not a display conversion.
-  return stored === 'imperial' || stored === 'metric' ? stored : null;
 }

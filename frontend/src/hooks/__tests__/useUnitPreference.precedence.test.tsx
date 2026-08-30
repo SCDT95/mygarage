@@ -28,12 +28,28 @@
  * so a hook that consulted the wrong one cannot pass.
  */
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { renderHook } from '@testing-library/react'
+import { act, renderHook } from '@testing-library/react'
 import { IMPERIAL_UNITS, METRIC_UNITS, makeUnitSet, makeUser, type User } from '@/__tests__/factories'
 import type { UnitSet } from '@/types/units'
 import { setGallonStandard } from '@/utils/gallonStandardStore'
 import { binarySystemFor } from '@/types/units'
 import { gallonStandardFor } from '@/utils/publicUnitDefaults'
+import { setUnitPrefs } from '@/utils/unitPrefsStore'
+
+/**
+ * Let the browser preference store re-read `localStorage`.
+ *
+ * ★ Rung 2 is no longer a `localStorage.getItem` during render. The store
+ * parses ONCE at module load and holds the object, because
+ * `useSyncExternalStore` throws if `getSnapshot` returns a fresh one per
+ * render, so a `setItem` in a test body is invisible to a store that has
+ * already parsed. A `storage` event is how a later write reaches it in
+ * production, and dispatching one here means these arrangements still exercise
+ * the real path, including the one-shot migration off the legacy keys.
+ */
+function reloadBrowserPrefs(): void {
+  window.dispatchEvent(new Event('storage'))
+}
 
 const h = vi.hoisted(() => ({
   user: null as User | null,
@@ -60,11 +76,13 @@ describe('useUnitPreference precedence', () => {
     // set under test.
     setGallonStandard('us')
     localStorage.clear()
+    reloadBrowserPrefs()
   })
 
   describe('rung 1 beats rung 2', () => {
     it('an account beats an explicit anonymous choice left in the browser', () => {
       localStorage.setItem('unit_preference', 'metric')
+      reloadBrowserPrefs()
       h.user = makeUser({ unit_preference: 'imperial', resolved_units: IMPERIAL_UNITS })
 
       const { result } = renderHook(() => useUnitPreference())
@@ -74,6 +92,7 @@ describe('useUnitPreference precedence', () => {
 
     it("the account's showBoth beats the browser key", () => {
       localStorage.setItem('show_both_units', 'false')
+      reloadBrowserPrefs()
       h.user = makeUser({ show_both_units: true })
 
       const { result } = renderHook(() => useUnitPreference())
@@ -132,6 +151,7 @@ describe('useUnitPreference precedence', () => {
       // instance has, and migration 093 can only ever seed imperial or
       // UK-imperial, so losing here makes metric permanently unreachable.
       localStorage.setItem('unit_preference', 'metric')
+      reloadBrowserPrefs()
       h.defaultUnitPrefs = IMPERIAL_UNITS
 
       const { result } = renderHook(() => useUnitPreference())
@@ -141,6 +161,7 @@ describe('useUnitPreference precedence', () => {
 
     it('an anonymous imperial choice survives a metric instance default', () => {
       localStorage.setItem('unit_preference', 'imperial')
+      reloadBrowserPrefs()
       h.defaultUnitPrefs = METRIC_UNITS
 
       const { result } = renderHook(() => useUnitPreference())
@@ -153,6 +174,7 @@ describe('useUnitPreference precedence', () => {
       // an explicit units choice holds an explicit gallon choice as well.
       localStorage.setItem('unit_preference', 'imperial')
       setGallonStandard('uk')
+      reloadBrowserPrefs()
       h.defaultUnitPrefs = IMPERIAL_UNITS // gal_us
 
       const { result } = renderHook(() => useUnitPreference())
@@ -165,6 +187,7 @@ describe('useUnitPreference precedence', () => {
       // UnitSystem, a value the type says cannot exist. A key the app cannot
       // read is not a recorded choice.
       localStorage.setItem('unit_preference', 'furlongs')
+      reloadBrowserPrefs()
       h.defaultUnitPrefs = METRIC_UNITS
 
       const { result } = renderHook(() => useUnitPreference())
@@ -201,7 +224,11 @@ describe('useUnitPreference precedence', () => {
     })
 
     it('still reads showBoth from the browser, which the unit set does not publish', () => {
+      // ★ The discriminating case for a MODIFIER with no units rung: this
+      // browser set show-both and never chose units, so the store holds the
+      // modifier with a null `units` and the instance default still answers.
       localStorage.setItem('show_both_units', 'true')
+      reloadBrowserPrefs()
       h.defaultUnitPrefs = METRIC_UNITS
 
       const { result } = renderHook(() => useUnitPreference())
@@ -249,6 +276,7 @@ describe('the resolved unit set', () => {
     h.user = null
     h.defaultUnitPrefs = null
     setGallonStandard('us')
+    reloadBrowserPrefs()
   })
 
   it('rung 1: hands an account its own set through, overrides and all', () => {
@@ -278,6 +306,7 @@ describe('the resolved unit set', () => {
   it('rung 2: expands an explicit anonymous choice with the browser gallon', () => {
     localStorage.setItem('unit_preference', 'metric')
     setGallonStandard('uk')
+    reloadBrowserPrefs()
     h.defaultUnitPrefs = IMPERIAL_UNITS
 
     const { result } = renderHook(() => useUnitPreference())
@@ -321,6 +350,7 @@ describe('the resolved unit set', () => {
         arrange: () => {
           localStorage.setItem('unit_preference', 'metric')
           setGallonStandard('uk')
+          reloadBrowserPrefs()
         },
       },
       { rung: '3', arrange: () => { h.defaultUnitPrefs = METRIC_UNITS } },
@@ -332,6 +362,7 @@ describe('the resolved unit set', () => {
       h.user = null
       h.defaultUnitPrefs = null
       setGallonStandard('us')
+      reloadBrowserPrefs()
       arrange()
 
       const { result } = renderHook(() => useUnitPreference())
@@ -343,5 +374,62 @@ describe('the resolved unit set', () => {
         result.current.gallonStandard
       )
     }
+  })
+})
+
+/**
+ * Rung 2 holding a full per-quantity set, which is what the browser store adds.
+ *
+ * Before it, a client with no account held `imperial | metric` and rung 2
+ * expanded that through a preset, so a per-quantity choice was unrepresentable
+ * for exactly the population that cannot use the account path.
+ */
+describe('an anonymous per-quantity choice', () => {
+  beforeEach(() => {
+    localStorage.clear()
+    h.user = null
+    h.defaultUnitPrefs = null
+    setGallonStandard('us')
+    reloadBrowserPrefs()
+  })
+
+  it('renders an anonymous custom set exactly, not the nearest preset', () => {
+    // Metric everything but imperial pressure and tread: no preset produces it.
+    // The instance default is pinned to the metric preset, which is what rung 2
+    // used to collapse this to, so 'kpa' and 'mm' here would mean the set was
+    // rebuilt from a binary system rather than read.
+    h.defaultUnitPrefs = METRIC_UNITS
+    setUnitPrefs({
+      units: makeUnitSet({ pressure: 'psi', tread: 'in32' }),
+      unit_preference: 'custom',
+      show_both_units: false,
+    })
+
+    const { result } = renderHook(() => useUnitPreference())
+
+    expect(result.current.units.pressure).toBe('psi')
+    expect(result.current.units.tread).toBe('in32')
+    expect(result.current.units.volume).toBe('L')
+    expect(result.current.system).toBe('metric')
+  })
+
+  it('re-renders a mounted consumer when the store changes', () => {
+    // Nothing subscribed to the browser's preference before this change, so a
+    // component that had already mounted went on rendering the units it read at
+    // mount until something else re-rendered it.
+    h.defaultUnitPrefs = METRIC_UNITS
+
+    const { result } = renderHook(() => useUnitPreference())
+    expect(result.current.units.pressure).toBe('kpa')
+
+    act(() => {
+      setUnitPrefs({
+        units: makeUnitSet({ pressure: 'psi' }),
+        unit_preference: 'custom',
+        show_both_units: false,
+      })
+    })
+
+    expect(result.current.units.pressure).toBe('psi')
   })
 })

@@ -15,6 +15,82 @@ export type UnitPreference = components['schemas']['UserResponse']['unit_prefere
 export type VolumeUnit = UnitSet['volume']
 
 /**
+ * The accepted token for every quantity, mirroring `app/constants/units.py`.
+ *
+ * `satisfies` makes the compiler reject a missing quantity and an unknown
+ * token; `UNIT_OPTIONS_ARE_COMPLETE` below rejects a missing token, which
+ * `satisfies` alone cannot see.
+ *
+ * ★ This table used to live, unexported, inside `utils/publicUnitDefaults.ts`,
+ * where the only reader was that module's own parser. Phase 4 gave it a second
+ * reader (the browser preference store validates a stored set the same way) and
+ * will give it a third (the eleven Custom controls need the options to offer),
+ * so it moved to the module that owns the vocabulary rather than being copied.
+ * A second copy of the unit vocabulary is how this workstream started.
+ */
+export const UNIT_OPTIONS = {
+  distance: ['km', 'mi'],
+  speed: ['kmh', 'mph'],
+  length: ['m', 'ft'],
+  volume: ['L', 'gal_us', 'gal_uk'],
+  consumption: ['l_100km', 'km_l', 'mpg_us', 'mpg_uk'],
+  pressure: ['kpa', 'bar', 'psi'],
+  temperature: ['c', 'f'],
+  mass: ['kg', 'lb'],
+  torque: ['nm', 'lbft'],
+  tread: ['mm', 'in32'],
+  secondary_gallon: ['us', 'uk'],
+} as const satisfies { readonly [K in keyof UnitSet]: readonly UnitSet[K][] }
+
+/** Any token the generated `UnitSet` admits that the table above omits. */
+type MissingUnitOption = {
+  [K in keyof UnitSet]: Exclude<UnitSet[K], (typeof UNIT_OPTIONS)[K][number]>
+}[keyof UnitSet]
+
+/**
+ * Compile-time proof that the table lists every token of every quantity.
+ *
+ * An omitted token would make a perfectly valid server default unparseable and
+ * silently drop the client to the legacy localStorage keys, which is the exact
+ * failure `publicUnitDefaults` exists to end. The declared type collapses to
+ * `false` the moment a token goes missing, and this assignment stops compiling.
+ */
+export const UNIT_OPTIONS_ARE_COMPLETE: [MissingUnitOption] extends [never] ? true : false = true
+
+/** Every field of a `UnitSet`, derived from the vocabulary rather than listed. */
+export const UNIT_FIELD_NAMES = Object.keys(UNIT_OPTIONS) as Array<keyof UnitSet>
+
+/**
+ * Read an untrusted value as a complete, in-vocabulary `UnitSet`.
+ *
+ * Degrades WHOLE, mirroring `app/utils/default_unit_prefs.py`: a partial or
+ * out-of-vocabulary set yields `null` rather than being patched field by field,
+ * because filling the gaps from an imperial default would hand a metric client
+ * imperial pressure. `null` means "there is nothing trustworthy here", and the
+ * caller drops to whatever it has next.
+ *
+ * @param value A parsed candidate, from a settings row or from browser storage.
+ * @returns The resolved set, or null when it is not a complete, valid one.
+ */
+export function coerceUnitSet(value: unknown): UnitSet | null {
+  if (value === null || typeof value !== 'object' || Array.isArray(value)) return null
+
+  const candidate = value as Record<string, unknown>
+  // Arity first: this plus the per-field check below is the frontend's
+  // equivalent of the model's `extra="forbid"` with every field required. An
+  // unknown key means the writer and the reader disagree about the shape.
+  if (Object.keys(candidate).length !== UNIT_FIELD_NAMES.length) return null
+
+  for (const field of UNIT_FIELD_NAMES) {
+    const token = candidate[field]
+    const vocabulary: readonly string[] = UNIT_OPTIONS[field]
+    if (typeof token !== 'string' || !vocabulary.includes(token)) return null
+  }
+
+  return candidate as UnitSet
+}
+
+/**
  * Collapse a resolved volume unit to the binary system the older helpers expect.
  *
  * Spec D8: a `custom` user still has to give `supplyUnits` and every other
