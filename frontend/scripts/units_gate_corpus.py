@@ -785,6 +785,34 @@ SCRIPT_POSITIVE = [
         ext=".ts",
     ),
     Case(
+        "S-P44-binary-helper-as-a-value",
+        "import type { UnitSystem } from '@/utils/units'\n"
+        + HOOK_IMPORT
+        + "export function toCanonicalSpans(value: number, s: UnitSystem): number {\n"
+        "  return convert(value, s)\n"
+        "}\n"
+        "function apply(v: number, s: UnitSystem, f: (v: number, s: UnitSystem) => number): number {\n"
+        "  return f(v, s)\n"
+        "}\n"
+        "export function submit(entered: number): number {\n"
+        "  const { system } = useUnitPreference()\n"
+        "  return apply(entered, system, toCanonicalSpans)\n"
+        "}\n",
+        1,
+        "binary-conversion",
+        "★ THE SAME DECISION WITHOUT THE PARENTHESES, and it was live in "
+        "production when task 8 found it. The leg matched a CallExpression whose "
+        "callee is in the vocabulary, so `displayToCanonical(v, t, system)` was a "
+        "finding and `convertSupplyUsages(usages, byId, system, "
+        "displayToCanonical)` was not: the helper travels as a VALUE and the "
+        "D8-collapsed decision happens one frame down where nothing looks. Both "
+        "spellings are in `ServiceVisitForm.tsx`, and the second is the WRITE "
+        "path. Closed rather than declared, for the reason S-P7 and S-P35 are: "
+        "one decision spelled differently is not a new category.",
+        "M75-drop-value-reference-leg",
+        ext=".ts",
+    ),
+    Case(
         "S-P42-scoped-pragma-wrong-kind",
         "import type { UnitSet } from '@/types/units'\n"
         "export function label(units: UnitSet, km: number): string {\n"
@@ -1084,6 +1112,24 @@ SCRIPT_NEGATIVE = [
         "of them one deferred ruling (R3). Character-identical to S-P32 apart "
         "from the pragma line, so the case measures the hatch and nothing else.",
         pinned_by="M70-declaration-exemption-ignored / M10b-drop-line-above-pragma",
+        ext=".ts",
+    ),
+    Case(
+        "S-N21-binary-helper-binding-sites",
+        "import type { UnitSystem } from '@/utils/units'\n"
+        "export function toCanonicalSpans(value: number, s: UnitSystem): number {\n"
+        "  return convert(value, s)\n"
+        "}\n"
+        "export { toCanonicalSpans as toCanonicalSpansAlias }\n"
+        "export const REGISTRY = { toCanonicalSpans: 1 }\n",
+        0,
+        why="the far side of S-P44. A value-reference leg that cannot tell a USE "
+        "from a BINDING reports the declaration, its own re-export and any object "
+        "key that happens to share the spelling, which is three findings on a "
+        "module that calls nothing. The leg is fail-CLOSED on shape and would "
+        "otherwise be the noisiest thing in the gate, and a noisy gate is the one "
+        "people learn to route around.",
+        pinned_by="M76-binding-specifiers-are-uses / M77-declaration-names-are-uses",
         ext=".ts",
     ),
     Case(

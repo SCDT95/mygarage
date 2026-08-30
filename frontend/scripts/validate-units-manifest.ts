@@ -71,7 +71,18 @@
  *
  * ★ AND THE TWO DO NOT REACH EQUALLY FAR, which belongs here and not only in a
  * report. Only findings that MIRROR the units gate baseline
- * (`<kind> xN (units gate baseline)`) are held by both. Every PROSE finding,
+ * (`<kind> xN (units gate baseline)`) are held by both.
+ *
+ * ★ AND SINCE PLAN 3b TASK 8 THERE ARE NONE, which is a real reduction in what
+ * this file can catch and is stated here rather than left to be inferred from a
+ * zero in the summary. The flip emptied `units.baseline.json`, so no row has a
+ * counterpart in it to be checked against; every finding below now rests on
+ * `[weakened]` alone. What survives of the cross-check is `baseline.invented`,
+ * which is the direction that still has teeth: no row may claim a units gate
+ * finding, because the gate has none. The summary line at the bottom measures
+ * the split on every run rather than asserting it.
+ *
+ * Every PROSE finding,
  * which is most of the ones a human wrote, rests on `[weakened]` alone, and
  * `[weakened]` compares against the last COMMITTED manifest: erase one and
  * commit it in the same step and a local run has nothing to compare against.

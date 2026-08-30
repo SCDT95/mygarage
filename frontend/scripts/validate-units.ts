@@ -91,12 +91,35 @@
  * a numeric literal means the same thing wherever it appears) stays in
  * `eslint.config.js`, which runs over `src/**` minus three named files.
  *
- * ★ BASELINE, KEYED BY OCCURRENCE COUNT, NOT BY SET MEMBERSHIP (ruling R4).
- * Legacy comparisons survive into phase 3b, so this cannot be a clean-room gate
- * yet. How many is deliberately not written here: `units.baseline.json` is the
- * measurement and `--report` prints it. An earlier version of this line said
- * "~53" while the baseline twelve lines away said 43, which is the same defect
- * this gate exists to prevent, one level up.
+ * ★ CLEAN-ROOM SINCE PLAN 3b TASK 8. `units.baseline.json` is `[]`, so any
+ * finding at all fails. The comparison is unchanged and still keyed by
+ * occurrence COUNT rather than set membership (ruling R4), because an empty
+ * allowed-map makes "the count rose above zero" and "there is a finding" the
+ * same sentence, and keeping the mechanism keeps R4's own mutation able to fire.
+ *
+ * ★ THE SENTENCE THIS GATE NOW CLAIMS, and it is smaller than "no unit defect
+ * exists": NO EXPRESSION UNDER `src/` MATCHES THE DETECTORS `FINDING_KINDS`
+ * LISTS, EXCEPT AT THE SITES A `// units-exempt(<kind>):` PRAGMA NAMES, AND THE
+ * RUN COUNTS BOTH THE DETECTORS AND THE EXEMPT SITES RATHER THAN NAMING A
+ * NUMBER IN PROSE.
+ * The phase's own promise is narrower still and is not restored here: all
+ * mechanically enumerated modules were dispositioned at a reviewed snapshot, and
+ * these named scenarios pass. Two whole defect shapes have no lexical form for
+ * any detector to match (a resolved-set helper that collapses INTERNALLY, and a
+ * forced-unit template) and are reviewed in `units.manifest.json` instead, which
+ * is why the success line says what it says.
+ *
+ * ★ AND WHAT THE FLIP COST, stated rather than left to be discovered. The
+ * manifest gate cross-checks its `<kind> xN (units gate baseline)` findings
+ * against this baseline, so while the baseline had entries those findings were
+ * held by TWO independent mechanisms. An empty baseline holds none, so every
+ * manifest finding now rests on the drift rule alone; `validate-units-manifest.ts`
+ * measures and prints that on every run. What survives is `baseline.invented`:
+ * no row may claim a gate finding, because the gate has none.
+ *
+ * `--update` therefore refuses to write the default baseline. Its old failure
+ * message used to recommend running it, so leaving it able to re-record would
+ * make undoing the flip a one-word command with no diff in the gate at all.
  *
  * It is modelled on `validate-hardcoded-strings.ts`, with one deliberate
  * difference: that script stores `(file, kind, text)` in a `Set`, so
@@ -105,10 +128,10 @@
  * gate fails when the count RISES. Line numbers stay out of the key so that
  * moving code does not invalidate the baseline.
  *
- * Every baseline entry is a site phase 3b must migrate: `--report` prints them
- * grouped by file so 3b's scope is derived from this gate rather than
- * re-enumerated by hand, which is how this workstream produced seventeen
- * inventories that were floors wearing an inventory's name.
+ * `--report` prints every finding grouped by file. It was phase 3b's work list
+ * and is now a listing that should stay empty; it is kept because a gate whose
+ * only output is a tick cannot show what it looked at, and because the same
+ * command is what a contributor runs after it fails.
  *
  * Proven against a two-sided corpus (`scripts/units_gate_corpus.py`): positives
  * it must reject, including the destructuring rename and both real production
@@ -146,7 +169,7 @@
  * line counts them. One `// units-exempt:` on a binary declaration silences
  * every call site of it in every module, which no other use of the hatch does,
  * so the number is printed beside the tick rather than buried.
- * Exit code: 1 when any key's occurrence count exceeds its baseline.
+ * Exit code: 1 on any finding. `--update` without `--baseline` exits 2.
  */
 
 import { createRequire } from 'module'
@@ -1029,6 +1052,30 @@ export interface Finding {
 }
 
 /**
+ * Every kind this gate can report, declared once so the claim can count them.
+ *
+ * ★ THE SUCCESS LINE USED TO SAY "five detectors" AS A WORD. That is the defect
+ * this file's own header records against itself two screens up: an earlier
+ * version said "~53" while the baseline twelve lines away said 43. A number in
+ * the gate's central claim is the worst place in the repo for one, because it is
+ * the sentence people quote and the one nothing was checking.
+ *
+ * So the count is `FINDING_KINDS.length` and `record()` refuses a kind that is
+ * not in here, which makes a sixth leg register itself or fail loudly on its
+ * first finding. `units_gate_selftest.py`'s clean-room proof reads the kinds
+ * back out of the `record(...)` CALL SITES independently and asserts the two
+ * agree, so neither half can drift alone, and it demands a corpus positive for
+ * each one.
+ */
+const FINDING_KINDS = [
+  'compare',
+  'switch-case',
+  'formatter-binary',
+  'binary-conversion',
+  'token-branch',
+] as const
+
+/**
  * How many findings a `// units-exempt:` pragma removed on this run.
  *
  * ★ Counted rather than described, because after the flip the pragma is the
@@ -1305,6 +1352,50 @@ function calleeName(callee: TsNode | undefined, source: TsSourceFile): string {
 }
 
 /**
+ * True when an identifier is a USE of a name rather than a binding of it.
+ *
+ * ★ WHY THIS EXISTS, AND IT WAS FOUND BY CHECKING A NUMBER RATHER THAN BY
+ * REASONING. The `binary-conversion` leg matched a CallExpression whose callee
+ * is in the vocabulary, so `displayToCanonical(v, t, system)` was a finding and
+ * `convertSupplyUsages(usages, byId, system, displayToCanonical)` was not:
+ * passing the helper as a VALUE evaded the leg completely, and the callee then
+ * makes the D8-collapsed decision one frame down where nothing looks. Both
+ * spellings are live in `ServiceVisitForm.tsx` (lines 249 and 344), and the
+ * second one is the WRITE path.
+ *
+ * That is the same class as the destructuring rename (S-P7) and the aliased
+ * formatter receiver (S-P35): one decision, different punctuation. It is
+ * therefore CLOSED rather than declared as a residual, which is the line this
+ * gate draws between a shape spelled differently and a genuinely different
+ * thing (a `Record<string, UnitSystem>` is the latter, and stays out).
+ *
+ * The exclusions below are all bindings rather than uses: an import or export
+ * specifier names the symbol without deciding anything, a declaration's own
+ * name is the declaration, and a call is already reported by the leg above, so
+ * counting it here would double every finding it makes. A qualified
+ * `helpers.toCanonicalKm` IS a use unless it is that call's callee, because an
+ * import alias must not be an escape hatch here either.
+ */
+function isValueReference(node: TsNode): boolean {
+  const parent = node.parent
+  if (parent === undefined) return false
+  const K = ts.SyntaxKind
+  if (parent.kind === K.ImportSpecifier || parent.kind === K.ExportSpecifier) return false
+  if (parent.kind === K.FunctionDeclaration) return false
+  if (parent.name === node) {
+    // The name half of any declaration, binding or member.
+    return false
+  }
+  if (parent.kind === K.CallExpression && parent.expression === node) return false
+  if (parent.kind === K.PropertyAccessExpression) {
+    const grand = parent.parent
+    if (grand?.kind === K.CallExpression && grand.expression === parent) return false
+    return true
+  }
+  return true
+}
+
+/**
  * The `UnitSet` quantity an operand names, or null.
  *
  * Both spellings count: the property access `units.volume` and the bare
@@ -1418,6 +1509,15 @@ export function scanSource(source: string, rel: string): Finding[] {
   const findings: Finding[] = []
 
   const record = (node: TsNode, kind_: string, text: string): void => {
+    if (!(FINDING_KINDS as readonly string[]).includes(kind_)) {
+      throw new Error(
+        `${rel}: reported a finding of kind ${JSON.stringify(kind_)}, which is not in ` +
+          `FINDING_KINDS (${FINDING_KINDS.join(', ')}). The success line counts that list, ` +
+          'so an unregistered leg would be detected and then not counted, and the claim ' +
+          'would name fewer detectors than the gate runs. Refusing to scan. Add the kind ' +
+          'to the list, and give it a corpus positive: the clean-room proof requires one.',
+      )
+    }
     const line = sf.getLineAndCharacterOfPosition(node.getStart(sf)).line + 1
     // Escape hatch: the offending line or the line directly above it, and it
     // has to name this kind or name none.
@@ -1485,6 +1585,17 @@ export function scanSource(source: string, rel: string): Finding[] {
         record(node, 'binary-conversion', `${called}(...)`)
       }
     }
+    // ★ AND THE SAME HELPER PASSED AS A VALUE, which the call form above cannot
+    // see. See `isValueReference` for what found this and why it is closed
+    // rather than declared. The text says `as a value` so the two spellings key
+    // separately and a site cannot be silenced by the other one's pragma.
+    if (
+      node.kind === ts.SyntaxKind.Identifier &&
+      binaryHelpersHere.has(node.text ?? '') &&
+      isValueReference(node)
+    ) {
+      record(node, 'binary-conversion', `${node.text ?? ''} (as a value)`)
+    }
     ts.forEachChild(node, walk)
   }
 
@@ -1546,7 +1657,7 @@ function printReport(findings: Finding[]): void {
   const byFile = new Map<string, Finding[]>()
   for (const f of findings) byFile.set(f.file, [...(byFile.get(f.file) ?? []), f])
   console.log(
-    `\n${findings.length} unit-system branch(es) across ${byFile.size} file(s), the phase 3b work list:\n`,
+    `\n${findings.length} unit-system branch(es) across ${byFile.size} file(s):\n`,
   )
   for (const [file, hits] of [...byFile].sort((a, b) => b[1].length - a[1].length)) {
     console.log(`  ${String(hits.length).padStart(4)}  ${file}`)
@@ -1635,6 +1746,28 @@ function main(): void {
   const observed = countByKey(findings)
 
   if (args.has('--update')) {
+    // ★ THE ONE-WORD UNDO, REFUSED. Task 8 emptied `units.baseline.json` and
+    // made this gate clean-room, and the failure message it replaced used to
+    // end with "Do NOT run --update to silence a new finding" -- advice, in a
+    // message a person reads at the moment they are looking for a way out.
+    // Re-recording a finding there would restore the mode the flip removed,
+    // with no diff in this file and none in any test. So the default path is
+    // not writable: fix the finding, or exempt the line and say why.
+    //
+    // `--update --baseline <path>` still writes another file. That is how this
+    // gate's own selftest builds the fixtures for its baseline and walk proofs,
+    // and it is the only remaining caller.
+    if (baseIdx === -1) {
+      console.error(
+        `✗ --update refuses to rewrite ${relative(ROOT, DEFAULT_BASELINE)}.\n\n` +
+          'Plan 3b task 8 retired that baseline: it is `[]` and this gate is CLEAN-ROOM,\n' +
+          'so any finding is a failure. Re-recording one here would undo the flip in a\n' +
+          'single word, and nothing in the gate or its tests would change to say so.\n\n' +
+          'Fix the finding, or mark its line `// units-exempt(<kind>): <reason>` and let\n' +
+          'the run count it. `--update --baseline <path>` still writes another file.\n',
+      )
+      process.exit(2)
+    }
     const payload: BaselineEntry[] = [...observed]
       .map(([key, count]) => {
         const { file, kind, text } = partsOf(key)
@@ -1670,7 +1803,11 @@ function main(): void {
 
   if (risen.length > 0) {
     const fresh = risen.reduce((n, r) => n + (r.count - r.was), 0)
-    console.error(`\n✗ ${fresh} new unit-system branch(es):\n`)
+    // "new" and "allowed" were baseline words and the baseline is retired, so
+    // they are gone from the message a person actually reads when this fires.
+    // The counts stay printed: `--baseline <path>` still runs the comparison
+    // for this gate's own selftest, and there `was` is not always zero.
+    console.error(`\n✗ ${fresh} unit-system branch(es):\n`)
     for (const r of risen) {
       const { file, kind, text } = partsOf(r.key)
       const sites = findings
@@ -1678,13 +1815,16 @@ function main(): void {
         .map((f) => f.line)
         .join(', ')
       console.error(`  ${file}  [${kind}]  ${text}`)
-      console.error(`      ${r.was} allowed, ${r.count} found, line(s) ${sites}`)
+      console.error(
+        `      ${r.count} found, line(s) ${sites}${r.was === 0 ? '' : `, ${r.was} recorded`}`,
+      )
     }
     console.error(
       '\nRoute the decision through useUnitFormat() (or makeUnitFormat() outside a\n' +
         'component) so the quantity is converted and labelled by the resolved unit\n' +
         'set rather than a binary system. If the branch genuinely is not a display\n' +
-        'conversion, mark the line `// units-exempt` with the reason.\n\n' +
+        'conversion, mark the line `// units-exempt(<kind>): <reason>`, naming the\n' +
+        'kind below so the pragma cannot silence a leg nobody considered.\n\n' +
         '  [formatter-binary]   a static UnitFormatter method taking a UnitSystem.\n' +
         '                       Use the matching u.<quantity> adapter instead: the\n' +
         '                       binary argument collapses ten quantities into one.\n' +
@@ -1695,18 +1835,32 @@ function main(): void {
         '  [token-branch]       a resolved token read as a proxy for a whole system.\n' +
         '                       Read the quantity you actually mean: deriving the\n' +
         '                       distance half from units.volume is the defect.\n\n' +
-        "Do NOT run --update to silence a new finding: the baseline is phase 3b's\n" +
-        'work list and it should only shrink.\n',
+        'This gate is CLEAN-ROOM: there is no baseline to record a finding in, and\n' +
+        '--update refuses to write one. The pragma is the only suppression there is,\n' +
+        'it has to name the kind above, and every run counts how many sites use it.\n',
     )
     process.exit(1)
   }
 
-  const baselineTotal = baseline.reduce((n, e) => n + e.count, 0)
-  const fixed = baselineTotal - findings.length
+  // `relative` climbs out of the repo for a scan of somewhere else (the
+  // selftest points `--src` at a temp tree), and six `../` say less than the
+  // path does.
+  const within = relative(ROOT, srcDir)
+  const scope = within === '' ? 'src' : within.startsWith('..') ? srcDir : within
+  // ★ THE CLAIM, AND IT IS DELIBERATELY SMALLER THAN A TICK. Two sentences,
+  // because the second is the one that stops the first being read as "there are
+  // no unit defects". The phase withdrew that claim on purpose and the flip must
+  // not restore it by tone. The detector count is derived, not written: see
+  // FINDING_KINDS.
   console.log(
-    `✓ No new unit-system branches (${findings.length} known, baseline ${baselineTotal}` +
-      `${fixed > 0 ? `, ${fixed} fixed, run --update to shrink the baseline` : ''}` +
-      `${exemptionCensus()}).`,
+    `✓ no expression under ${scope} matches this gate's ${FINDING_KINDS.length} detectors` +
+      `${exemptionCensus()}.`,
+  )
+  console.log(
+    '  That is not a claim that no unit defect exists. A resolved-set helper that\n' +
+      '  collapses INTERNALLY and a forced-unit template have no lexical form here;\n' +
+      '  they are reviewed in scripts/units.manifest.json, which is what the phase\n' +
+      '  promises instead.',
   )
 }
 

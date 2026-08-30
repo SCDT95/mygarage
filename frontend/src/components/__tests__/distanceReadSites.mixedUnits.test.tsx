@@ -22,9 +22,9 @@
  * The other three (Analytics, Calendar, FuelRecordList) are page-scale mounts
  * with their own harnesses and use the SAME four call shapes as the eight; they
  * rest on `scripts/enumerate-binary-distance.ts` (zero remaining call sites) and
- * on `units.baseline.json`, whose count for each is now zero, so a
- * reintroduction fails the gate. That is a weaker guarantee than a render, and
- * saying so is the point.
+ * on the units gate, which task 8 made CLEAN-ROOM: `units.baseline.json` is `[]`
+ * and any finding fails, so a reintroduction on any of the three fails CI. That
+ * is a weaker guarantee than a render, and saying so is the point.
  */
 
 import { describe, it, expect, vi, beforeEach } from 'vitest'

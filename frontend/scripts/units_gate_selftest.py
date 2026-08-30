@@ -745,6 +745,40 @@ MUTATIONS = [
         "residual nothing can fail is a residual nobody will notice moving.",
     ),
     Mutation(
+        "M75-drop-value-reference-leg",
+        "gate",
+        "      binaryHelpersHere.has(node.text ?? '') &&",
+        "      false &&",
+        "script",
+        ["S-P44-binary-helper-as-a-value"],
+        "the leg task 8 added last, and it was added because a NUMBER in this "
+        "task's own report did not survive being checked against the enumerator. "
+        "Two production sites in `ServiceVisitForm.tsx` pass a binary helper as a "
+        "value, one of them the write path, and the call-shaped leg saw neither.",
+    ),
+    Mutation(
+        "M76-binding-specifiers-are-uses",
+        "gate",
+        "  if (parent.kind === K.ImportSpecifier || parent.kind === K.ExportSpecifier) return false",
+        "  if (false) return false",
+        "script",
+        ["S-N21-binary-helper-binding-sites"],
+        "an import or an export names the symbol without deciding anything with "
+        "it. Counting them makes every module that merely re-exports a binary "
+        "helper a finding, which is how a leg earns a blanket pragma.",
+    ),
+    Mutation(
+        "M77-declaration-names-are-uses",
+        "gate",
+        "  if (parent.name === node) {",
+        "  if (false) {",
+        "script",
+        ["S-N21-binary-helper-binding-sites"],
+        "the other half of the same rule: the name half of a declaration, a "
+        "binding or an object key is not a use. Without it a `{ toCanonicalKm: 1 }` "
+        "registry reads as a call site.",
+    ),
+    Mutation(
         "M72-scoped-pragma-silences-anything",
         "gate",
         "  return scope.split(',').map((k) => k.trim()).includes(kind)",
@@ -819,6 +853,7 @@ MUTATIONS = [
             "S-P40-inline-props-annotation",
             "S-P41-named-props-interface",
             "S-P43-scoped-declaration-wrong-kind",
+            "S-P44-binary-helper-as-a-value",
         ],
         "★ and the SURVIVOR it prevents, built and run. Take away the direct check "
         "AND the accidental cover (which is what retiring the last binary formatter "
@@ -1517,7 +1552,7 @@ def baseline_proof(tmpdir: Path) -> list[str]:
             "}\n"
         )
         rc, out = run_gate(baseline, tree)
-        ok = rc == 1 and "1 new unit-system branch" in out
+        ok = rc == 1 and "1 unit-system branch" in out
         if not ok:
             failures.append(
                 f"baseline: a DUPLICATE occurrence did not fail: rc={rc} {out[:200]}"
@@ -1546,6 +1581,139 @@ def baseline_proof(tmpdir: Path) -> list[str]:
             )
     finally:
         GATE_MUTANT.unlink(missing_ok=True)
+    return failures
+
+
+def cleanroom_proof(tmpdir: Path) -> list[str]:
+    """★ R5: AN EMPTY BASELINE IS NOT THE PROOF. Fire every leg on purpose.
+
+    The plan's wording, kept verbatim because it names the failure this section
+    exists to prevent: "an empty baseline with a gate that cannot fire is the
+    phase's signature defect wearing its final costume." A clean-room gate over
+    a tree with nothing in it is green whether it detects anything or not, and
+    green is exactly what a broken one looks like.
+
+    So each detector kind gets its own violation, introduced into a tree the gate
+    is pointed at, and each has to make the gate exit nonzero and NAME that kind.
+    Then the file goes and the tree has to be green again, because a gate stuck
+    at "fail" proves as little as one stuck at "pass".
+
+    ★ THE LEGS ARE DERIVED FROM THE GATE, NOT LISTED HERE. The kinds are read
+    out of `validate-units.ts`'s own `record(...)` calls, and the fixtures are
+    the CORPUS's own positives, one per kind. A sixth leg added without a corpus
+    positive fails this section rather than quietly going unproved, which is the
+    difference between a per-leg proof and an inventory that is a floor.
+
+    The `--update` refusal is proved here too, and it is proved by watching the
+    committed baseline's bytes rather than by trusting an exit code: the whole
+    point of that guard is that the file must not move.
+    """
+    failures: list[str] = []
+    tree = tmpdir / "cleanroom_tree"
+    tree.mkdir()
+    gate = str(GATE_SRC.relative_to(FRONTEND))
+
+    def run(argv: list[str]) -> tuple[int, str]:
+        p = subprocess.run(
+            ["bun", "run", gate, *argv], cwd=FRONTEND, capture_output=True, text=True
+        )
+        return p.returncode, p.stdout + p.stderr
+
+    # The control. Clean-room means the tick is reachable at all, and a gate
+    # that refuses everything would pass every fixture below.
+    rc, out = run(["--src", str(tree)])
+    ok = rc == 0
+    if not ok:
+        failures.append(f"cleanroom: an empty tree did not pass: rc={rc} {out[-200:]}")
+    print(f"  cleanroom EMPTY      {'green' if ok else '*** ' + out[-100:] + ' ***'}")
+
+    # ★ TWO DERIVATIONS OF THE SAME LIST, ASSERTED TO AGREE. The gate DECLARES
+    # `FINDING_KINDS` and its success line counts that list; this reads the
+    # `record(...)` CALL SITES instead. A leg added at a call site and forgotten
+    # in the list makes the gate refuse on its first finding, and a name left in
+    # the list with no call site would make the claim count a detector that does
+    # not exist. Neither half can move alone, and this is what makes the
+    # registry killable rather than a guard nothing can fail.
+    gate_text = GATE_SRC.read_text()
+    called = sorted(set(re.findall(r"record\([^,]+, '([a-z-]+)'", gate_text)))
+    declared_block = re.search(r"const FINDING_KINDS = \[(.*?)\] as const", gate_text, re.S)
+    declared = sorted(re.findall(r"'([a-z-]+)'", declared_block.group(1))) if declared_block else []
+    if not called:
+        failures.append("cleanroom: read no finding kinds out of the gate; refusing to conclude")
+        return failures
+    if not declared:
+        failures.append("cleanroom: found no FINDING_KINDS declaration; the claim counts it")
+        return failures
+    if called != declared:
+        failures.append(
+            f"cleanroom: the gate records {called} and declares {declared}. The success "
+            "line counts the declaration, so it would name a different number of "
+            "detectors than the gate runs."
+        )
+    print(
+        f"  cleanroom KINDS      {len(declared)} declared, {len(called)} recorded, "
+        + ("they agree" if called == declared else "*** THEY DISAGREE ***")
+    )
+    kinds = called
+    covered: dict[str, object] = {}
+    for case in C.SCRIPT_POSITIVE:
+        if case.expect_kind and case.expect_kind not in covered:
+            covered[case.expect_kind] = case
+    missing = [k for k in kinds if k not in covered]
+    if missing:
+        failures.append(
+            f"cleanroom: the gate emits {missing} and the corpus has no positive for it, "
+            "so those legs would go unproved while this section printed a tick"
+        )
+
+    for kind in kinds:
+        case = covered.get(kind)
+        if case is None:
+            print(f"  cleanroom {kind:<10} *** NO CORPUS POSITIVE ***")
+            continue
+        fixture = tree / f"{kind.replace('-', '_')}{case.ext}"
+        fixture.write_text(case.body)
+        try:
+            rc, out = run(["--src", str(tree)])
+            fired = rc == 1 and f"[{kind}]" in out
+            if not fired:
+                failures.append(
+                    f"cleanroom {kind}: a fresh violation did not fail the gate: "
+                    f"rc={rc} {out[-200:]}"
+                )
+        finally:
+            fixture.unlink(missing_ok=True)
+        rc_after, out_after = run(["--src", str(tree)])
+        recovered = rc_after == 0
+        if not recovered:
+            failures.append(
+                f"cleanroom {kind}: the gate stayed red after the violation was removed: "
+                f"rc={rc_after} {out_after[-200:]}"
+            )
+        print(
+            f"  cleanroom {kind:<10} "
+            + ("fails on it, green without it" if fired and recovered else "*** " + ("did not fire" if not fired else "stayed red") + " ***")
+            + f"   <- {case.cid}"
+        )
+
+    # ★ The one-word undo, watched at the FILE rather than at the exit code.
+    baseline = FRONTEND / "scripts/units.baseline.json"
+    before = baseline.read_bytes()
+    try:
+        rc, out = run(["--update"])
+        unchanged = baseline.read_bytes() == before
+        ok = rc != 0 and unchanged
+        if not ok:
+            failures.append(
+                f"cleanroom: --update was expected to refuse the default baseline and leave "
+                f"it byte-identical: rc={rc}, unchanged={unchanged}"
+            )
+        print(
+            f"  cleanroom --update   "
+            + ("refused, file untouched" if ok else "*** rewrote the baseline ***")
+        )
+    finally:
+        baseline.write_bytes(before)
     return failures
 
 
@@ -1604,10 +1772,18 @@ def crossfile_proof() -> list[str]:
             # The three helpers are declared in utils/supplyUnits.ts. A finding
             # anywhere else is the cross-file reach; a finding only in that file
             # would prove nothing the same-file augmentation did not already do.
+            # ★ `and "src/" in line` is not decoration. The failure output ends
+            # with a guidance block that also contains "[binary-conversion]",
+            # and without the path test this counted it as a twelfth call-site
+            # key. The assertion (`> 0`) never noticed; the NUMBER printed
+            # beside it was wrong, which is the same defect one level down from
+            # the one this whole gate exists to prevent.
             elsewhere = [
                 line
                 for line in out.splitlines()
-                if "[binary-conversion]" in line and "supplyUnits.ts" not in line
+                if "[binary-conversion]" in line
+                and "src/" in line
+                and "supplyUnits.ts" not in line
             ]
             ok = rc == 1 and len(elsewhere) > 0
             if not ok:
@@ -1802,6 +1978,10 @@ def main() -> int:
         print("-" * 78)
         failures += crossfile_proof()
 
+        print("\nR5: clean-room, proved PER LEG rather than by an empty baseline")
+        print("-" * 78)
+        failures += cleanroom_proof(tmpdir)
+
         print("\nR4: the baseline counts occurrences rather than storing a set")
         print("-" * 78)
         failures += baseline_proof(tmpdir)
@@ -1822,7 +2002,10 @@ def main() -> int:
         "mutations ran and flipped exactly their own cases; the scope is proved four "
         "ways and names only real files; the baseline counts; the cross-file "
         "vocabulary reaches call sites in other modules and a single-file one does "
-        "not; and both positive controls stayed silent on correct code"
+        "not; every detector kind the gate emits fails a freshly introduced "
+        "violation of its own shape and goes green when it is removed; --update "
+        "leaves the retired baseline byte-identical; and both positive controls "
+        "stayed silent on correct code"
     )
     return 0
 

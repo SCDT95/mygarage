@@ -73,10 +73,13 @@ type UnitPreferenceFields = Pick<
  *
  * Migration 093 materialises per-quantity users as `unit_preference='custom'`,
  * a value `UnitSystem` does not contain. This is the single chokepoint where it
- * becomes 'imperial' or 'metric': the files that still branch on
- * `system === 'imperial'` are exactly the ones `scripts/units.baseline.json`
- * records, and 'custom' answers "no" to every one of them, so a UK user would
- * have seen imperial numbers rendered under metric labels.
+ * becomes 'imperial' or 'metric', and 'custom' answers "no" to every branch
+ * that tests for one of them, so a UK user would have seen imperial numbers
+ * rendered under metric labels. The files that still take such a branch used to
+ * be exactly the ones `scripts/units.baseline.json` recorded; task 8 emptied
+ * that file and made the gate clean-room, so the surviving population is the
+ * one `bun run scripts/validate-units.ts` counts on its success line as
+ * "site(s) exempt by pragma", each carrying its reason where it sits.
  *
  * ★ This line used to say "~70 files", a number wrong by 4.6x read as files and
  * named in the phase 3 plan as its twelfth floor. The deferral's own stated

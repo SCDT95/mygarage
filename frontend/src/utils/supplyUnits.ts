@@ -46,6 +46,23 @@
  * wrong because it applied a VOLUME collapse to DISTANCE, a quantity the
  * resolved set could have answered for. Supplies have nothing to ask.
  *
+ * ★ WHAT THE THREE DECLARATION PRAGMAS BELOW ACTUALLY COVER, measured rather
+ * than described. Task 8 made the units gate's binary-conversion vocabulary
+ * tree-wide, which made these three exports visible for the first time, and the
+ * enumeration with the pragmas removed is 15 occurrences under 11 keys across 5
+ * files: SupplyHistoryModal.tsx 7, ServiceVisitForm.tsx 3, SuppliesUsedTab.tsx
+ * 2, Supplies.tsx 2, SupplyUsedPicker.tsx 1. Reproduce it rather than trusting
+ * this line: delete the three pragmas and run `bun run
+ * scripts/validate-units.ts --report`.
+ *
+ * Two of those fifteen are `ServiceVisitForm.tsx:249` and `:344`, where the
+ * helper is passed to `convertSupplyUsages` as a VALUE rather than called, and
+ * the second is the write path. The gate could not see either until task 8
+ * added the value-reference half of that leg, which it did because a count in
+ * its own report failed to survive being checked against the enumerator. Read
+ * `isValueReference` in `scripts/validate-units.ts` before assuming a helper
+ * that is never called by name here is not reaching storage.
+ *
  * ★ The TYPE is not exempt, and used to be declared here as a second
  * `'metric' | 'imperial'` union structurally identical to `utils/units.ts`'s.
  * TypeScript compares unions structurally, so `tsc` could never see the two
