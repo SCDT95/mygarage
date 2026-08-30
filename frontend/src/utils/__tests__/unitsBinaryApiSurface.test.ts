@@ -392,11 +392,33 @@ describe('the mutable gallon statics (plan 3b task 8)', () => {
  * @param label The section heading in `--suppressions` output.
  * @returns The indented lines under it, trimmed.
  */
+/**
+ * The gate's `--suppressions` output, run once per file rather than per call.
+ *
+ * ★ WHY THIS IS MEMOISED, and it is a correctness-preserving change, not a
+ * shortcut. Each call shells out to a FULL units-gate walk of the tree, and
+ * this file makes four calls, so the file paid for four whole gate runs. That
+ * cost 3.9 s on a fast host and **timed out CI's 5 s budget** on `f5a4106`,
+ * failing the Frontend Tests job. The output is a pure function of the tree,
+ * which does not change mid-file, so one run answers every caller identically.
+ *
+ * The receipt this file depends on is unaffected: `gateSuppressions` still
+ * throws when the named section is missing, and it throws on the first call
+ * exactly as it did before.
+ */
+let suppressionsOutput: string | null = null
+
+function suppressionsRun(): string {
+  suppressionsOutput ??= execFileSync(
+    BUN,
+    ['run', 'scripts/validate-units.ts', '--suppressions'],
+    { cwd: FRONTEND, encoding: 'utf-8' }
+  )
+  return suppressionsOutput
+}
+
 function gateSuppressions(label: string): string[] {
-  const out = execFileSync(BUN, ['run', 'scripts/validate-units.ts', '--suppressions'], {
-    cwd: FRONTEND,
-    encoding: 'utf-8',
-  })
+  const out = suppressionsRun()
   const lines = out.split('\n')
   const head = lines.findIndex((l) => l.startsWith(`${label} (`))
   if (head === -1) {
