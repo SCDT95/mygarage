@@ -140,11 +140,17 @@ jobs:
   selftest:
     name: Unit Gate Selftest (advisory)
     runs-on: ubuntu-latest
-    # 90 rather than 45 because 45 cancelled the only run at the current corpus
-    # size. It is about 2x the 45m16s CI lower bound, so it covers a runner up
-    # to roughly 4x the local cost. Advisory and not in branch protection
-    # (checked: the seven required contexts are the ci and codeql ones), so a
-    # long job blocks no PR. See the CI bullet in the header comment.
+    # 90 rather than 45. MEASURED ON THE RUNNER at last, which is the number
+    # this budget actually governs and the one every earlier figure in this file
+    # was not: run 33317510064 on f5a4106 completed in 47m02s (2822 s) at 85
+    # cases, 80 scan mutations and 3 walk mutations. Against the 1284 s local
+    # run of the same commit that is a CI-to-local ratio of 2.20x, so the old
+    # 45-minute budget missed by two minutes and this one leaves 91% headroom.
+    # Re-measure HERE, not just locally, whenever either table grows: the
+    # earlier completed run (bf6a078, 397 s at 49 cases and 41 mutations) gave a
+    # 1.8x ratio, and the ratio moved with the corpus. Advisory and not in
+    # branch protection (checked: the seven required contexts are the ci and
+    # codeql ones), so a long job blocks no PR.
     timeout-minutes: 90
 
     steps:
