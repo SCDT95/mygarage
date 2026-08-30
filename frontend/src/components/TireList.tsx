@@ -3,7 +3,7 @@ import { useTranslation } from 'react-i18next'
 import { Plus, Trash2, Gauge, AlertTriangle, Pencil } from 'lucide-react'
 import { toast } from 'sonner'
 import { formatDateForDisplay } from '../utils/dateUtils'
-import type { Tire, TirePosition } from '../types/tire'
+import type { Tire, TirePosition, TireReading } from '../types/tire'
 import {
   useTires,
   useUpsertTire,
@@ -17,7 +17,7 @@ import {
   type UnitFieldOrigin,
 } from '../utils/unitFormat'
 import { getActionErrorMessage } from '../utils/httpErrorHandler'
-import { Button, IconButton, Card, Chip, Drawer, EmptyState, Input, Field } from './ui'
+import { Button, IconButton, Card, Chip, Drawer, EmptyState, Input, Field, ListRow } from './ui'
 
 const POSITIONS: TirePosition[] = ['FL', 'FR', 'RL', 'RR', 'SPARE']
 
@@ -156,6 +156,7 @@ export default function TireList({ vin }: TireListProps) {
   const [formOpen, setFormOpen] = useState(false)
   const [editingTireId, setEditingTireId] = useState<number | null>(null)
   const [readingTireId, setReadingTireId] = useState<number | null>(null)
+  const [historyTireId, setHistoryTireId] = useState<number | null>(null)
   const [form, setForm] = useState<TireFormState>(() => seedTireForm(null, 'FL'))
   const [readingForm, setReadingForm] = useState<ReadingFormState>(emptyReadingForm)
 
@@ -167,6 +168,11 @@ export default function TireList({ vin }: TireListProps) {
    * and replaces every Tire object, so a captured one would go stale the moment
    * a reading is saved. */
   const readingTire = tires.find((tire: Tire) => tire.id === readingTireId) ?? null
+  const historyTire = tires.find((tire: Tire) => tire.id === historyTireId) ?? null
+  /* `readings` is optional on the generated response type (it carries a
+   * server-side default), so it is normalised once here rather than
+   * defended at each of the three places the drawer reads it. */
+  const historyReadings: TireReading[] = historyTire?.readings ?? []
 
   /* Spelled out as five literal t() calls rather than t(`…positions.${p}`):
    * validate-i18n-usage scans for string literals, so a computed key is
@@ -380,7 +386,27 @@ export default function TireList({ vin }: TireListProps) {
 
       <div className="grid gap-3 sm:grid-cols-2">
         {tires.map((tire: Tire) => (
-          <Card key={tire.id} padding="sm" className="space-y-2">
+          <Card key={tire.id} padding="sm" className="relative space-y-2">
+            {/* A full-bleed sibling button, which is a fourth clickable-card
+                shape in this codebase and deliberately so. `Card interactive`
+                renders the Card itself as a <button>, and the container
+                role="button" that ExternalVehicleCard and FamilyMemberCard use
+                is the same shape by another route: both would put Edit and Log
+                Reading INSIDE the click target, which is interactive content
+                nested in a button and needs stopPropagation on each child to
+                behave. Neither of those two cards has that problem because
+                neither encloses a control. A sibling cannot receive their
+                clicks at all, so the isolation is structural rather than
+                handled. The overlay is a real button so the card is reachable
+                by keyboard; the two controls sit above it on `z-10`. */}
+            <button
+              type="button"
+              className="ui-focus-ring absolute inset-0 rounded-card"
+              aria-label={t('tireList.historyOpen', {
+                position: positionLabels[tire.position],
+              })}
+              onClick={() => setHistoryTireId(tire.id)}
+            />
             <div className="flex items-start justify-between gap-2">
               <div>
                 <div className="font-semibold flex items-center gap-2">
@@ -405,6 +431,7 @@ export default function TireList({ vin }: TireListProps) {
                 label={t('tireList.edit')}
                 variant="ghost"
                 size="sm"
+                className="relative z-10"
                 onClick={() => openEditForm(tire)}
               />
             </div>
@@ -435,7 +462,12 @@ export default function TireList({ vin }: TireListProps) {
                   : ''}
               </dd>
             </dl>
-            <Button size="sm" variant="secondary" onClick={() => openReadingForm(tire)}>
+            <Button
+              size="sm"
+              variant="secondary"
+              className="relative z-10"
+              onClick={() => openReadingForm(tire)}
+            >
               {t('tireList.addReading')}
             </Button>
           </Card>
@@ -646,6 +678,71 @@ export default function TireList({ vin }: TireListProps) {
             />
           </Field>
         </div>
+      </Drawer>
+
+      <Drawer
+        open={historyTire !== null}
+        onClose={() => setHistoryTireId(null)}
+        title={t('tireList.historyTitle', {
+          position: historyTire ? positionLabels[historyTire.position] : '',
+        })}
+        icon={Gauge}
+        width="sm"
+        closeLabel={t('common:close')}
+      >
+        {/* `readings` arrives newest-first: TireService sorts descending by
+            recorded_at before building the response, and the projection reads
+            [0] and [1] as the two most recent. Re-sorting here would be a
+            second, drifting source of truth for the same order. */}
+        {historyReadings.length > 0 ? (
+          <ul className="space-y-2">
+            {historyReadings.map((reading: TireReading) => (
+              <li key={reading.id} className="space-y-1 rounded-card border border-border p-3">
+                <div className="font-semibold">{formatDateForDisplay(reading.recorded_at)}</div>
+                {/* Every value through the same adapters the card uses, so a
+                    history row can never disagree with the card above it. The
+                    ternaries stay spelled out per row rather than folding into
+                    a shared cell() helper: validate-units.ts matches lexical
+                    expression shapes, and a helper that converts INTERNALLY is
+                    exactly the form its manifest notes it cannot see. */}
+                <ListRow
+                  label={t('tireList.tread')}
+                  value={
+                    reading.tread_depth_mm != null
+                      ? u.tread.format(num(reading.tread_depth_mm))
+                      : '—'
+                  }
+                />
+                <ListRow
+                  label={t('tireList.pressure')}
+                  value={
+                    reading.pressure_kpa != null
+                      ? u.pressure.format(num(reading.pressure_kpa))
+                      : '—'
+                  }
+                />
+                <ListRow
+                  label={t('tireList.odometer')}
+                  value={
+                    reading.odometer_km != null
+                      ? u.distance.format(num(reading.odometer_km))
+                      : '—'
+                  }
+                />
+                {reading.notes ? (
+                  <p className="text-sm text-text-mute">{reading.notes}</p>
+                ) : null}
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <EmptyState
+            icon={Gauge}
+            size="sm"
+            title={t('tireList.historyEmpty')}
+            description={t('tireList.historyEmptyHint')}
+          />
+        )}
       </Drawer>
     </div>
   )

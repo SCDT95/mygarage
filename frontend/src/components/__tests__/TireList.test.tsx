@@ -477,4 +477,64 @@ describe('TireList', () => {
       ).toBe('0.1')
     })
   })
+
+  describe('reading history', () => {
+    /* The API already ships every reading with the tire list and nothing
+       rendered them: `readings` had zero consumers outside tests, so the
+       history was fetched on every load and discarded. */
+    const READING = {
+      id: 11,
+      tire_id: 1,
+      vin: '1HGCM82633A004352',
+      position: 'FL',
+      recorded_at: '2026-08-25',
+      // 160.934 km = 100 mi, 6.35 mm = 8/32 in, 248.21136 kPa = 36.0 psi.
+      odometer_km: '160.934',
+      tread_depth_mm: '6.35',
+      pressure_kpa: '248.21136',
+      notes: 'Slow leak, topped up',
+      created_at: '2026-08-25T00:00:00',
+    }
+
+    it('opens the history from the card and converts every value', () => {
+      useTiresMock.mockReturnValue({
+        data: { tires: [{ ...STORED_FL_TIRE, readings: [READING] }], total: 1 },
+        isLoading: false,
+        error: null,
+      })
+
+      render(<TireList vin="1HGCM82633A004352" />)
+      fireEvent.click(screen.getByLabelText('tireList.historyOpen'))
+
+      const history = screen.getByRole('dialog')
+      // Through the same adapters the card uses. A raw canonical value here
+      // would put mm and kPa under a card reading in/PSI.
+      expect(within(history).getByText('8/32 in')).toBeInTheDocument()
+      expect(within(history).getByText('36.0 PSI')).toBeInTheDocument()
+      expect(within(history).getByText('100 mi')).toBeInTheDocument()
+      expect(within(history).getByText('Slow leak, topped up')).toBeInTheDocument()
+    })
+
+    it('shows the empty state for a tire with no readings', () => {
+      render(<TireList vin="1HGCM82633A004352" />)
+      fireEvent.click(screen.getByLabelText('tireList.historyOpen'))
+
+      expect(screen.getByText('tireList.historyEmpty')).toBeInTheDocument()
+    })
+
+    it('keeps Edit and Log Reading out of the history overlay', () => {
+      /* The overlay is a sibling button, not an ancestor, so a click on either
+         control cannot reach it. Without that separation the card would open
+         two drawers at once. */
+      render(<TireList vin="1HGCM82633A004352" />)
+      // Asserted first: without it the rest of this test passes on a card that
+      // has no overlay at all, which is true before the feature exists.
+      expect(screen.getByLabelText('tireList.historyOpen')).toBeInTheDocument()
+
+      fireEvent.click(screen.getByLabelText('tireList.edit'))
+
+      expect(screen.queryByText('tireList.historyEmpty')).not.toBeInTheDocument()
+      expect(screen.getByText('tireList.editTitleNamed')).toBeInTheDocument()
+    })
+  })
 })
