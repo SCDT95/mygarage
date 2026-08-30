@@ -301,12 +301,21 @@ class TireService:
         # writes an explicit null), and since 094 a reading may omit one too.
         # Only a MEASUREMENT above the threshold may complete a live safety
         # reminder; an unknown tread leaves it exactly as it was.
-        # Bound to locals so the comparison narrows: pyright does not carry a
-        # `is not None` check through the intermediate `known` flag.
+        #
+        # `known` and `below` are derived in ONE branch rather than each
+        # repeating the None checks: two copies of one predicate can drift
+        # apart, and a `below` that outlives its `known` is precisely the defect
+        # this code exists to prevent. A branch rather than
+        # `known and tread <= limit` because pyright does not carry a
+        # `is not None` narrowing through an intermediate flag.
         tread = tire.tread_depth_mm
         limit = tire.min_tread_mm
-        known = tread is not None and limit is not None
-        below = bool(tread is not None and limit is not None and tread <= limit)
+        if tread is None or limit is None:
+            known = False
+            below = False
+        else:
+            known = True
+            below = tread <= limit
         result = await self.db.execute(
             select(Reminder).where(
                 Reminder.vin == tire.vin,
