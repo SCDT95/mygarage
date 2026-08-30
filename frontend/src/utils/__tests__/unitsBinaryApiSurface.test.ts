@@ -367,6 +367,21 @@ describe('the mutable gallon statics (plan 3b task 8)', () => {
       .filter(([, files]) => files.length > 0)
       .map(([name]) => name)
     expect(live).toEqual([])
+
+    // ★ AND THE RECEIPT THE EMPTY LIST NEEDS, because emptying it took this
+    // file's only one away. While the pin read `['setGallonStandard']` the
+    // NON-empty answer was itself the proof that `productionSources()` walks
+    // anything and that `callersByMethod` finds a caller: make either return
+    // nothing and the assertion above still passes, along with every other case
+    // in this file. So the same walk and the same scan are pointed at the class
+    // that emphatically still has callers. `[]` above means "nothing calls the
+    // factor surface" only while this passes; without it, it means "the scanner
+    // is broken" just as readily.
+    expect(productionSources().length).toBeGreaterThan(200)
+    const formatterCallers = [...callersByMethod(formatterStatics())]
+      .filter(([, files]) => files.length > 0)
+      .map(([name]) => name)
+    expect(formatterCallers.length).toBeGreaterThan(0)
   })
 })
 

@@ -131,9 +131,20 @@ export default function UnitPreferencesCard(): React.ReactElement {
   // browser has one only once it has chosen, and the store derives that one
   // from its own set so it can never contradict it. With neither, the honest
   // label for the instance default is whatever that set matches.
+  //
+  // ★ A MIGRATED RECORD IS NOT A RECORDED PREFERENCE HERE, even though the
+  // store derives a tag for it. That tag names the set the legacy keys produced,
+  // and `useUnitPreference` rung 2 no longer renders that set: it keeps the
+  // binary system and takes the gallon flavour from the instance. Reading the
+  // stored tag anyway is how this card ends up highlighting "Imperial" over
+  // `editorUnits` that say gal_uk, with the Custom grid hidden, which is the
+  // exact dishonesty migration 093 fixed server-side. `presetTagFor` on the set
+  // this client actually renders is the honest label for both.
   const storedPreference: UnitPreference | null = isAuthenticated
     ? (currentUser?.unit_preference ?? null)
-    : (storedPrefs?.unit_preference ?? null)
+    : storedPrefs?.units_are_migrated
+      ? null
+      : (storedPrefs?.unit_preference ?? null)
   const preference = pendingPreference ?? storedPreference ?? presetTagFor(resolvedUnits)
   const editorUnits = pendingUnits ?? resolvedUnits
   const showBothUnits = pendingShowBoth ?? showBoth

@@ -191,17 +191,63 @@ describe('useUnitPreference precedence', () => {
       expect(result.current.system).toBe('imperial')
     })
 
-    it('a browser that chose keeps its own gallon flavour too', () => {
-      // The same anonymous Settings panel writes both keys, so a client holding
-      // an explicit units choice holds an explicit gallon choice as well.
-      localStorage.setItem('unit_preference', 'imperial')
-      localStorage.setItem('imperial_gallon_standard', 'uk')
-      reloadBrowserPrefs()
+    it('★ a browser that CHOSE its gallon flavour keeps it against the instance', () => {
+      // ★ THE OVER-APPLICATION GUARD for the two cases above, and the line
+      // between them is what "a choice" means. `setUnitPrefs` is the only
+      // writer of a set to `unit_prefs`, and a client reaches it by working the
+      // Settings controls, so this set really is a per-quantity choice and rung
+      // 2 outranks the instance for all eleven of it. Recomposing every rung-2
+      // set from the instance flavour, rather than only a migrated one, fails
+      // exactly here.
       h.defaultUnitPrefs = IMPERIAL_UNITS // gal_us
+      setUnitPrefs({
+        units: UK_IMPERIAL_UNITS,
+        unit_preference: 'custom',
+        show_both_units: false,
+      })
 
       const { result } = renderHook(() => useUnitPreference())
 
       expect(result.current.gallonStandard).toBe('uk')
+      expect(result.current.units.volume).toBe('gal_uk')
+    })
+
+    it('★ a migrated browser keeps the dead cache only when the instance publishes nothing', () => {
+      // The failed-`/settings/public` client. There is no instance flavour to
+      // follow, so the key's last word is the best answer available and is the
+      // same one this browser rendered before the upgrade. A recomposition that
+      // ignored the absent default would answer 'us' here from the imperial
+      // preset and silently convert a UK household's fuel log.
+      localStorage.setItem('unit_preference', 'imperial')
+      localStorage.setItem('imperial_gallon_standard', 'uk')
+      reloadBrowserPrefs()
+      h.defaultUnitPrefs = null
+
+      const { result } = renderHook(() => useUnitPreference())
+
+      expect(result.current.gallonStandard).toBe('uk')
+    })
+
+    it('★ a migration-derived set takes its gallon flavour from the INSTANCE, not the dead cache', () => {
+      localStorage.setItem('unit_preference', 'imperial')
+      localStorage.setItem('imperial_gallon_standard', 'us')
+      reloadBrowserPrefs()
+      h.defaultUnitPrefs = UK_IMPERIAL_UNITS
+
+      const { result } = renderHook(() => useUnitPreference())
+
+      expect(result.current.gallonStandard).toBe('uk')
+    })
+
+    it('and the mirror, so it cannot pass on a hardcoded flavour', () => {
+      localStorage.setItem('unit_preference', 'imperial')
+      localStorage.setItem('imperial_gallon_standard', 'uk')
+      reloadBrowserPrefs()
+      h.defaultUnitPrefs = IMPERIAL_UNITS
+
+      const { result } = renderHook(() => useUnitPreference())
+
+      expect(result.current.gallonStandard).toBe('us')
     })
 
     it('an unrecognised stored value is noise, not a choice, and falls through', () => {
@@ -330,16 +376,18 @@ describe('the resolved unit set', () => {
     expect(result.current.units.tread).toBe('in32')
   })
 
-  it('rung 2: expands an explicit anonymous choice with the legacy gallon key', () => {
+  it('rung 2: takes the system from the legacy key and the flavour from the instance', () => {
+    // The two halves of a migrated record come from different places, so this
+    // pins each against a source that disagrees with it: the instance is
+    // imperial and the browser renders litres, the cache says US and the client
+    // gets UK. A hook that read either half from the wrong one fails here.
     localStorage.setItem('unit_preference', 'metric')
-    localStorage.setItem('imperial_gallon_standard', 'uk')
+    localStorage.setItem('imperial_gallon_standard', 'us')
     reloadBrowserPrefs()
-    h.defaultUnitPrefs = IMPERIAL_UNITS
+    h.defaultUnitPrefs = UK_IMPERIAL_UNITS
 
     const { result } = renderHook(() => useUnitPreference())
 
-    // Metric from the key, UK from the legacy gallon key beside it, and NOT the
-    // instance default.
     expect(result.current.units.volume).toBe('L')
     expect(result.current.units.secondary_gallon).toBe('uk')
   })

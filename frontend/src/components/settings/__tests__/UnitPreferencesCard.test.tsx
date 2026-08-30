@@ -449,6 +449,36 @@ describe('UnitPreferencesCard: the client with no account', () => {
     expect(getUnitPrefs()?.units).toBeNull()
   })
 
+  it('★ labels a MIGRATED record by the set it renders, not by the tag the store derived', async () => {
+    // ★ THE CARD HAS TO FOLLOW RUNG 2 OFF THE LEGACY KEYS. The store derives a
+    // tag from the set `migrateLegacy` built, which is imperial + the dead
+    // `imperial_gallon_standard` cache; `useUnitPreference` then keeps only the
+    // binary system and takes the flavour from the instance, so this client
+    // RENDERS UK gallons. Reading the stored tag anyway highlights "Imperial"
+    // over a set that says gal_uk and hides the Custom grid, which is the exact
+    // dishonesty migration 093 fixed server-side and the reason `presetTagFor`
+    // lives beside the presets rather than in each caller.
+    localStorage.setItem('unit_preference', 'imperial')
+    localStorage.setItem('imperial_gallon_standard', 'us')
+    reloadBrowserPrefs()
+    renderAnonymous(UK_IMPERIAL_UNITS)
+
+    expect(presetButton('units.custom')).toHaveAttribute('aria-pressed', 'true')
+    expect(presetButton('units.imperial')).toHaveAttribute('aria-pressed', 'false')
+    expect(screen.getByLabelText(label(UNIT_OPTION_LABELS.volume.labelKey))).toHaveValue('gal_uk')
+  })
+
+  it('★ still labels a CHOSEN record by its own stored tag', async () => {
+    // The mirror, so the guard above cannot be over-applied into "never trust
+    // the store's tag". This client chose the metric preset through the card;
+    // the instance publishes imperial and must not relabel it.
+    setUnitPrefs({ units: METRIC_UNITS, unit_preference: 'metric', show_both_units: false })
+    renderAnonymous(IMPERIAL_UNITS)
+
+    expect(presetButton('units.metric')).toHaveAttribute('aria-pressed', 'true')
+    expect(presetButton('units.custom')).toHaveAttribute('aria-pressed', 'false')
+  })
+
   it('writes a full custom set to the store when a quantity changes', async () => {
     setUnitPrefs({ units: METRIC_UNITS, unit_preference: null, show_both_units: false })
     renderAnonymous(METRIC_UNITS)

@@ -242,9 +242,18 @@ describe('unitPrefsStore migration off the legacy keys', () => {
 
   it('does not invent a units rung from the gallon key alone', async () => {
     // ★ `useGallonStandardSync` wrote this key for EVERY client, chosen or not,
-    // so a browser carrying it today did not choose it, and materialising a set
-    // from it would pin that browser to whatever it happened to say and outrank
-    // the instance default. Only `unit_preference` records an actual choice.
+    // so a browser carrying it today did not choose it. Materialising a set
+    // because it is PRESENT would hand rung 2 a units choice this browser never
+    // made and outrank the instance default with it. Only `unit_preference`
+    // records an actual choice.
+    //
+    // ★ THE FLAVOUR IT CONTRIBUTES WHEN A REAL CHOICE DOES SIT BESIDE IT is a
+    // different question, and this case is not the answer to it: the set below
+    // IS built from the key in that arrangement. What stops that flavour being
+    // frozen is the `units_are_migrated` flag pinned in the case after this
+    // one, which `useUnitPreference` rung 2 reads to take the gallon flavour
+    // from the live instance default instead. The store cannot do it here: it
+    // has no access to what the instance publishes.
     localStorage.setItem(LEGACY_GALLON_KEY, 'uk')
     localStorage.setItem(LEGACY_SYSTEM_KEY, 'imperial')
     const chose = await loadStore()
@@ -256,6 +265,53 @@ describe('unitPrefsStore migration off the legacy keys', () => {
     localStorage.setItem(LEGACY_GALLON_KEY, 'uk')
     const gallonOnly = await loadStore()
     expect(gallonOnly.getUnitPrefs()?.units ?? null).toBeNull()
+  })
+
+  it('★ flags a MIGRATED set as unchosen and a WRITTEN one as chosen', async () => {
+    // ★ THE THIRD STATE, EXPORTED. The store holds "no units", "units derived
+    // from the legacy keys for this session" and "units this browser chose",
+    // and only the reader can act on the middle one: the gallon flavour in a
+    // derived set came from `imperial_gallon_standard`, which was a CACHE of an
+    // instance value and has had no writer since task 5 deleted
+    // `useGallonStandardSync`. `useUnitPreference` rung 2 re-takes that flavour
+    // from the live instance default for a flagged record and hands an unflagged
+    // one straight through, so a flag stuck in either position is a silent
+    // twenty percent error in one of the two populations.
+    localStorage.setItem(LEGACY_SYSTEM_KEY, 'imperial')
+    localStorage.setItem(LEGACY_GALLON_KEY, 'uk')
+    const migrated = await loadStore()
+    expect(migrated.getUnitPrefs()!.units).toEqual(UK_IMPERIAL_UNITS)
+    expect(migrated.getUnitPrefs()!.units_are_migrated).toBe(true)
+
+    // The other direction, on the same store: an explicit write is a choice.
+    migrated.setUnitPrefs({
+      units: UK_IMPERIAL_UNITS,
+      unit_preference: 'custom',
+      show_both_units: false,
+    })
+    expect(migrated.getUnitPrefs()!.units_are_migrated).toBe(false)
+
+    // ...and a set read back off this store's own key is a choice too, because
+    // `setUnitPrefs` is the only thing that ever put one there.
+    const reloaded = await loadStore()
+    expect(reloaded.getUnitPrefs()!.units).toEqual(UK_IMPERIAL_UNITS)
+    expect(reloaded.getUnitPrefs()!.units_are_migrated).toBe(false)
+  })
+
+  it('★ keeps the flag across a modifier-only write, which withholds the set', async () => {
+    // `setShowBothUnits` persists a migration-derived record as `units: null`
+    // and re-derives on the next boot, so the record that comes back is still
+    // migrated. A flag cleared by the modifier write would make the next boot's
+    // set look chosen and freeze the dead cache's flavour through the door
+    // f3b86e5 closed for persistence.
+    localStorage.setItem(LEGACY_SYSTEM_KEY, 'imperial')
+    const first = await loadStore()
+    first.setShowBothUnits(true)
+    expect(first.getUnitPrefs()!.units_are_migrated).toBe(true)
+
+    const second = await loadStore()
+    expect(second.getUnitPrefs()!.show_both_units).toBe(true)
+    expect(second.getUnitPrefs()!.units_are_migrated).toBe(true)
   })
 
   it('keeps a show-both-only browser modifier without activating a units rung', async () => {

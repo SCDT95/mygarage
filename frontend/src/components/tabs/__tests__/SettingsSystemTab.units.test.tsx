@@ -43,6 +43,14 @@
  * read through `readCard` so a case still cannot pass on a `findByText` that
  * already threw.
  *
+ * ★ AND THE TWO CASE NAMES THAT STILL SAID "gallon panel" ARE RENAMED. Their
+ * bodies stopped asserting anything about a panel when it was deleted, so the
+ * names claimed a property the bodies no longer exercised, which is this
+ * project's own named anti-pattern and worse than a missing test: a reader
+ * greps for the guard, finds it, and stops looking. They assert the composed
+ * sentence for a `custom` account, which is what they now check and all they
+ * now check.
+ *
  * ★ AND THE TAB NOW CARRIES TWO UNIT EDITORS, which is why every query below is
  * scoped to a region. `UnitPreferencesCard` writes THIS CLIENT's units and
  * `InstanceUnitDefaultsCard` writes the instance default; their controls are
@@ -122,6 +130,13 @@ vi.mock('@/contexts/AuthContext', () => ({
   useAuth: () => ({
     isAuthenticated: true,
     isAdmin: true,
+    // `InstanceUnitDefaultsCard` hides itself until `/settings/public` has
+    // resolved once, because it cannot otherwise tell an absent row from a
+    // failed fetch. This mock stands in for that payload, so it has to report
+    // the payload as having arrived or the second card is off screen and this
+    // file's "two unit editors" premise, and the region scoping it forces,
+    // would be describing a screen no case actually renders.
+    publicSettingsLoaded: true,
     user: h.user,
     refreshUser: vi.fn(),
   }),
@@ -202,14 +217,30 @@ describe('SettingsSystemTab — the Units card reads the resolved set', () => {
     mockedApi.put.mockResolvedValue({ data: {} })
   })
 
-  it('keeps the gallon panel for a custom user resolving to UK gallons', async () => {
+  it('★ really does carry BOTH unit editors, which is what the region scoping is for', async () => {
+    // The file header says this screen holds two deliberately identical
+    // editors and that every query below is scoped because of it. Asserted
+    // rather than asserted-in-prose: `InstanceUnitDefaultsCard` now hides
+    // itself until `/settings/public` has resolved, so an `AuthContext` mock
+    // that forgot to say so would take the second card off screen, leave every
+    // scoped query passing for the wrong reason, and turn the scoping into
+    // ceremony nothing needs.
+    await cardFor(makeUser({ unit_preference: 'imperial', resolved_units: IMPERIAL_UNITS }))
+
+    expect(screen.getAllByRole('button', { name: 'units.metric' })).toHaveLength(2)
+    expect(accountCard()).not.toBe(
+      screen.getByRole('region', { name: 'units.instanceDefault' }),
+    )
+  })
+
+  it('describes a custom account resolving to UK gallons in gallons, not litres', async () => {
     const card = await cardFor(
       makeUser({ unit_preference: 'custom', resolved_units: UK_IMPERIAL_UNITS }),
     )
     expect(card).toStrictEqual({ description: IMPERIAL_TEXT })
   })
 
-  it('hides the gallon panel for a custom user resolving to litres', async () => {
+  it('describes a custom account resolving to litres in litres, not gallons', async () => {
     const card = await cardFor(
       makeUser({ unit_preference: 'custom', resolved_units: METRIC_UNITS }),
     )

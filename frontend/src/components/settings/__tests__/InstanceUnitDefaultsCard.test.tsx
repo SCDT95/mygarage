@@ -72,7 +72,7 @@ vi.mock('sonner', () => ({ toast: { success: vi.fn(), error: vi.fn() } }))
 
 import i18n from '@/i18n'
 import api from '@/services/api'
-import { AuthProvider } from '@/contexts/AuthContext'
+import { AuthProvider, useAuth } from '@/contexts/AuthContext'
 import { useUnitPreference } from '@/hooks/useUnitPreference'
 import InstanceUnitDefaultsCard from '../InstanceUnitDefaultsCard'
 
@@ -124,10 +124,23 @@ function serveInstance(options: {
   })
 }
 
-/** A separate consumer of the resolved units, mounted beside the card. */
+/**
+ * A separate consumer of the resolved units, mounted beside the card.
+ *
+ * It also reports `loading`, which is the provider's own settle signal: it
+ * flips false in `loadUser`'s `finally`, on the failure path as well as the
+ * success one. Without it a case asserting the card's ABSENCE could not tell
+ * "hidden because the fetch failed" from "not rendered yet".
+ */
 function UnitsProbe(): React.ReactElement {
   const { units } = useUnitPreference()
-  return <span data-testid="probe">{units.volume}</span>
+  const { loading } = useAuth()
+  return (
+    <>
+      <span data-testid="probe">{units.volume}</span>
+      <span data-testid="auth-loading">{String(loading)}</span>
+    </>
+  )
 }
 
 /** Mount the card (and the probe) inside a real AuthProvider. */
@@ -186,6 +199,25 @@ describe('InstanceUnitDefaultsCard: who may see it', () => {
     renderCard()
 
     expect(await screen.findByRole('region', { name: label('units.instanceDefault') })).toBeTruthy()
+  })
+
+  it('★ is not offered when /settings/public never answered, where the gate reads OPEN', async () => {
+    // ★ THE FAILURE THAT LOOKS LIKE A CONFIGURED INSTANCE. `authMode`
+    // initialises to 'none' and `defaultUnitPrefs` to null, so a boot fetch
+    // that throws leaves `isAdmin || authMode === 'none'` TRUE and the card
+    // falling back to `basePresetFor('imperial')` exactly as it does for an
+    // instance that published nothing. Those two states are not the same
+    // state: `UnitSetEditor`'s Custom button fires `onSelect` immediately with
+    // no confirmation, so on a UK or metric `auth_mode=none` instance whose
+    // fetch failed, an admin opening the per-quantity grid would write US
+    // imperial as the instance-wide default for everyone, having chosen
+    // nothing. The mirror is every other case in this file: the same gate lets
+    // the card through the moment the payload lands.
+    mockedApi.get.mockRejectedValue(new Error('network down'))
+    renderCard()
+
+    await waitFor(() => expect(screen.getByTestId('auth-loading').textContent).toBe('false'))
+    expect(screen.queryByRole('region', { name: label('units.instanceDefault') })).toBeNull()
   })
 
   it('★ is not offered to a non-admin, whose write the backend would refuse', async () => {
@@ -276,18 +308,12 @@ describe('InstanceUnitDefaultsCard: the write', () => {
   })
 })
 
-describe('InstanceUnitDefaultsCard: its copy resolves', () => {
-  it('★ has English for every key it renders, which a key-echoing mock would hide', () => {
-    // The vitest setup mock is `t: (key) => key`, so a component test cannot
-    // normally see a missing English string, and `validate-translations.ts`
-    // checks each language AGAINST English and so cannot either. Enumerated
-    // from the card's own key list rather than spot-checked.
-    const keys = [
-      'units.instanceDefault',
-      'units.instanceDefaultDescription',
-      'units.instanceDefaultSaved',
-      'units.instanceDefaultError',
-    ]
-    expect(keys.filter((key) => label(key) === key)).toStrictEqual([])
-  })
-})
+// ★ THE "has English for every key it renders" CASE IS DELETED, and deleting it
+// is the fix rather than the shortcut. It listed four keys by hand and asserted
+// each resolved, which `scripts/validate-i18n-usage.ts` already derives from
+// every literal translate call in `src/` and blocks CI on. Unlike that gate the
+// list was a FLOOR: a fifth key added to this card would never appear in it, so
+// the case would keep passing while the thing it claimed to check went unmet,
+// and its name promised "every key it renders". The gate is the receipt; the
+// card's copy resolving through the real i18next instance is still exercised by
+// every query above, all of which go through `label()`.

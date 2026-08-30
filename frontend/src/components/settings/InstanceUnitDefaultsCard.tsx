@@ -28,6 +28,18 @@
  * `DELETE /api/settings/{key}` is exactly the case the backend fallback exists
  * for, and the batch route is the one that can recover it.
  *
+ * ★ AND IT STAYS HIDDEN UNTIL `/settings/public` HAS ACTUALLY ANSWERED. The
+ * card cannot tell "no row published" from "the boot fetch failed" out of
+ * `defaultUnitPrefs` alone: both are null, and it falls back to the imperial
+ * preset for both, which is right to DISPLAY and wrong to be able to SAVE.
+ * `UnitSetEditor`'s Custom button fires `onSelect` immediately with the set on
+ * screen (only the two PRESET buttons get a confirmation), so on a UK or metric
+ * `auth_mode=none` instance whose fetch failed, an admin opening the
+ * per-quantity grid would write US imperial as the instance-wide default for
+ * everyone, permanently, having chosen nothing. `authMode` initialises to
+ * 'none' (`AuthContext`), so the gate above is OPEN on exactly that failure.
+ * `publicSettingsLoaded` is the missing bit and it comes from the same payload.
+ *
  * ★ AND THE WRITE APPLIES LIVE. `defaultUnitPrefs` is React state populated only
  * inside `AuthContext.loadUser`, and nothing re-reads it after a settings write.
  * Without the reload below, every mounted consumer on an `auth_mode=none`
@@ -48,13 +60,17 @@ import UnitSetEditor, { type UnitSetSelection } from './UnitSetEditor'
 
 export default function InstanceUnitDefaultsCard(): React.ReactElement | null {
   const { t } = useTranslation('settings')
-  const { isAdmin, authMode, defaultUnitPrefs, refreshUser } = useAuth()
+  const { isAdmin, authMode, defaultUnitPrefs, publicSettingsLoaded, refreshUser } = useAuth()
   // Optimistic overlay, so the control responds before the round trip lands.
   // Null while the published row is authoritative.
   const [pendingUnits, setPendingUnits] = useState<UnitSet | null>(null)
   const [saving, setSaving] = useState(false)
 
   if (!isAdmin && authMode !== 'none') return null
+  // Both halves of the gate above are read off `/settings/public`, and so is
+  // the row this card writes. Until that request has resolved once, every one
+  // of them is a default rather than an answer.
+  if (!publicSettingsLoaded) return null
 
   // The same fallback `parse_default_unit_prefs` applies on the server, so the
   // control shows what an unparseable or absent row actually resolves to rather

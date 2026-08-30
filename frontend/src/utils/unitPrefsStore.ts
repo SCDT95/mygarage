@@ -26,21 +26,34 @@
  *    `useGallonStandardSync` rewrote `imperial_gallon_standard` from the server
  *    on every boot for every client, so a presence-guarded migration re-ran
  *    forever and overwrote whatever the user chose after it first ran. That
- *    writer is gone and all three keys are write-once history now, which makes
- *    a presence guard merely wrong rather than catastrophic; the absence guard
- *    is the correct rule either way and does not move.
+ *    writer is gone, so the three keys are now frozen at whatever they last
+ *    said; the absence guard is the correct rule either way and does not move.
+ *
+ *    ★ AND FREEZING IS THE HALF THAT MATTERS, not absence. "Nothing writes
+ *    them any more" was first read here as "they can only be missing", which
+ *    reasons about an ABSENT key and skips the PRESENT one that can no longer
+ *    heal. A browser holding `imperial_gallon_standard='us'` against a UK
+ *    instance is stale forever now that no boot rewrites it, and a migrated
+ *    record built from it would be twenty percent wrong in every volume and
+ *    every MPG for the life of that browser. This store deliberately does NOT
+ *    resolve that here: it has no access to what the instance publishes. It
+ *    flags the record instead (`units_are_migrated`), and `useUnitPreference`
+ *    rung 2 takes the gallon flavour from the live instance default for a
+ *    record carrying that flag. See `migrateLegacy` below.
  * 4. LISTEN FOR `storage`, in the keyless-tolerant form `onStorage` explains.
  *
  * ★ WHY MIGRATION LOOKS AT `unit_preference` AND NOT AT THE OTHER TWO.
  * `unit_preference` is the only one of the three legacy keys that records a
  * user's actual choice of units; the other two are modifiers on it.
- * `imperial_gallon_standard` in particular was written for EVERY client on
- * every boot, chosen or not (until task 5 retired the writer), so materialising
- * a full set because that key exists would invent an explicit browser
- * preference that outranks the instance default (`useUnitPreference` rung 2
- * over rung 3) and pin every such browser to whatever the gallon key happened
- * to say. Every browser that carries the key today acquired it that way, so the
- * rule survives its writer.
+ * `imperial_gallon_standard` in particular was never a browser CHOICE at all:
+ * it was a CACHE of an instance-wide server value, written for EVERY client on
+ * every boot, chosen or not, by a sync hook task 5 deleted. So materialising a
+ * full set because that key exists would invent an explicit browser preference
+ * that outranks the instance default (`useUnitPreference` rung 2 over rung 3)
+ * and pin every such browser to whatever the cache happened to hold. Every
+ * browser that carries the key today acquired it that way, so the rule survives
+ * its writer, and the same reasoning is why a MIGRATED record does not get to
+ * keep the flavour it read out of that cache either.
  *
  * ★ BUT A MODIFIER IS STILL A CHOICE. `show_both_units` is separately settable
  * today by a client with no account, and a browser that set only that has made
@@ -75,7 +88,7 @@ const LEGACY_GALLON_KEY = 'imperial_gallon_standard'
 const LEGACY_SHOW_BOTH_KEY = 'show_both_units'
 
 /**
- * What one browser holds.
+ * A units choice, as a caller hands one in.
  *
  * `units === null` means the browser holds modifiers only and has no units
  * choice, so `useUnitPreference` falls through to the instance default.
@@ -86,23 +99,32 @@ const LEGACY_SHOW_BOTH_KEY = 'show_both_units'
  * "Imperial" over a set the client renders as UK gallons is the exact
  * dishonesty migration 093 fixed on the server side.
  */
-export interface StoredUnitPrefs {
+export interface UnitPrefsChoice {
   units: UnitSet | null
   unit_preference: UnitPreference | null
   show_both_units: boolean
 }
 
 /**
- * Whether `current`'s units came from the legacy keys rather than from a choice
- * this browser made through `setUnitPrefs`.
+ * What one browser holds, which is a choice plus how the store came by it.
  *
- * The store holds three states, not two: no units at all, units held FOR THIS
+ * ★ THE STORE HOLDS THREE STATES, NOT TWO: no units at all, units held FOR THIS
  * SESSION because `migrateLegacy` derived them, and units CHOSEN and written
  * down. Only the third may be persisted. Collapsing the middle one into the
  * third is how a modifier-only write freezes the module-load gallon guess that
- * `migrateLegacy` exists to avoid persisting.
+ * `migrateLegacy` exists to avoid persisting (`setShowBothUnits`).
+ *
+ * ★ AND THE THIRD STATE IS ON THE RECORD RATHER THAN IN A MODULE `let`, because
+ * a reader outside this module needs it. `useUnitPreference` rung 2 has to know
+ * whether the set it was handed carries a real choice of gallon flavour or the
+ * dead `imperial_gallon_standard` cache's last word, and `useSyncExternalStore`
+ * gives it exactly one value: this record. A second exported getter would be
+ * read during render without a subscription, which is the shape this store
+ * exists to replace.
  */
-let unitsAreMigrated = false
+export interface StoredUnitPrefs extends UnitPrefsChoice {
+  units_are_migrated: boolean
+}
 
 let current: StoredUnitPrefs | null = readPersisted()
 
@@ -142,13 +164,11 @@ export function getUnitPrefsServerSnapshot(): StoredUnitPrefs | null {
  * @param prefs The set and modifiers to hold. Its `unit_preference` is ignored
  *   and recomputed from `units`, so the tag can never contradict the set.
  */
-export function setUnitPrefs(prefs: StoredUnitPrefs): void {
-  current = makePrefs(prefs.units, prefs.show_both_units)
+export function setUnitPrefs(prefs: UnitPrefsChoice): void {
   // An explicit units choice, so the set is the browser's own from here on and
-  // the legacy keys stop being authoritative for it.
-  unitsAreMigrated = prefs.units !== null
-    ? false
-    : unitsAreMigrated
+  // the legacy keys stop being authoritative for it. With no set there is
+  // nothing migrated to flag either, and rung 2 skips a null-units record.
+  current = makePrefs(prefs.units, prefs.show_both_units, false)
   persist(current)
   for (const listener of listeners) listener()
 }
@@ -170,8 +190,9 @@ export function setUnitPrefs(prefs: StoredUnitPrefs): void {
  * @param showBoth Whether to render both systems.
  */
 export function setShowBothUnits(showBoth: boolean): void {
-  current = makePrefs(current?.units ?? null, showBoth)
-  persist(makePrefs(unitsAreMigrated ? null : (current.units ?? null), showBoth))
+  const migrated = current?.units_are_migrated ?? false
+  current = makePrefs(current?.units ?? null, showBoth, migrated)
+  persist(makePrefs(migrated ? null : (current.units ?? null), showBoth, false))
   for (const listener of listeners) listener()
 }
 
@@ -180,13 +201,21 @@ export function setShowBothUnits(showBoth: boolean): void {
  *
  * @param units The resolved set, or null for a modifiers-only record.
  * @param showBoth Whether to render both systems.
+ * @param migrated Whether `units` came from `migrateLegacy` rather than from a
+ *   choice this browser made. Always false for a record read back off this
+ *   store's own key: persisting a set is what makes it a choice.
  * @returns The record to hold.
  */
-function makePrefs(units: UnitSet | null, showBoth: boolean): StoredUnitPrefs {
+function makePrefs(
+  units: UnitSet | null,
+  showBoth: boolean,
+  migrated: boolean
+): StoredUnitPrefs {
   return {
     units,
     unit_preference: units === null ? null : presetTagFor(units),
     show_both_units: showBoth,
+    units_are_migrated: units !== null && migrated,
   }
 }
 
@@ -203,10 +232,7 @@ function readPersisted(): StoredUnitPrefs | null {
 
     const stored = coerceStored(tryParseJson(raw))
     if (stored === null) return null
-    if (stored.units !== null) {
-      unitsAreMigrated = false
-      return stored
-    }
+    if (stored.units !== null) return stored
 
     // A persisted record holding modifiers but no units. Two browsers reach
     // this: one that genuinely never chose units, and one whose modifier write
@@ -232,9 +258,8 @@ function sessionRecord(
   migrated: StoredUnitPrefs | null,
   showBoth: boolean | null
 ): StoredUnitPrefs | null {
-  unitsAreMigrated = migrated?.units != null
   if (showBoth === null) return migrated
-  return makePrefs(migrated?.units ?? null, showBoth)
+  return makePrefs(migrated?.units ?? null, showBoth, migrated?.units_are_migrated ?? false)
 }
 
 /**
@@ -255,12 +280,14 @@ function coerceStored(value: unknown): StoredUnitPrefs | null {
 
   const rawUnits = candidate.units
   if (rawUnits === null || rawUnits === undefined) {
-    return makePrefs(null, candidate.show_both_units)
+    return makePrefs(null, candidate.show_both_units, false)
   }
 
   const units = coerceUnitSet(rawUnits)
   if (units === null) return null
-  return makePrefs(units, candidate.show_both_units)
+  // Only `setUnitPrefs` ever writes a set to this key, so a set read back is a
+  // choice this browser made and never a migration's guess.
+  return makePrefs(units, candidate.show_both_units, false)
 }
 
 /**
@@ -270,20 +297,28 @@ function coerceStored(value: unknown): StoredUnitPrefs | null {
  * function's shape. It reads `imperial_gallon_standard` at MODULE LOAD and an
  * absent key falls back to `us`. Until phase 4 task 5 that read raced
  * `useGallonStandardSync`'s `/settings/public` fetch; since task 5 nothing
- * writes the key at all, so an absent one stays absent. Persisting that guess
- * would freeze it either way: every later path is guarded on `unit_prefs` being
- * ABSENT, so nothing could ever heal the record.
+ * writes the key at all, so whatever it holds is frozen. Persisting the derived
+ * set would freeze it a second time and harder: every later path is guarded on
+ * `unit_prefs` being ABSENT, so nothing could ever heal the record.
  *
- * Two reachable paths, both silent and both permanent. A UK instance whose
- * first post-upgrade settings fetch fails (the key is never written on US
- * instances, so its absence is indistinguishable from normal), and any instance
- * whose admin later switches the published flavour. Either one leaves every
- * volume and MPG about twenty percent wrong, forever.
+ * ★ AND NOT PERSISTING IS ONLY HALF THE FIX, which is the correction this
+ * comment carries. Two paths reach a gallon flavour that disagrees with the
+ * instance: a UK instance whose first post-upgrade settings fetch failed (the
+ * key is never written on US instances, so its absence is indistinguishable
+ * from normal), and any instance whose admin switches the published flavour,
+ * which the instance-default card makes a one-click operation. Re-deriving each
+ * boot healed neither once the sync hook was deleted, because there is no
+ * writer left to move the key: the SET stopped being frozen and its INPUT
+ * stayed frozen. So the record is flagged `units_are_migrated` and
+ * `useUnitPreference` rung 2 composes the flavour from the live instance
+ * default instead, keeping only the binary system this browser actually chose.
+ * The key is still read here, and it is still the answer when the instance
+ * publishes nothing at all: that client has no better source, and it is the
+ * same value it rendered with before the upgrade.
  *
- * Before the store existed, rung 2 read the cached gallon standard live and
- * followed the server. Not persisting keeps that: the legacy keys stay
- * authoritative until the client makes a real choice through `setUnitPrefs`,
- * which does persist.
+ * A set the client CHOSE through `setUnitPrefs` is not flagged and is not
+ * recomposed. That one is a real choice of flavour and it outranks the
+ * instance, which is rung 2's whole reason to sit above rung 3.
  *
  * @returns The migrated record for this session, or null when the browser held
  *   no choice of any kind to migrate.
@@ -297,7 +332,7 @@ function migrateLegacy(): StoredUnitPrefs | null {
     localStorage.getItem(LEGACY_GALLON_KEY) === 'uk' ? 'uk' : 'us'
   const units = system === null ? null : presetUnitsFor(system, gallonStandard)
 
-  return makePrefs(units, showBoth)
+  return makePrefs(units, showBoth, true)
 }
 
 /**

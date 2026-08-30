@@ -71,13 +71,14 @@ const UK_IMPERIAL_RAW =
   '{"consumption": "mpg_uk", "distance": "mi", "length": "ft", "mass": "lb", "pressure": "psi", "secondary_gallon": "uk", "speed": "mph", "temperature": "f", "torque": "lbft", "tread": "in32", "volume": "gal_uk"}'
 
 function Consumer() {
-  const { defaultUnitPrefs, loading, authMode } = useAuth()
+  const { defaultUnitPrefs, loading, authMode, publicSettingsLoaded } = useAuth()
   const { system, gallonStandard } = useUnitPreference()
   return (
     <div>
       <span data-testid="loading">{String(loading)}</span>
       <span data-testid="auth-mode">{authMode}</span>
       <span data-testid="defaults-present">{String(defaultUnitPrefs !== null)}</span>
+      <span data-testid="public-loaded">{String(publicSettingsLoaded)}</span>
       <span data-testid="defaults-volume">{defaultUnitPrefs?.volume ?? 'none'}</span>
       <span data-testid="defaults-distance">{defaultUnitPrefs?.distance ?? 'none'}</span>
       <span data-testid="defaults-pressure">{defaultUnitPrefs?.pressure ?? 'none'}</span>
@@ -134,6 +135,46 @@ describe('AuthContext default_unit_prefs', () => {
     // /auth/me is still never probed: bug #98's guard is untouched.
     const requestedUrls = mockedApi.get.mock.calls.map((call: unknown[]) => call[0])
     expect(requestedUrls).not.toContain('/auth/me')
+  })
+
+  it('★ separates a row that is absent from a payload that never arrived', async () => {
+    // ★ TWO STATES THAT `defaultUnitPrefs === null` CANNOT TELL APART, and a
+    // WRITER has to. A missing or unparseable row is a configured instance
+    // falling back the way `parse_default_unit_prefs` does on the server; a
+    // failed fetch is an instance whose real default is unknown, and
+    // `authMode` is still sitting on its 'none' initial value, so the admin
+    // gate `InstanceUnitDefaultsCard` uses reads OPEN. Writing the displayed
+    // imperial fallback back as the instance default would be a 20 percent
+    // error published for every client, chosen by nobody.
+    mockedApi.get.mockImplementation((url: string) => {
+      if (url === '/settings/public') return Promise.reject(new Error('network down'))
+      return Promise.reject(new Error('unexpected url'))
+    })
+    render(
+      <AuthProvider>
+        <Consumer />
+      </AuthProvider>
+    )
+
+    await waitFor(() => {
+      expect(screen.getByTestId('loading')).toHaveTextContent('false')
+    })
+    expect(screen.getByTestId('public-loaded')).toHaveTextContent('false')
+    expect(screen.getByTestId('defaults-present')).toHaveTextContent('false')
+    // The gate really is open on this path, which is why the flag is needed.
+    expect(screen.getByTestId('auth-mode')).toHaveTextContent('none')
+  })
+
+  it('★ and reports the payload as loaded when it arrives without the row', async () => {
+    // The mirror. Same null `defaultUnitPrefs`, opposite answer, so neither
+    // case can pass on a flag wired to the wrong thing.
+    mountWithPublicSettings([{ key: 'auth_mode', value: 'none' }])
+
+    await waitFor(() => {
+      expect(screen.getByTestId('loading')).toHaveTextContent('false')
+    })
+    expect(screen.getByTestId('public-loaded')).toHaveTextContent('true')
+    expect(screen.getByTestId('defaults-present')).toHaveTextContent('false')
   })
 
   it('an anonymous visitor who never chose gets the metric instance default', async () => {

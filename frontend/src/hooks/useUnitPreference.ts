@@ -27,6 +27,14 @@
  * collapsed FROM that set on this rung too, so the card and the form below it
  * cannot disagree.
  *
+ * ★ WITH ONE EXCEPTION, WHICH IS A DATA-CORRUPTION FIX AND NOT A REFINEMENT. A
+ * rung-2 set the store MIGRATED off the legacy keys carries a gallon flavour
+ * read out of `imperial_gallon_standard`, which was never a browser choice but
+ * a cache of an instance value, and which nothing has written since task 5
+ * deleted `useGallonStandardSync`. That flavour is taken from the live instance
+ * default instead; only the binary system survives from the migrated record.
+ * A set the browser CHOSE through `setUnitPrefs` is untouched.
+ *
  * ★ Why the instance default sits BELOW the browser's own choice rather than
  * above it. `default_unit_prefs` is a DEFAULT: what you get before you choose,
  * not something that overrides a choice already made. For an authenticated user
@@ -158,11 +166,22 @@ export function useUnitPreference(): UnitPreference {
   // cached key SURVIVED A FAILED `/settings/public`, so a UK instance whose boot
   // fetch failed still rendered UK gallons from the previous session. Nothing
   // caches the published set, so that client now falls to the imperial preset
-  // for the session and heals on the next successful load. That is the same
-  // degradation `parse_default_unit_prefs` applies on the server for an
-  // unreadable row, it is transient rather than the PERMANENT freeze commits
-  // a704a5b and f3b86e5 removed, and it costs nothing on rung 1, which is every
-  // authenticated client.
+  // and heals on the next successful load. That is the same degradation
+  // `parse_default_unit_prefs` applies on the server for an unreadable row, and
+  // it is transient rather than the PERMANENT freeze commits a704a5b, f3b86e5
+  // and the rung-2 recomposition below removed.
+  //
+  // ★ TWO THINGS THAT SENTENCE GOT WRONG THE FIRST TIME, corrected rather than
+  // softened. It said the loss "costs nothing on rung 1, which is every
+  // authenticated client": false in the very scenario it describes, because
+  // `AuthContext.loadUser` awaits `/settings/public` BEFORE `/auth/me` and
+  // returns from the catch when it throws. On that failure there are no rung-1
+  // clients at all: nobody is authenticated, everybody drops to rung 4, and
+  // everybody gets `basePresetFor('imperial')`. Rung 1 is untouched only when
+  // the fetch SUCCEEDS and the row is missing or unparseable, which is the
+  // other way to reach a null `defaultUnitPrefs`. And "for the session" means
+  // until the tab reloads, which on an installed PWA resuming from the
+  // background can be days rather than minutes.
   const fallbackUnits = defaultUnitPrefs ?? basePresetFor('imperial');
   const fallbackGallon = gallonStandardFor(fallbackUnits);
 
@@ -201,11 +220,33 @@ export function useUnitPreference(): UnitPreference {
   // the client holds modifiers only, which is not a units choice and must not
   // outrank the instance default.
   if (storedPrefs?.units) {
+    // ★ A MIGRATED SET DOES NOT GET TO KEEP ITS GALLON FLAVOUR, and this is the
+    // THIRD door onto one defect rather than a new one. `a704a5b` stopped the
+    // migration PERSISTING the flavour and `f3b86e5` stopped a show-both toggle
+    // persisting it; both left the record re-derived each boot, which was a fix
+    // only while `useGallonStandardSync` rewrote `imperial_gallon_standard`
+    // from `/settings/public` on every boot. Task 5 deleted that writer, so the
+    // key froze at whatever it last said and `migrateLegacy` re-derives the
+    // same wrong answer forever: the INPUT was frozen instead of the record.
+    //
+    // The browser's real choice on that path is one bit, the binary system it
+    // stored under `unit_preference`. The flavour beside it was a CACHE of an
+    // instance value, never a choice, so it comes from the instance now. Its
+    // last cached word survives only when the instance publishes nothing at
+    // all, which is the same value that client rendered before the upgrade.
+    //
+    // A set written through `setUnitPrefs` is not flagged and is handed through
+    // untouched: that is a real per-quantity choice and outranks the instance,
+    // which is why rung 2 sits above rung 3 in the first place.
+    const units =
+      storedPrefs.units_are_migrated && defaultUnitPrefs !== null
+        ? presetUnitsFor(binarySystemFor(storedPrefs.units.volume), fallbackGallon)
+        : storedPrefs.units;
     return {
-      system: binarySystemFor(storedPrefs.units.volume),
+      system: binarySystemFor(units.volume),
       showBoth: storedShowBoth,
-      gallonStandard: gallonStandardFor(storedPrefs.units),
-      units: storedPrefs.units,
+      gallonStandard: gallonStandardFor(units),
+      units,
     };
   }
 
