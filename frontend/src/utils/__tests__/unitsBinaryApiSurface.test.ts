@@ -460,7 +460,18 @@ describe('what the units gate is silent about (plan 3b task 8, fix round 1)', ()
     // exact list; the line-level pragmas were held by an integer nothing
     // asserted on. Same pin, same reason.
     expect(gateSuppressions('PRAGMA_SUPPRESSED')).toEqual([
-      'src/components/tabs/SettingsSystemTab.tsx::compare x3',
+      // ★ Phase 4 task 4 moved the settings screen's unit block out of
+      // `SettingsSystemTab.tsx` into these two files, and the count went DOWN
+      // by one rather than across unchanged. Three comparisons left that file:
+      // the gallon panel's visibility, which is here on the card, and the two
+      // preset-selection comparisons, which are gone as findings entirely. The
+      // tri-state control derives its highlight from `preference === candidate`,
+      // an identifier against a loop variable, so there is no unit literal for
+      // the gate to see and nothing left to suppress. What is on the editor is
+      // the R4 warning's own `pendingPreset === 'imperial'`, which is a
+      // question about which button was pressed.
+      'src/components/settings/UnitPreferencesCard.tsx::compare x1',
+      'src/components/settings/UnitSetEditor.tsx::compare x1',
       'src/types/units.ts::token-branch x1',
       // Phase 4 task 3 MOVED this pair out of `useUnitPreference.ts`, which no
       // longer parses the legacy `unit_preference` key: the browser store owns

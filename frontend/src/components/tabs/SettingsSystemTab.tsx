@@ -1,45 +1,24 @@
 import { useState, useCallback, useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Server, CheckCircle, AlertCircle, Info, Shield, Users, AlertTriangle, Key, Wrench, Fuel, Bell, FileText, StickyNote, Camera, Ruler, Clock, Archive, Smartphone, Globe, DollarSign } from 'lucide-react'
+import { Server, CheckCircle, AlertCircle, Info, Shield, Users, AlertTriangle, Key, Wrench, Fuel, Bell, FileText, StickyNote, Camera, Clock, Archive, Smartphone, Globe, DollarSign } from 'lucide-react'
 import { useAuth } from '@/contexts/AuthContext'
 import { useSettings } from '@/contexts/SettingsContext'
 import type { DashboardResponse } from '@/types/dashboard'
-import { binarySystemFor, presetUnitsFor, type UnitPreference } from '@/types/units'
 import { asTimeFormat } from '@/hooks/useTimeFormat'
-import { useUnitPreference } from '@/hooks/useUnitPreference'
 import api from '@/services/api'
 import { toast } from 'sonner'
-import {
-  getGallonStandard,
-  setGallonStandard as applyGallonStandard,
-} from '@/utils/gallonStandardStore'
 import { formatCurrency } from '@/utils/formatUtils'
-import { makeUnitFormat, resolvedUnitSummary } from '@/utils/unitFormat'
 import { SUPPORTED_LANGUAGES, SUPPORTED_CURRENCIES, languageToLocale } from '@/constants/i18n'
 import OIDCModal from '@/components/modals/OIDCModal'
 import FamilyManagementModal from '@/components/modals/FamilyManagementModal'
 import ArchivedVehiclesList from '@/components/ArchivedVehiclesList'
+import UnitPreferencesCard from '@/components/settings/UnitPreferencesCard'
 import { Select, Toggle } from '../ui'
 
 type RawSetting = {
   key: string
   value?: string | null
 }
-
-/**
- * The fuel economy the show-both example is built from, in US MPG.
- *
- * ★ A ROUND NUMBER IN A UNIT, CONVERTED, rather than the canonical figure
- * spelled out. Writing 9.4160546 here reads as a conversion factor, and
- * `eslint`'s `no-restricted-syntax` guard says so: a high-precision literal in
- * a component is how this workstream's duplicated unit vocabularies started.
- * Twenty-five is a recognisable economy and the consumption adapter turns it
- * into canonical L/100km, so no factor is spelled here at all.
- *
- * It is a DISPLAY sample and converts like any other canonical value; nothing
- * is stored from it.
- */
-const SHOW_BOTH_EXAMPLE_MPG = 25
 
 export default function SettingsSystemTab() {
   const { t } = useTranslation('settings')
@@ -74,89 +53,6 @@ export default function SettingsSystemTab() {
   const [showFamilyManagement, setShowFamilyManagement] = useState(false)
   const [showOIDCModal, setShowOIDCModal] = useState(false)
 
-  // Unit preference state
-  // Widened to the stored vocabulary, which migration 093 can set to 'custom'.
-  // The two buttons below then show neither as selected, which is the honest
-  // rendering of a per-quantity account: the dedicated editor that replaces
-  // this toggle is phase 4, and nothing here should pretend otherwise.
-  const [unitPreference, setUnitPreference] = useState<UnitPreference>('imperial')
-  const [showBothUnits, setShowBothUnits] = useState(false)
-  const [unitPreferenceSaving, setUnitPreferenceSaving] = useState(false)
-  const [gallonStandard, setGallonStandard] = useState<'us' | 'uk'>('us')
-  const [gallonStandardSaving, setGallonStandardSaving] = useState(false)
-
-  // The units this account actually renders in, read from the RESOLVED SET and
-  // from nothing else. `unitPreference` is the base preset, not the answer:
-  // spec D3 is "any non-null override column beats the preset, regardless of
-  // which preset is set", and `resolve_units` on the backend applies the
-  // overrides on top of the preset for every account, `custom` or not.
-  //
-  // ★ WHY NOT `unitPreference` FOR THE TWO PRESET VALUES, which is what this
-  // line did through two revisions. Migration 093 materialises a UK instance's
-  // imperial users as `custom` with all eleven columns written, deliberately, so
-  // a later preset selection cannot silently revert them. `PUT /auth/me` sets
-  // `unit_preference` and never clears an override column, and nothing else
-  // clears one either. So `{preference: 'metric', overrides: UK imperial}` is a
-  // state the product creates on purpose, and branching on the preference
-  // painted "km, km/h, m, L, L/100km, kPa, °C, kg, Nm, mm" and hid the gallon
-  // panel for an account every other screen renders in gallons, miles and °F.
-  // That is R1's defect surviving inside R1's own fix, one branch over.
-  //
-  // The cost is that a preset click no longer repaints this sentence before the
-  // `refreshUser()` round trip lands. The button highlight and the toast are
-  // still immediate, because `setUnitPreference` runs before the await; only
-  // the description waits. That is the correct trade: the old behaviour was not
-  // "optimistic", it was a guess that is wrong for exactly the accounts this
-  // feature exists for.
-  //
-  // ★ And for an account with overrides the sentence does not change AT ALL,
-  // because eleven override columns beat the preset. The two buttons are
-  // therefore visibly inert for the population migration 093 created: the
-  // highlight moves, the toast fires, the server stores the new preference, and
-  // nothing the account renders changes. That is honest rather than broken, and
-  // it is recorded on this file's manifest row for phase 4, which replaces this
-  // toggle with the eleven Custom controls that can actually address it.
-  //
-  // `displaySystem` is derived FROM the same set rather than alongside it, so
-  // the gallon panel below and the sentence above cannot disagree: one
-  // expression, not two answers to the same question.
-  const { units: resolvedUnits } = useUnitPreference()
-  const displaySystem = binarySystemFor(resolvedUnits.volume)
-  // ★ THE THREE R1 EXEMPTIONS ON THIS SCREEN, HOISTED SO THEY CAN CARRY ONE.
-  // Each was a units gate baseline entry until task 8, and none of the three is
-  // a display conversion: the first two compare the STORED PRESET with a
-  // button's own value to show which is chosen, and the third decides whether a
-  // panel about the gallon flavour is worth showing at all. There is no quantity
-  // in any of them and nothing canonical to convert; `resolvedUnitSummary` below
-  // is what actually names this account's units.
-  //
-  // They are hoisted out of the JSX because the pragma is a LINE comment and the
-  // comparisons sat inside `className` template literals, where a `//` would be
-  // part of the rendered string rather than a comment. The scope in brackets is
-  // task 8's: `units.manifest.json` objected that a bare pragma "silences
-  // anything", so each of these silences the comparison leg on its own line and
-  // leaves every other kind reportable.
-  //
-  // units-exempt(compare): preset SELECTION, not a conversion; this is the stored preference beside the button's own value.
-  const presetIsImperial = unitPreference === 'imperial'
-  // units-exempt(compare): the metric half of the same control.
-  const presetIsMetric = unitPreference === 'metric'
-  // units-exempt(compare): panel VISIBILITY. `imperial_gallon_standard` has nothing to say to a litre primary, so the panel appears only when the resolved volume collapses to imperial. R1: a choice BETWEEN units with no quantity to convert. Owner: phase 4, which owns the gallon key and the eleven Custom controls.
-  const showsGallonPanel = displaySystem === 'imperial'
-  // ★ The show-both example is COMPOSED from the reader's own set, not written
-  // into the copy. The sentence used to read 'Display values in both imperial
-  // and metric (e.g., "25 MPG (9.4 L/100km)")', which is wrong twice over
-  // post-3b: the counterpart resolves per QUANTITY rather than per system, and
-  // a reader whose consumption is L/100km was shown the reversed example. One
-  // canonical figure through the resolved consumption formatter says what this
-  // toggle will actually do to this account.
-  const showBothExample = makeUnitFormat(resolvedUnits, true).consumption.format(
-    // 25 US MPG as canonical L/100km, through the US preset's own consumption
-    // adapter. The reader's set then renders it in whatever it holds.
-    makeUnitFormat(presetUnitsFor('imperial', 'us')).consumption.toCanonical(
-      SHOW_BOTH_EXAMPLE_MPG
-    )
-  )
   const [autoArchiveDays, setAutoArchiveDays] = useState('0')
   const [autoArchiveSaving, setAutoArchiveSaving] = useState(false)
 
@@ -274,10 +170,6 @@ export default function SettingsSystemTab() {
       setFormData(newFormData)
       setLoadedFormData(newFormData)
 
-      const gallon = settingsMap.imperial_gallon_standard === 'uk' ? 'uk' : 'us'
-      setGallonStandard(gallon)
-      localStorage.setItem('imperial_gallon_standard', gallon)
-
       setAutoArchiveDays(settingsMap.auto_archive_inactive_days || '0')
 
       // Check user count to determine if auth has ever been enabled
@@ -300,8 +192,6 @@ export default function SettingsSystemTab() {
   // Load user's preferences
   useEffect(() => {
     if (currentUser) {
-      setUnitPreference(currentUser.unit_preference || 'imperial')
-      setShowBothUnits(currentUser.show_both_units || false)
       setTimeFormat(asTimeFormat(currentUser.time_format))
       setMobileQuickEntry(currentUser.mobile_quick_entry_enabled ?? true)
       setSelectedLanguage(currentUser.language || 'en')
@@ -309,10 +199,6 @@ export default function SettingsSystemTab() {
       setDefaultPaymentMethod(currentUser.default_payment_method ?? '')
       setDefaultTripType(currentUser.default_trip_type ?? '')
     } else {
-      const storedSystem = localStorage.getItem('unit_preference') as 'imperial' | 'metric' | null
-      const storedShowBoth = localStorage.getItem('show_both_units') === 'true'
-      setUnitPreference(storedSystem || 'imperial')
-      setShowBothUnits(storedShowBoth)
       setTimeFormat(asTimeFormat(localStorage.getItem('time_format')))
       setSelectedLanguage(localStorage.getItem('i18nextLng') || 'en')
       setSelectedCurrency(localStorage.getItem('currency_code') || 'USD')
@@ -398,95 +284,6 @@ export default function SettingsSystemTab() {
       setTimeout(() => setMessage(null), 5000)
     }
   }, [formData, loadedFormData])
-
-  // Handle unit preference change
-  const handleUnitPreferenceChange = async (system: 'imperial' | 'metric') => {
-    setUnitPreferenceSaving(true)
-    setUnitPreference(system)
-
-    try {
-      if (isAuthenticated) {
-        // Save to user profile if authenticated
-        await api.put('/auth/me', {
-          unit_preference: system,
-        })
-        await refreshUser()
-      } else {
-        // Save to localStorage if not authenticated
-        localStorage.setItem('unit_preference', system)
-      }
-
-      toast.success(t('preferences.unitSaved'))
-      // Force a re-render to update displays
-      window.dispatchEvent(new Event('storage'))
-    } catch {
-      toast.error(t('preferences.unitError'))
-      // Revert on error
-      if (isAuthenticated) {
-        setUnitPreference(currentUser?.unit_preference || 'imperial')
-      } else {
-        const stored = localStorage.getItem('unit_preference') as 'imperial' | 'metric' | null
-        setUnitPreference(stored || 'imperial')
-      }
-    } finally {
-      setUnitPreferenceSaving(false)
-    }
-  }
-
-  const handleShowBothUnitsChange = async (showBoth: boolean) => {
-    setUnitPreferenceSaving(true)
-    setShowBothUnits(showBoth)
-
-    try {
-      if (isAuthenticated) {
-        // Save to user profile if authenticated
-        await api.put('/auth/me', {
-          show_both_units: showBoth,
-        })
-        await refreshUser()
-      } else {
-        // Save to localStorage if not authenticated
-        localStorage.setItem('show_both_units', showBoth.toString())
-      }
-
-      toast.success(t('preferences.displaySaved'))
-      // Force a re-render to update displays
-      window.dispatchEvent(new Event('storage'))
-    } catch {
-      toast.error(t('preferences.displayError'))
-      // Revert on error
-      if (isAuthenticated) {
-        setShowBothUnits(currentUser?.show_both_units || false)
-      } else {
-        const stored = localStorage.getItem('show_both_units') === 'true'
-        setShowBothUnits(stored)
-      }
-    } finally {
-      setUnitPreferenceSaving(false)
-    }
-  }
-
-  const handleGallonStandardChange = async (standard: 'us' | 'uk') => {
-    // The store owns persistence, the UnitConverter write and the re-render.
-    // This used to setItem directly and fire a `storage` event that nothing
-    // listens for, so nothing already on screen updated.
-    const previous = getGallonStandard()
-    setGallonStandardSaving(true)
-    setGallonStandard(standard)
-    applyGallonStandard(standard)
-    try {
-      await api.post('/settings/batch', {
-        settings: { imperial_gallon_standard: standard },
-      })
-      toast.success(t('units.gallonSaved'))
-    } catch {
-      toast.error(t('units.gallonError'))
-      setGallonStandard(previous)
-      applyGallonStandard(previous)
-    } finally {
-      setGallonStandardSaving(false)
-    }
-  }
 
   const handleAutoArchiveDaysChange = (raw: string) => {
     setAutoArchiveDays(raw.replace(/[^\d]/g, ''))
@@ -758,90 +555,7 @@ export default function SettingsSystemTab() {
         </div>
 
         {/* Unit System Setting */}
-        <div>
-          <label className="block text-sm font-medium text-garage-text mb-3">
-            {t('units.label')}
-          </label>
-          <div className="flex gap-3">
-            <button
-              onClick={() => handleUnitPreferenceChange('imperial')}
-              disabled={unitPreferenceSaving}
-              className={`flex-1 flex items-center justify-center gap-2 px-4 py-3 rounded-lg border-2 transition-all ${
-                presetIsImperial
-                  ? 'border-primary bg-primary/10 text-primary'
-                  : 'border-garage-border bg-garage-bg text-garage-text hover:border-garage-border'
-              } ${unitPreferenceSaving ? 'opacity-50 cursor-not-allowed' : ''}`}
-            >
-              <Ruler className="w-5 h-5" />
-              <span className="font-medium">{t('units.imperial')}</span>
-            </button>
-            <button
-              onClick={() => handleUnitPreferenceChange('metric')}
-              disabled={unitPreferenceSaving}
-              className={`flex-1 flex items-center justify-center gap-2 px-4 py-3 rounded-lg border-2 transition-all ${
-                presetIsMetric
-                  ? 'border-primary bg-primary/10 text-primary'
-                  : 'border-garage-border bg-garage-bg text-garage-text hover:border-garage-border'
-              } ${unitPreferenceSaving ? 'opacity-50 cursor-not-allowed' : ''}`}
-            >
-              <Ruler className="w-5 h-5" />
-              <span className="font-medium">{t('units.metric')}</span>
-            </button>
-          </div>
-          <p className="mt-2 text-sm text-garage-text-muted">
-            {t('units.resolvedDescription', { units: resolvedUnitSummary(resolvedUnits) })}
-          </p>
-
-          {/* Show Both Units Toggle */}
-          <div className="mt-4">
-            <Toggle
-              label={t('units.showBoth')}
-              checked={showBothUnits}
-              onChange={handleShowBothUnitsChange}
-              disabled={unitPreferenceSaving}
-            />
-            <p className="mt-1 text-sm text-garage-text-muted">
-              {t('units.showBothDescription', { example: showBothExample })}
-            </p>
-          </div>
-
-          {showsGallonPanel && (
-            <div className="mt-4">
-              <label className="block text-sm font-medium text-garage-text mb-2">
-                {t('units.gallonStandard')}
-              </label>
-              <div className="flex gap-3">
-                <button
-                  type="button"
-                  onClick={() => handleGallonStandardChange('us')}
-                  disabled={gallonStandardSaving}
-                  className={`flex-1 px-4 py-3 rounded-lg border-2 transition-all ${
-                    gallonStandard === 'us'
-                      ? 'border-primary bg-primary/10 text-primary'
-                      : 'border-garage-border bg-garage-bg text-garage-text hover:border-garage-border'
-                  }`}
-                >
-                  {t('units.gallonUs')}
-                </button>
-                <button
-                  type="button"
-                  onClick={() => handleGallonStandardChange('uk')}
-                  disabled={gallonStandardSaving}
-                  className={`flex-1 px-4 py-3 rounded-lg border-2 transition-all ${
-                    gallonStandard === 'uk'
-                      ? 'border-primary bg-primary/10 text-primary'
-                      : 'border-garage-border bg-garage-bg text-garage-text hover:border-garage-border'
-                  }`}
-                >
-                  {t('units.gallonUk')}
-                </button>
-              </div>
-              <p className="mt-2 text-sm text-garage-text-muted">
-                {t('units.gallonStandardDescription')}
-              </p>
-            </div>
-          )}
-        </div>
+        <UnitPreferencesCard />
 
         <div>
           <label className="block text-sm font-medium text-garage-text mb-2">

@@ -41,7 +41,76 @@
     "gallonUk": "UK gallon (4.546 L)",
     "gallonStandardDescription": "Applies wherever your units name a gallon: volume, price per volume, and MPG.",
     "gallonSaved": "Gallon standard saved",
-    "gallonError": "Failed to save gallon standard"
+    "gallonError": "Failed to save gallon standard",
+    "custom": "Custom",
+    "customDescription": "Choose a unit for each quantity. These override the preset everywhere in the app.",
+    "presetConfirmTitle": "Switch to {{preset}} units?",
+    "presetConfirmMessage": "This clears any per-quantity units you have set and uses the preset everywhere.",
+    "presetConfirmGallon": "Imperial uses the US gallon (3.785 L). Your UK gallon setting will be replaced.",
+    "presetConfirmAction": "Switch units",
+    "quantities": {
+      "distance": "Distance",
+      "speed": "Speed",
+      "length": "Length",
+      "volume": "Volume",
+      "consumption": "Fuel economy",
+      "pressure": "Pressure",
+      "temperature": "Temperature",
+      "mass": "Mass",
+      "torque": "Torque",
+      "tread": "Tire tread depth",
+      "secondaryGallon": "Gallon used for MPG"
+    },
+    "options": {
+      "distance": {
+        "km": "Kilometers (km)",
+        "mi": "Miles (mi)"
+      },
+      "speed": {
+        "kmh": "Kilometers per hour (km/h)",
+        "mph": "Miles per hour (mph)"
+      },
+      "length": {
+        "m": "Meters (m)",
+        "ft": "Feet (ft)"
+      },
+      "volume": {
+        "L": "Liters (L)",
+        "gal_us": "US gallons (gal)",
+        "gal_uk": "UK gallons (gal)"
+      },
+      "consumption": {
+        "l_100km": "Liters per 100 km (L/100km)",
+        "km_l": "Kilometers per liter (km/L)",
+        "mpg_us": "Miles per US gallon (MPG)",
+        "mpg_uk": "Miles per UK gallon (MPG)"
+      },
+      "pressure": {
+        "kpa": "Kilopascals (kPa)",
+        "bar": "Bar (bar)",
+        "psi": "Pounds per square inch (PSI)"
+      },
+      "temperature": {
+        "c": "Celsius (°C)",
+        "f": "Fahrenheit (°F)"
+      },
+      "mass": {
+        "kg": "Kilograms (kg)",
+        "lb": "Pounds (lb)"
+      },
+      "torque": {
+        "nm": "Newton meters (Nm)",
+        "lbft": "Pound-feet (lb-ft)"
+      },
+      "tread": {
+        "mm": "Millimeters (mm)",
+        "in32": "Thirty-seconds of an inch (/32 in)"
+      },
+      "secondary_gallon": {
+        "us": "US gallon (3.785 L)",
+        "uk": "UK gallon (4.546 L)"
+      }
+    }
   },
   "language": {
     "label": "Language",

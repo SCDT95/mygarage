@@ -39,8 +39,12 @@
  * derived from ONE expression, so a case that reads only one of them leaves
  * that claim undefended.
  *
- * The two-option toggle itself still shows the raw stored value (a per-quantity
- * editor is phase 4) and is deliberately not asserted here.
+ * The tri-state control and the eleven Custom selects moved out to
+ * `components/settings/UnitPreferencesCard.tsx` in phase 4 task 4, along with
+ * the show-both toggle and the gallon panel. This file still mounts the whole
+ * tab, so every case below exercises the card exactly as a user reaches it; the
+ * card's own write paths are covered in
+ * `components/settings/__tests__/UnitPreferencesCard.test.tsx`.
  */
 import { useEffect } from 'react'
 import { describe, it, expect, vi, beforeEach } from 'vitest'
@@ -295,15 +299,29 @@ describe('SettingsSystemTab — D3: an override column beats the preset', () => 
   it('does not repaint the card for a preset click the account still overrides', async () => {
     // The resting state of this account is pinned by the first case in the
     // block above, so it is not re-asserted here. What this adds is that the
-    // CLICK lands (`api.put` is called with the new preference) and the card
-    // still reports the units the account actually resolves to.
+    // CLICK lands and the card still reports the units the account actually
+    // resolves to until `refreshUser` brings back a new set.
+    //
+    // ★ MIGRATED IN PHASE 4 TASK 4, AND THE OLD ASSERTION WAS A LIVE BUG
+    // REPORT. It required `api.put('/auth/me', { unit_preference: 'metric' })`.
+    // D9b had already removed `unit_preference` from `UserSelfUpdate`, so that
+    // call is a 422 in production: the buttons showed an error toast and
+    // reverted, for every user. This suite could not see it because
+    // `@/services/api` is mocked and a mock accepts any body. Units now go to
+    // the dedicated route, behind the confirmation D3 requires: choosing a
+    // preset CLEARS every override column, and the UI has to say so first.
     h.user = makeUser({ unit_preference: 'custom', resolved_units: UK_IMPERIAL_UNITS })
     renderTab()
     await screen.findByText(/^Using these units: /)
 
     await userEvent.click(screen.getByText('units.metric'))
+    // The confirmation precedes the write. Asserted here, not assumed: without
+    // it this test would pass against a card that writes on the first click.
+    expect(mockedApi.put).not.toHaveBeenCalled()
+
+    await userEvent.click(screen.getByText('units.presetConfirmAction'))
     await waitFor(() =>
-      expect(mockedApi.put).toHaveBeenCalledWith('/auth/me', { unit_preference: 'metric' }),
+      expect(mockedApi.put).toHaveBeenCalledWith('/auth/me/units', { unit_preference: 'metric' }),
     )
 
     expect(await readCard()).toStrictEqual({

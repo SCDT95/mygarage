@@ -21,8 +21,14 @@ import { SUPPORTED_LANGUAGES } from '@/constants/i18n'
  * file guards exists in seven languages and nothing mechanical would have
  * pointed at six of them.
  *
+ * ★ THE COMPONENT MOVED IN PHASE 4 TASK 4, and this file found out by
+ * refusing the tree: the two composed sentences now live in
+ * `components/settings/UnitPreferencesCard.tsx`, extracted from
+ * `SettingsSystemTab.tsx` with the rest of the unit block. Only the path
+ * changed; every name below is still read from whatever that path holds.
+ *
  * ★ EVERY NAME IS READ, NEVER TRANSCRIBED. The key and the interpolation
- * variable are parsed out of `SettingsSystemTab.tsx`'s own `t(...)` call, so
+ * variable are parsed out of `UnitPreferencesCard.tsx`'s own `t(...)` call, so
  * renaming either one in the component fails here until all seven bundles
  * follow. Transcribing them would recreate the defect one file over: the
  * component could move to `{{unitList}}`, every bundle would keep rendering a
@@ -46,7 +52,7 @@ import { SUPPORTED_LANGUAGES } from '@/constants/i18n'
  */
 
 const FRONTEND = resolve(__dirname, '..', '..')
-const COMPONENT = resolve(FRONTEND, 'src/components/tabs/SettingsSystemTab.tsx')
+const COMPONENT = resolve(FRONTEND, 'src/components/settings/UnitPreferencesCard.tsx')
 const EN_BUNDLE = resolve(FRONTEND, 'src/locales/en/settings.json')
 const PUBLIC_LOCALES = resolve(FRONTEND, 'public/locales')
 
@@ -113,7 +119,7 @@ export function contractFromSource(
 /**
  * The composed sentence this file's per-locale assertions are about.
  *
- * NAMED rather than discovered, since task 6b: `SettingsSystemTab` now
+ * NAMED rather than discovered, since task 6b: the Units card now
  * interpolates two `units.*` keys (this one and `showBothDescription`), and a
  * reader that took "the only one" would have to be re-pointed by hand every
  * time the screen grows another. Naming it is what makes relocation
@@ -125,7 +131,7 @@ const SUBJECT_KEY = 'resolvedDescription'
 function contractFromComponent(): { key: string; variable: string } {
   return contractFromSource(
     readFileSync(COMPONENT, 'utf-8'),
-    'src/components/tabs/SettingsSystemTab.tsx',
+    'src/components/settings/UnitPreferencesCard.tsx',
     SUBJECT_KEY
   )
 }
@@ -210,7 +216,7 @@ describe('the show-both description carries its composed example', () => {
   it('interpolates in the component, under a variable read from the source', () => {
     const { variable } = contractFromSource(
       readFileSync(COMPONENT, 'utf-8'),
-      'src/components/tabs/SettingsSystemTab.tsx',
+      'src/components/settings/UnitPreferencesCard.tsx',
       SHOW_BOTH_KEY
     )
     expect(typeof unitsBlockFor('en')[SHOW_BOTH_KEY]).toBe('string')
@@ -220,7 +226,7 @@ describe('the show-both description carries its composed example', () => {
   it('is never shipped by a locale without the placeholder', () => {
     const { variable } = contractFromSource(
       readFileSync(COMPONENT, 'utf-8'),
-      'src/components/tabs/SettingsSystemTab.tsx',
+      'src/components/settings/UnitPreferencesCard.tsx',
       SHOW_BOTH_KEY
     )
     const broken = LANGUAGES.filter((language) => {

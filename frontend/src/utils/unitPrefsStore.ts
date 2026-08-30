@@ -51,9 +51,8 @@
  */
 
 import {
-  UNIT_FIELD_NAMES,
-  binarySystemFor,
   coerceUnitSet,
+  presetTagFor,
   presetUnitsFor,
   type UnitPreference,
   type UnitSet,
@@ -69,21 +68,12 @@ const LEGACY_GALLON_KEY = 'imperial_gallon_standard'
 const LEGACY_SHOW_BOTH_KEY = 'show_both_units'
 
 /**
- * The gallon flavour the two canonical presets are written in.
- *
- * `METRIC_PRESET` and `IMPERIAL_PRESET` in `app/constants/units.py` both carry
- * `secondary_gallon='us'`, so a set expanded with the UK flavour is NOT the
- * preset its binary system names, and `tagFor` has to say so.
- */
-const PRESET_GALLON_FLAVOUR: GallonStandard = 'us'
-
-/**
  * What one browser holds.
  *
  * `units === null` means the browser holds modifiers only and has no units
  * choice, so `useUnitPreference` falls through to the instance default.
  * `unit_preference` is null in exactly that case and is otherwise DERIVED from
- * `units` by `tagFor`: it is on the type so a caller can read the tag back, not
+ * `units` by `presetTagFor`: it is on the type so a caller can read the tag back, not
  * so a caller can set it, and `setUnitPrefs` recomputes it. That is deliberate.
  * A stored tag and a stored set can disagree, and a card highlighting
  * "Imperial" over a set the client renders as UK gallons is the exact
@@ -149,37 +139,9 @@ export function setUnitPrefs(prefs: StoredUnitPrefs): void {
 function makePrefs(units: UnitSet | null, showBoth: boolean): StoredUnitPrefs {
   return {
     units,
-    unit_preference: units === null ? null : tagFor(units),
+    unit_preference: units === null ? null : presetTagFor(units),
     show_both_units: showBoth,
   }
-}
-
-/**
- * Name a resolved set the way the settings card has to label it.
- *
- * A preset tag is a claim that the set IS that preset. Anything else is
- * `custom`, which is the same rule migration 093 applies when it retags a
- * UK-gallon imperial account (`093_add_unit_preferences.py`,
- * `_materialise_uk_imperial_users`). Deriving it rather than storing it means
- * the browser cannot end up in the state that migration existed to repair.
- *
- * @param units A resolved set.
- * @returns The preset it matches, or 'custom'.
- */
-function tagFor(units: UnitSet): UnitPreference {
-  const system = binarySystemFor(units.volume)
-  return sameUnits(units, presetUnitsFor(system, PRESET_GALLON_FLAVOUR)) ? system : 'custom'
-}
-
-/**
- * Whether two resolved sets agree on every quantity.
- *
- * @param a One set.
- * @param b The other.
- * @returns True when every field matches.
- */
-function sameUnits(a: UnitSet, b: UnitSet): boolean {
-  return UNIT_FIELD_NAMES.every((field) => a[field] === b[field])
 }
 
 /**
@@ -303,8 +265,10 @@ function tryParseJson(raw: string): unknown {
  * Re-read on a `storage` event, from another tab or from this one.
  *
  * ★ THE KEY TEST IS DELIBERATELY LENIENT. `SettingsSystemTab` fires
- * `window.dispatchEvent(new Event('storage'))` from three handlers today: a
- * synthetic `Event`, not a `StorageEvent`, with no `key` property at all. A
+ * `window.dispatchEvent(new Event('storage'))` from its time-format handler
+ * (`useTimeFormat` is the listener): a synthetic `Event`, not a
+ * `StorageEvent`, with no `key` property at all. Phase 4 task 4 removed the two
+ * unit handlers that fired it, so one such site is left rather than three. A
  * handler written `if (event.key !== STORAGE_KEY) return` discards every one of
  * them. The same lenience matches a real `StorageEvent` carrying `key === null`,
  * which is how a whole-store clear arrives.

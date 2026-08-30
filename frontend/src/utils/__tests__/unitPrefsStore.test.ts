@@ -282,7 +282,7 @@ describe('unitPrefsStore subscriptions', () => {
 
   it('invalidates on a KEYLESS synthetic storage Event', async () => {
     // ★ Not hypothetical: `SettingsSystemTab` fires
-    // `window.dispatchEvent(new Event('storage'))` in three handlers today, a
+    // `window.dispatchEvent(new Event('storage'))` in its time-format handler, a
     // synthetic Event with no `key` at all. A handler written
     // `if (event.key !== 'unit_prefs') return` discards every one of them, and
     // so would a real StorageEvent with `key === null`, which is how a
