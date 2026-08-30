@@ -1247,7 +1247,7 @@
     "size": "Size",
     "title": "Tires",
     "tread": "Tread",
-    "treadRequired": "Tread depth is required",
+    "treadOrPressureRequired": "Enter a tread depth, a pressure, or both",
     "treadWithUnit": "Tread ({{unit}})"
   },
   "warrantyList": {

@@ -303,8 +303,21 @@ export default function TireList({ vin }: TireListProps) {
       readingForm.origins.tread_depth_mm,
       u.tread
     )
-    if (tread === null) {
-      toast.error(t('tireList.treadRequired'))
+    /* Hoisted out of the payload for the same reason as tread: the guard below
+     * and the body must be one computation, not two that can disagree. */
+    const pressure = canonicalFromUnitField(
+      readingForm.pressure_kpa,
+      readingForm.origins.pressure_kpa,
+      u.pressure
+    )
+    /* At least one MEASUREMENT, which is the rule `TireReadingCreate` enforces
+     * server-side. Tread alone was required here until #152: the reporter is
+     * tracking a slow leak and owns no tread gauge, so the field they could not
+     * fill in was blocking the one they could. The odometer deliberately does
+     * not satisfy this: it is context for the wear projection, not an
+     * observation of the tire. */
+    if (tread === null && pressure === null) {
+      toast.error(t('tireList.treadOrPressureRequired'))
       return
     }
     addReading.mutate(
@@ -317,11 +330,7 @@ export default function TireList({ vin }: TireListProps) {
           u.distance
         ),
         tread_depth_mm: tread,
-        pressure_kpa: canonicalFromUnitField(
-          readingForm.pressure_kpa,
-          readingForm.origins.pressure_kpa,
-          u.pressure
-        ),
+        pressure_kpa: pressure,
         notes: readingForm.notes || null,
       },
       {

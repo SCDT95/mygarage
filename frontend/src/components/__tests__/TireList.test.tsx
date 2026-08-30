@@ -398,7 +398,7 @@ describe('TireList', () => {
       expect(mutate.mock.calls[0][0].min_tread_mm).toBe(2)
     })
 
-    it('refuses a reading with no tread, then saves the converted one it is given', () => {
+    it('refuses a reading with neither tread nor pressure, then saves the converted tread', () => {
       const mutate = vi.fn()
       useAddTireReadingMock.mockReturnValue({ mutate, isPending: false })
 
@@ -406,7 +406,13 @@ describe('TireList', () => {
       fireEvent.click(screen.getByText('tireList.addReading'))
       const tread = screen.getByLabelText('tireList.treadWithUnit')
 
+      // BOTH have to be cleared to reach the guard now: the drawer seeds tread
+      // and pressure from the tire, so clearing tread alone leaves a pressure
+      // behind and the reading is a legitimate pressure-only one.
       fireEvent.change(tread, { target: { value: '' } })
+      fireEvent.change(screen.getByLabelText('tireList.pressureWithUnit'), {
+        target: { value: '' },
+      })
       fireEvent.click(screen.getByText('common:save'))
       // On its own this would be true before the click too, so the save below
       // is what makes the refusal mean anything.
@@ -418,6 +424,42 @@ describe('TireList', () => {
       expect(mutate).toHaveBeenCalledTimes(1)
       // 12/32 in x 0.79375 = 9.525 mm
       expect(mutate.mock.calls[0][0].tread_depth_mm).toBe(9.525)
+      expect(mutate.mock.calls[0][0].pressure_kpa).toBeNull()
+    })
+
+    it('saves a pressure-only reading, and an odometer alone does not qualify (#152)', () => {
+      const mutate = vi.fn()
+      useAddTireReadingMock.mockReturnValue({ mutate, isPending: false })
+
+      render(<TireList vin="1HGCM82633A004352" />)
+      fireEvent.click(screen.getByText('tireList.addReading'))
+      fireEvent.change(screen.getByLabelText('tireList.treadWithUnit'), { target: { value: '' } })
+      const pressure = screen.getByLabelText('tireList.pressureWithUnit')
+      fireEvent.change(pressure, { target: { value: '' } })
+
+      // An odometer is context for the wear projection, not an observation of
+      // the tire, so it must not satisfy the at-least-one rule on its own.
+      fireEvent.change(screen.getByLabelText('tireList.odometerWithUnit'), {
+        target: { value: '100' },
+      })
+      fireEvent.click(screen.getByText('common:save'))
+      expect(mutate).not.toHaveBeenCalled()
+
+      // The #152 case: a slow leak, no tread gauge. Refused outright before
+      // this change, which is what makes the assertions below fail against it.
+      fireEvent.change(pressure, { target: { value: '36' } })
+      fireEvent.click(screen.getByText('common:save'))
+
+      expect(mutate).toHaveBeenCalledTimes(1)
+      const payload = mutate.mock.calls[0][0]
+      // Null, not omitted: `tread_depth_mm` is optional on the wire, and a
+      // missing key would leave the reader unable to tell "not measured" from
+      // "the client forgot the field".
+      expect(payload).toHaveProperty('tread_depth_mm', null)
+      // 36 PSI x 6.89476 = 248.21136 kPa
+      expect(payload.pressure_kpa).toBe(248.21136)
+      // 100 mi x 1.60934 = 160.934 km, carried through as context.
+      expect(payload.odometer_km).toBe(160.934)
     })
 
     it('steps the tread inputs by whole thirty-seconds', () => {

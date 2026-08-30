@@ -13305,6 +13305,11 @@ export interface components {
         /**
          * TireReadingCreate
          * @description Record a tread/pressure reading (updates the parent tire's latest depth).
+         *
+         *     Tread is OPTIONAL (#152): the reporter tracks a slow pressure leak and owns
+         *     no tread gauge, and a required tread beside an optional odometer meant they
+         *     could not record a pressure at all. What is required is that a reading carry
+         *     at least one measurement (see ``_at_least_one_measurement``).
          */
         TireReadingCreate: {
             /** Notes */
@@ -13319,7 +13324,7 @@ export interface components {
              */
             recorded_at: string;
             /** Tread Depth Mm */
-            tread_depth_mm: number | string;
+            tread_depth_mm?: number | string | null;
         };
         /**
          * TireReadingResponse
@@ -13349,7 +13354,7 @@ export interface components {
             /** Tire Id */
             tire_id: number;
             /** Tread Depth Mm */
-            tread_depth_mm: string;
+            tread_depth_mm: string | null;
             /** Vin */
             vin: string;
         };

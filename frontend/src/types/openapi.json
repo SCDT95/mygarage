@@ -16109,7 +16109,7 @@
         "type": "object"
       },
       "TireReadingCreate": {
-        "description": "Record a tread/pressure reading (updates the parent tire's latest depth).",
+        "description": "Record a tread/pressure reading (updates the parent tire's latest depth).\n\nTread is OPTIONAL (#152): the reporter tracks a slow pressure leak and owns\nno tread gauge, and a required tread beside an optional odometer meant they\ncould not record a pressure at all. What is required is that a reading carry\nat least one measurement (see ``_at_least_one_measurement``).",
         "properties": {
           "notes": {
             "anyOf": [
@@ -16170,14 +16170,16 @@
               {
                 "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
                 "type": "string"
+              },
+              {
+                "type": "null"
               }
             ],
             "title": "Tread Depth Mm"
           }
         },
         "required": [
-          "recorded_at",
-          "tread_depth_mm"
+          "recorded_at"
         ],
         "title": "TireReadingCreate",
         "type": "object"
@@ -16243,9 +16245,16 @@
             "type": "integer"
           },
           "tread_depth_mm": {
-            "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
-            "title": "Tread Depth Mm",
-            "type": "string"
+            "anyOf": [
+              {
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Tread Depth Mm"
           },
           "vin": {
             "title": "Vin",
