@@ -514,6 +514,16 @@ def _settings_value_write_endpoints() -> set[str]:
     rather than from the module namespace, so a handler that is defined but
     never registered is correctly absent.
 
+    ★ AND THE SCOPE IS THAT ROUTER, WHICH IS NARROWER THAN "every writer". A
+    walk of one router cannot see a writer that is not on it, and there is
+    exactly one: `BackupService.restore_settings_backup` (reachable from
+    `POST /api/backup/restore/{filename}`) pushes every uploaded key and value
+    into `SettingsService.set`. Reading this enumeration as "nothing can write
+    an unvalidated value" is how that path went unguarded. It now validates at
+    its own site, pinned by
+    `tests/unit/services/test_backup_settings_restore.py`, so what this function
+    guarantees is the ROUTE half and the sentence says so.
+
     :returns: the endpoint function names, as a set.
     """
     import ast

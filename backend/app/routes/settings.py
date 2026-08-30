@@ -80,8 +80,14 @@ def _reject_unwritable_value(key: str, value: str | None) -> None:
     `_resolve_write_value` is called by two of the three, so this is called at
     each instead, and
     `tests/integration/routes/test_settings.py::_settings_value_write_endpoints`
-    derives the list from the router so a fourth writer fails there rather than
+    derives the list from the router so a fourth ROUTE fails there rather than
     shipping unguarded.
+
+    ★ THAT DERIVATION WALKS THIS ROUTER AND ONLY THIS ROUTER, so it is not a
+    guarantee about every writer of a settings value. One lives elsewhere:
+    `BackupService.restore_settings_backup` writes an uploaded file's keys
+    straight through `SettingsService.set`, and it applies this same rule at its
+    own site rather than through here.
 
     Only `default_unit_prefs` has a shape to check today. It is checked because
     `parse_default_unit_prefs` degrades WHOLE: an unparseable row hands every
