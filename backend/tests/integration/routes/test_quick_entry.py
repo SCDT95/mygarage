@@ -3,13 +3,13 @@
 Covers:
 - PUT /auth/me: preference updates (show_both, mobile_quick_entry)
 - PUT /auth/me: rejects is_active and is_admin self-escalation
+- GET /quick-entry/vehicles: returns owned and write-shared vehicles
+- Service visit write: 403 for read-only shared vehicle
+- Odometer write: 403 for read-only shared vehicle
 
 Unit preferences are no longer settable here (D9b). That route now lives in
 tests/integration/routes/test_unit_preferences.py, which also pins the fact
 that the old payload is rejected.
-- GET /quick-entry/vehicles: returns owned and write-shared vehicles
-- Service visit write: 403 for read-only shared vehicle
-- Odometer write: 403 for read-only shared vehicle
 """
 
 import pytest
