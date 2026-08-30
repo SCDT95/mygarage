@@ -152,14 +152,14 @@ export default function PropaneRecordList({ vin }: PropaneRecordListProps) {
             <Card padding="sm">
               <div className="flex items-center gap-1 text-xs text-text-mute mb-1">
                 <Droplets aria-hidden="true" className="w-3 h-3" />
-                <span>{units.volume === 'L' ? t('propaneList.totalLiters') : t('propaneList.totalGallons')}</span>
+                <span>{t('propaneList.totalVolume', { unit: UnitFormatter.getVolumeUnit(units) })}</span>
               </div>
               <Mono size="2xl" weight="bold">{UnitFormatter.formatVolumeShort(totalLiters, units)}</Mono>
             </Card>
             {avgCostPerLiter !== null && (
               <Card padding="sm">
                 <div className="flex items-center gap-1 text-xs text-text-mute mb-1">
-                  <span>{UnitFormatter.getCostPerVolumeLabel(units)}</span>
+                  <span>{t('propaneList.avgCostPerVolume', { unit: UnitFormatter.getVolumeUnit(units) })}</span>
                 </div>
                 <Mono size="2xl" weight="bold">{UnitFormatter.formatCostPerVolume(avgCostPerLiter, units, currencyCode, locale)}</Mono>
               </Card>

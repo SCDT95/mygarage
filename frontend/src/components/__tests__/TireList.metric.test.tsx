@@ -108,9 +108,11 @@ describe('TireList under a metric set', () => {
   it('reads the card pressure in the same unit the form accepts', () => {
     render(<TireList vin="1HGCM82633A004352" />)
 
-    // `UnitFormatter.formatPressure` renders BAR for a metric user while this
-    // component's own form has always accepted kPa, a disagreement its code
-    // comment used to document. D2 requires one unit for entry and display.
+    // The binary `UnitFormatter.formatPressure` this component migrated off
+    // rendered BAR for a metric user while its own form has always accepted
+    // kPa, a disagreement its code comment used to document. D2 requires one
+    // unit for entry and display. That method is gone as of phase 3b task 2,
+    // so this asserts the adapter's answer rather than the difference.
     expect(screen.getByText('240 kPa')).toBeInTheDocument()
     expect(screen.queryByText('2.40 bar')).not.toBeInTheDocument()
   })

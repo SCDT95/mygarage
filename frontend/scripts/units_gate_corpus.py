@@ -141,6 +141,54 @@ class Case:
 # --------------------------------------------------------------------------
 HOOK_IMPORT = "import { useUnitPreference } from '@/hooks/useUnitPreference'\n"
 
+# A binary formatter the FIXTURE declares, so the formatter leg's three
+# positives own their own vocabulary.
+#
+# ★ THEY USED TO NAME A LIVE PRODUCTION METHOD, and that had to end. The
+# derived set is read from `src/utils/units.ts`, so each fixture spelled
+# whichever binary formatter still existed: `formatDistance` until task 6
+# deleted it, `formatFuelEconomy` until task 6b deleted that one,
+# `formatCostPerDistance` until task 7 deleted the last two. Every rename was
+# the case working rather than bending, and the third one exhausted the supply:
+# `UnitFormatter`'s binary surface is now EMPTY, which is the goal state, and a
+# positive naming a method the derivation cannot find scores zero.
+#
+# Task 7 therefore made the formatter leg read the SCANNED FILE's own class
+# declarations as well, exactly as the conversion leg has read the scanned
+# file's own function declarations since task 5, and these fixtures declare
+# theirs. That closes the corpus's dependence on a production name for good:
+# the file docstring's claim that "nothing here reads a production line" is
+# true again. It also closes a real same-file blindness, which is why it is a
+# gate change and not a test convenience.
+#
+# ★ TWO DELIBERATE NAMING CHOICES, both so the mutations keep their precision.
+# The class is called `UnitFormatter` because M49 mutates the leg into requiring
+# that exact receiver SPELLING, and its whole subject is that an alias
+# (S-P35's `UF`) must not be a bypass; a fixture class named anything else would
+# make M49 flip all three formatter positives instead of the one it is about.
+# `formatRate` starts with `format` because M45 mutates the derivation into a
+# `format*` NAME rule, and its subject is that label selectors like `unitLabel`
+# are just as binary; a fixture where BOTH methods failed that prefix would make
+# M45 flip more than it is measuring. Neither method name may equal the EXPORTED
+# WRAPPER's name in a case that uses it, which is why the label selector is
+# `unitLabel` and not `unit`: M53 turns every exported function into a
+# binary-conversion helper, and a call whose name matches one then scores a
+# second finding on top of the formatter one, so the case reads as flipped for
+# a reason that has nothing to do with the mutation it is pinned by. Measured,
+# not reasoned: the run said `M53 *** WRONG CASES FLIPPED ***` and named them. The class is the fixture's own declaration
+# either way: production's `UnitFormatter` has no binary method left.
+FIXTURE_FORMATTER = (
+    "import type { UnitSystem } from '@/utils/units'\n"
+    "export class UnitFormatter {\n"
+    "  static formatRate(value: number, system: UnitSystem): string {\n"
+    "    return String(value) + system\n"
+    "  }\n"
+    "  static unitLabel(system: UnitSystem): string {\n"
+    "    return String(system)\n"
+    "  }\n"
+    "}\n"
+)
+
 SCRIPT_POSITIVE = [
     Case(
         "S-P1-eq-imperial",
@@ -504,6 +552,443 @@ SCRIPT_POSITIVE = [
         "M43-drop-backtick-vocabulary",
         ext=".ts",
     ),
+    # ---- phase 3b: the three shapes the comparison leg cannot see -----------
+    Case(
+        "S-P30-formatter-binary-call",
+        FIXTURE_FORMATTER
+        + HOOK_IMPORT
+        + "export function costRate(costPerKm: number): string {\n"
+        "  const { system } = useUnitPreference()\n"
+        "  return UnitFormatter.formatRate(costPerKm, system)\n"
+        "}\n",
+        1,
+        "formatter-binary",
+        "★ nothing at this call site names a system: the binary collapse happens "
+        "inside the callee, so the comparison leg is blind to it by construction. "
+        "It spelled `formatDistance` until task 6 deleted that method, then "
+        "`formatFuelEconomy` until task 6b, then `formatCostPerDistance` until "
+        "task 7 retired the last two; each time the case scored zero and the "
+        "corpus said so, because a positive naming a method the DERIVATION can no "
+        "longer find is a case that passes for the wrong reason. There is no "
+        "production binary formatter left to spell, which is the goal state, so "
+        "the fixture DECLARES one — the same move S-P32 made when task 5 deleted "
+        "the conversion helpers.",
+        "M44-drop-formatter-leg",
+        ext=".ts",
+    ),
+    Case(
+        "S-P31-formatter-label-selector",
+        FIXTURE_FORMATTER
+        + HOOK_IMPORT
+        + "export function unit(): string {\n"
+        "  const { system } = useUnitPreference()\n"
+        "  return UnitFormatter.unitLabel(system)\n"
+        "}\n",
+        1,
+        "formatter-binary",
+        "★ THE case that makes the set DERIVED rather than transcribed: round 1 "
+        "hand-listed the `format*` methods and missed every label selector, which "
+        "takes the same binary system and is just as wrong for a mixed user. It "
+        "spelled `getDistanceUnit` until task 6 retired that one, "
+        "`getFuelRateUnit` until task 6b retired the next and "
+        "`getCostPerDistanceLabel` until task 7 retired the last; a label "
+        "selector is a label selector whichever quantity it names, and the "
+        "fixture's own `unit` is deliberately named nothing like `get*Label` so "
+        "the rule cannot be passing on a name shape.",
+        "M45-formatter-format-prefix-only",
+        ext=".ts",
+    ),
+    Case(
+        "S-P32-binary-conversion-call",
+        "import type { UnitSystem } from '@/utils/units'\n"
+        + HOOK_IMPORT
+        + "export function toCanonicalKm(value: number, system: UnitSystem): number {\n"
+        "  return convert(value, system)\n"
+        "}\n"
+        "export function submit(entered: number): number {\n"
+        "  const { system } = useUnitPreference()\n"
+        "  return toCanonicalKm(entered, system)\n"
+        "}\n",
+        1,
+        "binary-conversion",
+        "★ R8: this one WRITES. `system` collapses from volume, so a "
+        "{volume:'L', distance:'mi'} user's 500 miles is stored as 500 km, and "
+        "neither of the originally proposed gate legs saw the function that "
+        "wrote the wrong number. Task 5 DELETED the three real helpers, so the "
+        "fixture declares its own: the leg reads `decimalSafe.ts` plus the file "
+        "under scan, and this half is now the only half with a population. The "
+        "body delegates instead of comparing so the one finding is the CALL, "
+        "not a `system === 'metric'` inside the declaration",
+        "M46-drop-conversion-leg",
+        ext=".ts",
+    ),
+    Case(
+        "S-P33-token-branch-property",
+        "import type { UnitSet } from '@/types/units'\n"
+        "export function label(units: UnitSet, km: number): string {\n"
+        "  return units.volume === 'L' ? `${km} km` : `${km} mi`\n"
+        "}\n",
+        1,
+        "token-branch",
+        "scope category 4: DISTANCE collapsed out of VOLUME, with no 'imperial' "
+        "or 'metric' anywhere. Live at PropaneRecordList and twice in Analytics.",
+        "M47-drop-token-branch-leg",
+        ext=".ts",
+    ),
+    Case(
+        "S-P34-token-branch-destructured",
+        "import type { UnitSet } from '@/types/units'\n"
+        "export function label(units: UnitSet): string {\n"
+        "  const { volume } = units\n"
+        "  return volume === 'L' ? 'km' : 'mi'\n"
+        "}\n",
+        1,
+        "token-branch",
+        "keying on the property access alone would make one destructure a bypass, "
+        "which is S-P7's rename wearing different punctuation",
+        "M48-token-branch-property-only",
+        ext=".ts",
+    ),
+    Case(
+        "S-P35-aliased-formatter-receiver",
+        FIXTURE_FORMATTER
+        + HOOK_IMPORT
+        + "const UF = UnitFormatter\n"
+        "export function unit(): string {\n"
+        "  const { system } = useUnitPreference()\n"
+        "  return UF.unitLabel(system)\n"
+        "}\n",
+        1,
+        "formatter-binary",
+        "the receiver is REQUIRED but never READ: requiring the spelling makes "
+        "`import { UnitFormatter as UF }` a one-line bypass. It spelled that "
+        "import until task 7 retired the last production binary formatter; a "
+        "local alias of the fixture's own class is the same decision through the "
+        "same shape, and it no longer depends on a name production owns.",
+        "M49-formatter-receiver-spelling",
+        ext=".ts",
+    ),
+    Case(
+        "S-P37-binary-formatter-on-a-foreign-class",
+        "import type { UnitSystem } from '@/utils/units'\n"
+        + HOOK_IMPORT
+        + "class TripFormatter {\n"
+        "  static formatLeg(km: number, system: UnitSystem): string {\n"
+        "    return String(km) + system\n"
+        "  }\n"
+        "}\n"
+        "export function leg(km: number): string {\n"
+        "  const { system } = useUnitPreference()\n"
+        "  return TripFormatter.formatLeg(km, system)\n"
+        "}\n",
+        1,
+        "formatter-binary",
+        "★ THE CASE THAT MAKES THE PER-FILE AUGMENTATION FALSIFIABLE. S-P30, "
+        "S-P31 and S-P35 all declare a class called `UnitFormatter`, chosen so "
+        "M49's receiver-spelling mutation keeps a precise subject, and that means "
+        "narrowing the scan to the production class NAME would leave all three "
+        "passing. This one names its class something else, so it fails the moment "
+        "the augmentation stops meaning 'any class this file declares'. It is "
+        "also the shape the augmentation exists to catch: a module that declares "
+        "its own static binary formatter and calls it makes the D8-collapsed "
+        "decision where neither the comparison leg (the comparison is inside the "
+        "callee) nor the derived leg (the method is not on `UnitFormatter`) can "
+        "see it.",
+        "M67-augmentation-only-the-production-class",
+        ext=".ts",
+    ),
+    # ---- task 8: the precondition. Shapes the exact-text predicate missed. ----
+    #
+    # ★ ALL FOUR ARE binary-conversion RATHER THAN compare, and that is the
+    # point rather than a convenience. `takesBinarySystem` is what builds BOTH
+    # binary vocabularies, so a shape it cannot read is a helper whose entire
+    # call-site population is invisible: no `imperial` literal, no
+    # `UnitFormatter` receiver, nothing at the call site to see. Three of the
+    # nineteen production declarations carrying the type were in these shapes
+    # when task 8 started, two of them live components on the supplies path.
+    Case(
+        "S-P38-aliased-import-annotation",
+        "import type { UnitSystem as Sys } from '@/utils/units'\n"
+        + HOOK_IMPORT
+        + "export function toCanonicalFathoms(value: number, s: Sys): number {\n"
+        "  return convert(value, s)\n"
+        "}\n"
+        "export function submit(entered: number): number {\n"
+        "  const { system } = useUnitPreference()\n"
+        "  return toCanonicalFathoms(entered, system)\n"
+        "}\n",
+        1,
+        "binary-conversion",
+        "an aliased import renames the annotation and nothing else. The old "
+        "predicate compared the annotation TEXT to the literal 'UnitSystem', so "
+        "one `as Sys` retired the whole leg for that helper.",
+        "M68-exact-annotation-text-only",
+        ext=".ts",
+    ),
+    Case(
+        "S-P39-union-annotation",
+        "import type { UnitSystem } from '@/utils/units'\n"
+        + HOOK_IMPORT
+        + "export function toCanonicalFurlongs(value: number, s: UnitSystem | undefined): number {\n"
+        "  return convert(value, s)\n"
+        "}\n"
+        "export function submit(entered: number): number {\n"
+        "  const { system } = useUnitPreference()\n"
+        "  return toCanonicalFurlongs(entered, system)\n"
+        "}\n",
+        1,
+        "binary-conversion",
+        "a nullable binary system is a binary system, which the comparison leg "
+        "learned in round 2 (`NULLISH_MEMBERS`) and the derivation had not.",
+        "M68-exact-annotation-text-only",
+        ext=".ts",
+    ),
+    Case(
+        "S-P40-inline-props-annotation",
+        "import type { UnitSystem } from '@/utils/units'\n"
+        + HOOK_IMPORT
+        + "export function toCanonicalChains(value: number, opts: { system: UnitSystem }): number {\n"
+        "  return convert(value, opts.system)\n"
+        "}\n"
+        "export function submit(entered: number): number {\n"
+        "  const { system } = useUnitPreference()\n"
+        "  return toCanonicalChains(entered, { system })\n"
+        "}\n",
+        1,
+        "binary-conversion",
+        "an inline props object, the shape SupplyHistoryModal's PurchaseForm "
+        "and AdjustmentForm both use. The decision is identical; only the "
+        "punctuation differs.",
+        "M68-exact-annotation-text-only",
+        ext=".ts",
+    ),
+    Case(
+        "S-P41-named-props-interface",
+        "import type { UnitSystem } from '@/utils/units'\n"
+        + HOOK_IMPORT
+        + "interface ChainOpts {\n"
+        "  system: UnitSystem\n"
+        "}\n"
+        "export function toCanonicalRods(value: number, opts: ChainOpts): number {\n"
+        "  return convert(value, opts.system)\n"
+        "}\n"
+        "export function submit(entered: number): number {\n"
+        "  const { system } = useUnitPreference()\n"
+        "  return toCanonicalRods(entered, { system })\n"
+        "}\n",
+        1,
+        "binary-conversion",
+        "the same shape one indirection further out, which is how "
+        "SupplyHistoryModal's PurchaseRow spells it. Resolving it needs the "
+        "file's own interface declarations, not just its parameter text.",
+        "M69-props-types-unresolved",
+        ext=".ts",
+    ),
+    # ---- fix round 1: the three declaration spellings the leg could not see --
+    #
+    # ★ ALL THREE WERE LIVE IN PRODUCTION when the flip shipped, five
+    # declarations carrying ten call sites on the supplies path, and the review
+    # found them by adding `export` and nothing else. The walk behind the
+    # vocabulary required an EXPORTED top-level `function`, which is one
+    # visibility modifier and one syntax kind away from the shape the whole
+    # precondition was about.
+    Case(
+        "S-P45-module-local-helper",
+        "import type { UnitSystem } from '@/utils/units'\n"
+        + HOOK_IMPORT
+        + "function toCanonicalYards(value: number, s: UnitSystem): number {\n"
+        "  return convert(value, s)\n"
+        "}\n"
+        "export function submit(entered: number): number {\n"
+        "  const { system } = useUnitPreference()\n"
+        "  return toCanonicalYards(entered, system)\n"
+        "}\n",
+        1,
+        "binary-conversion",
+        "a module-local helper, which is `export function canonicalToDisplay` "
+        "minus one keyword. It can only be called where it is declared, and the "
+        "scanner already parses that file, so there was never a reason to "
+        "require the keyword. `SupplyHistoryModal.tsx` had three of these.",
+        "M78-only-exported-declarations",
+        ext=".ts",
+    ),
+    Case(
+        "S-P46-exported-arrow-helper",
+        "import type { UnitSystem } from '@/utils/units'\n"
+        + HOOK_IMPORT
+        + "export const toCanonicalLinks = (value: number, s: UnitSystem): number =>\n"
+        "  convert(value, s)\n"
+        "export function submit(entered: number): number {\n"
+        "  const { system } = useUnitPreference()\n"
+        "  return toCanonicalLinks(entered, system)\n"
+        "}\n",
+        1,
+        "binary-conversion",
+        "an arrow const, which is 52 declarations' worth of daily spelling under "
+        "`src/` and carried its `export` on the VariableStatement two levels up, "
+        "so asking the declaration itself always answered no.",
+        "M79-only-function-declarations",
+        ext=".ts",
+    ),
+    Case(
+        "S-P47-instance-method",
+        "import type { UnitSystem } from '@/utils/units'\n"
+        + HOOK_IMPORT
+        + "class TripFormatter {\n"
+        "  formatLeg(km: number, system: UnitSystem): string {\n"
+        "    return String(km) + system\n"
+        "  }\n"
+        "}\n"
+        "export function leg(km: number): string {\n"
+        "  const { system } = useUnitPreference()\n"
+        "  return new TripFormatter().formatLeg(km, system)\n"
+        "}\n",
+        1,
+        "formatter-binary",
+        "the formatter leg's half of the same floor: it required `StaticKeyword`, "
+        "though `this.format(km, system)` is the identical decision and the leg's "
+        "receiver requirement already matches an instance call.",
+        "M80-only-static-methods",
+        ext=".ts",
+    ),
+    Case(
+        "S-P48-renaming-import-alias",
+        "import type { UnitSystem } from '@/utils/units'\n"
+        "import { toCanonicalPoles as tcp } from './elsewhere'\n"
+        + HOOK_IMPORT
+        + "export function toCanonicalPoles(value: number, s: UnitSystem): number {\n"
+        "  return convert(value, s)\n"
+        "}\n"
+        "export function submit(entered: number): number {\n"
+        "  const { system } = useUnitPreference()\n"
+        "  return tcp(entered, system)\n"
+        "}\n",
+        1,
+        "binary-conversion",
+        "★ `calleeName`'s docstring has said \"an import alias must not be an "
+        "escape hatch\" since task 5, and the formatter leg defends against "
+        "`import { UnitFormatter as UF }`, but that closed it on the RECEIVER "
+        "only: a renaming import of the CALLEE was invisible in both the call "
+        "form and the value form, while the namespace form was caught all along, "
+        "which is what made the gap easy to miss. The fixture declares the name "
+        "so it is in this file's own vocabulary, and calls it through the alias.",
+        "M81-drop-import-alias-resolution",
+        ext=".ts",
+    ),
+    Case(
+        "S-P49-binary-props-component-render",
+        "import type { UnitSystem } from '@/utils/units'\n"
+        + HOOK_IMPORT
+        + "function ProbeRow({ km, system }: { km: number; system: UnitSystem }): JSX.Element {\n"
+        "  return <span>{String(km) + system}</span>\n"
+        "}\n"
+        "export function Panel(): JSX.Element {\n"
+        "  const { system } = useUnitPreference()\n"
+        "  return <ProbeRow km={12} system={system} />\n"
+        "}\n",
+        1,
+        "binary-conversion",
+        "★ THE RENDER LEG, AND THE TEXT IT REPORTS. A component whose props carry "
+        "the binary system IS a binary API by the rule the precondition set, and "
+        "its JSX element is where the collapsed system crosses that boundary: an "
+        "element is an invocation, not a value. `expect_text` pins the label, "
+        "because fix round 1 added the branch that produces it and NOTHING could "
+        "kill it: deleting the ternary so every render read `X (as a value)` left "
+        "all 84 corpus cases and all 9 API-surface tests green. A guard no test "
+        "can kill is this phase's own recorded pattern, and it was in code written "
+        "to close an instance of it. Four such components are live on the supplies "
+        "path, exempted at their declarations.",
+        "M83-jsx-render-labelled-as-a-value",
+        expect_text="<ProbeRow ...>",
+    ),
+    Case(
+        "S-P44-binary-helper-as-a-value",
+        "import type { UnitSystem } from '@/utils/units'\n"
+        "export function toCanonicalSpans(value: number, s: UnitSystem): number {\n"
+        "  return convert(value, s)\n"
+        "}\n"
+        # ★ `apply` deliberately does NOT name the binary type, and there is no
+        # comparison anywhere. Fix round 1 put module-local declarations into the
+        # vocabulary, so the first spelling of this fixture scored a second
+        # finding on `apply(...)` and stopped measuring one thing; writing the
+        # union out keeps `apply` from being a binary API itself. Same reason the
+        # formatter cases pick their method names the way they do.
+        "function apply(v: number, f: (v: number, s: 'metric' | 'imperial') => number): number {\n"
+        "  return f(v, 'metric')\n"
+        "}\n"
+        "export function submit(entered: number): number {\n"
+        "  return apply(entered, toCanonicalSpans)\n"
+        "}\n",
+        1,
+        "binary-conversion",
+        "★ THE SAME DECISION WITHOUT THE PARENTHESES, and it was live in "
+        "production when task 8 found it. The leg matched a CallExpression whose "
+        "callee is in the vocabulary, so `displayToCanonical(v, t, system)` was a "
+        "finding and `convertSupplyUsages(usages, byId, system, "
+        "displayToCanonical)` was not: the helper travels as a VALUE and the "
+        "D8-collapsed decision happens one frame down where nothing looks. Both "
+        "spellings are in `ServiceVisitForm.tsx`, and the second is the WRITE "
+        "path. Closed rather than declared, for the reason S-P7 and S-P35 are: "
+        "one decision spelled differently is not a new category.",
+        "M75-drop-value-reference-leg",
+        ext=".ts",
+    ),
+    Case(
+        "S-P42-scoped-pragma-wrong-kind",
+        "import type { UnitSet } from '@/types/units'\n"
+        "export function label(units: UnitSet, km: number): string {\n"
+        "  // units-exempt(compare): a reason, for a leg this line does not carry.\n"
+        "  return units.volume === 'L' ? `${km} km` : `${km} mi`\n"
+        "}\n",
+        1,
+        "token-branch",
+        "★ THE WHOLE VALUE OF THE KIND LIST, and the objection it answers is on "
+        "the record: `units.manifest.json` said a reason-bearing pragma "
+        "\"silences anything\". This one names the comparison leg and the line "
+        "carries a token branch, so the finding stands. Without the scope check "
+        "the same pragma silences a defect class its author never considered, "
+        "which matters most after the clean-room flip because the pragma is then "
+        "the only suppression left in the gate.",
+        "M72-scoped-pragma-silences-anything",
+        ext=".ts",
+    ),
+    Case(
+        "S-P43-scoped-declaration-wrong-kind",
+        "import type { UnitSystem } from '@/utils/units'\n"
+        + HOOK_IMPORT
+        + "// units-exempt(compare): a reason, for a leg a declaration cannot carry.\n"
+        "export function toCanonicalCubits(value: number, s: UnitSystem): number {\n"
+        "  return convert(value, s)\n"
+        "}\n"
+        "export function submit(entered: number): number {\n"
+        "  const { system } = useUnitPreference()\n"
+        "  return toCanonicalCubits(entered, system)\n"
+        "}\n",
+        1,
+        "binary-conversion",
+        "S-P42's rule where it matters most. The DECLARATION hatch is the only "
+        "suppression in this gate that reaches other files, so the kind it names "
+        "has to be the kind it removes: `(compare)` on an exported binary helper "
+        "silences nothing, and the fifteen sites of `supplyUnits.ts`'s three "
+        "stay visible unless the pragma says `binary-conversion`. Without this "
+        "case the kind argument threaded into `declarationExempt` is a guard no "
+        "mutation could kill.",
+        "M72-scoped-pragma-silences-anything",
+        ext=".ts",
+    ),
+    Case(
+        "S-P36-double-quoted-union",
+        'type Sys = "imperial" | "metric"\n'
+        "export function label(s: Sys): string {\n"
+        "  return s === 'imperial' ? 'mi' : 'km'\n"
+        "}\n",
+        1,
+        "compare",
+        "R6 carry, branch 6 of 6: UNIT_VOCABULARY's double-quoted forms went in "
+        "during round 2 and were still unexercised three rounds later",
+        "M50-drop-double-quoted-vocabulary",
+        ext=".ts",
+    ),
 ]
 
 SCRIPT_NEGATIVE = [
@@ -579,6 +1064,276 @@ SCRIPT_NEGATIVE = [
         why="T4-R7 positive control: correctly migrated code must be silently clean",
         pinned_by="M11-flag-every-equality",
         tags=["control"],
+    ),
+    # ---- phase 3b: what the three new legs must NOT catch -------------------
+    Case(
+        "S-N7-formatter-resolved-set",
+        "import { UnitFormatter } from '@/utils/units'\n"
+        "import type { UnitSet } from '@/types/units'\n"
+        "export function label(liters: number, units: UnitSet): string {\n"
+        "  return UnitFormatter.formatVolume(liters, units)\n"
+        "}\n",
+        0,
+        why="the DESTINATION shape. A UnitSet-taking formatter is what the binary "
+        "ones must become, so a leg that flags it flags correct code",
+        pinned_by="M51-every-static-method-is-binary",
+        ext=".ts",
+    ),
+    Case(
+        "S-N8-local-format-distance",
+        FIXTURE_FORMATTER
+        + "import type { UnitSet } from '@/types/units'\n"
+        "function formatRate(perKm: number, units: UnitSet): string {\n"
+        "  return `${perKm} ${units.distance}`\n"
+        "}\n"
+        "export function cell(v: number, units: UnitSet): string {\n"
+        "  return formatRate(v, units)\n"
+        "}\n",
+        0,
+        why="★ POICard's real shape, measured: matching the METHOD NAME alone "
+        "flagged three module-local `formatDistance` helpers, and POICard's is "
+        "correct migrated code taking a resolved set. A static method is only "
+        "reachable through a receiver, so requiring one separates them. "
+        "★ IT HAS BEEN RENAMED TWICE AND IS NOW SELF-OWNED, which is better than "
+        "the third rename its old comment planned for. It spelled the helper "
+        "`formatDistance` until task 6 and `formatFuelEconomy` until task 6b; each "
+        "retirement took that name out of the DERIVED set, so the fixture stopped "
+        "colliding with anything and M52 became a survivor flipping nothing. Task "
+        "7 retired the last two binary formatters and left no production name to "
+        "collide with at all, so the fixture declares the class AND the "
+        "module-local helper that shadows one of its method names. The collision "
+        "is now a property of this file, and M52 has a subject that cannot "
+        "expire.",
+        pinned_by="M52-formatter-name-without-receiver",
+        ext=".ts",
+    ),
+    Case(
+        "S-N9-set-conversion-helper",
+        "import { seedPriceField } from '@/utils/decimalSafe'\n"
+        "import type { UnitSet } from '@/types/units'\n"
+        "export function seed(stored: number, units: UnitSet): string {\n"
+        "  return seedPriceField(stored, units, 'per_volume').display\n"
+        "}\n",
+        0,
+        why="R8's destination: the resolved-set helper beside the binary ones "
+        "in the same file, so the leg cannot key on the file or the name prefix. "
+        "It spelled `toCanonicalLiters` until task 7 deleted that one for a "
+        "different defect (it converted a DISPLAY value straight to canonical, "
+        "which is ruling R4's entry-grid shift); the case needs a name the "
+        "mutation M53 can still reach, so it spells a survivor.",
+        pinned_by="M53-every-exported-helper-is-binary",
+        ext=".ts",
+    ),
+    Case(
+        "S-N10-foreign-token-property",
+        "export function size(shirt: Readonly<{ size: string }>): string {\n"
+        "  return shirt.size === 'L' ? 'large' : 'small'\n"
+        "}\n",
+        0,
+        why="'L' is a volume token and `size` is not a quantity. Without the "
+        "property name in the rule, every shirt is a fuel record.",
+        pinned_by="M54-token-branch-any-property",
+        ext=".ts",
+    ),
+    Case(
+        "S-N11-wrong-quantity-vocabulary",
+        "export function isKg(record: Readonly<{ pressure: string }>): boolean {\n"
+        "  return record.pressure === 'kg'\n"
+        "}\n",
+        0,
+        why="`pressure` IS a quantity and 'kg' IS a token, but not of that "
+        "quantity. Pooling the ten vocabularies into one loses the pairing.",
+        pinned_by="M55-token-vocabulary-is-pooled",
+        ext=".ts",
+    ),
+    Case(
+        "S-N12-secondary-gallon",
+        "import type { UnitSet } from '@/types/units'\n"
+        "export function showsPanel(units: UnitSet): boolean {\n"
+        "  return units.secondary_gallon === 'uk'\n"
+        "}\n",
+        0,
+        why="★ R1's exemption, made STRUCTURAL rather than a prose pragma: the "
+        "gallon flavour is a choice BETWEEN units with no quantity to convert, "
+        "and UNIT_QUANTITIES excludes it behind a compile-time completeness proof",
+        pinned_by="M56-secondary-gallon-is-a-quantity",
+        ext=".ts",
+    ),
+    # ---- phase 3b: the R6 carry, five of the six unexercised helper branches -
+    Case(
+        "S-N13-doubly-parenthesised-foreign",
+        "type Theme = ('light') | ('imperial')\n"
+        "export function themeClass(theme: Theme): string {\n"
+        "  return theme === 'imperial' ? 'a' : 'b'\n"
+        "}\n",
+        0,
+        why="R6 carry, branch 2 of 6: stripOuterParens' balance check. Without "
+        "it the outer parens are stripped across the union, both halves become "
+        "unreadable, and fail-closed UNKNOWN flags correct code.",
+        pinned_by="M57-drop-paren-balance-check",
+        ext=".ts",
+    ),
+    Case(
+        "S-N14-void-and-never-members",
+        "type Theme = 'light' | 'dark' | void | never\n"
+        "export function themeClass(theme: Theme): string {\n"
+        "  return theme === 'imperial' ? 'a' : 'b'\n"
+        "}\n",
+        0,
+        why="R6 carry, branch 3 of 6: only `null` and `undefined` were ever "
+        "exercised. Dropped from NULLISH_MEMBERS, `void` reads as a bare "
+        "identifier, resolves to nothing, and takes the whole union to UNKNOWN.",
+        pinned_by="M58-drop-void-never-nullish",
+        ext=".ts",
+    ),
+    Case(
+        "S-N15-numeric-and-boolean-members",
+        "type Flag = 'imperial' | 0 | true\n"
+        "export function on(flag: Flag): boolean {\n"
+        "  return flag === 'imperial'\n"
+        "}\n",
+        0,
+        why="R6 carry, branch 4 of 6: STRING_LITERAL_TYPE's numeric and boolean "
+        "alternatives. The gate docstring already states this rounding (a "
+        "recognised literal no unit system contains means a different enum); "
+        "nothing exercised it.",
+        pinned_by="M59-drop-numeric-boolean-literals",
+        ext=".ts",
+    ),
+    Case(
+        "S-N16-all-nullish-annotation",
+        "export function label(s: null | undefined): string {\n"
+        "  return s === 'imperial' ? 'mi' : 'km'\n"
+        "}\n",
+        0,
+        why="R6 carry, branch 5 of 6: the all-nullish return. A degenerate "
+        "annotation rather than production code, kept because the branch is "
+        "otherwise unexercised and returning UNKNOWN instead would flag it.",
+        pinned_by="M60-all-nullish-is-unknown",
+        ext=".ts",
+    ),
+    # ---- task 8: the two boundaries the widened predicate must NOT cross ----
+    Case(
+        "S-N17-exempt-binary-declaration",
+        "import type { UnitSystem } from '@/utils/units'\n"
+        + HOOK_IMPORT
+        + "// units-exempt: the ruling lives at the declaration, not on each call site.\n"
+        "export function toCanonicalPerches(value: number, s: UnitSystem): number {\n"
+        "  return convert(value, s)\n"
+        "}\n"
+        "export function submit(entered: number): number {\n"
+        "  const { system } = useUnitPreference()\n"
+        "  return toCanonicalPerches(entered, system)\n"
+        "}\n",
+        0,
+        why="★ task 8's declaration-level hatch, and the ONLY pragma in this "
+        "gate that silences findings in OTHER files. It exists because making "
+        "the vocabulary tree-wide turned `supplyUnits.ts`'s three exported "
+        "binary helpers into fifteen findings under eleven keys across five files, all "
+        "of them one deferred ruling (R3). Character-identical to S-P32 apart "
+        "from the pragma line, so the case measures the hatch and nothing else.",
+        pinned_by="M70-declaration-exemption-ignored / M10b-drop-line-above-pragma",
+        ext=".ts",
+    ),
+    Case(
+        "S-N21-binary-helper-binding-sites",
+        "import type { UnitSystem } from '@/utils/units'\n"
+        "export function toCanonicalSpans(value: number, s: UnitSystem): number {\n"
+        "  return convert(value, s)\n"
+        "}\n"
+        "export { toCanonicalSpans as toCanonicalSpansAlias }\n"
+        "export const REGISTRY = { toCanonicalSpans: 1 }\n",
+        0,
+        why="the far side of S-P44. A value-reference leg that cannot tell a USE "
+        "from a BINDING reports the declaration, its own re-export and any object "
+        "key that happens to share the spelling, which is three findings on a "
+        "module that calls nothing. The leg is fail-CLOSED on shape and would "
+        "otherwise be the noisiest thing in the gate, and a noisy gate is the one "
+        "people learn to route around.",
+        pinned_by="M76-binding-specifiers-are-uses / M77-declaration-names-are-uses",
+        ext=".ts",
+    ),
+    Case(
+        "S-N22-pragma-mentioned-in-a-docstring",
+        "import type { UnitSet } from '@/types/units'\n"
+        "export function label(units: UnitSet, km: number): string {\n"
+        # ★ The mention has to sit on a line the hatch actually READS, which is
+        # the finding's own line or the one above it. The first spelling of this
+        # case put it three lines up inside a leading docstring, where it could
+        # never have mattered, and M82 flipped nothing: an assertion true at
+        # t=0, in the case whose whole subject is a guard that fires when it
+        # should not.
+        "  /* the sibling one file over carries a\n"
+        "   * // units-exempt(token-branch): reason */\n"
+        "  return units.volume === 'L' ? `${km} km` : `${km} mi`\n"
+        "}\n",
+        1,
+        "token-branch",
+        "★ the hatch reads a LINE, and `EXEMPT_PRAGMA` allows any whitespace "
+        "before the `//`, so a docstring continuation describing the pragma "
+        "exempted whatever followed it. `utils/units.ts` has two such lines and "
+        "they were inert only because a backtick happens to precede the `//` in "
+        "both, which is luck rather than a rule. Prose about a guard must not be "
+        "the guard.",
+        "M82-docstring-mention-is-a-pragma",
+        ext=".ts",
+    ),
+    Case(
+        "S-N19-scoped-pragma-own-kind",
+        "import type { UnitSet } from '@/types/units'\n"
+        "export function label(units: UnitSet, liters: number): string {\n"
+        "  // units-exempt(token-branch): volume dispatch inside a volume formatter.\n"
+        "  return units.volume === 'L' ? `${liters} L` : `${liters} gal`\n"
+        "}\n",
+        0,
+        why="the other side of S-P42: a scoped pragma has to silence the kind it "
+        "names, or the form is decoration. Five of the sixteen line-suppressed "
+        "findings under `src/` are this exact shape, resolved-set dispatch inside "
+        "the unit layer. ★ THE CONSEQUENT USED TO SAY \"nine findings\", derived "
+        "from the wrong count beside it and left behind when that count was "
+        "corrected, which is the A3 defect reproduced inside the A3 fix. MEASURED "
+        "by applying M73 to the real gate: 45 findings under 32 keys across 11 "
+        "files, because EVERY pragma under `src/` that suppresses anything carries "
+        "the bracket. 27 bracketed lines, of which 15 are line pragmas covering 16 "
+        "findings and 12 are declaration pragmas hiding 29 more; the only two bare "
+        "ones are inert prose in `units.ts`.",
+        pinned_by="M73-scoped-pragma-not-recognised",
+        ext=".ts",
+    ),
+    Case(
+        "S-N20-placeholder-token-branch",
+        "import type { UnitSet } from '@/types/units'\n"
+        "export function OdometerField(props: Readonly<{ units: UnitSet }>): JSX.Element {\n"
+        "  return <input placeholder={props.units.distance === 'mi' ? '45000' : '72420'} />\n"
+        "}\n",
+        0,
+        why="★ ruling R5 on the OTHER leg, which is where it was missing. S-N1 "
+        "pins the same exemption for `system === 'imperial'`; this is the "
+        "spelling `FuelRecordForm.tsx:1029` actually uses, and it sat in the "
+        "units gate baseline as phase 3b migration work for the whole phase "
+        "because only the comparison leg asked whether it was a placeholder. A "
+        "placeholder is a plausible EXAMPLE with nothing canonical behind it.",
+        pinned_by="M74-placeholder-token-branch-flagged / M7-drop-placeholder-exemption",
+    ),
+    Case(
+        "S-N18-binary-inside-a-generic-argument",
+        "import type { UnitSystem } from '@/utils/units'\n"
+        + HOOK_IMPORT
+        + "export function tally(value: number, seen: Record<string, UnitSystem>): number {\n"
+        "  return value + Object.keys(seen).length\n"
+        "}\n"
+        "export function submit(entered: number): number {\n"
+        "  const { system } = useUnitPreference()\n"
+        "  return tally(entered, { a: system })\n"
+        "}\n",
+        0,
+        why="★ the residual the widened predicate DECLARES rather than hides: a "
+        "type ARGUMENT is a container of the binary type, not a parameter that "
+        "decides on one, so a map of systems is not a binary API. Recursing "
+        "into type arguments would flag this, which is why the boundary is "
+        "pinned from the far side instead of being left to prose.",
+        pinned_by="M71-recurse-into-type-arguments / M53-every-exported-helper-is-binary",
+        ext=".ts",
     ),
 ]
 
@@ -762,9 +1517,7 @@ def run_script_leg(case: Case, tmpdir: Path, gate: str = GATE) -> tuple[int, lis
         text=True,
     )
     if p.returncode != 0:
-        return -1, [
-            _refusal(p.stderr or p.stdout)
-        ]
+        return -1, [_refusal(p.stderr or p.stdout)]
     try:
         payload = json.loads(p.stdout)
     except json.JSONDecodeError:
@@ -801,7 +1554,9 @@ def run_eslint_leg(case: Case, config: str | None = None) -> tuple[int, list[str
 def check(case: Case, got: int, detail: list[str]) -> str | None:
     """Return a failure description, or None when the case behaved."""
     if got != case.expect:
-        return f"expected {case.expect} finding(s), got {got}: {[d[:160] for d in detail]}"
+        return (
+            f"expected {case.expect} finding(s), got {got}: {[d[:160] for d in detail]}"
+        )
     if case.expect != 0 and case.expect_kind:
         wrong = [d for d in detail if case.expect_kind not in d]
         if wrong:

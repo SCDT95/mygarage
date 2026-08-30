@@ -29,8 +29,6 @@ beforeEach(() => {
 // All summary card helpers take CANONICAL METRIC inputs:
 // - formatVolumeTotal: liters
 // - formatCostPerVolume: $/L
-// - formatCostPerDistance: $/km (rendered as $/100km metric or $/1000mi imperial)
-// - formatVolumePerDistance: L/1000km
 describe('UnitConverter.litersToVolumeUnit', () => {
   it('hands a litre set its stored value untouched and rounds a gallon one for display', () => {
     // Form fields are seeded from this. A litre set must NOT go through
@@ -86,11 +84,13 @@ describe('UnitFormatter summary card helpers', () => {
       expect(UnitFormatter.formatVolumeShort(47.317625, UK)).toBe('10.4 gal')
     })
 
-    it('appends "total" without changing the number', () => {
-      expect(UnitFormatter.formatVolumeTotal(47.3, METRIC)).toBe('47.3 L total')
-      expect(UnitFormatter.formatVolumeTotal(47.317625, US)).toBe('12.5 gal total')
-      expect(UnitFormatter.formatVolumeTotal(47.317625, UK)).toBe('10.4 gal total')
-    })
+    // ★ `formatVolumeTotal` WAS COVERED HERE, with a case named 'appends
+    // "total" without changing the number'. That name states the defect: the
+    // word it appended was English, in a method with no `t()`, rendering in two
+    // summary cards. Fix round 1 retired it; the number half is
+    // `formatVolumeShort` above and the word is a translated `volumeTotal` key
+    // at each call site, asserted through the rendering tests in
+    // FuelRecordList.test.tsx and DEFRecordList.test.tsx.
   })
 
   describe('formatCostPerVolume', () => {
@@ -103,67 +103,30 @@ describe('UnitFormatter summary card helpers', () => {
     })
   })
 
-  describe('getCostPerVolumeLabel', () => {
-    it('names the resolved volume unit', () => {
-      expect(UnitFormatter.getCostPerVolumeLabel(US)).toBe('Avg Cost/gal')
-      expect(UnitFormatter.getCostPerVolumeLabel(UK)).toBe('Avg Cost/gal')
-      expect(UnitFormatter.getCostPerVolumeLabel(METRIC)).toBe('Avg Cost/L')
-    })
-  })
+  // ★ `getCostPerVolumeLabel` WAS COVERED HERE too, and went the same way and
+  // for the same reason: it glued the English words "Avg Cost/" to
+  // `getVolumeUnit`, with no `t()`, in four summary cards. The unit half it
+  // composed is `getVolumeUnit`, pinned above; the prose half is an
+  // `avgCostPerVolume` key in all seven bundles, asserted where it renders.
 
-  describe('formatCostPerDistance', () => {
-    it('metric: shows $/100 km from $/km input', () => {
-      // $0.10/km * 100 = $10.00/100km
-      expect(UnitFormatter.formatCostPerDistance(0.10, 'metric')).toBe('$10.00')
-    })
+  // ★ `formatCostPerDistance` and `getCostPerDistanceLabel` WERE COVERED HERE,
+  // with cases named "metric: shows $/100 km" and "imperial: Cost/1k Miles".
+  // Those described what the code did and pinned the defect: the binary system
+  // is collapsed from VOLUME, so a `{volume:'L', distance:'mi'}` account read
+  // "$10.00" under a "Cost/100 km" caption beside a miles odometer. Plan 3b
+  // task 7 moved both functions to `utils/unitFormat.ts`, where `adapterFor`
+  // supplies the distance half from the resolved set, and their cases moved
+  // with them into `utils/__tests__/unitFormat.test.ts`, including the two
+  // mixed sets the retired pair could not express and the denominators, which
+  // did not change.
 
-    it('imperial: converts $/km to $/1000 mi', () => {
-      // $0.10/km * 1.60934 * 1000 = $160.93/1000mi
-      expect(UnitFormatter.formatCostPerDistance(0.10, 'imperial')).toBe('$160.93')
-    })
-  })
-
-  describe('getCostPerDistanceLabel', () => {
-    it('imperial: Cost/1k Miles', () => {
-      expect(UnitFormatter.getCostPerDistanceLabel('imperial')).toBe('Cost/1k Miles')
-    })
-
-    it('metric: Cost/100 km', () => {
-      expect(UnitFormatter.getCostPerDistanceLabel('metric')).toBe('Cost/100 km')
-    })
-  })
-
-  describe('formatVolumePerDistance', () => {
-    it('converts the volume half on the resolved token', () => {
-      expect(UnitFormatter.formatVolumePerDistance(4.7, METRIC)).toBe('4.7')
-      // (4.7 / 3.78541) * 1.60934 = 2.0 gal/1000mi
-      expect(UnitFormatter.formatVolumePerDistance(4.7, US)).toBe('2.0')
-      // (4.7 / 4.54609) * 1.60934 = 1.66 -> 1.7
-      expect(UnitFormatter.formatVolumePerDistance(4.7, UK)).toBe('1.7')
-    })
-
-    it('keeps the DISTANCE half on the binary system the volume token collapses to', () => {
-      // Deliberate: the neighbouring "Est. km Left" cell on the same DEF card
-      // still branches on `system`, which spec D8 derives from VOLUME. Reading
-      // `units.distance` here instead would put miles next to kilometres for a
-      // custom user, which is the same-screen defect this task exists to
-      // remove. Distance moves in 3b, as one file, with its neighbours.
-      const litreVolumeMileDistance = makeUnitSet({ distance: 'mi' })
-      expect(UnitFormatter.formatVolumePerDistance(4.7, litreVolumeMileDistance)).toBe('4.7')
-      expect(UnitFormatter.getVolumePerDistanceLabel(litreVolumeMileDistance)).toBe('L/1,000 km')
-      // The mirror case: a gallon volume with a kilometre distance still
-      // converts BOTH halves, because the volume token is what decides.
-      const gallonVolumeKmDistance = makeUnitSet({ volume: 'gal_uk', distance: 'km' })
-      expect(UnitFormatter.formatVolumePerDistance(4.7, gallonVolumeKmDistance)).toBe('1.7')
-      expect(UnitFormatter.getVolumePerDistanceLabel(gallonVolumeKmDistance)).toBe('gal/1,000 mi')
-    })
-  })
-
-  describe('getVolumePerDistanceLabel', () => {
-    it('names the resolved volume unit over the collapsed distance one', () => {
-      expect(UnitFormatter.getVolumePerDistanceLabel(US)).toBe('gal/1,000 mi')
-      expect(UnitFormatter.getVolumePerDistanceLabel(UK)).toBe('gal/1,000 mi')
-      expect(UnitFormatter.getVolumePerDistanceLabel(METRIC)).toBe('L/1,000 km')
-    })
-  })
+  // ★ `formatVolumePerDistance` and `getVolumePerDistanceLabel` WERE COVERED
+  // HERE, with a case named "keeps the DISTANCE half on the binary system the
+  // volume token collapses to". That was an honest description of what the code
+  // did and it pinned the defect: a `{volume:'L', distance:'mi'}` account read
+  // '4.7' under an 'L/1,000 km' label. Plan 3b task 6 moved both functions to
+  // `utils/unitFormat.ts`, where `adapterFor` supplies BOTH halves from the
+  // resolved set, and their cases moved with them into
+  // `utils/__tests__/unitFormat.test.ts`, including the two mixed sets, which
+  // the retired pair could not express at all.
 })

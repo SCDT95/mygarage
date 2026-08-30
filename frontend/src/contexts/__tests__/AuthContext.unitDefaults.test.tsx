@@ -22,9 +22,20 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen, waitFor } from '@testing-library/react'
 import { makeUser } from '@/__tests__/factories'
-import { setGallonStandard } from '@/utils/gallonStandardStore'
 import { AuthProvider, useAuth } from '../AuthContext'
 import { useUnitPreference } from '@/hooks/useUnitPreference'
+
+/**
+ * Let the browser preference store re-read `localStorage`.
+ *
+ * Rung 2 is the `unit_prefs` store since phase 4 task 3, and it parses once at
+ * module load, so a `setItem` in a test body is invisible to it without the
+ * `storage` event production uses. The legacy `unit_preference` key each test
+ * below writes still reaches the hook, through the store's one-shot migration.
+ */
+function reloadBrowserPrefs(): void {
+  window.dispatchEvent(new Event('storage'))
+}
 
 vi.mock('../../services/api', () => {
   const mockApi = {
@@ -60,13 +71,14 @@ const UK_IMPERIAL_RAW =
   '{"consumption": "mpg_uk", "distance": "mi", "length": "ft", "mass": "lb", "pressure": "psi", "secondary_gallon": "uk", "speed": "mph", "temperature": "f", "torque": "lbft", "tread": "in32", "volume": "gal_uk"}'
 
 function Consumer() {
-  const { defaultUnitPrefs, loading, authMode } = useAuth()
+  const { defaultUnitPrefs, loading, authMode, publicSettingsLoaded } = useAuth()
   const { system, gallonStandard } = useUnitPreference()
   return (
     <div>
       <span data-testid="loading">{String(loading)}</span>
       <span data-testid="auth-mode">{authMode}</span>
       <span data-testid="defaults-present">{String(defaultUnitPrefs !== null)}</span>
+      <span data-testid="public-loaded">{String(publicSettingsLoaded)}</span>
       <span data-testid="defaults-volume">{defaultUnitPrefs?.volume ?? 'none'}</span>
       <span data-testid="defaults-distance">{defaultUnitPrefs?.distance ?? 'none'}</span>
       <span data-testid="defaults-pressure">{defaultUnitPrefs?.pressure ?? 'none'}</span>
@@ -95,11 +107,14 @@ function mountWithPublicSettings(settings: Array<{ key: string; value?: string |
 describe('AuthContext default_unit_prefs', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    // The gallon store is a module singleton that carries across tests. Pin it
-    // to 'us' so a 'uk' answer below can only have come from the payload.
-    setGallonStandard('us')
+    // ★ A pin on the gallon store used to sit here, so a 'uk' answer below could
+    // only have come from the payload. Phase 4 task 5 retired that store; the
+    // `localStorage.clear()` below now covers the same ground, because the only
+    // surviving reader of `imperial_gallon_standard` is the browser store's
+    // one-shot legacy migration.
     localStorage.clear()
     sessionStorage.clear()
+    reloadBrowserPrefs()
   })
 
   it('parses the default before the auth_mode=none early return', async () => {
@@ -122,6 +137,46 @@ describe('AuthContext default_unit_prefs', () => {
     expect(requestedUrls).not.toContain('/auth/me')
   })
 
+  it('★ separates a row that is absent from a payload that never arrived', async () => {
+    // ★ TWO STATES THAT `defaultUnitPrefs === null` CANNOT TELL APART, and a
+    // WRITER has to. A missing or unparseable row is a configured instance
+    // falling back the way `parse_default_unit_prefs` does on the server; a
+    // failed fetch is an instance whose real default is unknown, and
+    // `authMode` is still sitting on its 'none' initial value, so the admin
+    // gate `InstanceUnitDefaultsCard` uses reads OPEN. Writing the displayed
+    // imperial fallback back as the instance default would be a 20 percent
+    // error published for every client, chosen by nobody.
+    mockedApi.get.mockImplementation((url: string) => {
+      if (url === '/settings/public') return Promise.reject(new Error('network down'))
+      return Promise.reject(new Error('unexpected url'))
+    })
+    render(
+      <AuthProvider>
+        <Consumer />
+      </AuthProvider>
+    )
+
+    await waitFor(() => {
+      expect(screen.getByTestId('loading')).toHaveTextContent('false')
+    })
+    expect(screen.getByTestId('public-loaded')).toHaveTextContent('false')
+    expect(screen.getByTestId('defaults-present')).toHaveTextContent('false')
+    // The gate really is open on this path, which is why the flag is needed.
+    expect(screen.getByTestId('auth-mode')).toHaveTextContent('none')
+  })
+
+  it('★ and reports the payload as loaded when it arrives without the row', async () => {
+    // The mirror. Same null `defaultUnitPrefs`, opposite answer, so neither
+    // case can pass on a flag wired to the wrong thing.
+    mountWithPublicSettings([{ key: 'auth_mode', value: 'none' }])
+
+    await waitFor(() => {
+      expect(screen.getByTestId('loading')).toHaveTextContent('false')
+    })
+    expect(screen.getByTestId('public-loaded')).toHaveTextContent('true')
+    expect(screen.getByTestId('defaults-present')).toHaveTextContent('false')
+  })
+
   it('an anonymous visitor who never chose gets the metric instance default', async () => {
     // The shipped defect, end to end: no browser key, so the instance default
     // answers. Before this change the same render produced imperial.
@@ -141,6 +196,7 @@ describe('AuthContext default_unit_prefs', () => {
     // The other half, and the one that makes the fix safe: a default is what
     // you get before you choose, not something that overrides a choice.
     localStorage.setItem('unit_preference', 'imperial')
+    reloadBrowserPrefs()
 
     mountWithPublicSettings([
       { key: 'auth_mode', value: 'none' },
@@ -160,6 +216,7 @@ describe('AuthContext default_unit_prefs', () => {
     // other units control, and 093 can only ever seed imperial or UK-imperial,
     // so a default that outranked this key would make metric unreachable.
     localStorage.setItem('unit_preference', 'metric')
+    reloadBrowserPrefs()
 
     mountWithPublicSettings([
       { key: 'auth_mode', value: 'none' },
@@ -191,6 +248,7 @@ describe('AuthContext default_unit_prefs', () => {
 
   it('an authenticated account outranks the instance default', async () => {
     localStorage.setItem('unit_preference', 'metric')
+    reloadBrowserPrefs()
     mockedApi.get.mockImplementation((url: string) => {
       if (url === '/settings/public') {
         return Promise.resolve({
@@ -223,6 +281,7 @@ describe('AuthContext default_unit_prefs', () => {
 
   it('retains no default when the published row is malformed', async () => {
     localStorage.setItem('unit_preference', 'metric')
+    reloadBrowserPrefs()
 
     mountWithPublicSettings([
       { key: 'auth_mode', value: 'none' },
@@ -238,6 +297,7 @@ describe('AuthContext default_unit_prefs', () => {
 
   it('retains no default when the instance publishes none', async () => {
     localStorage.setItem('unit_preference', 'metric')
+    reloadBrowserPrefs()
 
     mountWithPublicSettings([{ key: 'auth_mode', value: 'none' }])
 
@@ -260,6 +320,7 @@ describe('AuthContext default_unit_prefs', () => {
     // `system` reading metric depends on the browser's own choice still being
     // consulted when the server answered with nothing at all.
     localStorage.setItem('unit_preference', 'metric')
+    reloadBrowserPrefs()
     mockedApi.get.mockImplementation(() => Promise.reject(new Error('offline')))
 
     render(

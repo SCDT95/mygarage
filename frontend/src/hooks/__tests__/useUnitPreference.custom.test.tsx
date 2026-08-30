@@ -9,6 +9,17 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { renderHook } from '@testing-library/react'
 import { makeUnitSet, type User } from '@/__tests__/factories'
 
+/**
+ * Let the browser preference store re-read `localStorage`.
+ *
+ * The store parses once at module load, so a `setItem` in a test body is
+ * invisible to it without the `storage` event production uses. See the same
+ * helper in `useUnitPreference.precedence.test.tsx`.
+ */
+function reloadBrowserPrefs(): void {
+  window.dispatchEvent(new Event('storage'))
+}
+
 const h = vi.hoisted(() => ({ user: null as Partial<User> | null }))
 
 // `defaultUnitPrefs: null` pins this file to the LOWEST rung: with no instance
@@ -25,6 +36,7 @@ describe('useUnitPreference with a custom unit_preference', () => {
   beforeEach(() => {
     localStorage.clear()
     h.user = null
+    reloadBrowserPrefs()
   })
 
   it('derives imperial from a custom user whose resolved volume is a UK gallon', () => {
@@ -99,6 +111,7 @@ describe('useUnitPreference with a custom unit_preference', () => {
 
   it('still reads localStorage when logged out', () => {
     localStorage.setItem('unit_preference', 'metric')
+    reloadBrowserPrefs()
 
     const { result } = renderHook(() => useUnitPreference())
 

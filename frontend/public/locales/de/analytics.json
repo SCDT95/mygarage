@@ -22,7 +22,6 @@
       "taxes": "Steuern"
     },
     "costByCategory": "Kosten nach Kategorie",
-    "donutTotal": "Gesamt",
     "noCostData": "Keine Kostendaten verfügbar",
     "runningCostsByVehicle": "Laufende Kosten nach Fahrzeug",
     "noVehicleData": "Keine Fahrzeugdaten verfügbar",
@@ -43,6 +42,7 @@
       "def": "DEF",
       "total": "Gesamt"
     },
+    "donutTotal": "Gesamt",
     "loadAction": "Garage-Analyse laden"
   },
   "garageHelp": {
@@ -61,12 +61,12 @@
       "maintenanceDesc": "Gesamte Service- und Reparaturkosten über alle Fahrzeuge hinweg.",
       "fuelLabel": "Kraftstoff:",
       "fuelDesc": "Gesamte Kraftstoffausgaben für die gesamte Garage.",
-      "defLabel": "DEF:",
-      "defDesc": "Gesamtkosten für AdBlue/DEF (wird angezeigt, wenn ein Fahrzeug DEF verwendet).",
       "insuranceLabel": "Versicherung:",
       "insuranceDesc": "Kombinierte Versicherungskosten für alle Fahrzeuge.",
       "taxesLabel": "Steuern:",
-      "taxesDesc": "Gesamte Zulassungs- und Steueraufwendungen."
+      "taxesDesc": "Gesamte Zulassungs- und Steueraufwendungen.",
+      "defLabel": "DEF:",
+      "defDesc": "Gesamtkosten für AdBlue/DEF (wird angezeigt, wenn ein Fahrzeug DEF verwendet)."
     },
     "categoryBreakdown": {
       "title": "Kostenaufschlüsselung nach Kategorie",
@@ -97,15 +97,21 @@
     "comparisonTable": {
       "title": "Vergleichstabelle der Fahrzeugkosten",
       "intro": "Die detaillierte Tabelle unten bietet einen direkten Vergleich aller Fahrzeuge:",
-      "categoryColumnsLabel": "Kategoriespalten:",
-      "categoryColumnsDesc": "Die Ausgaben jedes Fahrzeugs, aufgeschlüsselt nach Wartung, Upgrades, Inspektion, Unfall, Aufbereitung, Kraftstoff und DEF.",
+      "purchasePriceLabel": "Kaufpreis:",
+      "purchasePriceDesc": "Anfangsinvestition für jedes Fahrzeug.",
+      "maintenanceLabel": "Wartung:",
+      "maintenanceDesc": "Gesamte Servicekosten bis heute.",
+      "fuelLabel": "Kraftstoff:",
+      "fuelDesc": "Gesamte Kraftstoffausgaben.",
       "totalCostLabel": "Gesamtkosten:",
       "totalCostDesc": "Kombinierte Gesamtbetriebskosten über die gesamte Lebensdauer.",
       "sortIntro": "Sortiere diese Daten gedanklich, um Folgendes zu identifizieren:",
       "item1": "Die im Betrieb teuersten/günstigsten Fahrzeuge",
       "item2": "Fahrzeuge mit unverhältnismäßig hohen Wartungskosten",
       "item3": "Die besten/schlechtesten Fahrzeuge in Bezug auf den Kraftstoffverbrauch",
-      "item4": "Kandidaten für einen Austausch basierend auf den Gesamtbetriebskosten"
+      "item4": "Kandidaten für einen Austausch basierend auf den Gesamtbetriebskosten",
+      "categoryColumnsLabel": "Kategoriespalten:",
+      "categoryColumnsDesc": "Die Ausgaben jedes Fahrzeugs, aufgeschlüsselt nach Wartung, Upgrades, Inspektion, Unfall, Aufbereitung, Kraftstoff und DEF."
     },
     "exportOptions": {
       "title": "Export-Optionen",
@@ -178,15 +184,6 @@
     "recentBaseline": "Aktuell: {{recent}} • Basiswert: {{baseline}}",
     "spendingAnomalies": "Ausgaben-Anomalien",
     "noAnomalies": "Keine ungewöhnlichen Ausgabenmuster erkannt.",
-    "anomalyRange": "Zeitraum",
-    "anomalyRange3m": "Letzte 3 Monate",
-    "anomalyRange6m": "Letzte 6 Monate",
-    "anomalyRange12m": "Letzte 12 Monate",
-    "anomalyRangeYtd": "Aktuelles Jahr",
-    "anomalyRangeAll": "Gesamter Zeitraum",
-    "anomalyRangeCustom": "Benutzerdefiniert",
-    "anomalyStart": "Von",
-    "anomalyEnd": "Bis",
     "totalCost": "Gesamtkosten",
     "monthsTracked": "{{count}} Monat(e) erfasst",
     "avgMonthly": "Monatlicher Schnitt",
@@ -248,21 +245,11 @@
       "fuelEconomy": "Kraftstoffverbrauch",
       "mileage": "Kilometerstand ({{unit}})",
       "volume": "Volumen ({{unit}})",
-    "cost": "Kosten"
-  },
-  "hoursEconomyAnalysis": "Effizienzanalyse der Motorbetriebsstunden",
-  "hoursEconomyTrendTitle": "Trend der Effizienz der Motorbetriebsstunden im Zeitverlauf",
-  "fuelRateUnitLabel": "Kraftstoffverbrauch ({{unit}})",
-  "costPerHourLabel": "Kosten/Stunde",
-  "costPerHourAxis": "Kosten/Stunde ({{currency}})",
-  "costPerHourValue": "{{value}}/Std.",
-  "hoursAccumulatedTitle": "Akkumulierte Motorbetriebsstunden im Zeitverlauf",
-  "engineHoursAxis": "Motorbetriebsstunden",
-  "engineHoursReading": "{{value}} Std.",
+      "cost": "Kosten"
+    },
     "propaneAnalysis": "Propan-Analyse",
     "totalSpent": "Gesamtausgaben",
-    "totalLiters": "Liter Gesamt",
-    "totalGallons": "Gallonen Gesamt",
+    "totalVolume": "Gesamt ({{unit}})",
     "avgPricePerUnit": "Durchschnittspreis/{{unit}}",
     "monthlyPropaneCosts": "Monatliche Propankosten",
     "spotRentalAnalysis": "Kurzzeitmieten-Analyse",
@@ -319,6 +306,17 @@
     "costChangesByCategory": "Kostenänderungen nach Kategorie",
     "period1Value": "Zeitraum 1: {{value}}",
     "period2Value": "Zeitraum 2: {{value}}",
+    "costPerHourAxis": "Kosten/Stunde ({{currency}})",
+    "costPerDistance": "Kosten/{{unit}}",
+    "avgCostPerVolume": "Ø Kosten/{{unit}}",
+    "costPerHourLabel": "Kosten/Stunde",
+    "costPerHourValue": "{{value}}/Std.",
+    "engineHoursAxis": "Motorbetriebsstunden",
+    "engineHoursReading": "{{value}} Std.",
+    "fuelRateUnitLabel": "Kraftstoffverbrauch ({{unit}})",
+    "hoursAccumulatedTitle": "Akkumulierte Motorbetriebsstunden im Zeitverlauf",
+    "hoursEconomyAnalysis": "Effizienzanalyse der Motorbetriebsstunden",
+    "hoursEconomyTrendTitle": "Trend der Effizienz der Motorbetriebsstunden im Zeitverlauf",
     "anomalyAbove": "Ausgaben: {{spent}} — {{deviation}}% über Ihrem Durchschnitt von {{avg}}.",
     "anomalyBelow": "Ausgaben: {{spent}} — {{deviation}}% unter Ihrem Durchschnitt von {{avg}}.",
     "severity": {
@@ -340,6 +338,15 @@
         "title": "Zu wenig Kraftstoffdaten"
       }
     },
+    "anomalyRange": "Zeitraum",
+    "anomalyRange3m": "Letzte 3 Monate",
+    "anomalyRange6m": "Letzte 6 Monate",
+    "anomalyRange12m": "Letzte 12 Monate",
+    "anomalyRangeYtd": "Aktuelles Jahr",
+    "anomalyRangeAll": "Gesamter Zeitraum",
+    "anomalyRangeCustom": "Benutzerdefiniert",
+    "anomalyStart": "Von",
+    "anomalyEnd": "Bis",
     "loadAction": "Fahrzeug-Analyse laden"
   },
   "vehicleHelp": {
@@ -356,8 +363,6 @@
       "totalCostDesc": "Summe aller erfassten Service- und Kraftstoffausgaben.",
       "avgMonthlyLabel": "Durchschnittliche monatliche Kosten:",
       "avgMonthlyDesc": "Gesamtkosten geteilt durch die Anzahl der erfassten Monate.",
-      "costPerMileLabel": "Kosten pro Meile:",
-      "costPerMileDesc": "Gesamtkosten geteilt durch die gefahrenen Gesamtmeilen (sofern Kilometerstandsdaten verfügbar sind).",
       "serviceBreakdownLabel": "Aufschlüsselung nach Serviceart:",
       "serviceBreakdownDesc": "Zeigt, welche Servicearten die höchsten Kosten verursachen."
     },
@@ -391,13 +396,13 @@
     },
     "fuelEconomy": {
       "title": "Kraftstoffverbrauch",
-      "mpgCalcLabel": "Verbrauchsberechnung:",
-      "mpgCalcDesc": "Wird automatisch anhand aufeinanderfolgender Vollbetankungen berechnet. Teilbetankungen werden bei der Verbrauchsberechnung nicht berücksichtigt.",
-      "averageMpgLabel": "Durchschnittlicher Verbrauch:",
-      "averageMpgDesc": "Mittelwert des Kraftstoffverbrauchs über alle Vollbetankungen hinweg.",
-      "recentMpgLabel": "Aktueller Verbrauch:",
-      "recentMpgDesc": "Durchschnitt der letzten 5 Vollbetankungen.",
-      "note": "Ein verschlechterter Kraftstoffverbrauch kann auf Wartungsbedarf hindeuten (Luftfilter, Zündkerzen, Reifendruck) oder auf Änderungen der Fahrgewohnheiten. Deutliche Einbrüche sollten untersucht werden."
+      "note": "Ein verschlechterter Kraftstoffverbrauch kann auf Wartungsbedarf hindeuten (Luftfilter, Zündkerzen, Reifendruck) oder auf Änderungen der Fahrgewohnheiten. Deutliche Einbrüche sollten untersucht werden.",
+      "economyCalcLabel": "Verbrauchsberechnung ({{unit}}):",
+      "economyCalcDesc": "Wird automatisch anhand aufeinanderfolgender Vollbetankungen berechnet. Teilbetankungen werden bei der Verbrauchsberechnung nicht berücksichtigt.",
+      "averageEconomyLabel": "Durchschnittlicher Verbrauch ({{unit}}):",
+      "averageEconomyDesc": "Mittelwert des Kraftstoffverbrauchs über alle Vollbetankungen hinweg.",
+      "recentEconomyLabel": "Aktueller Verbrauch ({{unit}}):",
+      "recentEconomyDesc": "Durchschnitt der letzten 5 Vollbetankungen."
     },
     "vendorSpending": {
       "title": "Ausgaben nach Dienstleister",
@@ -440,11 +445,10 @@
     "tips": {
       "title": "Tipps für beste Ergebnisse",
       "enterAllRecords": "Trage alle Service- und Kraftstoffeinträge ein, um vollständige Analysen zu erhalten",
-      "includeMileage": "Nimm Kilometerstandsdaten auf, um Berechnungen der Kosten pro Meile zu ermöglichen",
-      "markFullTank": "Markiere Betankungen als \"Vollbetankung\" für eine genaue Verbrauchserfassung",
       "addVendorNames": "Füge Dienstleisternamen hinzu, um Ausgabenmuster zu erkennen",
       "trackMonths": "Erfasse Daten über mindestens 3–6 Monate, um aussagekräftige Trends zu erhalten",
-      "reviewAnomalies": "Überprüfe Anomalien, um ungewöhnliche Ausgaben zu verstehen"
+      "reviewAnomalies": "Überprüfe Anomalien, um ungewöhnliche Ausgaben zu verstehen",
+      "markFullTank": "Markiere Betankungen als \"Vollbetankung\" für eine genaue Verbrauchserfassung ({{unit}})"
     }
   },
   "reports": {
@@ -460,8 +464,6 @@
     "annualCostDesc": "Aufschlüsselung aller Ausgaben nach Kategorie",
     "taxDeductionTitle": "Steuerabzugs-Bericht",
     "taxDeductionDesc": "Potenziell abzugsfähige Ausgaben (Steuerberater konsultieren)",
-    "saleHistoryTitle": "Verkaufshistorie (anonymisiert)",
-    "saleHistoryDesc": "Käufersichere Service-Historie ohne Kosten, Werkstätten oder Kennzeichen",
     "serviceHistoryCsvTitle": "Servicehistorie (CSV)",
     "serviceHistoryCsvDesc": "Serviceberichte in eine Tabellenkalkulation exportieren",
     "allRecordsCsvTitle": "Alle Einträge (CSV)",
@@ -475,7 +477,9 @@
     "generating": "Bericht wird erstellt...",
     "pdfError": "Bericht konnte nicht erstellt werden",
     "csvError": "Daten konnten nicht exportiert werden",
-        "pdfAction": "Bericht erstellen",
+    "saleHistoryTitle": "Verkaufshistorie (anonymisiert)",
+    "saleHistoryDesc": "Käufersichere Service-Historie ohne Kosten, Werkstätten oder Kennzeichen",
+    "pdfAction": "Bericht erstellen",
     "csvAction": "Daten exportieren"
   },
   "confidenceLevels": {

@@ -45,7 +45,13 @@ vi.mock('../../hooks/useUnitPreference', async () => {
 // global mock (bare key, no unit) so the other 11 tests in this file stay green.
 vi.mock('react-i18next', () => ({
   useTranslation: () => ({
-    t: (key: string, options?: { unit?: string }) => (options?.unit ? `${key} (${options.unit})` : key),
+    // `value` as well as `unit`: fix round 1 routed the volume-total and
+    // avg-cost captions through `t()` with an interpolated NUMBER, and a mock
+    // that dropped it would render the same key for 10.4 gal and 47.3 L.
+    t: (key: string, options?: { unit?: string; value?: string }) =>
+      options?.unit !== undefined || options?.value !== undefined
+        ? `${key} (${options.unit ?? options.value})`
+        : key,
     i18n: { language: 'en', changeLanguage: () => Promise.resolve() },
   }),
   Trans: ({ children }: { children: React.ReactNode }) => children,
@@ -60,7 +66,8 @@ vi.mock('../../hooks/useCurrencyPreference', () => ({
 }))
 vi.mock('sonner', () => ({ toast: { success: vi.fn(), error: vi.fn() } }))
 
-import { UK_IMPERIAL_UNITS } from '../../__tests__/factories'
+import { IMPERIAL_UNITS, METRIC_UNITS, UK_IMPERIAL_UNITS } from '../../__tests__/factories'
+import { binarySystemFor } from '../../types/units'
 import { UnitConverter } from '../../utils/units'
 import FuelRecordList from '../FuelRecordList'
 
@@ -277,6 +284,42 @@ describe('FuelRecordList — hours usage tracking (Task 13)', () => {
     expect(screen.getByText('$2.75')).toBeInTheDocument()
   })
 
+  it('★ the economy badge follows units.consumption, not a system collapsed from volume', async () => {
+    // `formatFuelEconomy(l, system)` read `system`, which spec D8 derives from
+    // VOLUME. This account keeps litres and chose MPG, so the badge and the
+    // tile both answered in L/100km however the preference was set.
+    unitPrefMock.units = { ...METRIC_UNITS, consumption: 'mpg_us' }
+    render(<FuelRecordList {...DEFAULT_PROPS} />)
+    await waitFor(() => expect(apiGetMock).toHaveBeenCalled())
+
+    // 235.214 / 7.2 = 32.7 in the row badge; / 8.5 = 27.7 on the tile.
+    expect(within(table()).getByText('32.7 MPG')).toBeInTheDocument()
+    expect(screen.getByText('27.7 MPG')).toBeInTheDocument()
+    expect(within(table()).queryByText('7.20 L/100km')).not.toBeInTheDocument()
+  })
+
+  it('★ the fuel-rate column and card name the account\'s own gallon', async () => {
+    // `formatFuelRate` divided by a MUTABLE static following the INSTANCE
+    // gallon setting, so this UK account read 4.50 L/hr as "1.19 GPH" beside a
+    // volume column that had already converted litres on the imperial gallon.
+    unitPrefMock.system = 'imperial'
+    unitPrefMock.units = { ...IMPERIAL_UNITS, volume: 'gal_uk', secondary_gallon: 'uk' }
+    apiGetMock.mockResolvedValue({ data: { fuel_type: 'gasoline', usage_unit: 'hours', secondary_usage_enabled: false } })
+    useFuelRecordsMock.mockReturnValue({ data: HOURS_DATA, isLoading: false, error: null })
+    render(<FuelRecordList {...DEFAULT_PROPS} />)
+
+    // 4.5 / 4.54609 = 0.99 on the card; 3.2 / 4.54609 = 0.70 in the row.
+    expect(await screen.findByText('0.99 gal/hr')).toBeInTheDocument()
+    expect(within(table()).getByText('0.70 gal/hr')).toBeInTheDocument()
+    // The card's LABEL too, through the local i18n mock's `{{unit}}`: a label
+    // that lost the `/hr` and read a bare `gal` would otherwise survive, since
+    // the value beside it is unchanged.
+    expect(screen.getByText('fuelList.avgFuelRate (gal/hr)')).toBeInTheDocument()
+    // What the instance-wide US gallon would have answered for the same rows.
+    expect(screen.queryByText('1.19 gal/hr')).not.toBeInTheDocument()
+    expect(screen.queryByText('1.19 GPH')).not.toBeInTheDocument()
+  })
+
   it('hides the cost-per-distance stat for a pure-hours vehicle even when odometer data is present, but keeps it for a distance vehicle', async () => {
     // Two fills with DISTINCT odometers so costPerKm is computable — this proves
     // the stat is gated on tracking MODE, not merely absent because it's null.
@@ -288,7 +331,16 @@ describe('FuelRecordList — hours usage tracking (Task 13)', () => {
       { ...record, id: 11, odometer_km: '2000', l_per_hr: '3.30', engine_hours: '150.0' },
     ] as FuelRecord[]
 
-    // Pure-hours: real getCostPerDistanceLabel('metric') === 'Cost/100 km' is hidden.
+    // ★ THE LABEL IS A TRANSLATED KEY NOW, and the string this case used to look
+    // for is the evidence of why. It asserted the literal 'Cost/100 km', which
+    // this file's `t` mock returns keys from: the label was never translated at
+    // all, it was two hardcoded English strings inside
+    // `UnitFormatter.getCostPerDistanceLabel`, shown to every reader of every
+    // language. Task 7 routed it through `t('fuelList.costPerDistance', {unit})`
+    // in all seven bundles, so the mock now renders `key (unit)` and the unit
+    // half comes from the resolved DISTANCE token instead of a system collapsed
+    // from volume.
+    // Pure-hours: the stat is hidden regardless of what it would have said.
     apiGetMock.mockResolvedValue({ data: { fuel_type: 'gasoline', usage_unit: 'hours', secondary_usage_enabled: false } })
     useFuelRecordsMock.mockReturnValue({
       data: { records: twoRecords, total: 2, average_l_per_100km: null, average_l_per_hr: '4.50', average_cost_per_hr: '2.75' },
@@ -297,7 +349,7 @@ describe('FuelRecordList — hours usage tracking (Task 13)', () => {
     })
     const hours = render(<FuelRecordList {...DEFAULT_PROPS} />)
     await screen.findByText('4.50 L/hr') // hours state applied before asserting absence
-    expect(screen.queryByText('Cost/100 km')).not.toBeInTheDocument()
+    expect(screen.queryByText('fuelList.costPerDistance (100 km)')).not.toBeInTheDocument()
     hours.unmount()
 
     // Pure-distance, same records: the cost-per-distance stat returns.
@@ -308,7 +360,76 @@ describe('FuelRecordList — hours usage tracking (Task 13)', () => {
       error: null,
     })
     render(<FuelRecordList {...DEFAULT_PROPS} />)
-    expect(await screen.findByText('Cost/100 km')).toBeInTheDocument()
+    expect(await screen.findByText('fuelList.costPerDistance (100 km)')).toBeInTheDocument()
+  })
+})
+
+describe('FuelRecordList — the cost-per-distance card, label and value together', () => {
+  // ★ THE HALF-MIGRATED PAIR THIS CLOSES. Task 6 moved the odometer column onto
+  // `units.distance` and left this card on the binary system, which spec D8
+  // collapses from VOLUME. A `{volume:'L', distance:'mi'}` account therefore
+  // read a miles odometer beside a "Cost/100 km" caption over a per-100-km
+  // figure: before task 6 both halves were wrong together, which is less
+  // visible and no more correct. Both halves are asserted in every case here,
+  // because a label that moves without its value is the same defect inverted.
+  const twoFills = [
+    { ...record, id: 30, odometer_km: '1000', cost: '10.00' },
+    { ...record, id: 31, odometer_km: '2000', cost: '10.00' },
+  ] as FuelRecord[]
+
+  beforeEach(() => {
+    apiGetMock.mockResolvedValue({
+      data: { fuel_type: 'gasoline', usage_unit: 'distance', secondary_usage_enabled: false },
+    })
+    useFuelRecordsMock.mockReturnValue({
+      data: { records: twoFills, total: 2, average_l_per_100km: '8.5' },
+      isLoading: false,
+      error: null,
+    })
+  })
+
+  it('★ a LITRES-and-MILES account reads its cost per 1,000 MILES', async () => {
+    // $20.00 over 1000 km is $0.02/km; x 1.60934 x 1000 = $32.19 per 1,000 mi.
+    // The retired pair read 'metric' off the litres and answered $2.00 under
+    // "Cost/100 km", beside an odometer column already reading miles.
+    unitPrefMock.units = { ...METRIC_UNITS, distance: 'mi', speed: 'mph' }
+
+    render(<FuelRecordList {...DEFAULT_PROPS} />)
+    expect(await screen.findByText('fuelList.costPerDistance (1,000 mi)')).toBeInTheDocument()
+    expect(screen.getByText('$32.19')).toBeInTheDocument()
+    // The two answers the collapsed decision would have given, named so this
+    // cannot pass on a build that merely relabelled the card.
+    expect(screen.queryByText('fuelList.costPerDistance (100 km)')).not.toBeInTheDocument()
+    expect(screen.queryByText('$2.00')).not.toBeInTheDocument()
+    // And the collapse really does disagree, so the case is not a coincidence.
+    expect(binarySystemFor(unitPrefMock.units.volume)).toBe('metric')
+  })
+
+  it('★ the MIRROR, gallons with kilometres, reads its cost per 100 KILOMETRES', async () => {
+    // Without this, everything above is satisfied by code that merely inverted
+    // the branch. $0.02/km x 1 x 100 = $2.00 per 100 km.
+    unitPrefMock.units = { ...IMPERIAL_UNITS, distance: 'km', speed: 'kmh' }
+
+    render(<FuelRecordList {...DEFAULT_PROPS} />)
+    expect(await screen.findByText('fuelList.costPerDistance (100 km)')).toBeInTheDocument()
+    expect(screen.getByText('$2.00')).toBeInTheDocument()
+    expect(screen.queryByText('$32.19')).not.toBeInTheDocument()
+    expect(binarySystemFor(unitPrefMock.units.volume)).toBe('imperial')
+  })
+
+  it('leaves both uniform accounts exactly where they were', async () => {
+    // The controls. Neither denominator changed in this task, and a fix that
+    // moved one would be a different bug rather than a fix.
+    unitPrefMock.units = METRIC_UNITS
+    const metric = render(<FuelRecordList {...DEFAULT_PROPS} />)
+    expect(await screen.findByText('fuelList.costPerDistance (100 km)')).toBeInTheDocument()
+    expect(screen.getByText('$2.00')).toBeInTheDocument()
+    metric.unmount()
+
+    unitPrefMock.units = IMPERIAL_UNITS
+    render(<FuelRecordList {...DEFAULT_PROPS} />)
+    expect(await screen.findByText('fuelList.costPerDistance (1,000 mi)')).toBeInTheDocument()
+    expect(screen.getByText('$32.19')).toBeInTheDocument()
   })
 })
 
@@ -343,8 +464,8 @@ describe('FuelRecordList — one gallon per page, taken from the user', () => {
     // $0.925/L is $4.21/imperial gal, $3.50/US gal.
     expect(within(t).getByText('$4.21')).toBeInTheDocument()
     // Summary cards, OUTSIDE the table, on the same gallon.
-    expect(screen.getByText('10.4 gal total')).toBeInTheDocument()
-    expect(screen.getByText('Avg Cost/gal')).toBeInTheDocument()
+    expect(screen.getByText('fuelList.volumeTotal (10.4 gal)')).toBeInTheDocument()
+    expect(screen.getByText('fuelList.avgCostPerVolume (gal)')).toBeInTheDocument()
     expect(screen.getByText('$4.20')).toBeInTheDocument()
     expect(UnitConverter.getGallonStandard()).toBe('us')
   })
@@ -359,7 +480,7 @@ describe('FuelRecordList — one gallon per page, taken from the user', () => {
 
     expect(within(table()).getByRole('columnheader', { name: 'fuelList.volumeUnit (L)' })).toBeInTheDocument()
     expect(within(table()).getByText('47.32 L')).toBeInTheDocument()
-    expect(screen.getByText('47.3 L total')).toBeInTheDocument()
-    expect(screen.getByText('Avg Cost/L')).toBeInTheDocument()
+    expect(screen.getByText('fuelList.volumeTotal (47.3 L)')).toBeInTheDocument()
+    expect(screen.getByText('fuelList.avgCostPerVolume (L)')).toBeInTheDocument()
   })
 })

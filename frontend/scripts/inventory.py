@@ -187,19 +187,40 @@ def scan_lines(files: list[Path], src: Path, patterns: dict) -> dict:
 # --------------------------------------------------------------------------
 # Keyed by the LAST TWO path segments so that `utils/units` and `types/units`
 # (two different modules whose basename is identical) never merge into one count.
+# ★ THIS LIST AND `SYMBOL_RX` BELOW ARE TWO HALVES OF ONE INVENTORY AND MUST MOVE
+# TOGETHER. Fix round 1 of phase 3b task 5 caught them out of step: `SYMBOL_RX`
+# gained `seedUnitField` and `canonicalFromUnitField` when the deleted binary
+# helpers came out of it, but `utils/unitFormat`, the module that DECLARES both,
+# was never added here. The symbol scan and the module scan then disagreed about
+# which files matter, which is the quieter half of the same failure the deleted
+# helpers were: a count that looks complete because each half was measured
+# honestly on its own.
 UNIT_MODULES = [
     "utils/units",
     "types/units",
     "utils/telemetryUnits",
     "utils/supplyUnits",
     "utils/decimalSafe",
-    "utils/gallonStandardStore",
+    "utils/unitFormat",
+    # `utils/gallonStandardStore` sat here until phase 4 task 5 deleted the
+    # module. Removed rather than kept: a name left in this list after its
+    # module is gone cannot match anything, so it does not inflate a count, but
+    # it does make the list read as an inventory of what exists when it is
+    # really an inventory of what was once looked for.
     "hooks/useUnitPreference",
     "utils/formatUtils",
 ]
 IMPORT_RX = re.compile(r"""^\s*(?:import|export)\b[^\n]*?from\s+['"]([^'"]+)['"]""")
 SYMBOL_RX = re.compile(
-    r"\b(UnitFormatter|UnitConverter|useUnitPreference|convertTelemetryValue|priceToCanonical|priceToDisplay|toCanonicalKm|toCanonicalLiters|toCanonicalKg|toCanonicalMeters|canonicalToDisplay|displayToCanonical|supplyUnitLabel)\b"
+    # `toCanonicalKm`, `toCanonicalKg` and `toCanonicalMeters` were listed here
+    # until phase 3b task 5 deleted them under ruling R8, and `toCanonicalLiters`
+    # and the exported `priceToCanonical` until task 7 did the same to them under
+    # R4. A name kept in this alternation after its symbol is gone cannot match
+    # anything, so it does not inflate a count, but it does make the list read as
+    # an inventory of what exists when it is really an inventory of what was once
+    # looked for. The pair that replaced them, `seedPriceField` and
+    # `canonicalFromPriceField`, is listed instead, beside the quantity pair.
+    r"\b(UnitFormatter|UnitConverter|useUnitPreference|convertTelemetryValue|priceToDisplay|toLitersWirePrecision|seedUnitField|canonicalFromUnitField|seedPriceField|canonicalFromPriceField|canonicalToDisplay|displayToCanonical|supplyUnitLabel)\b"
 )
 
 

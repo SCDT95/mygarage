@@ -14,8 +14,6 @@ import AppToaster from './components/AppToaster'
 import { useLanguageSync } from './hooks/useLanguageSync'
 import { useAccentSync } from './hooks/useAccentSync'
 import { useThemeSync } from './hooks/useThemeSync'
-import { useGallonStandardSync } from './hooks/useGallonStandardSync'
-import { useResolvedGallonSync } from './hooks/useResolvedGallonSync'
 import { basePath } from './utils/basePath'
 
 // Eager load login/register for instant access
@@ -59,10 +57,6 @@ function PreferenceSyncProvider({ children }: { children: React.ReactNode }) {
   useLanguageSync()
   useAccentSync()
   useThemeSync()
-  useGallonStandardSync()
-  // AFTER the instance reconcile: this client's own gallon outranks it, and
-  // re-asserts whenever that reconcile (or the admin toggle) writes the store.
-  useResolvedGallonSync()
   return <>{children}</>
 }
 

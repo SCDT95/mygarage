@@ -35,7 +35,8 @@ vi.mock('../../../hooks/useUnitPreference', async () => {
   }
 })
 
-import { UK_IMPERIAL_UNITS } from '../../../__tests__/factories'
+import { IMPERIAL_UNITS, UK_IMPERIAL_UNITS } from '../../../__tests__/factories'
+import { binarySystemFor } from '../../../types/units'
 import { UnitConverter } from '../../../utils/units'
 import { toast } from 'sonner'
 import api from '../../../services/api'
@@ -818,9 +819,123 @@ describe('VehicleEditDrawer — the DEF tank capacity is the eighth gallon write
     fireEvent.click(screen.getByRole('button', { name: 'edit.saveChanges' }))
     await waitFor(() => expect(mockedApi.put).toHaveBeenCalled())
     const [, payload] = mockedApi.put.mock.calls[0] as [string, Record<string, unknown>]
-    // 4.18 x 4.54609 = 19.0026562 -> 19.003 at the wire precision.
-    expect(payload.def_tank_capacity_liters).toBe(19.003)
+    // ★ 19, not 19.003, and the difference is plan 3b task 7. This field had
+    // the entry-grid shift the three fuel forms had: 19 L seeds a UK-gallon
+    // box as 4.18, and 4.18 x 4.54609 = 19.0026562, which the wire precision
+    // rounds to 19.003. Opening this drawer to change a nickname moved a
+    // capacity nobody edited. It is now seeded WITH its canonical origin, so
+    // an untouched field posts what it was seeded from.
+    expect(payload.def_tank_capacity_liters).toBe(19)
+    expect(payload.def_tank_capacity_liters).not.toBe(19.003)
     expect(UnitConverter.getGallonStandard()).toBe('us')
+  })
+
+  it('★ a TYPED capacity converts on the user\'s gallon, which the origin case cannot see', async () => {
+    // ★ THE CONVERSION TEST THIS TASK RETIRED, PUT BACK. At `ee8ab69` the case
+    // above asserted `19.003` (4.18 x 4.54609), and that assertion WAS the
+    // conversion test: it was the only place `def_tank_capacity_liters`
+    // arithmetic ran. Task 7's origin makes an untouched save short-circuit to
+    // the stored 19, which is correct and is why that number had to change, but
+    // nothing replaced what the short-circuit retired. The drawer has no CREATE
+    // path, so every other write site's typed-value coverage has no analogue
+    // here, and rerouting this field's read token from `u.volume` to `u.mass`
+    // survived the entire suite.
+    //
+    // So this case TYPES a value. 5.00 imperial gallons x 4.54609 = 22.73045,
+    // which the wire precision rounds to 22.730. Through `u.mass` it would be
+    // 5 x 0.453592 = 2.268, and through the US gallon 18.927.
+    UnitConverter.setGallonStandard('us')
+    unitPrefMock.system = 'imperial'
+    unitPrefMock.units = UK_IMPERIAL_UNITS
+
+    renderVehicleEdit(dieselWithCapacity)
+    const capacity = (await screen.findByLabelText('edit.defTankCapacity (gal)')) as HTMLInputElement
+    expect(capacity.value).toBe('4.18')
+
+    fireEvent.change(capacity, { target: { value: '5.00' } })
+    fireEvent.click(screen.getByRole('button', { name: 'edit.saveChanges' }))
+    await waitFor(() => expect(mockedApi.put).toHaveBeenCalled())
+    const [, payload] = mockedApi.put.mock.calls[0] as [string, Record<string, unknown>]
+    expect(payload.def_tank_capacity_liters).toBe(22.73)
+    // The three answers a wrong token or a wrong gallon would give, named so
+    // this cannot pass on a build where any of them is what runs.
+    expect(payload.def_tank_capacity_liters).not.toBe(2.268)
+    expect(payload.def_tank_capacity_liters).not.toBe(18.927)
+    expect(payload.def_tank_capacity_liters).not.toBe(19)
+    expect(UnitConverter.getGallonStandard()).toBe('us')
+  })
+
+  it('★ REOPENING on a vehicle whose capacity was cleared does not keep the last one\'s origin', async () => {
+    // ★ The absent path. `seedForm` used to write the origin only where the
+    // stored capacity was a real number, so both `undefined` returns left the
+    // PREVIOUS open's origin in place, which is the exact state the ref's
+    // docstring says it is re-seeded to avoid.
+    //
+    // Reachable, and driven here rather than argued: open on 19 L (origin
+    // `{19, '4.18'}`), close, reopen on a vehicle whose capacity is now null,
+    // then type `4.18`. With a stale origin the typed value matches the
+    // remembered display and posts the remembered 19; with a reset one it
+    // converts, 4.18 x 4.54609 = 19.0026562 -> 19.003.
+    UnitConverter.setGallonStandard('us')
+    unitPrefMock.system = 'imperial'
+    unitPrefMock.units = UK_IMPERIAL_UNITS
+
+    const cleared: Vehicle = { ...dieselWithCapacity, def_tank_capacity_liters: null }
+    let served: Vehicle = dieselWithCapacity
+    mockedApi.get.mockImplementation((url: string) =>
+      url.includes('detail-stats')
+        ? Promise.resolve({ data: baseDetailStats })
+        : Promise.resolve({ data: served })
+    )
+
+    const view = render(
+      drawerEl({ open: true, vin: dieselWithCapacity.vin, vehicle: dieselWithCapacity, onClose: vi.fn(), onUpdated: vi.fn() })
+    )
+    const first = (await screen.findByLabelText('edit.defTankCapacity (gal)')) as HTMLInputElement
+    expect(first.value).toBe('4.18')
+
+    // Close and reopen the SAME mounted drawer, which is what re-seeds it. A
+    // fresh render would build a fresh ref and could not express the defect.
+    served = cleared
+    view.rerender(
+      drawerEl({ open: false, vin: cleared.vin, vehicle: cleared, onClose: vi.fn(), onUpdated: vi.fn() })
+    )
+    view.rerender(
+      drawerEl({ open: true, vin: cleared.vin, vehicle: cleared, onClose: vi.fn(), onUpdated: vi.fn() })
+    )
+    await waitFor(() =>
+      expect(screen.queryByLabelText('edit.defTankCapacity (gal)')).toBeNull()
+    )
+
+    fireEvent.click(screen.getByLabelText('edit.enableDefTracking'))
+    const reopened = (await screen.findByLabelText('edit.defTankCapacity (gal)')) as HTMLInputElement
+    expect(reopened.value).toBe('')
+
+    fireEvent.change(reopened, { target: { value: '4.18' } })
+    fireEvent.click(screen.getByRole('button', { name: 'edit.saveChanges' }))
+    await waitFor(() => expect(mockedApi.put).toHaveBeenCalled())
+    const [, payload] = mockedApi.put.mock.calls.at(-1) as [string, Record<string, unknown>]
+    expect(payload.def_tank_capacity_liters).toBe(19.003)
+    expect(payload.def_tank_capacity_liters).not.toBe(19)
+  })
+
+  it('★ the capacity EXAMPLE names the reader\'s OWN gallon', async () => {
+    // ★ FOUND BY MUTATION, not by reading. Pinning the example table to
+    // `gal_us` killed NOTHING: this placeholder had no test, and it was a
+    // `system === 'imperial'` ternary, so a UK account read a US-gallon example
+    // for a unit 20 percent larger. One physical tank, three vocabularies:
+    // 19 L is 5.0 US gallons and 4.2 imperial ones.
+    UnitConverter.setGallonStandard('us')
+    unitPrefMock.system = 'imperial'
+    unitPrefMock.units = UK_IMPERIAL_UNITS
+
+    renderVehicleEdit(dieselWithCapacity)
+    const uk = (await screen.findByLabelText('edit.defTankCapacity (gal)')) as HTMLInputElement
+    expect(uk.placeholder).toBe('4.2')
+    // The collapsed answer agrees with the US one here, which is what made this
+    // invisible: both gallons read 'imperial'.
+    expect(binarySystemFor(UK_IMPERIAL_UNITS.volume)).toBe('imperial')
+    expect(binarySystemFor(IMPERIAL_UNITS.volume)).toBe('imperial')
   })
 
   it('labels and converts in litres for a metric set, on a UK-default instance', async () => {

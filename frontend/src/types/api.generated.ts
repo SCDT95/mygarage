@@ -380,6 +380,37 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/auth/me/units": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * Update Current User Units
+         * @description Set the current user's units, clearing or materialising every override.
+         *
+         *     Spec D3: a preset clears all eleven override columns, because
+         *     `resolve_units` is "preset base, overrides on top" and a surviving override
+         *     would mask the preset the user just chose. Custom materialises all eleven,
+         *     so nothing resolves from the base.
+         *
+         *     Which columns to write is `UnitPreferenceUpdate.column_values`'s decision,
+         *     not this route's. It sits beside the validator that guarantees the
+         *     clear-versus-materialise invariant, so the two cannot drift apart across
+         *     two files, and it derives the column set from `UNIT_COLUMN_NAMES` so a
+         *     twelfth quantity cannot silently escape either branch.
+         */
+        put: operations["update_current_user_units_api_auth_me_units_put"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/auth/me/widget-keys": {
         parameters: {
             query?: never;
@@ -6806,6 +6837,11 @@ export interface components {
         /**
          * AdminUserUpdate
          * @description Schema for admin updating any user. Includes privileged fields.
+         *
+         *     Carries no `unit_preference`, for the reason `UserSelfUpdate` gives. Unlike
+         *     that schema this one does not set `extra="forbid"`, so a stale client's key
+         *     is ignored rather than rejected: forbidding extras here would change the
+         *     rejection behaviour of every other admin field at the same time.
          */
         AdminUserUpdate: {
             /** Accent Color */
@@ -6841,8 +6877,6 @@ export interface components {
             theme?: string | null;
             /** Time Format */
             time_format?: string | null;
-            /** Unit Preference */
-            unit_preference?: string | null;
         };
         /**
          * AnomalyAlert
@@ -13271,6 +13305,11 @@ export interface components {
         /**
          * TireReadingCreate
          * @description Record a tread/pressure reading (updates the parent tire's latest depth).
+         *
+         *     Tread is OPTIONAL (#152): the reporter tracks a slow pressure leak and owns
+         *     no tread gauge, and a required tread beside an optional odometer meant they
+         *     could not record a pressure at all. What is required is that a reading carry
+         *     at least one measurement (see ``_at_least_one_measurement``).
          */
         TireReadingCreate: {
             /** Notes */
@@ -13285,7 +13324,7 @@ export interface components {
              */
             recorded_at: string;
             /** Tread Depth Mm */
-            tread_depth_mm: number | string;
+            tread_depth_mm?: number | string | null;
         };
         /**
          * TireReadingResponse
@@ -13315,7 +13354,7 @@ export interface components {
             /** Tire Id */
             tire_id: number;
             /** Tread Depth Mm */
-            tread_depth_mm: string;
+            tread_depth_mm: string | null;
             /** Vin */
             vin: string;
         };
@@ -14086,6 +14125,30 @@ export interface components {
             started_at: string;
         };
         /**
+         * UnitPreferenceUpdate
+         * @description Schema for the dedicated unit-preference mutation (spec D9b).
+         *
+         *     `PUT /auth/me` guards every field with `if ... is not None`, so it cannot
+         *     express "clear this column". D3 requires that selecting a preset writes
+         *     eleven explicit nulls, which is why unit preferences do not ride the
+         *     generic profile route.
+         *
+         *     The `units` field is required for `custom` and forbidden otherwise. A
+         *     partial custom would leave some columns resolving from the base preset,
+         *     which is the masking this phase exists to remove; a preset carrying a set
+         *     would make the request's intent unknowable.
+         */
+        UnitPreferenceUpdate: {
+            /** Show Both Units */
+            show_both_units?: boolean | null;
+            /**
+             * Unit Preference
+             * @enum {string}
+             */
+            unit_preference: "imperial" | "metric" | "custom";
+            units?: components["schemas"]["UnitSet"] | null;
+        };
+        /**
          * UnitSet
          * @description A fully resolved set of unit choices. Every field is required.
          *
@@ -14329,6 +14392,13 @@ export interface components {
         /**
          * UserSelfUpdate
          * @description Schema for users updating their own profile. Rejects privileged fields.
+         *
+         *     Carries no `unit_preference` (D9b). Its route guards every field with
+         *     `if ... is not None`, so it cannot express "clear this column", and a
+         *     preset written here would leave the eleven override columns masking it.
+         *     Units are set through `PUT /auth/me/units` and `UnitPreferenceUpdate`,
+         *     which writes all eleven or clears all eleven. `show_both_units` stays: it
+         *     is a display toggle, not a choice of unit.
          */
         UserSelfUpdate: {
             /** Accent Color */
@@ -14353,8 +14423,6 @@ export interface components {
             theme?: string | null;
             /** Time Format */
             time_format?: string | null;
-            /** Unit Preference */
-            unit_preference?: string | null;
         };
         /**
          * VINDecodeRequest
@@ -17242,6 +17310,39 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    update_current_user_units_api_auth_me_units_put: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UnitPreferenceUpdate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UserResponse"];
+                };
             };
             /** @description Validation Error */
             422: {

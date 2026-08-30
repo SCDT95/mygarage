@@ -121,30 +121,21 @@ const UNIT_CONSTANT_RESTRICTED = [
 const UNITS_CONSTANT_SCOPE = ['src/**/*.{ts,tsx}', 'scripts/__units_corpus__.tsx']
 
 /**
- * The three files where a raw conversion factor is CORRECT, each with its
+ * The two files where a raw conversion factor is CORRECT, each with its
  * reason, because a bare omission is indistinguishable from an oversight.
  *
- *   src/utils/units.ts         The centralized converter. It IS the factor
- *                              table (US_GALLONS_TO_LITERS, MILES_TO_KM, and
- *                              the rest). Note it is ALSO silenced outright by
- *                              the i18n-utility exemption further down, which
- *                              wins by ordering, so listing it here is honest
- *                              documentation rather than the thing doing the
- *                              work: removing this entry alone changes nothing.
+ * ★ `src/utils/units.ts` WAS THE THIRD, and plan 3b task 2 removed it from
+ * both this list and the i18n-utility `'off'` block below. Measured by removing
+ * both: twelve findings. Ten were the factor table (`:95-:105`), which is
+ * genuinely exempt and now says so with a twelve-line `eslint-disable` around
+ * itself, so the exemption travels with the lines it covers instead of
+ * blanketing a thousand-line module. The other two were not in the table and
+ * were the reason this was a 3b decision rather than a formality: a `9/5 + 32`
+ * idiom in `celsiusToFahrenheit` (deleted; `UNIT_ADAPTERS.f` is the live
+ * implementation and nothing called it) and an inline `1.60934` in
+ * `formatCostPerDistance` (now `UnitConverter.MILES_TO_KM`). A file-level
+ * exemption could not have told those two apart from the ten.
  *
- *                              ★ MEASURED, by removing BOTH exemptions and
- *                              linting the file: 12 findings, not the 5 an
- *                              earlier version of this note claimed from an
- *                              unmeasured count of the constant table. Ten are
- *                              the table itself (:95-:105), and the other two
- *                              are the part that makes this a phase 3b decision
- *                              rather than a formality: a `9/5 + 32` idiom at
- *                              :333 and an inline `1.60934` at :943 in
- *                              `formatCostPerDistance`, neither of which is a
- *                              named constant anybody would find by reading the
- *                              table. Whether the converter stays silent is
- *                              3b's call; what it is silent ABOUT is now
- *                              reproducible rather than asserted.
  *   src/utils/unitAdapters.ts  Holds `IN32_TO_MM = 25.4 / 32`, the millimetre
  *                              factor the frontend did not have at all until
  *                              the adapter supplied it. Same role as units.ts.
@@ -159,8 +150,12 @@ const UNITS_CONSTANT_SCOPE = ['src/**/*.{ts,tsx}', 'scripts/__units_corpus__.tsx
  * Corpus case E-N1 pins that, so a future widening of the precision threshold
  * cannot silently break it.
  */
+// One entry per line, with the trailing comma. `units_gate_selftest.py` deletes
+// an entry from this list by exact text to prove each exemption is real, and
+// collapsing the array onto one line disabled that probe. Nothing in
+// `bin/ci-check --frontend` runs that selftest, so the break was silent through
+// lint, the corpus, the manifest checker and the suite.
 const UNITS_CONSTANT_EXEMPT = [
-  'src/utils/units.ts',
   'src/utils/unitAdapters.ts',
   'src/utils/supplyUnits.ts',
 ]
@@ -237,9 +232,23 @@ export default tseslint.config(
     files: ['src/types/api.generated.ts'],
     rules: { quotes: 'off' },
   },
-  // Exempt utility files from the i18n lint guards (they ARE the centralized implementation)
+  // Exempt utility files from the i18n lint guards (they ARE the centralized
+  // implementation).
+  //
+  // ★ `src/utils/units.ts` USED TO BE ON THIS LIST and plan 3b task 2 took it
+  // off. `'off'` disables the whole rule, not the two i18n selectors this block
+  // is named for, and this block comes last, so it also silenced the
+  // raw-constant leg for the converter. That is why the entry in
+  // `UNITS_CONSTANT_EXEMPT` above could be deleted with no effect at all: the
+  // exemption everyone would read was inert, and the one actually doing the
+  // work was in a block about currency symbols. Measured with both removed:
+  // twelve findings, ten of them the factor table.
+  //
+  // units.ts now carries a twelve-line `eslint-disable` around that table and
+  // nothing else, so a raw factor added anywhere else in the converter fails
+  // `bun run lint`, and both i18n guards apply to it like any other file.
   {
-    files: ['src/utils/formatUtils.ts', 'src/utils/units.ts', 'src/utils/dateUtils.ts'],
+    files: ['src/utils/formatUtils.ts', 'src/utils/dateUtils.ts'],
     rules: {
       'no-restricted-syntax': 'off',
     },

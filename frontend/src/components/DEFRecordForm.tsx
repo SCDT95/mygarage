@@ -9,8 +9,14 @@ import { makeDefRecordSchema, type DefRecordFormData } from '../schemas/def'
 import { FormError } from './FormError'
 import { useCreateDEFRecord, useUpdateDEFRecord } from '../hooks/queries/useDEFRecords'
 import { useUnitPreference } from '../hooks/useUnitPreference'
-import { UnitConverter, UnitFormatter } from '../utils/units'
-import { toCanonicalLiters, priceToDisplay, priceToCanonical, readNumber } from '../utils/decimalSafe'
+import { UnitFormatter } from '../utils/units'
+import {
+  canonicalFromPriceField,
+  readNumber,
+  seedPriceField,
+  toLitersWirePrecision,
+  type PriceFieldOrigin,
+} from '../utils/decimalSafe'
 import { useUnitFormat } from '../hooks/useUnitFormat'
 import { canonicalFromUnitField, seedUnitField, type UnitFieldOrigin } from '../utils/unitFormat'
 import { useOnUserEdit } from '../hooks/useOnUserEdit'
@@ -87,19 +93,35 @@ export default function DEFRecordForm({
    * to fix the brand does not move the reading.
    *
    * Lazily seeded for the same reason `defaultValues` is computed once: an
-   * origin that moved on re-render would stop being an origin. Volume and
-   * price are deliberately NOT here; Task 2 made their round trip exact by
-   * other means.
+   * origin that moved on re-render would stop being an origin.
    *
-   * ★ One assumption, stated rather than defended against.
-   * `canonicalFromUnitField` compares against `toInputValue`, i.e.
-   * `toFixed(precision)`, while this react-hook-form NUMBER field can only
-   * offer `String(number)`. Those agree exactly while `mi` and `km` carry no
-   * decimals, and a normalising branch would be a guard no test could kill,
-   * so the precision is pinned by a test instead.
+   * ★ VOLUME AND PRICE ARE HERE NOW, and the comment they replace claimed
+   * "Task 2 made their round trip exact by other means". It did not. Task 2
+   * put both on the resolved `UnitSet`, which fixed WHICH gallon they used and
+   * left the round trip itself reconverting a rounded display: a stored
+   * 37.9 L seeded a US-gallon field as 10.01 and came back 37.892 on a save
+   * the user never made an edit in. Plan 3b ruling R4 gives that shift to this
+   * task, and the origin is the whole of the fix.
    */
   const [odometerOrigin] = useState<UnitFieldOrigin>(() =>
     seedUnitField(readNumber(record?.odometer_km), u.distance)
+  )
+
+  /** The volume field's canonical origin, in `units.volume`. */
+  const [litersOrigin] = useState<UnitFieldOrigin>(() =>
+    seedUnitField(readNumber(record?.liters), u.volume)
+  )
+
+  /**
+   * The price field's canonical origin, in $ per `units.volume`.
+   *
+   * This form's basis is fixed: it seeds and submits `per_volume`, so the
+   * basis leg of `canonicalFromPriceField` cannot fire here. It is passed
+   * rather than omitted because a price origin without one is not a price
+   * origin, and the fuel form beside this one CAN move it.
+   */
+  const [priceOrigin] = useState<PriceFieldOrigin>(() =>
+    seedPriceField(record?.price_per_unit, units, 'per_volume')
   )
 
   const {
@@ -117,10 +139,11 @@ export default function DEFRecordForm({
       // Seeded in `units.distance`, and the submit converts back through the
       // SAME adapter. `readNumber('')` is undefined, which is the empty field.
       odometer_km: readNumber(odometerOrigin.display),
-      // Seeded and submitted through the same resolved set, so reopening a
-      // record cannot re-convert its volume on a different gallon.
-      liters: UnitConverter.litersToVolumeUnit(readNumber(record?.liters), units) ?? undefined,
-      price_per_unit: priceToDisplay(record?.price_per_unit, units, 'per_volume') ?? undefined,
+      // Seeded in `units.volume` and in $ per that unit, and the submit reads
+      // both back through the SAME origins, so reopening a record neither
+      // re-converts on a different gallon nor reconverts its own rounding.
+      liters: readNumber(litersOrigin.display),
+      price_per_unit: readNumber(priceOrigin.display),
       cost: readNumber(record?.cost),
       fill_level: (() => {
         const fl = readNumber(record?.fill_level)
@@ -159,9 +182,26 @@ export default function DEFRecordForm({
             odometerOrigin,
             u.distance
           ) ?? undefined,
-        // ★ Volume and price convert through ONE resolved set (defect L1).
-        liters: toCanonicalLiters(data.liters, units) ?? undefined,
-        price_per_unit: priceToCanonical(data.price_per_unit, units, 'per_volume') ?? undefined,
+        // ★ Volume and price convert through ONE resolved set (defect L1), and
+        // an untouched field returns the canonical value it was seeded from
+        // rather than a re-conversion of a rounded display (ruling R4).
+        // `toLitersWirePrecision` is the API's declared 3 decimals, which the
+        // protocol deliberately does not apply: pydantic 422s a fourth.
+        liters:
+          toLitersWirePrecision(
+            canonicalFromUnitField(
+              String(readNumber(data.liters) ?? ''),
+              litersOrigin,
+              u.volume
+            )
+          ) ?? undefined,
+        price_per_unit:
+          canonicalFromPriceField(
+            String(readNumber(data.price_per_unit) ?? ''),
+            priceOrigin,
+            units,
+            'per_volume'
+          ) ?? undefined,
         cost: data.cost,
         fill_level: data.fill_level !== undefined ? data.fill_level / 100 : undefined, // Convert % to 0.00-1.00
         source: data.source || undefined,

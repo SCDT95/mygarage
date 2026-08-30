@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
+import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { screen, waitFor, fireEvent } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { render } from '../../__tests__/test-utils'
@@ -21,8 +21,11 @@ vi.mock('../../services/api', () => ({
 }))
 
 // Requires AuthProvider otherwise — same mock pattern as ServiceVisitForm.test.tsx
-// Hoisted + MUTABLE so one describe block (B9, below) can flip to imperial
-// without affecting every other test in this file, which stays on metric.
+// Hoisted + MUTABLE so a single case (the engine-hours label, below) can flip to
+// imperial without affecting every other test in this file, which stays on
+// metric. It resolves ONE PRESET at a time, so it cannot express a client whose
+// quantities disagree with each other: that lives in
+// FuelRecordForm.mixedUnits.test.tsx, which drives a real resolved `UnitSet`.
 const unitPrefMock = vi.hoisted(() => ({
   system: 'metric' as 'metric' | 'imperial',
   showBoth: false,
@@ -471,16 +474,23 @@ describe('FuelRecordForm — cost field on NumberInput (Task 8)', () => {
   })
 })
 
-describe('FuelRecordForm — OBC fields stay canonical-labeled in imperial (B9)', () => {
+describe('FuelRecordForm — OBC fields carry the resolved consumption and speed labels', () => {
+  // ★ Same two assertions, re-pointed. They used to run under
+  // `system = 'imperial'` and pin the retired B9 ruling that the OBC pair is
+  // entered in storage units whatever the client resolved; left alone they
+  // would now pin the defect. Here they cover the metric leg and the only path
+  // that reaches these fields through the collapsed "More details" disclosure.
+  // Deliberately green at t=0: the converting direction is red-first in
+  // FuelRecordForm.mixedUnits.test.tsx, whose harness can express a client
+  // whose tokens disagree with each other. This file's mock cannot.
   beforeEach(() => {
     vi.clearAllMocks()
     localStorage.clear()                 // moreDetailsOpen persists in localStorage
-    unitPrefMock.system = 'imperial'     // US units
+    unitPrefMock.system = 'metric'       // stated, not inherited from whatever ran last
     mockedApiGet.mockResolvedValue({ data: mockVehicle({ fuel_type: 'gasoline' }) })
   })
-  afterEach(() => { unitPrefMock.system = 'metric' })   // restore for the rest of the file
 
-  it('labels OBC consumption/speed with the FIXED canonical unit even for imperial (fails if the restyle converted them to mpg/mph)', async () => {
+  it('labels OBC consumption/speed from the metric client\'s own tokens', async () => {
     const user = userEvent.setup()
     render(<FuelRecordForm {...DEFAULT_PROPS} />)
     await waitFor(() => expect(mockedApiGet).toHaveBeenCalled())

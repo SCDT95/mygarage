@@ -52,7 +52,13 @@ vi.mock('../../hooks/useUnitPreference', async () => {
 // no unit) so the maintained tests stay green.
 vi.mock('react-i18next', () => ({
   useTranslation: () => ({
-    t: (key: string, options?: { unit?: string }) => (options?.unit ? `${key} (${options.unit})` : key),
+    // `value` as well as `unit`: fix round 1 routed the volume-total and
+    // avg-cost captions through `t()` with an interpolated NUMBER, and a mock
+    // that dropped it would render the same key for 10.4 gal and 47.3 L.
+    t: (key: string, options?: { unit?: string; value?: string }) =>
+      options?.unit !== undefined || options?.value !== undefined
+        ? `${key} (${options.unit ?? options.value})`
+        : key,
     i18n: { language: 'en', changeLanguage: () => Promise.resolve() },
   }),
   Trans: ({ children }: { children: React.ReactNode }) => children,
@@ -211,10 +217,10 @@ describe('DEFRecordList — one gallon per page, taken from the user', () => {
     expect(screen.getByText('1.7')).toBeInTheDocument()
     expect(screen.getByText('gal/1,000 mi')).toBeInTheDocument()
     // $1.189/L is $5.41 per imperial gallon, $4.50 per US one.
-    expect(screen.getByText('Avg Cost/gal')).toBeInTheDocument()
+    expect(screen.getByText('defList.avgCostPerVolume (gal)')).toBeInTheDocument()
     expect(screen.getByText('$5.41')).toBeInTheDocument()
     // 20.82 L is 4.6 imperial gallons.
-    expect(screen.getByText('4.6 gal total')).toBeInTheDocument()
+    expect(screen.getByText('defList.volumeTotal (4.6 gal)')).toBeInTheDocument()
     // And the row cell agrees with all three.
     expect(within(screen.getByRole('table', { name: 'defList.tableCaption' })).getByText('4.58 gal')).toBeInTheDocument()
     expect(UnitConverter.getGallonStandard()).toBe('us')
@@ -226,8 +232,8 @@ describe('DEFRecordList — one gallon per page, taken from the user', () => {
 
     expect(screen.getByText('4.7')).toBeInTheDocument()
     expect(screen.getByText('L/1,000 km')).toBeInTheDocument()
-    expect(screen.getByText('Avg Cost/L')).toBeInTheDocument()
+    expect(screen.getByText('defList.avgCostPerVolume (L)')).toBeInTheDocument()
     expect(screen.getByText('$1.19')).toBeInTheDocument()
-    expect(screen.getByText('20.8 L total')).toBeInTheDocument()
+    expect(screen.getByText('defList.volumeTotal (20.8 L)')).toBeInTheDocument()
   })
 })

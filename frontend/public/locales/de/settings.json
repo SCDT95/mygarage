@@ -7,7 +7,7 @@
     "integrations": "Integrationen",
     "notifications": "Benachrichtigungen",
     "backupRestore": "Sichern & Wiederherstellen",
-  "sections": "Einstellungen-Bereiche"
+    "sections": "Einstellungen-Bereiche"
   },
   "systemConfig": {
     "title": "Systemkonfiguration",
@@ -23,20 +23,85 @@
     "enable": "Ausführliche Protokollierung und detaillierte Fehlermeldungen aktivieren",
     "warning": "⚠️ Erfordert einen Neustart der Anwendung, um wirksam zu werden. Nur zur Fehlerbehebung aktivieren."
   },
-  "garageSections": {
-    "title": "Garage-Bereiche",
-    "description": "Aktiviere leicht zugängliche Referenzfahrzeuge von Familie/Freunden. Standardmäßig deaktiviert. Freigegebene Fahrzeuge werden immer in einem eigenen Bereich angezeigt.",
-    "familyFriends": "Familie & Freunde anzeigen",
-    "familyFriendsDesc": "Leicht zugängliche Referenzfahrzeuge von Familie/Freunden. Freigegebene Haushaltsfahrzeuge werden immer in der Garage angezeigt, auch wenn dies deaktiviert ist."
-  },
   "units": {
     "label": "Einheitensystem",
     "imperial": "Imperial",
     "metric": "Metrisch",
-    "imperialDescription": "Verwendung imperialer Einheiten: gallons, miles, MPG, °F, PSI, lbs, lb-ft",
-    "metricDescription": "Verwendung metrischer Einheiten: liters, kilometers, L/100km, °C, bar, kg, Nm",
+    "resolvedDescription": "Verwendete Einheiten: {{units}}",
+    "instanceDefault": "Standardeinheiten für diese Instanz",
+    "instanceDefaultDescription": "Werden von abgemeldeten Besuchern verwendet, von allen Clients, wenn die Anmeldung deaktiviert ist, und als Ausgangswert für jedes neue Konto. Ein Konto, das bereits eigene Einheiten hat, wird dadurch nicht geändert.",
+    "instanceDefaultSaved": "Standardeinheiten der Instanz gespeichert",
+    "instanceDefaultError": "Standardeinheiten der Instanz konnten nicht gespeichert werden",
     "showBoth": "Beide Einheiten anzeigen",
-    "showBothDescription": "Werte sowohl imperial als auch metrisch anzeigen (z. B. \"25 MPG (9.4 L/100km)\")",
+    "custom": "Benutzerdefiniert",
+    "customDescription": "Wähle für jede Größe eine Einheit. Diese überschreiben die Voreinstellung in der gesamten Anwendung.",
+    "presetConfirmTitle": "Auf {{preset}} umstellen?",
+    "presetConfirmMessage": "Dies löscht alle einzeln gewählten Einheiten und verwendet überall die Voreinstellung.",
+    "presetConfirmGallon": "Imperial verwendet die US-Gallone (3,785 L). Deine Einstellung für die UK-Gallone wird ersetzt.",
+    "presetConfirmAction": "Einheiten wechseln",
+    "quantities": {
+      "distance": "Strecke",
+      "speed": "Geschwindigkeit",
+      "length": "Länge",
+      "volume": "Volumen",
+      "consumption": "Kraftstoffverbrauch",
+      "pressure": "Druck",
+      "temperature": "Temperatur",
+      "mass": "Masse",
+      "torque": "Drehmoment",
+      "tread": "Reifenprofiltiefe",
+      "secondaryGallon": "Für MPG verwendete Gallone"
+    },
+    "options": {
+      "distance": {
+        "km": "Kilometer (km)",
+        "mi": "Meilen (mi)"
+      },
+      "speed": {
+        "kmh": "Kilometer pro Stunde (km/h)",
+        "mph": "Meilen pro Stunde (mph)"
+      },
+      "length": {
+        "m": "Meter (m)",
+        "ft": "Fuß (ft)"
+      },
+      "volume": {
+        "L": "Liter (L)",
+        "gal_us": "US-Gallonen (gal)",
+        "gal_uk": "UK-Gallonen (gal)"
+      },
+      "consumption": {
+        "l_100km": "Liter pro 100 km (L/100km)",
+        "km_l": "Kilometer pro Liter (km/L)",
+        "mpg_us": "Meilen pro US-Gallone (MPG)",
+        "mpg_uk": "Meilen pro UK-Gallone (MPG)"
+      },
+      "pressure": {
+        "kpa": "Kilopascal (kPa)",
+        "bar": "Bar (bar)",
+        "psi": "Pfund pro Quadratzoll (PSI)"
+      },
+      "temperature": {
+        "c": "Celsius (°C)",
+        "f": "Fahrenheit (°F)"
+      },
+      "mass": {
+        "kg": "Kilogramm (kg)",
+        "lb": "Pfund (lb)"
+      },
+      "torque": {
+        "nm": "Newtonmeter (Nm)",
+        "lbft": "Pfund-Fuß (lb-ft)"
+      },
+      "tread": {
+        "mm": "Millimeter (mm)",
+        "in32": "Zweiunddreißigstel Zoll (/32 in)"
+      },
+      "secondary_gallon": {
+        "us": "US-Gallone (3,785 L)",
+        "uk": "UK-Gallone (4,546 L)"
+      }
+    },
     "gallonStandard": "Gallonen-Standard",
     "gallonUs": "US-Gallone (3,785 L)",
     "gallonUk": "UK-Gallone (4,546 L)",
@@ -182,7 +247,6 @@
     "addService": "Anbieter hinzufügen",
     "providerRemoved": "Anbieter erfolgreich entfernt",
     "removeProviderError": "Anbieter konnte nicht entfernt werden",
-    "removeProviderAction": "Anbieter entfernen",
     "livelink": "LiveLink",
     "livelinkDesc": "Echtzeit-Fahrzeugtelemetrie über WiCAN PRO OBD2-Geräte.",
     "livelinkLoading": "LiveLink-Status wird geladen...",
@@ -193,6 +257,7 @@
     "configureLiveLink": "LiveLink konfigurieren",
     "configureDesc": "Verwalte WiCAN-Geräte, MQTT-Einstellungen und Telemetrie-Parameter.",
     "aboutLiveLink": "Über LiveLink",
+    "removeProviderAction": "Anbieter entfernen",
     "webhooks": "Eingehende Webhooks",
     "webhooksDesc": "Ermögliche es Home Assistant, n8n oder Kurzbefehlen, Kraftstoffdaten, Kilometerstände und erledigte Erinnerungen zu übermitteln.",
     "webhookToken": "Webhook-Ingest-Token",
@@ -293,20 +358,7 @@
       "step2": "Wähle \"Kanal bearbeiten\" > \"Integrationen\"",
       "step3": "Klicke auf \"Webhook erstellen\"",
       "step4": "Kopiere die Webhook-URL",
-    "docsLink": "Discord Webhooks Handbuch"
-    }
-  },
-  "matrix": {
-    "enable": "Matrix-Benachrichtigungen aktivieren",
-    "homeserver": "Homeserver-URL",
-    "accessToken": "Access-Token",
-    "roomId": "Raum-ID",
-    "misc": {
-      "title": "Matrix",
-      "subtitle": "MyGarage-Warnmeldungen in einen Matrix-Raum posten",
-      "sending": "Wird gesendet…",
-      "testConnection": "Verbindung testen",
-      "setupHint": "Erstelle einen dedizierten Matrix-Benutzer, lade ihn in einen Raum ein und füge sein Access-Token hier ein."
+      "docsLink": "Discord Webhooks Handbuch"
     }
   },
   "telegram": {
@@ -379,9 +431,7 @@
       "warrantyExpiringLabel": "Garantie läuft ab",
       "warrantyExpiringDesc": "Benachrichtigen, bevor die Garantie abläuft",
       "milestonesLabel": "Kilometerstand-Meilensteine",
-      "milestonesDesc": "Benachrichtigen beim Erreichen bedeutender Meilensteine des Kilometerstands (z. B. 100k Meilen)",
       "daysBefore": "Tage vorher",
-      "milesBefore": "Meilen vorher",
       "advanced": "Erweitert",
       "advancedDesc": "Wiederholungsversuch-Einstellungen für Benachrichtigungen mit hoher Priorität",
       "retryAttempts": "Wiederholungsversuche",
@@ -507,14 +557,11 @@
     "confirmRestoreSettings": "Dies wird alle Einstellungen aus dem Backup wiederherstellen. Vorab wird ein Sicherheits-Backup erstellt. Fortfahren?",
     "fullRestoreComplete": "Vollständiges Backup wiederhergestellt! Bitte aktualisiere die Seite oder starte die Anwendung neu, damit die Änderungen wirksam werden.",
     "restoreFailed": "Wiederherstellung fehlgeschlagen",
-    "restoreAction": "Backup wiederherstellen",
     "confirmDelete": "Bist du sicher, dass du {{filename}} löschen möchtest?",
     "deleteSuccess": "Backup {{filename}} wurde erfolgreich gelöscht",
     "deleteError": "Backup konnte nicht gelöscht werden",
-    "deleteAction": "Backup löschen",
     "uploadSuccess": "Backup erfolgreich hochgeladen!",
     "uploadFailed": "Upload fehlgeschlagen",
-    "uploadAction": "Backup hochladen",
     "safetyBadge": "Sicherheit",
     "totalSize": "{{size}} Gesamt",
     "dataIncludedList": "Datenbank, Fotos, Dokumente, Anhänge",
@@ -523,6 +570,9 @@
     "infoRestoreOverwrites": "Das Wiederherstellen eines vollständigen Backups wird alle aktuellen Daten und Dateien ÜBERSCHREIBEN",
     "infoSafetyBackup": "Vor jedem Wiederherstellungsvorgang wird automatisch ein Sicherheits-Backup erstellt",
     "infoRestartRequired": "Nach dem Wiederherstellen eines vollständigen Backups kann ein Neustart der Anwendung erforderlich sein",
+    "restoreAction": "Backup wiederherstellen",
+    "deleteAction": "Backup löschen",
+    "uploadAction": "Backup hochladen",
     "postgresRestoreTitle": "Vollständige PostgreSQL-Wiederherstellung",
     "postgresRestoreMessage": "Eine vollständige Wiederherstellung über die Benutzeroberfläche ist für PostgreSQL nicht verfügbar. Stoppe die App und führe folgenden Befehl aus: pg_restore --clean --if-exists --no-owner --no-privileges -d <dbname> mygarage.pgdump"
   },
@@ -540,6 +590,25 @@
     "defaultTripType": "Standard-Fahrtart",
     "defaultsSaved": "Kraftstoff-Standardwerte gespeichert",
     "defaultsError": "Kraftstoff-Standardwerte konnten nicht gespeichert werden"
+  },
+  "garageSections": {
+    "title": "Garage-Bereiche",
+    "description": "Aktiviere leicht zugängliche Referenzfahrzeuge von Familie/Freunden. Standardmäßig deaktiviert. Freigegebene Fahrzeuge werden immer in einem eigenen Bereich angezeigt.",
+    "familyFriends": "Familie & Freunde anzeigen",
+    "familyFriendsDesc": "Leicht zugängliche Referenzfahrzeuge von Familie/Freunden. Freigegebene Haushaltsfahrzeuge werden immer in der Garage angezeigt, auch wenn dies deaktiviert ist."
+  },
+  "matrix": {
+    "enable": "Matrix-Benachrichtigungen aktivieren",
+    "homeserver": "Homeserver-URL",
+    "accessToken": "Access-Token",
+    "roomId": "Raum-ID",
+    "misc": {
+      "title": "Matrix",
+      "subtitle": "MyGarage-Warnmeldungen in einen Matrix-Raum posten",
+      "sending": "Wird gesendet…",
+      "testConnection": "Verbindung testen",
+      "setupHint": "Erstelle einen dedizierten Matrix-Benutzer, lade ihn in einen Raum ein und füge sein Access-Token hier ein."
+    }
   },
   "accent": {
     "label": "Akzentfarbe",
